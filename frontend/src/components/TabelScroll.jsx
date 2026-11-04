@@ -1,11 +1,11 @@
 // Een markdown-tabel in een antwoord scrolt zelf zijwaarts als hij breder is dan de tekstkolom (#626). Zonder
 // deze verpakking duwde een brede tabel de hele berichtenlijst breder dan het scherm. Focusbaar, zodat ook wie
-// met het toetsenbord werkt de tabel kan verschuiven.
+// met het toetsenbord werkt de tabel kan verschuiven. `label` noemt de regio (de dashboards, #905); anders "Tabel".
 // eslint-disable-next-line no-unused-vars -- node is react-markdown's AST node, not a DOM attribute
-export default function TabelScroll({ node, children, ...props }) {
+export default function TabelScroll({ node, label = 'Tabel', children, ...props }) {
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (WCAG 2.1.1); not every browser focuses it by itself
-    <div className="tabel-scroll" role="region" aria-label="Tabel" tabIndex={0} onScroll={geefScrollDoor}>
+    <div className="tabel-scroll" role="region" aria-label={label} tabIndex={0} onScroll={geefScrollDoor}>
       <table {...props}>{children}</table>
     </div>
   )

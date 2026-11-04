@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
-import { Bar, Line } from 'react-chartjs-2'
-import { CHART_COLORS } from '../../../constants'
+import TabelScroll from '../../TabelScroll'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
-  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard,
+  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren,
   DashboardSources, BRONNEN_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
 
@@ -30,6 +29,7 @@ export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
   }
   entries.sort((a, b) => b.pct - a.pct)
   if (!entries.length) return null
+  const kleuren = sectorKleuren(entries.map(e => e.sector))
   return {
     jaar: latestYear,
     weggelaten,
@@ -38,7 +38,7 @@ export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
       datasets: [{
         label: 'Marktaandeel %',
         data: entries.map(e => e.pct),
-        backgroundColor: entries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + 'CC'),
+        backgroundColor: entries.map(e => kleuren.get(e.sector)),
         borderWidth: 0,
         borderRadius: 4,
       }],
@@ -51,7 +51,7 @@ export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
 export function LandelijkDefinitie({ landelijk }) {
   if (!landelijk?.definitie) return null
   return (
-    <p className="dashboard-noot" role="note" style={{ fontSize: 'var(--font-klein)', color: 'var(--muted-text)', margin: '0 0 16px' }}>
+    <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '0 0 16px' }}>
       Landelijk is hier {landelijk.definitie}. {landelijk.verschil_met_chat}
     </p>
   )
@@ -67,13 +67,14 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
   const eigenIdx = alleInstellingen.findIndex(i => i.naam.toLowerCase() === instelling.toLowerCase())
   const { label: tick } = darkColors(dark)
   return (
-    <ChartCard title="Nationale ranking" subtitle="Totaal ingeschrevenen — alle instellingen" cardStyle={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', color: tick }}>
+    <ChartCard title="Nationale ranking" subtitle="Totaal ingeschrevenen — alle instellingen">
+      <TabelScroll label="Nationale ranking" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
+        <caption className="sr-only">Nationale ranking naar totaal ingeschrevenen</caption>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px' }}>#</th>
-            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Instelling</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Ingeschrevenen</th>
+            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>#</th>
+            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Instelling</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Ingeschrevenen</th>
           </tr>
         </thead>
         <tbody>
@@ -102,7 +103,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
             </>
           )}
         </tbody>
-      </table>
+      </TabelScroll>
     </ChartCard>
   )
 }
@@ -133,13 +134,14 @@ function SectorTrendChart({ eigenSectoren, dark }) {
     const sectors = Object.keys(eigenSectoren)
     const allJaren = [...new Set(sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(String)))].sort((a, b) => a.localeCompare(b, 'nl'))
     if (allJaren.length < 2) return null
+    const kleuren = sectorKleuren(sectors)
     return {
       labels: allJaren,
-      datasets: sectors.map((s, i) => ({
+      datasets: sectors.map(s => ({
         label: SECTOR_LABELS[s] || s,
         data: allJaren.map(j => eigenSectoren[s][j] ?? eigenSectoren[s][Number(j)] ?? null),
-        borderColor: CHART_COLORS[i % CHART_COLORS.length],
-        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '33',
+        borderColor: kleuren.get(s),
+        backgroundColor: kleuren.get(s) + '33',
         borderWidth: 2,
         tension: 0.3,
         fill: false,
@@ -151,12 +153,11 @@ function SectorTrendChart({ eigenSectoren, dark }) {
   const { tick, grid, label } = darkColors(dark)
   return (
     <ChartCard title="Eigen sectoren over tijd" subtitle="Ingeschrevenen per sector/leerweg">
-      <div style={{ height: 280 }}>
-        <Line data={chartData} options={{
+      <Grafiek soort="line" data={chartData} hoogte={280} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
             legend: {
-              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              display: true, position: 'top', labels: { color: label, boxWidth: 14 },
               onClick: (e, legendItem, legend) => {
                 const index = legendItem.datasetIndex
                 const chart = legend.chart
@@ -171,7 +172,6 @@ function SectorTrendChart({ eigenSectoren, dark }) {
             y: tellingAs({ grid: { color: grid }, ticks: { color: tick } }),
           },
         }} />
-      </div>
     </ChartCard>
   )
 }
@@ -186,15 +186,13 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
   const baseOpts = horizontalBarOpts(dark, '%')
   return (
     <ChartCard title="Marktaandeel per sector" subtitle="Percentage van landelijk totaal (laatste jaar)">
-      <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
-        <Bar data={chartData} options={{
+      <Grafiek soort="bar" categorie="Sector" hoogte={Math.max(160, chartData.labels.length * 36)} options={{
           ...baseOpts,
           scales: {
             ...baseOpts.scales,
             x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${v}%` } },
           },
-        }} />
-      </div>
+        }} data={chartData} />
       <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${uitkomst.jaar}`} />
     </ChartCard>
   )

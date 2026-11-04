@@ -167,9 +167,10 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
       {reportFrame.srcDoc && (
         <ReportFrameFallback probleem={reportFrame.probleem} workbook={workbook} save={save} />
       )}
-      {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). */}
+      {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). The region is named
+          after what it holds: a dashboard is no report (#905). */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-      <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label="Rapportinhoud"
+      <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label={rapportWoord(workbook) === 'dashboard' ? 'Dashboardinhoud' : 'Rapportinhoud'}
         aria-busy={reportFrame.loading || undefined}>
         {(() => {
           if (BuiltinDash) return <BuiltinDash instelling={instelling} />

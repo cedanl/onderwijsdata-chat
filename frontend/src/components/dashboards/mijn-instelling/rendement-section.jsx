@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { Bar, Line } from 'react-chartjs-2'
+import TabelScroll from '../../TabelScroll'
 import { CHART_COLORS } from '../../../constants'
-import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts, afgekapteAs, WeggelatenNoot } from '../shared/index'
+import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, afgekapteAs, benchmarkColor, oordeelKleur, sectorKleuren, WeggelatenNoot } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten.at(-1)
@@ -14,7 +14,7 @@ function LatestCohortKpi({ cohorten }) {
   )
 }
 
-function RendementKpis({ data }) {
+function RendementKpis({ data, dark }) {
   if (!data?.rendement_per_jaar) return null
   const entries = Object.entries(data.rendement_per_jaar).sort((a, b) => Number(b[0]) - Number(a[0]))
   const latest = entries[0]
@@ -27,7 +27,7 @@ function RendementKpis({ data }) {
           <div className="kpi-label">Rendement cohort {latest[0]}</div>
           <div className="kpi-value">{(latest[1] * 100).toFixed(1)}%</div>
           <div className="kpi-sub">gediplomeerden t+3 / instroom</div>
-          {delta != null && <div className="kpi-sub" style={{ color: delta >= 0 ? '#16A34A' : '#DC2626' }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}pp t.o.v. {prev[0]}</div>}
+          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}pp t.o.v. {prev[0]}</div>}
         </div>
       )}
       {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi cohorten={data.pseudo_cohorten} />}
@@ -56,7 +56,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
       datasets.push({
         label: 'Benchmark (regio)',
         data: jaren.map(j => benchmarkRendement[j] != null ? Math.round(benchmarkRendement[j] * 1000) / 10 : null),
-        borderColor: '#9CA3AF', backgroundColor: '#9CA3AF33',
+        borderColor: benchmarkColor(dark), backgroundColor: benchmarkColor(dark) + '33',
         borderWidth: 2, borderDash: [5, 4], tension: 0.3, spanGaps: true,
       })
     }
@@ -73,17 +73,16 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
     }
 
     return { labels: jaren, datasets }
-  }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling])
+  }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling, dark])
 
   if (!chartData) return null
   return (
     <ChartCard title="Diplomarendement over tijd" subtitle="Gediplomeerden t+3 / instroom — eigen instelling vs. benchmark">
-      <div style={{ height: 280 }}>
-        <Line data={chartData} options={{
+      <Grafiek soort="line" data={chartData} hoogte={280} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
             legend: {
-              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              display: true, position: 'top', labels: { color: label, boxWidth: 14 },
               onClick: (e, legendItem, legend) => {
                 const index = legendItem.datasetIndex
                 const chart = legend.chart
@@ -99,7 +98,6 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
             y: afgekapteAs({ grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } }, chartData.datasets, tick),
           },
         }} />
-      </div>
     </ChartCard>
   )
 }
@@ -110,12 +108,13 @@ function SectorRendementChart({ sectorRendement, dark }) {
     const entries = Object.entries(sectorRendement)
       .map(([s, v]) => ({ sector: s, pct: Math.round(v * 1000) / 10 }))
       .sort((a, b) => b.pct - a.pct)
+    const kleuren = sectorKleuren(entries.map(e => e.sector))
     return {
       labels: entries.map(e => e.sector),
       datasets: [{
         label: 'Rendement %',
         data: entries.map(e => e.pct),
-        backgroundColor: entries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + 'CC'),
+        backgroundColor: entries.map(e => kleuren.get(e.sector)),
         borderWidth: 0, borderRadius: 4,
       }],
     }
@@ -124,9 +123,7 @@ function SectorRendementChart({ sectorRendement, dark }) {
   if (!chartData) return null
   return (
     <ChartCard title="Rendement per sector" subtitle="Gediplomeerden / ingeschrevenen (cumulatief)">
-      <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
-        <Bar data={chartData} options={horizontalBarOpts(dark, '%')} />
-      </div>
+      <Grafiek soort="bar" data={chartData} options={horizontalBarOpts(dark, '%')} hoogte={Math.max(160, chartData.labels.length * 36)} categorie="Sector" />
     </ChartCard>
   )
 }
@@ -155,15 +152,16 @@ function CohortenTable({ cohorten, dark }) {
   if (!rows.length) return null
   const { tick } = darkColors(dark)
   return (
-    <ChartCard title="Pseudo-cohorten" subtitle="Instroom vs. gediplomeerden na 3, 4 en 5 jaar" cardStyle={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', color: tick }}>
+    <ChartCard title="Pseudo-cohorten" subtitle="Instroom vs. gediplomeerden na 3, 4 en 5 jaar">
+      <TabelScroll label="Pseudo-cohorten" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
+        <caption className="sr-only">Pseudo-cohorten: instroom en gediplomeerden na 3, 4 en 5 jaar</caption>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Instroom</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+4</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+5</th>
+            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Instroom</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+4</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+5</th>
           </tr>
         </thead>
         <tbody>
@@ -175,7 +173,7 @@ function CohortenTable({ cohorten, dark }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </TabelScroll>
       <WeggelatenNoot namen={teVeel.map(String)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
       <WeggelatenNoot namen={zonderDiploma.map(String)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
     </ChartCard>
@@ -187,7 +185,7 @@ export function RendementSection({ data, instelling, dark }) {
   return (
     <>
       <SectionHeader title="Diplomarendement" subtitle="Rendement per cohort en sector, vergeleken met regio-peers" />
-      <RendementKpis data={data} />
+      <RendementKpis data={data} dark={dark} />
       <RendementTrendChart
         rendementPerJaar={data?.rendement_per_jaar}
         benchmarkRendement={data?.benchmark_rendement}

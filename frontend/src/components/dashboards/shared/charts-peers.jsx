@@ -1,7 +1,9 @@
-import { Line } from 'react-chartjs-2'
+import TabelScroll from '../../TabelScroll'
 import { fmt } from './hooks'
 import { SectionHeader, ChartCard } from './shell'
 import { groeiStartjaar, groeiPct } from './chart-builders'
+import { Grafiek } from './grafiek'
+import { oordeelKleur } from './chart-opts'
 
 // ─── Peer chart components ────────────────────────────────────────────────────
 
@@ -11,7 +13,7 @@ export function BenchmarkLineChart({ title, subtitle, data, indexOpts }) {
   const { startjaar, ...lineData } = data
   return (
     <ChartCard title={title} subtitle={subtitle(startjaar)}>
-      <div style={{ height: 220 }}><Line data={lineData} options={indexOpts} /></div>
+      <Grafiek soort="line" data={lineData} options={indexOpts} hoogte={220} />
     </ChartCard>
   )
 }
@@ -21,12 +23,12 @@ export function PeerLinesChart({ title, subtitle, data, opts }) {
   const { startjaar, ...lineData } = data
   return (
     <ChartCard title={title} subtitle={subtitle(startjaar)}>
-      <div style={{ height: 240 }}><Line data={lineData} options={opts} /></div>
+      <Grafiek soort="line" data={lineData} options={opts} hoogte={240} />
     </ChartCard>
   )
 }
 
-export function PeersTable({ data, instelling }) {
+export function PeersTable({ data, instelling, dark }) {
   if (!data?.benchmark?.peers?.ingeschrevenen) return null
   const peers = data.benchmark.peers.ingeschrevenen
   const lastJaar = data.laatste_jaar
@@ -56,14 +58,15 @@ export function PeersTable({ data, instelling }) {
         title="Overzicht concurrenten"
         subtitle={`${rows.length} instellingen in de benchmark-regio — gesorteerd op omvang ingeschrevenen`}
       />
-      <div className="chart-card" style={{ overflow: 'auto', padding: 0 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+      <div className="chart-card" style={{ padding: 0 }}>
+        <TabelScroll label="Overzicht concurrenten" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+          <caption className="sr-only">Overzicht concurrenten in de benchmark-regio, gesorteerd op ingeschrevenen</caption>
           <thead>
             <tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--gray-200)' }}>
-              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>#</th>
-              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Instelling</th>
-              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Ingeschrevenen {lastJaar}</th>
-              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>{groeiHeader}</th>
+              <th scope="col" style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>#</th>
+              <th scope="col" style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Instelling</th>
+              <th scope="col" style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Ingeschrevenen {lastJaar}</th>
+              <th scope="col" style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>{groeiHeader}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,19 +76,19 @@ export function PeersTable({ data, instelling }) {
                 background: row.eigen ? 'var(--blue-50)' : 'transparent',
               }}>
                 <td style={{ padding: '9px 16px', color: 'var(--muted-text)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
-                <td style={{ padding: '9px 16px', color: row.eigen ? '#1D4ED8' : 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
+                <td style={{ padding: '9px 16px', color: row.eigen ? 'var(--accent-text)' : 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
                   {row.naam}{row.eigen ? ' ★' : ''}
                 </td>
                 <td style={{ padding: '9px 16px', textAlign: 'right', color: 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
                   {fmt(row.val)}
                 </td>
-                <td style={{ padding: '9px 16px', textAlign: 'right', fontWeight: row.eigen ? 700 : 400, color: row.groei == null ? '#9CA3AF' : row.groei >= 0 ? '#059669' : '#DC2626' }}>
+                <td style={{ padding: '9px 16px', textAlign: 'right', fontWeight: row.eigen ? 700 : 400, color: row.groei == null ? 'var(--muted-text)' : oordeelKleur(row.groei >= 0 ? 'goed' : 'slecht', dark) }}>
                   {row.groei == null ? '—' : `${row.groei >= 0 ? '+' : ''}${row.groei}%`}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </TabelScroll>
       </div>
     </>
   )

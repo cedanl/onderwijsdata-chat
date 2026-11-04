@@ -2,7 +2,7 @@
 // chips, labels) op 10,5–12 px. Besluit 19-10: antwoordtekst 16 px, ondergrens 12,5 px; code mag 11 px en de
 // rapportmetadata op /rapporten blijft bewust klein. Gemeten op 390 px in de MR; dit legt de regels vast.
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const css = readFileSync(join(import.meta.dirname, '..', 'styles.css'), 'utf8')
@@ -96,5 +96,46 @@ describe('lagen op desktop onder 12,5 px (#663)', () => {
     expect(nav).not.toMatch(/fontSize:\s*'\.7[25]rem'/)
     expect(nav).toContain('className="navbar-profile-instelling"')
     expect(nav).toContain('className="navbar-profile-naam"')
+  })
+})
+
+// #905: de dashboards zaten nog op 10–12,3 px (Chart.js 10–11 px, inline .72–.82rem, .meta-badge, .chart-sub). De
+// basismaat is 15 px, dus .8rem is 12 px. Alles wat de dashboards zelf zetten, op elke breedte, haalt nu 12,5 px.
+describe('lettergroottes in de dashboards (#905)', () => {
+  const BASIS = 15
+  const MIN = 12.5
+  const DASHBOARDS = join(import.meta.dirname, '..', 'components', 'dashboards')
+  const bronnen = readdirSync(DASHBOARDS, { recursive: true })
+    .filter(f => /\.jsx?$/.test(f))
+    .map(f => [f, readFileSync(join(DASHBOARDS, f), 'utf8')])
+  const px = maat => (maat.endsWith('rem') ? parseFloat(maat) * BASIS : parseFloat(maat))
+  const zonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('zet inline geen lettergrootte onder 12,5 px', () => {
+    const teKlein = bronnen.flatMap(([f, bron]) => [...bron.matchAll(/fontSize:\s*'([\d.]+(?:rem|px))'/g)]
+      .filter(m => px(m[1]) < MIN).map(m => `${f}: ${m[1]}`))
+    expect(teKlein).toEqual([])
+    // --font-klein is op desktop .75rem (11,25 px); alleen op een telefoon 12,5 px.
+    expect(bronnen.filter(([, bron]) => bron.includes('var(--font-klein)')).map(([f]) => f)).toEqual([])
+  })
+
+  it('geeft Chart.js en de kaart nergens een kleinere letter', () => {
+    const teKlein = bronnen.flatMap(([f, bron]) => [...bron.matchAll(/(?:font|textfont):\s*{[^}]*size:\s*([\d.]+)/g)]
+      .filter(m => Number(m[1]) < MIN).map(m => `${f}: ${m[1]}`))
+    expect(teKlein).toEqual([])
+  })
+
+  it('zet de standaardletter van Chart.js op 12,5 px of meer', async () => {
+    const { Chart } = await import('chart.js')
+    await import('../components/dashboards/shared/chart-opts')
+    expect(Chart.defaults.font.size).toBeGreaterThanOrEqual(MIN)
+  })
+
+  it.each(['.meta-badge', '.kpi-label', '.kpi-trend', '.kpi-sub', '.chart-sub', '.dashboard-sources-title',
+    '.dashboard-sources-list a', '.db-sectie-sub', '.db-noot', '.db-schakel', '.kaart-zonder-locatie'])('geeft %s 12,5 px of meer', selector => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const maat = zonderCommentaar.match(new RegExp(`\\n${escaped}\\s*\\{[^}]*font-size:\\s*([\\d.]+(?:rem|px))`))?.[1]
+    expect(maat, selector).toBeDefined()
+    expect(px(maat)).toBeGreaterThanOrEqual(MIN)
   })
 })

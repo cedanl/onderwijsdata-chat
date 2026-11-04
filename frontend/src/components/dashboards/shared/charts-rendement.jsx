@@ -1,7 +1,7 @@
-import { Bar } from 'react-chartjs-2'
-import { horizontalBarOpts } from './chart-opts'
+import { horizontalBarOpts, benchmarkColor, GOED_KLEUR } from './chart-opts'
 import { COLOR_EIGEN } from '../../../constants'
 import { ChartCard } from './shell'
+import { Grafiek } from './grafiek'
 
 // ─── Rendement vergelijking ───────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ export function buildRendementVergelijkingData(data, instelling, dark) {
       label: 'Rendement %',
       data: entries.map(e => e.rendement),
       backgroundColor: entries.map(e =>
-        e.eigen ? COLOR_EIGEN : e.rendement >= 70 ? (dark ? '#064E3B' : '#D1FAE5') : (dark ? '#475569' : '#E2E8F0')
+        e.eigen ? COLOR_EIGEN : e.rendement >= 70 ? GOED_KLEUR : benchmarkColor(dark)
       ),
       borderRadius: 4,
     }],
@@ -52,11 +52,9 @@ export function RendementVergelijkingChart({ data, dark }) {
   return (
     <ChartCard
       title="Rendement vergelijking"
-      subtitle="Gediplomeerden / ingeschrevenen per instelling — proxy, geen cohortanalyse"
+      subtitle="Gediplomeerden / ingeschrevenen per instelling — proxy, geen cohortanalyse (groen: 70% of meer)"
     >
-      <div style={{ height: h }}>
-        <Bar data={data} options={horizontalBarOpts(dark, '%')} />
-      </div>
+      <Grafiek soort="bar" data={data} options={horizontalBarOpts(dark, '%')} hoogte={h} categorie="Instelling" />
     </ChartCard>
   )
 }

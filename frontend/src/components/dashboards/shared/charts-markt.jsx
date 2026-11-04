@@ -1,8 +1,8 @@
-import { Line, Bar } from 'react-chartjs-2'
-import { horizontalBarOpts, darkColors } from './chart-opts'
+import { horizontalBarOpts, darkColors, benchmarkColor, DAAL_KLEUR } from './chart-opts'
 import { COLOR_EIGEN, COLOR_DIPLOM } from '../../../constants'
 import { ChartCard } from './shell'
 import { groeiStartjaar, groeiPct } from './chart-builders'
+import { Grafiek } from './grafiek'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -87,9 +87,7 @@ export function MarktaandeelTrendChart({ data, dark }) {
       title="Marktaandeel over tijd"
       subtitle="% van regiototaal ingeschrevenen — verliest of wint de instelling terrein?"
     >
-      <div style={{ height: 200 }}>
-        <Line data={data} options={_ratioLineOpts(dark, '')} />
-      </div>
+      <Grafiek soort="line" data={data} options={_ratioLineOpts(dark, '')} hoogte={200} />
     </ChartCard>
   )
 }
@@ -101,9 +99,7 @@ export function InstroomRatioChart({ data, dark }) {
       title="Instroom ratio"
       subtitle="Eerstejaars als % van totaal ingeschrevenen — pipeline-gezondheid (HO)"
     >
-      <div style={{ height: 200 }}>
-        <Line data={data} options={_ratioLineOpts(dark, '')} />
-      </div>
+      <Grafiek soort="line" data={data} options={_ratioLineOpts(dark, '')} hoogte={200} />
     </ChartCard>
   )
 }
@@ -133,7 +129,7 @@ export function buildMarktaandeelData(data, instelling, dark) {
     datasets: [{
       label: 'Ingeschrevenen',
       data: entries.map(e => e.waarde),
-      backgroundColor: entries.map(e => e.eigen ? COLOR_EIGEN : (dark ? '#475569' : '#CBD5E1')),
+      backgroundColor: entries.map(e => e.eigen ? COLOR_EIGEN : benchmarkColor(dark)),
       borderRadius: 4,
     }],
   }
@@ -166,7 +162,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
       label: 'Groei (%)',
       data: entries.map(e => e.groei),
       backgroundColor: entries.map(e =>
-        e.eigen ? COLOR_EIGEN : e.groei >= 0 ? (dark ? '#475569' : '#CBD5E1') : (dark ? '#7F1D1D' : '#FEE2E2')
+        e.eigen ? COLOR_EIGEN : e.groei >= 0 ? benchmarkColor(dark) : DAAL_KLEUR
       ),
       borderRadius: 4,
     }],
@@ -182,9 +178,7 @@ export function MarktaandeelChart({ data, jaar, dark }) {
       title={`Marktpositie ${jaar}`}
       subtitle="Totaal ingeschrevenen per instelling in de regio (eigen instelling blauw)"
     >
-      <div style={{ height: h }}>
-        <Bar data={data} options={horizontalBarOpts(dark)} />
-      </div>
+      <Grafiek soort="bar" data={data} options={horizontalBarOpts(dark)} hoogte={h} categorie="Instelling" />
     </ChartCard>
   )
 }
@@ -196,11 +190,9 @@ export function GroeiRankingChart({ data, dark }) {
   return (
     <ChartCard
       title={`Groei ingeschrevenen ${startjaar}–${eindjaar}`}
-      subtitle={`% verandering van ${startjaar} tot ${eindjaar}, voor elke instelling vanaf hetzelfde jaar (eigen instelling blauw)`}
+      subtitle={`% verandering van ${startjaar} tot ${eindjaar}, voor elke instelling vanaf hetzelfde jaar (eigen instelling blauw, daling rood)`}
     >
-      <div style={{ height: h }}>
-        <Bar data={barData} options={horizontalBarOpts(dark, '%')} />
-      </div>
+      <Grafiek soort="bar" data={barData} options={horizontalBarOpts(dark, '%')} hoogte={h} categorie="Instelling" />
     </ChartCard>
   )
 }

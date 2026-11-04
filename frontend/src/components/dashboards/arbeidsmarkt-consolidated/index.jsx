@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { Bar } from 'react-chartjs-2'
+import TabelScroll from '../../TabelScroll'
 import {
   useArbeidsmarktmatchDashboardData, useRegioDashboardData,
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
-  darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard,
+  darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
   DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
@@ -12,10 +12,11 @@ import {
 // Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen; de DUO-gaten horen bij mijn instelling.
 const REGIO_BRONNEN = ['UWV', 'ROA']
 
-const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
+// Tekst, dus 4,5:1 in beide thema's (#905): evenwicht #16A34A haalde op wit 3,3:1. Het woord staat er ook.
+const MATCH_OORDEEL = { schaarste: 'slecht', overaanbod: 'neutraal', evenwicht: 'goed' }
 const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
 
-function MatchScoreSection({ matchScore }) {
+function MatchScoreSection({ matchScore, dark }) {
   if (!matchScore) return null
   const entries = Object.entries(matchScore).filter(([, v]) => v != null)
   if (entries.length === 0) return null
@@ -26,7 +27,7 @@ function MatchScoreSection({ matchScore }) {
         {entries.map(([sector, score]) => (
           <div key={sector} className="kpi-card">
             <div className="kpi-label">{SECTOR_LABELS[sector] || sector}</div>
-            <div className="kpi-value" style={{ color: MATCH_COLORS[score] || 'inherit', fontSize: '1rem' }}>
+            <div className="kpi-value" style={{ color: MATCH_OORDEEL[score] ? oordeelKleur(MATCH_OORDEEL[score], dark) : 'inherit', fontSize: '1rem' }}>
               {MATCH_LABELS[score] || score}
             </div>
           </div>
@@ -51,13 +52,12 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }
       title="Gediplomeerden vs. vacatures per sector"
       subtitle="Gemiddeld aantal gediplomeerden (3 jaar) vs. gerelateerde vacatures (UWV). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee."
     >
-      <div style={{ height: Math.max(200, barData.labels.length * 50) }}>
-        <Bar data={barData} options={{
+      <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={Math.max(200, barData.labels.length * 50)} options={{
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
             legend: {
-              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              display: true, position: 'top', labels: { color: label, boxWidth: 14 },
               onClick: (e, legendItem, legend) => {
                 const index = legendItem.datasetIndex
                 const chart = legend.chart
@@ -68,7 +68,6 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }
             },
           },
         }} />
-      </div>
       <WeggelatenNoot namen={weggelaten} reden="geen gediplomeerden in de laatste drie jaar" />
     </ChartCard>
   )
@@ -79,27 +78,28 @@ function RoaNiveauTable({ roaPerNiveau, dark }) {
   const { label: tick } = darkColors(dark)
   const entries = Object.entries(roaPerNiveau)
   return (
-    <ChartCard title="Arbeidsmarktpositie per niveau" subtitle="ROA — werkloosheid, vast dienstverband, buiten vakrichting" cardStyle={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', color: tick }}>
+    <ChartCard title="Arbeidsmarktpositie per niveau" subtitle="ROA — werkloosheid, vast dienstverband, buiten vakrichting">
+      <TabelScroll label="Arbeidsmarktpositie per niveau" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
+        <caption className="sr-only">Arbeidsmarktpositie per opleidingsniveau (ROA)</caption>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Niveau</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Werkloosheid</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Vast dienstverband</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px' }}>Buiten vakrichting</th>
+            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Niveau</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Werkloosheid</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Vast dienstverband</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Buiten vakrichting</th>
           </tr>
         </thead>
         <tbody>
           {entries.map(([niveau, vals]) => (
             <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-              <td style={{ padding: '5px 8px' }}>{niveau}</td>
+              <th scope="row" style={{ textAlign: 'left', fontWeight: 400, padding: '5px 8px' }}>{niveau}</th>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.werkloosheid != null ? `${vals.werkloosheid}%` : '—'}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.vast_dienstverband != null ? `${vals.vast_dienstverband}%` : '—'}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.buiten_vakrichting != null ? `${vals.buiten_vakrichting}%` : '—'}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </TabelScroll>
     </ChartCard>
   )
 }
@@ -118,7 +118,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron="DUO, UWV &amp; ROA" />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
-        <MatchScoreSection matchScore={matchData?.match_score} />
+        <MatchScoreSection matchScore={matchData?.match_score} dark={dark} />
 
         <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart

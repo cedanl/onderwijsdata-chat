@@ -1,4 +1,5 @@
 import { COLOR_EIGEN } from '../../../constants'
+import { GrafiekTitel } from './grafiek'
 
 // ─── Shell ──────────────────────────────────────────────────────────────────
 
@@ -11,7 +12,7 @@ function OpnieuwKnop({ onOpnieuw }) {
 export function DashboardShell({ instelling, children, loading, data, error, onOpnieuw }) {
   if (loading) {
     return (
-      <div className="dashboard-content" style={{ padding: 24 }}>
+      <div className="dashboard-content" style={{ padding: 24 }} role="status" aria-busy="true">
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           <span className="meta-badge instelling">{instelling}</span>
           <span className="meta-badge date">Data laden&hellip;</span>
@@ -124,17 +125,18 @@ export function Sparkline({ values, color = COLOR_EIGEN, width = 80, height = 28
     return `${x},${y}`
   }).join(' ')
   return (
-    <svg width={width} height={height} style={{ display: 'block', marginTop: 4 }}>
+    <svg width={width} height={height} style={{ display: 'block', marginTop: 4 }} aria-hidden="true">
       <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
+// De kopjes van een dashboard volgen op de titel (h1, WorkbookViewer): een sectie is h2, een grafiek erin h3 (#905).
 export function SectionHeader({ title, subtitle }) {
   return (
     <div style={{ margin: '28px 0 12px', borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
-      <h3 style={{ fontWeight: 700, fontSize: '.95rem', color: 'var(--gray-900)', margin: 0 }}>{title}</h3>
-      {subtitle && <div style={{ fontSize: '.8rem', color: 'var(--gray-500)', marginTop: 2 }}>{subtitle}</div>}
+      <h2 style={{ fontWeight: 700, fontSize: '.95rem', color: 'var(--gray-900)', margin: 0 }}>{title}</h2>
+      {subtitle && <div className="db-sectie-sub">{subtitle}</div>}
     </div>
   )
 }
@@ -142,17 +144,17 @@ export function SectionHeader({ title, subtitle }) {
 export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
   return (
     <div className="charts-grid charts-grid-single">
-      <div className="chart-card" style={cardStyle} aria-label={title || undefined}>
+      <div className="chart-card" style={cardStyle}>
         {(title || subtitle || actions) && (
           <div className="chart-header" style={actions ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
             <div>
-              {title && <div className="chart-title">{title}</div>}
+              {title && <h3 className="chart-title">{title}</h3>}
               {subtitle && <div className="chart-sub">{subtitle}</div>}
             </div>
             {actions}
           </div>
         )}
-        {children}
+        <GrafiekTitel.Provider value={title || null}>{children}</GrafiekTitel.Provider>
       </div>
     </div>
   )
