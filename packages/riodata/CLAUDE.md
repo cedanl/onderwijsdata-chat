@@ -25,7 +25,7 @@ voorbeelden/
   manifest.json           Bron voor alle voorbeelden op de site
   output/                 Plots (.png) en interpretaties (INTERPRETATIE.md)
   *.py                    Analysescripts
-docs/                     GitHub Pages site (gebouwd door workflow)
+docs/                     catalogussite, /catalogus/rio/ op de Pages-site van de chat (CI-job catalogus:site)
 ```
 
 ---
@@ -333,7 +333,7 @@ print(sample[0].keys())
 
 ## Wat niet hoeft
 
-- Geen `docs/` handmatig aanpassen — de workflow regelt dat
+- Geen `docs/` handmatig aanpassen — de CI-job `catalogus:site` van de chatrepo regelt dat (MR met auto-merge)
 - Geen `docs/data.json` of `docs/voorbeelden.json` aanraken
 - Geen nieuwe dependencies toevoegen zonder `uv add`
 - `duo_resources.json` niet handmatig bewerken — regenereer via het generatiescript

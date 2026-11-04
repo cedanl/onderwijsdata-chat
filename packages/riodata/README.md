@@ -96,9 +96,9 @@ alleen met een filter (RIO-type), resourcekeuze of rijselectie (DUO) leverbaar i
 
 ## Broncontrole
 
-Een wekelijkse workflow (`.github/workflows/broncontrole.yml`) vergelijkt de DUO CKAN-inventaris en de
-RIO-spec met de catalogus, doet één GET per RIO-lijstresource (een verwijderde API-versie valt zo op bij de
-eerstvolgende controle) en meldt verschillen als issue. De catalogus wordt daarbij niet automatisch
+Een wekelijkse GitLab-job in de chatrepo (`rio:broncontrole`, zie `docs/operatie.md` daar) vergelijkt de DUO
+CKAN-inventaris en de RIO-spec met de catalogus, doet één GET per RIO-lijstresource (een verwijderde API-versie valt zo
+op bij de eerstvolgende controle) en meldt verschillen in één open issue. De catalogus wordt daarbij niet automatisch
 vernieuwd. SBB, ROA, UWV en Inspectie worden nog niet gecontroleerd.
 
 De live contracttest tegen RIO v3 (elke lijstresource, elk filter, de sub-resources en de ID-formaten) draait
@@ -139,6 +139,6 @@ RIO_LOD_API_v3.yml      OpenAPI spec van de RIO API (v3; v2 is op 19-10-2026 ver
 
 ## Links
 
-- [Catalogussite](https://cedanl.github.io/rio-onderwijsdata)
+- [Catalogussite](https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/)
 - [RIO LOD API documentatie](https://lod.onderwijsregistratie.nl/rio-api)
 - [DUO Open Data portaal](https://onderwijsdata.duo.nl/datasets)

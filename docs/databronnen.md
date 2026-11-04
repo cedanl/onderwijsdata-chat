@@ -13,7 +13,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 | Eigenschap | Details |
 |------------|---------|
 | Toegang | CBS Open Data OData API |
-| Catalogus | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
+| Catalogus | [catalogus/cbs](https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/) |
 | Pakket | `onderwijsdata`, in deze repo onder `packages/onderwijsdata`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
 | Granulariteit | Nationaal, regionaal, per onderwijstype |
 | Tijdreeksen | Beschikbaar voor de meeste datasets |
@@ -32,7 +32,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 | Eigenschap | Details |
 |------------|---------|
 | Toegang | RIO LOD (Linked Open Data) API v3 (`https://lod.onderwijsregistratie.nl/api/rio/v3`; v2 is op 19-10-2026 verwijderd) |
-| Catalogus | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
+| Catalogus | [catalogus/rio](https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/) |
 | Pakket | `riodata`, in deze repo onder `packages/riodata`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
 | Inhoud | Instellingen, locaties, opleidingen, besturen |
 

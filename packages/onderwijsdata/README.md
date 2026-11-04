@@ -81,5 +81,5 @@ uv run python catalogus/catalogus_ai.py collect
 
 ## Links
 
-- [Catalogussite](https://cedanl.github.io/cbs-onderwijsdata)
+- [Catalogussite](https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/)
 - [CBS OData API](https://opendata.cbs.nl/ODataCatalog/)

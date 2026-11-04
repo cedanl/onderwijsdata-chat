@@ -80,8 +80,9 @@ variables:
   CI_PROJECT_NAME: onderwijsdata-chat
 
 # Een geplande pipeline (schedule) op main bouwt en rolt niets uit: elke regel op main sluit haar uit, zodat
-# alleen bron:ping (met BRON_PING=1), ijkwaarden:ververs (met IJKWAARDEN_VERVERS=1, #869) en eval:bronwaarheid (met
-# EVAL_BASE_URL) in zo'n pipeline draaien (#627).
+# alleen bron:ping (met BRON_PING=1), ijkwaarden:ververs (met IJKWAARDEN_VERVERS=1, #869), eval:bronwaarheid (met
+# EVAL_BASE_URL), harbor:onderhoud (met HARBOR_ONDERHOUD=1) en de pakketjobs (LAATSTE_UPDATE=1, CATALOGUS_SITE=1,
+# BRONCONTROLE=1; #887) in zo'n pipeline draaien (#627).
 # De SAST- en secret-detectionjobs van de securitycomponent zet het schema zelf uit (SAST_DISABLED=1,
 # SECRET_DETECTION_DISABLED=1): hun regels staan in de component.
 stages:
@@ -132,9 +133,9 @@ pytest:
     paths:
       - .uv-cache
   before_script:
-    # curl voor helm hieronder. git hoeft niet meer: riodata en onderwijsdata zijn workspace-leden (packages/) en
-    # geen git-dependency meer (#885).
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+    # curl voor helm hieronder. git niet meer voor de pakketten (workspace-leden in packages/, #885), wel voor
+    # tests/test_pakketbot.py: die commit en pusht naar een lokale bare remote, zoals de bot-MR-jobs (#887).
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
     # Eén statische binary, gecontroleerd op checksum; geen pakketbron.
     - curl -fsSL --retry 3 -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
@@ -234,7 +235,7 @@ eval:bronwaarheid:
     name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
   variables:
     UV_CACHE_DIR: .uv-cache
-  cache:
+  cache: &uv-cache
     key:
       files:
         - uv.lock
@@ -279,6 +280,122 @@ ijkwaarden:ververs:
   allow_failure: true
   script:
     - uv run python scripts/ijkwaarden.py
+
+# De geplande taken van de bronpakketten (#887), vroeger GitHub Actions in cedanl/cbs-onderwijsdata en
+# cedanl/rio-onderwijsdata. Elk met een eigen schema op main (plus SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of
+# met de hand via "Run pipeline" met dezelfde variabele; overzicht en stappen in docs/operatie.md, "Bronpakketten
+# bijhouden". Waar de Actions zelf op main pushten, zet scripts/pakketbot.py de wijziging in een MR met auto-merge
+# (branch bot/<taak>, elke run opnieuw vanaf main); een bevinding komt in één open issue per controle. Het token staat
+# in de protected, masked variabele PAKKETBOT_TOKEN (projecttoken, rol Developer, scopes api en write_repository);
+# zonder die variabele faalt de job in de eerste stap met een melding die zegt wat er moet gebeuren.
+.pakketbot-mr:
+  extends: .bronnen-python
+  # Beide MR-jobs schrijven in packages/onderwijsdata; nooit twee tegelijk.
+  resource_group: pakketcatalogus
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+    # Zoals .bronnen-python (een eigen before_script vervangt dat van de basis).
+    - pip install --no-cache-dir uv
+    - uv sync --frozen
+
+# Wekelijks (zondag): _laatste_update per CBS-tabel uit TableInfos, dan de keten die de catalogus consistent houdt
+# (afleiding, TableInfos-methodiek en perioden, validatie en publicatie naar package, site en manifest) en de tests van
+# het pakket. Faalt een stap, dan komt er geen MR en blijft het laatst-goede artefact op main staan.
+cbs:laatste-update:
+  extends: .pakketbot-mr
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $LAATSTE_UPDATE == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $LAATSTE_UPDATE == "1"
+  # Eén aanroep per CBS-tabel, en opnieuw afleiden wat verouderd is: ruim boven het uur van een gewone job.
+  timeout: 2h
+  script:
+    - uv run python scripts/pakketbot.py controleer
+    - uv run --frozen --no-sync --directory packages/onderwijsdata python scripts/update_laatste_update.py
+    - uv run --frozen --no-sync --directory packages/onderwijsdata python catalogus/verrijk_catalogus.py
+    - uv run --frozen --no-sync --directory packages/onderwijsdata python catalogus/verrijk_tableinfo.py
+    - uv run --frozen --no-sync --directory packages/onderwijsdata python catalogus/bouw_artefact.py
+    - uv run --frozen --no-sync --directory packages/onderwijsdata pytest -q
+    - |
+      GEWIJZIGD=$(git diff -U0 -- packages/onderwijsdata/data/02-prepared/cbs_datasets_ai.json | grep -c '^+.*_laatste_update' || true)
+      uv run python scripts/pakketbot.py mr --branch bot/cbs-laatste-update \
+        --titel "chore(onderwijsdata): _laatste_update van ${GEWIJZIGD} CBS-tabellen ($(date +%Y-%m-%d))" \
+        --toelichting "Wekelijkse controle van _laatste_update per CBS-tabel, met de afgeleide catalogus, het manifest en de site." \
+        packages/onderwijsdata/data/02-prepared packages/onderwijsdata/src/onderwijsdata/data \
+        packages/onderwijsdata/docs/data.json packages/onderwijsdata/docs/catalogus_manifest.json
+
+# De catalogussites (packages/*/docs, op de Pages-site van de GitHub-mirror als /catalogus/cbs/ en /catalogus/rio/):
+# opnieuw uit de catalogus van elk pakket en uit de voorbeelden. Vroeger bij elke push die de catalogus raakte; hier
+# dagelijks gepland, zodat een gemergede cataloguswijziging binnen een dag op de site staat.
+catalogus:site:
+  extends: .pakketbot-mr
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CATALOGUS_SITE == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $CATALOGUS_SITE == "1"
+  script:
+    - uv run python scripts/pakketbot.py controleer
+    - uv run --frozen --no-sync --directory packages/onderwijsdata python catalogus/bouw_artefact.py
+    - uv run --frozen --no-sync --directory packages/riodata python catalogus/exporteer_site.py
+    - uv run python scripts/catalogussite.py
+    - >-
+      uv run python scripts/pakketbot.py mr --branch bot/catalogus-site
+      --titel "chore(pakketten): catalogussites bijgewerkt"
+      --toelichting "De catalogussites van onderwijsdata en riodata, opnieuw uit de catalogus en de voorbeelden."
+      packages/onderwijsdata/docs packages/onderwijsdata/src/onderwijsdata/data
+      packages/onderwijsdata/data/02-prepared/cbs_manifest.json packages/riodata/docs
+
+# Wekelijks (maandag): nieuwe CBS-tabellen onder onderwijsthema's die niet in de catalogus staan. Niets wordt
+# automatisch toegevoegd; er komt één open issue "Discovery: nieuwe CBS-tabellen ter review", dat alleen een notitie
+# krijgt als de lijst verandert. Rood als CBS niet antwoordt.
+cbs:discovery:
+  extends: .bronnen-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $BRONCONTROLE == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $BRONCONTROLE == "1"
+  script:
+    - uv run python scripts/pakketbot.py controleer
+    - >-
+      uv run --frozen --no-sync --directory packages/onderwijsdata python catalogus/discovery_diff.py
+      --output data/03-output/cbs_discovery.json
+    - uv run python scripts/pakketbot.py meld-discovery --rapport packages/onderwijsdata/data/03-output/cbs_discovery.json
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - packages/onderwijsdata/data/03-output/cbs_discovery.json
+
+# Wekelijks (maandag), in hetzelfde schema: de broncontrole van riodata vergelijkt DUO CKAN en de RIO-spec met de
+# catalogus en met het manifest van de vorige geslaagde controle. Dat manifest staat in de cache, die GitLab alleen na
+# een geslaagde job bijwerkt: een mislukte controle laat de laatst-goede stand staan, zoals de Actions-cache deed.
+# Exitcode 10 (review nodig) wordt één open issue; 1 (controle mislukt) een rode job.
+rio:broncontrole:
+  extends: .bronnen-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $BRONCONTROLE == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $BRONCONTROLE == "1"
+  cache:
+    - *uv-cache
+    - key: rio-bronmanifest
+      paths:
+        - packages/riodata/catalogus/bronmanifest.json
+  script:
+    - uv run python scripts/pakketbot.py controleer
+    - |
+      if [ ! -f packages/riodata/catalogus/bronmanifest.json ]; then
+        echo "Geen vorig bronmanifest in de cache: deze controle legt de basis; gewijzigde DUO-datasets meldt pas de volgende."
+      fi
+    - code=0
+    - >-
+      uv run --frozen --no-sync --directory packages/riodata python catalogus/broncontrole.py
+      --manifest catalogus/bronmanifest.json --schrijf > meldingen.txt || code=$?
+    - cat meldingen.txt
+    - uv run python scripts/pakketbot.py meld-broncontrole --meldingen meldingen.txt --code "$code"
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - meldingen.txt
+      - packages/riodata/catalogus/bronmanifest.json
 
 # Harbor-onderhoud (Agents.md): elke nacht de oude main- en MR-builds uit Harbor, zodat het quotum (100 GiB) niet
 # volloopt en docker:docker-build niet faalt op "upper limit". Releases, latest en wat een omgeving volgt blijven.

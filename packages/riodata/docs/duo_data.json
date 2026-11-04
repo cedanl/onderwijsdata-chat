@@ -708,10 +708,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "BRIN_NUMMER": "Basisregistratie Instellingen-nummer: unieke code voor elke onderwijsinstelling.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Functiemix besturen": {
         "ONDERWIJSSECTOR": "numeriek (4 waarden)",
@@ -901,6 +897,10 @@
         "DATUM_MAATWERKAFSPRAAK": "timestamp (139 waarden)",
         "TOELICHTING_MAATWERKAFSPRAAK": "tekst (0 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "BRIN_NUMMER": "Basisregistratie Instellingen-nummer: unieke code voor elke onderwijsinstelling.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -2116,10 +2116,6 @@
       "reviewstatus": "bronverificatie 2026-10-05",
       "data_dekking": null
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Adressen van besturen in het hoger onderwijs": {
         "SOORT HO": "tekst (2 waarden)",
@@ -2173,6 +2169,10 @@
         "RMC-REGIO CODE": "tekst (21 waarden)",
         "RMC-REGIO NAAM": "tekst (21 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -3285,22 +3285,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
-      "PROVINCIENAAM": "Naam van de provincie.",
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
-      "TYPE_HOGER_ONDERWIJS": "Opleidingstype; in deze dataset (eerstejaars) alleen bachelor.",
-      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
-      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
-      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
-      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
-      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
-      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
-    },
     "_kolomtypes": {
       "Eerstejaarsingeschrevenen hoger beroepsonderwijs inclusief geslacht in het domein hoger onderwijs": {
         "STUDIEJAAR": "numeriek (5 waarden)",
@@ -3388,6 +3372,22 @@
         "OPLEIDINGSNAAM_ACTUEEL": "tekst (219 waarden)",
         "AANTAL_EERSTEJAARS_INGESCHREVENEN": "numeriek (417 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
+      "PROVINCIENAAM": "Naam van de provincie.",
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
+      "TYPE_HOGER_ONDERWIJS": "Opleidingstype; in deze dataset (eerstejaars) alleen bachelor.",
+      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
+      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
+      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
+      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
+      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
+      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -4553,22 +4553,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "DIPLOMAJAAR": "Jaar van het behaalde ho-diploma zoals gepubliceerd (2020-2024: de laatste vijf diplomajaren). Of dit een kalender- of studiejaar is, staat niet in de bron.",
-      "PROVINCIENAAM": "Naam van de provincie.",
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
-      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
-      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
-      "SOORT_DIPLOMA": "Soort behaald ho-diploma, bijv. 'wo bachelor', 'wo master', 'wo postmaster'. Geen vooropleidingsdiploma.",
-      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
-      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
-      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
-      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
-    },
     "_kolomtypes": {
       "Gediplomeerden hoger beroepsonderwijs inclusief geslacht": {
         "DIPLOMAJAAR": "numeriek (5 waarden)",
@@ -4656,6 +4640,22 @@
         "SOORT_DIPLOMA": "tekst (3 waarden)",
         "AANTAL_GEDIPLOMEERDEN": "numeriek (497 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "DIPLOMAJAAR": "Jaar van het behaalde ho-diploma zoals gepubliceerd (2020-2024: de laatste vijf diplomajaren). Of dit een kalender- of studiejaar is, staat niet in de bron.",
+      "PROVINCIENAAM": "Naam van de provincie.",
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
+      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
+      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
+      "SOORT_DIPLOMA": "Soort behaald ho-diploma, bijv. 'wo bachelor', 'wo master', 'wo postmaster'. Geen vooropleidingsdiploma.",
+      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
+      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
+      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
+      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -5028,9 +5028,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
-    },
     "_kolomtypes": {
       "ho_opleidingsoverzicht": {
         "ONDERWIJSBESTUURID": "tekst (54 waarden)",
@@ -5084,6 +5081,9 @@
         "gewijzigd": "timestamp; steekproef",
         "volledig": "tekst; steekproef"
       }
+    },
+    "_kolomdefinities": {
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -6252,23 +6252,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
-      "PROVINCIENAAM": "Naam van de provincie.",
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
-      "TYPE_HOGER_ONDERWIJS": "Opleidingstype: bachelor, master of postmaster.",
-      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
-      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
-      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
-      "AANTAL_INGESCHREVENEN": "Aantal ingeschrevenen (natuurlijke personen, hoofdinschrijvingen) op peildatum 1 oktober van het studiejaar.",
-      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
-      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
-      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
-    },
     "_kolomtypes": {
       "Ingeschrevenen hoger beroepsonderwijs inclusief geslacht in het domein hoger onderwijs": {
         "STUDIEJAAR": "numeriek (5 waarden)",
@@ -6356,6 +6339,23 @@
         "OPLEIDINGSNAAM_ACTUEEL": "tekst (726 waarden)",
         "AANTAL_INGESCHREVENEN": "numeriek (1113 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
+      "PROVINCIENAAM": "Naam van de provincie.",
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
+      "TYPE_HOGER_ONDERWIJS": "Opleidingstype: bachelor, master of postmaster.",
+      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
+      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
+      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
+      "AANTAL_INGESCHREVENEN": "Aantal ingeschrevenen (natuurlijke personen, hoofdinschrijvingen) op peildatum 1 oktober van het studiejaar.",
+      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
+      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
+      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -7521,22 +7521,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
-      "PROVINCIENAAM": "Naam van de provincie.",
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
-      "TYPE_HOGER_ONDERWIJS": "Opleidingstype: bachelor, master of postmaster.",
-      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
-      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
-      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
-      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
-      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
-      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
-    },
     "_kolomtypes": {
       "Inschrijvingen hoger beroepsonderwijs inclusief geslacht": {
         "STUDIEJAAR": "numeriek (5 waarden)",
@@ -7624,6 +7608,22 @@
         "OPLEIDINGSNAAM_ACTUEEL": "tekst (726 waarden)",
         "AANTAL_INSCHRIJVINGEN": "numeriek (1148 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
+      "PROVINCIENAAM": "Naam van de provincie.",
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "SOORT_INSTELLING": "Soort instelling zoals gepubliceerd: 'reguliere inst.' of 'WO kleine univ.'.",
+      "TYPE_HOGER_ONDERWIJS": "Opleidingstype: bachelor, master of postmaster.",
+      "INSTELLINGSCODE_ACTUEEL": "Actuele BRIN-code van de instelling (kan afwijken van historische code bij fusie of naamswijziging).",
+      "INSTELLINGSNAAM_ACTUEEL": "Actuele naam van de onderwijsinstelling zoals geregistreerd in de Basisregistratie Instellingen.",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau.",
+      "GESLACHT": "Geslacht: MAN, VROUW of ONBEKEND.",
+      "OPLEIDINGSCODE_ACTUEEL": "Actuele opleidingscode: CREBO-code voor mbo, CROHO-code voor ho.",
+      "OPLEIDINGSNAAM_ACTUEEL": "Actuele naam van de opleiding zoals geregistreerd in CROHO (ho) of CREBO (mbo).",
+      "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -8013,12 +8013,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau."
-    },
     "_kolomtypes": {
       "HO_Erkenningen_RIO": {
         "BEVOEGD_GEZAG_CODE": "tekst; steekproef",
@@ -8079,6 +8073,12 @@
         "gewijzigd": "timestamp; steekproef",
         "volledig": "tekst; steekproef"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -8239,7 +8239,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "DUO_SCI_OPENDATA_WI2021.csv": {
         "WET": "tekst (1 waarden)",
@@ -8262,6 +8261,7 @@
         "volledig": "tekst; steekproef"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -9530,10 +9530,6 @@
       "reviewstatus": "bronverificatie 2026-10-05",
       "data_dekking": null
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Adressen bevoegde gezagen mbo": {
         "BEVOEGD GEZAG NUMMER": "numeriek (51 waarden)",
@@ -9587,6 +9583,10 @@
         "RMC-REGIO CODE": "tekst (28 waarden)",
         "RMC-REGIO NAAM": "tekst (28 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -9886,9 +9886,6 @@
       "reviewstatus": "bronverificatie 2026-10-05",
       "data_dekking": null
     },
-    "_kolomdefinities": {
-      "OPLEIDINGSVORM": "Vorm waarin het cohort wordt gegeven, zoals gepubliceerd: KLASSIKAAL, KLASSIKAAL_EN_ONLINE, ONLINE, COACHING, LEZING of ZELFSTUDIE; kan leeg zijn. Geen VT/DT/DU-codes."
-    },
     "_kolomtypes": {
       "mbo_opleidingsaanbod": {
         "OPLEIDINGSEENHEIDCODE": "tekst (731 waarden)",
@@ -9943,6 +9940,9 @@
         "gewijzigd": "timestamp; steekproef",
         "volledig": "tekst; steekproef"
       }
+    },
+    "_kolomdefinities": {
+      "OPLEIDINGSVORM": "Vorm waarin het cohort wordt gegeven, zoals gepubliceerd: KLASSIKAAL, KLASSIKAAL_EN_ONLINE, ONLINE, COACHING, LEZING of ZELFSTUDIE; kan leeg zijn. Geen VT/DT/DU-codes."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -11992,12 +11992,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "Jaar": "Kalenderjaar van de historie of prognose (2021-2040); zie kolom Type.",
-      "Type": "Historie (gerealiseerd, 2021-2025) of Prognose (2026-2040). Niet optellen over beide.",
-      "Versie": "Publicatieversie: 1 = februari/maart, 2 = april/mei. In het huidige bestand alleen 2.",
-      "Leerweg": "Leerweg in kleine letters: bbl of bol."
-    },
     "_kolomtypes": {
       "mbo-studentenprognose_gemeente_leeftijdscategorie": {
         "Gemeentenaam": "tekst (343 waarden)",
@@ -12293,6 +12287,12 @@
         "Type": "tekst (2 waarden)",
         "Versie": "numeriek (1 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "Jaar": "Kalenderjaar van de historie of prognose (2021-2040); zie kolom Type.",
+      "Type": "Historie (gerealiseerd, 2021-2025) of Prognose (2026-2040). Niet optellen over beide.",
+      "Versie": "Publicatieversie: 1 = februari/maart, 2 = april/mei. In het huidige bestand alleen 2.",
+      "Leerweg": "Leerweg in kleine letters: bbl of bol."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -12972,10 +12972,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
-    },
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (55 waarden)",
       "INSTELLINGSNAAM": "tekst (54 waarden)",
@@ -12996,6 +12992,10 @@
       "DIPVROUW2024": "numeriek (159 waarden)",
       "DIPMAN2025": "numeriek (115 waarden)",
       "DIPVROUW2025": "numeriek (156 waarden)"
+    },
+    "_kolomdefinities": {
+      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -13122,7 +13122,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "LICENTIECODE": "tekst; steekproef",
       "OIE_CODE": "tekst; steekproef",
@@ -13134,6 +13133,7 @@
       "HERKOMST": "tekst; steekproef",
       "STADIUM": "tekst; steekproef"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -14453,11 +14453,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
-      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
-      "JAAR": "Jaar van de peildatum 1 oktober (2025 = 1 oktober 2025, studiejaar 2025/2026). Cijfers over 2025 zijn voorlopig."
-    },
     "_kolomtypes": {
       "2021 nieuw-instromende-studenten-per-instelling-hoofdgroep-leerweg-beroepsopleiding-niveau-vooropleiding": {
         "VOOROPLEIDING VO": "tekst (9 waarden)",
@@ -14624,6 +14619,11 @@
         "INSTROOM OPLEIDING": "tekst (2 waarden)",
         "AANTAL": "numeriek (267 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
+      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
+      "JAAR": "Jaar van de peildatum 1 oktober (2025 = 1 oktober 2025, studiejaar 2025/2026). Cijfers over 2025 zijn voorlopig."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -15712,11 +15712,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "JAAR": "Jaar van de peildatum 1 oktober (2025 = 1 oktober 2025, studiejaar 2025/2026). Cijfers over 2025 zijn voorlopig.",
-      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
-    },
     "_kolomtypes": {
       "Studenten per instelling bevoegd gezag plaats gemeente provincie van de instelling en leerweg": {
         "JAAR": "numeriek (5 waarden)",
@@ -15825,6 +15820,11 @@
         "JAAR_2024": "numeriek (502 waarden)",
         "JAAR_2025": "numeriek (500 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "JAAR": "Jaar van de peildatum 1 oktober (2025 = 1 oktober 2025, studiejaar 2025/2026). Cijfers over 2025 zijn voorlopig.",
+      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -16282,10 +16282,6 @@
         "bron": "duo_resource_schemas.json"
       }
     },
-    "_kolomdefinities": {
-      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
-    },
     "_kolomtypes": {
       "Studenten per sectorkamer leerweg niveau woonprovincie": {
         "SECTORKAMER NAAM": "tekst (11 waarden)",
@@ -16348,6 +16344,10 @@
         "JAAR_2024": "numeriek (564 waarden)",
         "JAAR_2025": "numeriek (567 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "LEERWEG": "Leerwegcode zoals gepubliceerd, o.a. BBL (beroepsbegeleidende leerweg), BOL, BOLVT en BOLDT (beroepsopleidende leerweg; VT/DT = voltijd/deeltijd, afgeleid uit de code), EX (examendeelnemers, niet-bekostigd; de notes noemen die groep, de code is afgeleid) en in gediplomeerde-mbo-studenten ook OVO (betekenis niet in de bron). Niet VOLTIJD/DEELTIJD/DUAAL.",
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -23622,12 +23622,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
-      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
-      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau."
-    },
     "_kolomtypes": {
       "aangeboden_bo_opleidingen": {
         "AANGEBODEN_OPLEIDINGCODE": "tekst (8559 waarden)",
@@ -25080,6 +25074,12 @@
         "volledig": "tekst; steekproef"
       }
     },
+    "_kolomdefinities": {
+      "NIVEAU": "Opleidingsniveau zoals gepubliceerd; de codes verschillen per dataset (mbo: 1 t/m 4; ho: bijv. HBO-BA, WO-MA).",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling.",
+      "ONDERDEEL": "Studierichting op hoofdniveau (bijv. TECHNIEK, ECONOMIE, GEZONDHEIDSZORG).",
+      "SUBONDERDEEL": "Verfijning van ONDERDEEL op een gedetailleerder niveau."
+    },
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -25249,7 +25249,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "sectorale_ontwikkelpaden": {
         "INGANGSDATUM_ONTWIKKELPAD": "timestamp (1 waarden)",
@@ -25274,6 +25273,7 @@
         "volledig": "tekst; steekproef"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -26101,10 +26101,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Adressen bevoegde gezagen basisonderwijs": {
         "BEVOEGD GEZAG NUMMER": "numeriek (742 waarden)",
@@ -26189,6 +26185,10 @@
         "RMC-REGIO NAAM": "tekst (40 waarden)",
         "VAKANTIEREGIO": "tekst (3 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -26280,7 +26280,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "BRINNUMMER": "tekst (6935 waarden)",
       "VESTIGINGSNUMMER": "numeriek (6 waarden)",
@@ -26289,6 +26288,7 @@
       "GEWICHT": "numeriek (3 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (902 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -26463,10 +26463,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O).",
-      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
-    },
     "_kolomtypes": {
       "Leerlingen po per bevoegd gezag naar geslacht": {
         "BEVOEGD_GEZAGNUMMER": "numeriek (1365 waarden)",
@@ -26495,6 +26491,10 @@
         "PEILJAAR": "numeriek (16 waarden)",
         "AANTAL_LEERLINGEN": "numeriek (4538 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O).",
+      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -26615,7 +26615,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (7724 waarden)",
       "VESTIGINGSCODE": "tekst (56 waarden)",
@@ -26623,6 +26622,7 @@
       "PEILJAAR": "numeriek (16 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (995 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -26747,9 +26747,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O)."
-    },
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (7724 waarden)",
       "VESTIGINGSCODE": "tekst (56 waarden)",
@@ -26757,6 +26754,9 @@
       "PEILJAAR": "numeriek (16 waarden)",
       "GESLACHT": "tekst (3 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (603 waarden)"
+    },
+    "_kolomdefinities": {
+      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -26851,7 +26851,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "BRINNUMMER": "tekst (7610 waarden)",
       "VESTIGINGSNUMMER": "numeriek (56 waarden)",
@@ -26860,6 +26859,7 @@
       "IMPULSGEBIED": "numeriek (2 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (964 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -26981,9 +26981,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
-    },
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst; steekproef",
       "VESTIGINGSCODE": "tekst; steekproef",
@@ -26991,6 +26988,9 @@
       "PEILJAAR": "numeriek; steekproef",
       "LEEFTIJD": "numeriek; steekproef",
       "AANTAL_LEERLINGEN": "numeriek; steekproef"
+    },
+    "_kolomdefinities": {
+      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -27111,7 +27111,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst; steekproef",
       "VESTIGINGSCODE": "tekst; steekproef",
@@ -27120,6 +27119,7 @@
       "POSTCODE4_DEELNEMER": "numeriek; steekproef",
       "AANTAL_LEERLINGEN": "numeriek; steekproef"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -27248,7 +27248,6 @@
         "publicatieregel genoemd in notes maar niet geparseerd"
       ]
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst; steekproef",
       "VESTIGINGSCODE": "tekst; steekproef",
@@ -27258,6 +27257,7 @@
       "REFERENTIENIVEAU": "tekst; steekproef",
       "AANTAL_LEERLINGEN": "numeriek; steekproef"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -27347,7 +27347,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "BRINNUMMER": "tekst (6935 waarden)",
       "VESTIGINGSNUMMER": "numeriek (6 waarden)",
@@ -27355,6 +27354,7 @@
       "PEILJAAR": "numeriek (9 waarden)",
       "SCHOOLGEWICHT": "numeriek (296 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -28214,10 +28214,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Adressen van besturen in het speciaal onderwijs": {
         "SOORT PRIMAIR ONDERWIJS": "tekst (4 waarden)",
@@ -28309,6 +28305,10 @@
         "RMC-REGIO NAAM": "tekst (40 waarden)",
         "VAKANTIEREGIO": "tekst (3 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -28446,7 +28446,6 @@
         "publicatieregel genoemd in notes maar niet geparseerd"
       ]
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (7356 waarden)",
       "VESTIGINGSCODE": "tekst (14 waarden)",
@@ -28458,6 +28457,7 @@
       "AANTAL_LEERLINGEN": "numeriek (147 waarden)",
       "AANTAL_ONTHEFFINGEN": "numeriek (29 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -28573,7 +28573,6 @@
         "publicatieregel genoemd in notes maar niet geparseerd"
       ]
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (6992 waarden)",
       "VESTIGINGSCODE": "tekst (14 waarden)",
@@ -28582,6 +28581,7 @@
       "TOETSEN_EN_ADVIEZEN": "tekst (4 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (148 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -28742,7 +28742,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Historische leerlingentellingen PO vestigingen per jaar": {
         "INSTELLINGSCODE": "tekst (8806 waarden)",
@@ -28764,6 +28763,7 @@
         "AANTAL_LEERLINGEN": "numeriek (6208 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -28875,7 +28875,6 @@
         "publicatieregel genoemd in notes maar niet geparseerd"
       ]
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (7401 waarden)",
       "VESTIGINGSCODE": "tekst (14 waarden)",
@@ -28884,6 +28883,7 @@
       "ADVIES": "numeriek (12 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (76 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29004,7 +29004,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst; steekproef",
       "VESTIGINGSCODE": "tekst; steekproef",
@@ -29013,6 +29012,7 @@
       "LEERJAAR": "numeriek; steekproef",
       "AANTAL_LEERLINGEN": "numeriek; steekproef"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29161,7 +29161,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Leerlingen sbo, so en vso per vestiging naar cumi": {
         "INSTELLINGSCODE": "tekst (632 waarden)",
@@ -29180,6 +29179,7 @@
         "AANTAL_LEERLINGEN": "numeriek (890 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29353,7 +29353,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Materi�le instandhouding bo schoolkenmerken per instelling": {
         "PEILJAAR": "numeriek (12 waarden)",
@@ -29392,6 +29391,7 @@
         "BEDRAG": "numeriek (8819 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29588,7 +29588,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Personele Bekostiging bo schoolkenmerken per instelling": {
         "PEILJAAR": "numeriek (11 waarden)",
@@ -29627,6 +29626,7 @@
         "BEDRAG": "numeriek (15668 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29725,7 +29725,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (6242 waarden)",
       "VESTIGINGSCODE": "tekst (5 waarden)",
@@ -29733,6 +29732,7 @@
       "JAAR": "numeriek (20 waarden)",
       "PROGNOSEAANTALLEN": "numeriek (45313 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -29833,7 +29833,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (7312 waarden)",
       "VESTIGINGSCODE": "tekst (6 waarden)",
@@ -29841,6 +29840,7 @@
       "PEILJAAR": "numeriek (16 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (80 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -30100,7 +30100,6 @@
       "parse_status": "ongestructureerd",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Kwaliteitsoordelen po, so en vso": {
         "Peildatum": "timestamp (1 waarden)",
@@ -30134,6 +30133,7 @@
         "<!doctype html>": "tekst (14 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -30296,11 +30296,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O).",
-      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
-    },
     "_kolomtypes": {
       "Leerlingen po per gemeente naar geslacht": {
         "GEMEENTENUMMER": "tekst (467 waarden)",
@@ -30329,6 +30324,11 @@
         "PEILJAAR": "numeriek (16 waarden)",
         "AANTAL_LEERLINGEN": "numeriek (4290 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O).",
+      "LEEFTIJD": "Leeftijd in jaren; het peilmoment staat in de dataset (zie _tijd), niet hier."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -30492,9 +30492,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O)."
-    },
     "_kolomtypes": {
       "Leerlingen po per Samenwerkingsverband naar geslacht": {
         "SAMENWERKINGSVERBANDNUMMER": "tekst (153 waarden)",
@@ -30523,6 +30520,9 @@
         "PEILJAAR": "numeriek (12 waarden)",
         "AANTAL_LEERLINGEN": "numeriek (1819 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GESLACHT": "Geslacht zoals gepubliceerd; de codes verschillen per dataset (bijv. MAN/VROUW/ONBEKEND of M/V/O)."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -30643,7 +30643,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (324 waarden)",
       "VESTIGINGSCODE": "tekst (56 waarden)",
@@ -30652,6 +30651,7 @@
       "CLUSTER": "numeriek (5 waarden)",
       "AANTAL_LEERLINGEN": "numeriek (452 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -30797,7 +30797,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "Leerlingen so en vso per samenwerkingsverband naar bekostigingscategorie": {
         "<!doctype html>": "onbekend (14 waarden)"
@@ -30817,6 +30816,7 @@
         "AANTAL_LEERLINGEN": "numeriek (544 waarden)"
       }
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -31009,9 +31009,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "SCHOOLJAAR": "numeriek; steekproef",
       "BRIN NUMMER": "tekst; steekproef",
@@ -31030,6 +31027,9 @@
       "SCHOOLEXAMEN BEOORDELING": "tekst; steekproef",
       "AANTAL": "numeriek; steekproef",
       "GEMIDDELD CIJFER": "numeriek; steekproef"
+    },
+    "_kolomdefinities": {
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -31848,10 +31848,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "Adressen van besturen in het voortgezet onderwijs": {
         "BEVOEGD GEZAG NUMMER": "numeriek (275 waarden)",
@@ -31938,6 +31934,10 @@
         "RMC-REGIO NAAM": "tekst (40 waarden)",
         "VAKANTIEREGIO": "tekst (3 waarden)"
       }
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -32031,13 +32031,13 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "INSTELLINGSCODE": "tekst (640 waarden)",
       "ONDERWIJSNIVEAU": "tekst (6 waarden)",
       "JAAR": "numeriek (20 waarden)",
       "PROGNOSEAANTALLEN": "numeriek (41065 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -32145,7 +32145,6 @@
       "parse_status": "ongestructureerd",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "SCHOOLJAAR": "numeriek (5 waarden)",
       "BRIN NUMMER": "tekst (546 waarden)",
@@ -32162,6 +32161,7 @@
       "GEMIDDELD CIJFER CENTRAAL EXAMEN": "numeriek (25 waarden)",
       "GEMIDDELD CIJFER CIJFERLIJST": "numeriek (22 waarden)"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   },
   {
@@ -32342,10 +32342,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {
-      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
-      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
-    },
     "_kolomtypes": {
       "JAAR": "numeriek; steekproef",
       "BRIN NUMMER": "tekst; steekproef",
@@ -32359,6 +32355,10 @@
       "GEMEENTENAAM LEERLING": "tekst; steekproef",
       "LEER- OF VERBLIJFSJAAR": "numeriek; steekproef",
       "AANTAL LEERLINGEN": "numeriek; steekproef"
+    },
+    "_kolomdefinities": {
+      "GEMEENTENUMMER": "CBS-gemeentecode als tekst. Meestal 4 cijfers met voorloopnullen (0106); sommige oudere bestanden publiceren zonder voorloopnullen.",
+      "GEMEENTENAAM": "Naam van de gemeente conform CBS-gemeentelijke indeling."
     },
     "_verrijking_status": "ongecontroleerd"
   },
@@ -32569,7 +32569,6 @@
       "parse_status": "ok",
       "parse_fouten": []
     },
-    "_kolomdefinities": {},
     "_kolomtypes": {
       "SCHOOLJAAR": "numeriek; steekproef",
       "BEVOEGD GEZAG": "numeriek; steekproef",
@@ -32589,6 +32588,7 @@
       "LEERJAAR": "numeriek; steekproef",
       "AANTAL LEERLINGEN": "numeriek; steekproef"
     },
+    "_kolomdefinities": {},
     "_verrijking_status": "ongecontroleerd"
   }
 ]

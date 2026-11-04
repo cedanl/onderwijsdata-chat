@@ -231,18 +231,8 @@ class TestRefreshketen:
         for naam, b in m["bestanden"].items():
             assert ba._sha(tmp_path / "pkg" / naam) == b["sha256"]
 
-    def test_wekelijkse_workflow_doorloopt_de_hele_keten(self):
-        wf = (ROOT / ".github/workflows/update-laatste-update.yml").read_text()
-        stappen = ["scripts/update_laatste_update.py", "catalogus/verrijk_catalogus.py",
-                   "catalogus/verrijk_tableinfo.py", "catalogus/bouw_artefact.py", "pytest", "git commit"]
-        posities = [wf.index(s) for s in stappen]
-        assert posities == sorted(posities)
-        assert "src/onderwijsdata/data/" in wf and "docs/catalogus_manifest.json" in wf
-
-    def test_siteworkflow_publiceert_via_bouwartefact(self):
-        wf = (ROOT / ".github/workflows/update-catalogus.yml").read_text()
-        assert "catalogus/bouw_artefact.py" in wf and "data/02-prepared/**" in wf
-        assert "cp data/02-prepared" not in wf
+    # De wekelijkse keten en de sitebouw draaien als GitLab-jobs in de chatrepo (cbs:laatste-update en
+    # catalogus:site, #887); hun volgorde bewaakt tests/test_pakketjobs.py daar.
 
 
 class TestVersheid:
