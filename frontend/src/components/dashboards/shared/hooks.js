@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDarkMode } from '../../../hooks/useDarkMode'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
@@ -20,24 +20,55 @@ export function fmt(n) {
 
 // ─── Data hooks ─────────────────────────────────────────────────────────────
 
+// Zo lang wacht een dashboard op de server (#901): ruim boven DASHBOARD_TIMEOUT_S (90 s), zodat de server eerst zijn
+// eigen melding geeft. Zonder grens bleef "Data laden…" staan zolang de verbinding hing.
+export const DASHBOARD_TIMEOUT_MS = 120_000
+
+const eigenMelding = e => typeof e?.message === 'string' && e.message !== '' && !/^API \d+$/.test(e.message)
+
+// Wat de gebruiker leest als een dashboard niet laadt (#901), en of een nieuwe poging zin heeft. Nooit de ruwe
+// "API 500" of "Failed to fetch": een tekst van de server zelf (503 bron niet beschikbaar of druk, 504 tijdsgrens,
+// 403 uit) gaat ongewijzigd door, de rest krijgt een vaste zin, zoals een gesprek dat de server niet kreeg (#785).
+export function dashboardFout(e, verlopen = false) {
+  if (verlopen) return { melding: 'Het dashboard kwam niet op tijd binnen. Probeer het opnieuw.', herstelbaar: true }
+  if (e?.status === 401) return { melding: 'Je sessie is verlopen. Log opnieuw in.', herstelbaar: false }
+  if (e?.status === 403) return { melding: eigenMelding(e) ? e.message : 'Dashboards zijn niet beschikbaar.', herstelbaar: false }
+  if (e?.status === 503 || e?.status === 504) {
+    return { melding: eigenMelding(e) ? e.message : 'De server is nu niet bereikbaar. Probeer het over een minuut opnieuw.', herstelbaar: true }
+  }
+  if (e?.status) return { melding: 'Het dashboard kon niet worden geladen. Probeer het opnieuw.', herstelbaar: true }
+  return { melding: 'De server kreeg het verzoek niet. Controleer je verbinding en probeer het opnieuw.', herstelbaar: true }
+}
+
 function useDashboardFetch(endpoint, instelling) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [poging, setPoging] = useState(0)
 
   useEffect(() => {
     if (!instelling) return
     const ac = new AbortController()
+    let verlopen = false
+    const grens = setTimeout(() => { verlopen = true; ac.abort() }, DASHBOARD_TIMEOUT_MS)
     setLoading(true)
     setData(null)
     setError(null)
     fetchDashboardData(endpoint, instelling, { signal: ac.signal })
       .then(d => { if (!ac.signal.aborted) { setData(d); setLoading(false) } })
-      .catch(e => { if (!ac.signal.aborted) { setError(e.message); setLoading(false) } })
-    return () => ac.abort()
-  }, [endpoint, instelling])
+      .catch(e => {
+        if (ac.signal.aborted && !verlopen) return // een andere instelling of een nieuwe poging nam het over
+        setError(dashboardFout(e, verlopen))
+        setLoading(false)
+      })
+      .finally(() => clearTimeout(grens))
+    return () => { clearTimeout(grens); ac.abort() }
+  }, [endpoint, instelling, poging])
 
-  return { data, loading, error }
+  // Een nieuwe poging: dezelfde aanvraag opnieuw. De server cachet geen mislukte lading (#901).
+  const opnieuw = useCallback(() => setPoging(p => p + 1), [])
+
+  return { data, loading, error, opnieuw }
 }
 
 export function useRegioDashboardData(instelling) {

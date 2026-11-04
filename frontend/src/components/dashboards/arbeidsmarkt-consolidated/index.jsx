@@ -6,7 +6,11 @@ import {
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard,
   DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData,
+  NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
+
+// Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen; de DUO-gaten horen bij mijn instelling.
+const REGIO_BRONNEN = ['UWV', 'ROA']
 
 const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
 const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
@@ -99,14 +103,18 @@ function RoaNiveauTable({ roaPerNiveau, dark }) {
 }
 
 export function InlineDashboardArbeidsmarkt({ instelling }) {
-  const { data: matchData, loading, error } = useArbeidsmarktmatchDashboardData(instelling)
-  const { data: regioData } = useRegioDashboardData(instelling)
+  const { data: matchData, loading, error, opnieuw } = useArbeidsmarktmatchDashboardData(instelling)
+  const regio = useRegioDashboardData(instelling)
+  const regioData = regio.data
   const dark = useDarkMode()
+  const gaten = gatenVan([matchData, { niet_beschikbaar: gatenVan([regioData], REGIO_BRONNEN) }])
+  const allesOpnieuw = () => { opnieuw(); regio.opnieuw() }
 
   return (
-    <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error}>
+    <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
         <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron="DUO, UWV &amp; ROA" />
+        <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <MatchScoreSection matchScore={matchData?.match_score} />
 
@@ -120,9 +128,11 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <SectionHeader title="Arbeidsmarktpositie" subtitle="ROA-indicatoren per opleidingsniveau" />
         <RoaNiveauTable roaPerNiveau={matchData?.roa_per_niveau} dark={dark} />
 
-        <RoaSection data={regioData} dark={dark} />
-        <PrognoseSection data={regioData} />
-        <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} />
+        <DeelLading titel="Vacatures en prognoses in de regio" loading={regio.loading} error={regio.error} onOpnieuw={regio.opnieuw} hoogte={480}>
+          <RoaSection data={regioData} dark={dark} />
+          <PrognoseSection data={regioData} />
+          <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} />
+        </DeelLading>
 
         <DashboardSources sources={BRONNEN_ARBEIDSMARKT} />
       </div>

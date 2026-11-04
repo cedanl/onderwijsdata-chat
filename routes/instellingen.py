@@ -1,24 +1,36 @@
 import asyncio
+import logging
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from core.auth import get_current_user
-from core.config import DASHBOARDS_ENABLED, MODEL, get_available_models_for_user
-from data.dashboard import (
-    load_dashboard as load_dashboard_data,
+from core.config import (
+    DASHBOARD_QUEUE_TIMEOUT_S,
+    DASHBOARD_TIMEOUT_S,
+    DASHBOARDS_ENABLED,
+    MAX_DASHBOARD_LOADS,
+    MODEL,
+    get_available_models_for_user,
 )
+from core.gelijktijdig import Druk, Runplaatsen
 from data.dashboard import (
+    BronNietBeschikbaar,
     load_dashboard_arbeidsmarktmatch,
     load_dashboard_nationaal,
     load_dashboard_regio,
     load_dashboard_rendement,
 )
+from data.dashboard import (
+    load_dashboard as load_dashboard_data,
+)
 from data.instellingen import get_all as get_all_instellingen
 from tools.catalog import _cbs as _cbs_catalog
 from tools.catalog import _rio_duo as _rio_duo_catalog
 from tools.scopeprofiel import is_vo_context
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["instellingen"])
 
@@ -90,12 +102,57 @@ async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]
 _INGELOGD = [Depends(get_current_user)]
 
 
+# Hoeveel dashboardladingen tegelijk (#901), met dezelfde wachtrij als de runs van de chat (#688).
+_dashboardplaatsen = Runplaatsen(max_tegelijk=MAX_DASHBOARD_LOADS, wacht_s=DASHBOARD_QUEUE_TIMEOUT_S)
+# Een lading die de tijdsgrens haalde, loopt door in haar thread en houdt haar plaats tot ze klaar is: anders telde de
+# limiet een thread die nog laadt niet meer mee. De verwijzing houdt de taak in leven.
+_uitlopend: set[asyncio.Task] = set()
+
+
+def _over_de_tijdsgrens() -> str:
+    return f"Het dashboard kwam niet binnen {DASHBOARD_TIMEOUT_S:.0f} seconden af. Probeer het opnieuw."
+
+
+async def _in_een_plaats(loader: Callable[[str], dict], instelling: str) -> dict:
+    async with _dashboardplaatsen.plaats():
+        return await asyncio.get_running_loop().run_in_executor(None, loader, instelling)
+
+
+def _laat_uitlopen(taak: asyncio.Task) -> None:
+    _uitlopend.add(taak)
+
+    def klaar(t: asyncio.Task) -> None:
+        _uitlopend.discard(t)
+        if not t.cancelled() and t.exception() is not None:
+            logger.debug("DASHBOARD uitgelopen lading mislukt", exc_info=t.exception())
+
+    taak.add_done_callback(klaar)
+
+
 async def _laad_dashboard(loader: Callable[[str], dict], instelling: str) -> dict | JSONResponse:
+    """De lading in een plaats en binnen de tijdsgrens (#901); de frontend leest `error` en biedt een nieuwe poging."""
     if not DASHBOARDS_ENABLED:
-        # De frontend leest `error`.
         return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, loader, instelling)
+    taak = asyncio.ensure_future(_in_een_plaats(loader, instelling))
+    grens = asyncio.timeout(DASHBOARD_TIMEOUT_S)
+    try:
+        async with grens:
+            return await asyncio.shield(taak)
+    except asyncio.CancelledError:
+        _laat_uitlopen(taak)  # de client is weg; de lading vult de cache voor de volgende
+        raise
+    except TimeoutError:
+        if not grens.expired():
+            raise
+        logger.warning("DASHBOARD TIMEOUT na %.0f s", DASHBOARD_TIMEOUT_S)
+        _laat_uitlopen(taak)
+        return JSONResponse({"error": _over_de_tijdsgrens()}, status_code=504)
+    except Druk as e:
+        logger.warning("DASHBOARDPLAATSEN vol  max=%d  wacht=%ss", MAX_DASHBOARD_LOADS, DASHBOARD_QUEUE_TIMEOUT_S)
+        return JSONResponse({"error": str(e)}, status_code=503)
+    except BronNietBeschikbaar as e:
+        # Geen "niet gevonden": de instelling is niet te bepalen zolang de bron uitligt.
+        return JSONResponse({"error": str(e)}, status_code=503)
 
 
 @router.get("/api/dashboard/instroom", response_model=None, dependencies=_INGELOGD)

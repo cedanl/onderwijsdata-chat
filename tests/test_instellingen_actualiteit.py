@@ -29,6 +29,8 @@ class _Duo:
         self.hbo = ["Hogeschool Utrecht"]
         self.storing = False
         self.opbouwen = 0
+        self.provincie = "Utrecht"
+        self.adresstoring = False
 
     def load(self, dataset: str, resource: int = 0, **kwargs) -> pd.DataFrame:
         if dataset == "p01hoinges" and resource == 0:
@@ -40,15 +42,19 @@ class _Duo:
             return _ho()
         if dataset == "mbo-studenten-per-instelling":
             return pd.DataFrame({"INSTELLINGSCODE": [], "INSTELLINGSNAAM": []})
-        return pd.DataFrame()  # adressen: geen
+        if dataset == "adressen_ho":
+            if self.adresstoring:
+                raise ConnectionError("DUO onbereikbaar")
+            return pd.DataFrame({"INSTELLINGSCODE": ["00XX"], "PROVINCIE": [self.provincie]})
+        return pd.DataFrame()  # adressen_mbo: geen
 
 
 @pytest.fixture
 def duo(monkeypatch):
     nep = _Duo()
     monkeypatch.setattr(instellingen.duo, "load", nep.load)
-    for naam, waarde in (("_cache", None), ("_alias_lookup", None), ("_opgehaald_op", None), ("_geprobeerd_op", None)):
-        monkeypatch.setattr(instellingen, naam, waarde)
+    for naam in ("_cache", "_alias_lookup", "_ADRES_CACHE", "_opgehaald_op", "_geprobeerd_op"):
+        monkeypatch.setattr(instellingen, naam, None)
     return nep
 
 
@@ -107,3 +113,30 @@ def test_bij_een_laadfout_blijft_het_oude_register_met_een_logregel(duo, klok, c
     klok(minutes=30)
     assert _namen() == ["Hogeschool Utrecht", "Nieuwe Hogeschool"]
     assert duo.opbouwen == 3
+
+
+# ── De adressen: dezelfde opbouw als het register (#901) ──
+
+
+def _provincie() -> str | None:
+    return instellingen.get_adres_lookup().get("00XX", {}).get("provincie")
+
+
+def test_de_adressen_verversen_met_het_register(duo, klok):
+    assert _provincie() == "Utrecht"
+    duo.provincie = "Gelderland"  # verhuisd
+    klok(hours=23)
+    assert _provincie() == "Utrecht"
+    klok(hours=1)
+    assert _provincie() == "Gelderland"
+
+
+def test_een_adresbestand_dat_niet_laadde_blijft_niet_tot_de_herstart_weg(duo, klok):
+    # Eerder bleef een lege lookup na één storing in _ADRES_CACHE: elke regiovergelijking viel weg tot de herstart.
+    duo.adresstoring = True
+    assert _provincie() is None
+    duo.adresstoring = False
+    klok(minutes=30)
+    assert _provincie() is None  # pas na de herpoging, niet bij elke aanroep
+    klok(minutes=30)
+    assert _provincie() == "Utrecht"

@@ -259,7 +259,5 @@ def test_roa_prognose_in_het_dashboard_is_landelijk():
             for r, t in (("Nederland", "redelijk"), ("Groningen", "slecht"))
         ]
     )
-    dashboard._roa_prognose.cache_clear()
     with patch.object(arbeidsmarkt, "_roa", return_value=rijen):
         assert dashboard._roa_prognose("mbo") == {"Mbo4": {"ITA toekomstige arbeidsmarktsituatie in 2030": "redelijk"}}
-    dashboard._roa_prognose.cache_clear()

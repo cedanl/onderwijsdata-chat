@@ -105,7 +105,7 @@ describe('dashboard data hook', () => {
     await mount('VU')
 
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer tok-2')
-    expect(state).toEqual({ data: { laatste_jaar: 2025 }, loading: false, error: null })
+    expect(state).toMatchObject({ data: { laatste_jaar: 2025 }, loading: false, error: null })
   })
 
   it('shows an error instead of data when the session has ended', async () => {
@@ -114,7 +114,7 @@ describe('dashboard data hook', () => {
 
     await mount('VU')
 
-    expect(state).toEqual({ data: null, loading: false, error: 'Unauthorized' })
+    expect(state).toMatchObject({ data: null, loading: false, error: { herstelbaar: false } })
     expect(localStorage.getItem(STORAGE_TOKEN)).toBeNull()
   })
 })
