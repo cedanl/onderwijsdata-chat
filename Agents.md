@@ -180,6 +180,22 @@ immutability-regel; de log zegt welke.
 Agents: draai `status` aan het begin van een sessie waarin je MR's maakt. Staat het quotum boven 70 %, draai dan
 `opruimen` (dry-run, controleren, `--uitvoeren`) voordat je pusht.
 
+## Geplande pakketjobs
+
+De taken die in de oude pakketrepo's GitHub Actions waren, zijn GitLab-jobs met een eigen schema (#887):
+`cbs:laatste-update` (`LAATSTE_UPDATE=1`, wekelijks), `catalogus:site` (`CATALOGUS_SITE=1`, dagelijks) en
+`cbs:discovery` + `rio:broncontrole` (`BRONCONTROLE=1`, wekelijks). Schema's, instellen en de eerste handmatige run:
+`docs/operatie.md`, "Bronpakketten bijhouden".
+
+- Wijzigingen komen als MR van een branch `bot/<taak>` met auto-merge (`scripts/pakketbot.py`), nooit als push op
+  `main`. Werk niet op een `bot/`-branch: de volgende run schrijft hem met force opnieuw. Een fix hoort in een eigen MR.
+- Bevindingen staan in één open issue per controle (label `data`); het script werkt dat bij in plaats van elke week
+  een nieuw te openen.
+- Het token staat in de protected, masked variabele `PAKKETBOT_TOKEN`. Vraag of toon het nooit; de gebruiker maakt en
+  vernieuwt het zelf.
+- De catalogussites (`packages/*/docs`) staan op de Pages-site van de GitHub-mirror als `/catalogus/cbs/` en
+  `/catalogus/rio/` (`.github/workflows/docs.yml`). Pas `docs/` daar niet met de hand aan.
+
 ## Git commands
 
 ```bash

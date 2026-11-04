@@ -17,7 +17,7 @@ voorbeelden/
   manifest.json                 Bron voor alle voorbeelden op de site
   output/                       Plots (.png) en interpretaties (INTERPRETATIE.md)
   *.py                          Analysescripts
-docs/                           GitHub Pages site (gebouwd door workflow)
+docs/                           catalogussite, /catalogus/cbs/ op de Pages-site van de chat (CI-job catalogus:site)
 ```
 
 ---
@@ -149,7 +149,7 @@ Voeg een entry toe aan `voorbeelden/manifest.json`:
 
 Voor een analyse met submap:
 - `"plot": "mijn_analyse/mijn_analyse.png"`
-- `"interpretatie": "mijn_analyse/INTERPRETATIE.md"` → wordt door de workflow hernoemd naar `mijn_analyse_INTERPRETATIE.md`
+- `"interpretatie": "mijn_analyse/INTERPRETATIE.md"` → wordt door `scripts/catalogussite.py` (chatrepo) hernoemd naar `mijn_analyse_INTERPRETATIE.md`
 
 Velden:
 | Veld | Beschrijving |
@@ -170,7 +170,7 @@ git commit -m "feat: [beschrijving analyse]"
 git push
 ```
 
-De GitHub Actions workflow pikt de wijzigingen in `voorbeelden/manifest.json` en `voorbeelden/output/` automatisch op, en synct alles naar `docs/voorbeelden/`. De dataset-kaart op de catalogussite krijgt automatisch een "▶ Voorbeeld" knopje voor elke `_cbs_id` in het manifest.
+De dagelijkse CI-job `catalogus:site` in de chatrepo pikt de wijzigingen in `voorbeelden/manifest.json` en `voorbeelden/output/` op en zet ze in een MR naar `docs/voorbeelden/` (`scripts/catalogussite.py`). De dataset-kaart op de catalogussite krijgt automatisch een "▶ Voorbeeld" knopje voor elke `_cbs_id` in het manifest.
 
 ---
 
@@ -201,6 +201,6 @@ OData-filtертips:
 
 ## Wat niet hoeft
 
-- Geen `docs/` handmatig aanpassen — de workflow regelt dat
+- Geen `docs/` handmatig aanpassen — de CI-job `catalogus:site` van de chatrepo regelt dat (MR met auto-merge)
 - Geen `docs/data.json` of `docs/voorbeelden.json` aanraken
 - Geen nieuwe dependencies toevoegen zonder `uv add`

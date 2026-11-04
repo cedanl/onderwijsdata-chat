@@ -182,6 +182,51 @@ In het log van de app wijzen deze regels op een bron die hapert of verandert:
 - `DUO_SCHEMA_DRIFT`: de kolommen van een geladen DUO-bestand wijken af van de snapshot; het model krijgt een
   waarschuwing bij het resultaat (#868).
 
+**Bronpakketten bijhouden**
+
+De geplande taken van de bronpakketten `onderwijsdata` en `riodata` (`packages/`) waren GitHub Actions in de oude
+pakketrepo's. Sinds #887 zijn het GitLab-jobs op `main`, elk met een eigen schema (CI/CD → Schedules, branch `main`,
+plus `SAST_DISABLED=1` en `SECRET_DETECTION_DISABLED=1`, zoals bij `bron:ping`). Tijden in UTC, zoals de oude Actions.
+
+| Job | Schema | Variabele | Wat | Uitkomst |
+|---|---|---|---|---|
+| `cbs:laatste-update` | wekelijks, zondag 06:00 (`0 6 * * 0`) | `LAATSTE_UPDATE=1` | `_laatste_update` per CBS-tabel uit TableInfos, dan afleiding, TableInfos/perioden, `bouw_artefact.py` en de pakkettests | MR `bot/cbs-laatste-update` met auto-merge; geen MR zonder wijziging |
+| `catalogus:site` | dagelijks, 05:30 (`30 5 * * *`) | `CATALOGUS_SITE=1` | de catalogussites in `packages/*/docs` opnieuw uit de catalogus en de voorbeelden (`scripts/catalogussite.py`) | MR `bot/catalogus-site` met auto-merge |
+| `cbs:discovery` en `rio:broncontrole` | wekelijks, maandag 05:17 (`17 5 * * 1`) | `BRONCONTROLE=1` | nieuwe CBS-tabellen onder onderwijsthema's; DUO CKAN en de RIO-spec tegen de catalogus | één open issue per controle; rood als een bron niet antwoordt |
+
+*Bot-MR's.* De Actions pushten zelf op `main`. Hier maakt `scripts/pakketbot.py mr` een commit op een vaste
+botbranch (elke run opnieuw vanaf de commit van de pipeline, met force), opent of hergebruikt de MR naar `main` en zet
+auto-merge zodra de MR-pipeline loopt. De MR doorloopt dus de volle pipeline en heeft net als elke MR één goedkeuring
+nodig (de approval rule uit gitlab-config). Blijft een bot-MR liggen, dan schrijft de volgende run hem opnieuw.
+
+*Issues.* `cbs:discovery` en `rio:broncontrole` houden elk één open issue bij ("Discovery: nieuwe CBS-tabellen ter
+review" en "Broncontrole: review nodig (DUO CKAN en RIO)", label `data`). Bestaat het al, dan blijft het ongemoeid
+zolang de stand gelijk is; bij een andere stand wordt de beschrijving vervangen en komt de nieuwe stand als notitie.
+Sluit het issue na de beoordeling; een volgende bevinding opent een nieuw. De broncontrole vergelijkt met het
+manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel `rio-bronmanifest`). Is die cache leeg
+(eerste run, of een runner zonder gedeelde cache), dan legt de run de basis: de vergelijking met de catalogus werkt,
+"gewijzigd sinds vorige keer" pas vanaf de volgende run. De log zegt het als dat zo is.
+
+*Catalogussites.* De Pages-workflow van de GitHub-mirror (`.github/workflows/docs.yml`) kopieert na de MkDocs-build
+`packages/onderwijsdata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
+`packages/riodata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/>. De oude sites
+(cedanl.github.io/cbs-onderwijsdata en /rio-onderwijsdata) verwijzen pas door na #889.
+
+*Eenmalig instellen* (Maintainer; nooit in de repo, nooit in een sessie):
+
+1. Projecttoken: Settings → Access tokens → naam `pakketbot`, rol **Developer**, scopes **api** en
+   **write_repository**, vervaldatum zo ver als mag (noteer die: het token verloopt en moet dan vernieuwd).
+2. Settings → CI/CD → Variables: `PAKKETBOT_TOKEN` met het token, **Masked** (of Masked and hidden) en **Protected**.
+   Zonder deze variabele faalt elke pakketjob in de eerste stap (`scripts/pakketbot.py controleer`) met een melding
+   die dit noemt; een token zonder de juiste rol of scopes geeft daar "GitLab weigert het token".
+3. CI/CD → Schedules: de drie schema's uit de tabel, elk op `main` met de eigen variabele plus `SAST_DISABLED=1` en
+   `SECRET_DETECTION_DISABLED=1`. Zet er geen `EVAL_BASE_URL` in.
+4. Eén keer met de hand: "Play" (▶) bij elk schema. Vergelijk met de laatste GitHub-run: `cbs:laatste-update` geeft een
+   MR met de `_laatste_update`-wijzigingen sinds de catalogusrevisie in `packages/` (de oude repo had daarna nog twee
+   zulke commits, 25-10 en 01-11); `cbs:discovery` dezelfde tabellen als cbs-onderwijsdata#35; `rio:broncontrole`
+   dezelfde meldingen als het laatste issue in rio-onderwijsdata (#45), op de gewijzigd-meldingen na (lege cache).
+5. Daarna pas de Actions in de oude repo's uitzetten (#889).
+
 ## Onderhoud
 
 - Een jaarlijkse review van deze pagina staat in [Promoten naar playground](promoten.md).
