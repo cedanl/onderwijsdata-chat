@@ -396,13 +396,23 @@ def _gemiddelde_per_jaar(
     peer_codes: frozenset,
     jaar_col: str,
     kolommen: Kolommen,
-) -> dict[int, float]:
-    """Per jaar het gemiddelde over de peers met een waarde in dat jaar."""
+) -> tuple[dict[int, float], dict[int, int]]:
+    """({jaar: gemiddelde}, {jaar: aantal peers}): het gemiddelde over de peers met een waarde in dat jaar, en hoeveel
+    dat er zijn. Niet elke peer heeft elk jaar een waarde, dus het aantal staat per jaar (#903)."""
     per_inst = _som(_peers(df, code_col, peer_codes), [code_col, jaar_col], kolommen).dropna()
     if per_inst.empty:
-        return {}
-    gem = per_inst.groupby(level=jaar_col).mean()
-    return {int(k): round(float(v), 1) for k, v in gem.items()}
+        return {}, {}
+    per_jaar = per_inst.groupby(level=jaar_col)
+    gem = {int(k): round(float(v), 1) for k, v in per_jaar.mean().items()}
+    return gem, _ints(per_jaar.count())
+
+
+def _met_aantal_peers(bm: dict, sleutel: str, n_per_jaar: dict[int, int]) -> None:
+    """Zet het aantal peers achter het gemiddelde per jaar onder bm["n_per_jaar"][sleutel]; `n_instellingen` is dat
+    aantal in het laatste jaar met ingeschrevenen, niet het aantal instellingen in het register van de regio (#903)."""
+    bm.setdefault("n_per_jaar", {})[sleutel] = n_per_jaar
+    if sleutel == "ingeschrevenen":
+        bm["n_instellingen"] = n_per_jaar[max(n_per_jaar)] if n_per_jaar else 0
 
 
 def _per_peer(
@@ -448,16 +458,16 @@ def _mbo_peer_eerstejaars(
     code_col: str,
     inst_col: str,
     peer_codes: frozenset,
-) -> tuple[dict[int, float], dict[str, dict[int, int]], dict[int, int]]:
-    """(benchmark_eerstejaars, peers_eerstejaars, lege cellen per jaar) voor MBO peers."""
+) -> tuple[dict[int, float], dict[int, int], dict[str, dict[int, int]], dict[int, int]]:
+    """(benchmark_eerstejaars, aantal peers per jaar, peers_eerstejaars, lege cellen per jaar) voor MBO peers."""
     instroom = _mbo_instroom(df_instromende)
-    bm = _gemiddelde_per_jaar(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
+    bm, n = _gemiddelde_per_jaar(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
     code_to_naam = df_mbo.drop_duplicates(code_col).set_index(code_col)[inst_col].to_dict()
     peers: dict[str, dict[int, int]] = {}
     for code, grp in _peers(instroom, "INSTELLINGSCODE", peer_codes).groupby("INSTELLINGSCODE"):
         if reeks := _ints(_som(grp, "JAAR", "AANTAL")):
             peers[code_to_naam.get(str(code), str(code))] = reeks
-    return bm, peers, _peer_leeg(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
+    return bm, n, peers, _peer_leeg(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
 
 
 def _totaal_regio(
@@ -803,13 +813,10 @@ def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> di
         "eerstejaars": (df_ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"),
         "gediplomeerden": (df_dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
     }
-    bm: dict = {
-        "label": _benchmark_label(ctx),
-        "regio_type": ctx.regio_type,
-        "n_instellingen": len(peer_codes),
-    }
+    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type}
     for sleutel, (df, jaar_col, kolom) in reeksen.items():
-        bm[sleutel] = _gemiddelde_per_jaar(df, code_col, peer_codes, jaar_col, kolom)
+        bm[sleutel], n = _gemiddelde_per_jaar(df, code_col, peer_codes, jaar_col, kolom)
+        _met_aantal_peers(bm, sleutel, n)
         _met_onderdrukt(bm, sleutel, _peer_leeg(df, code_col, peer_codes, jaar_col, kolom))
     bm["totaal_ingeschrevenen"] = _totaal_regio(df_inges, code_col, peer_codes, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     bm["peers"] = {
@@ -868,9 +875,10 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
 
 def _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, inst_col):
     peer_codes = ctx.peer_codes
-    bm_eerstejaars, peers_eerstejaars, leeg_ej = _mbo_peer_eerstejaars(
+    bm_eerstejaars, n_ej, peers_eerstejaars, leeg_ej = _mbo_peer_eerstejaars(
         df_instromende, df_mbo, code_col, inst_col, peer_codes
     )
+    gem, n_ins = _gemiddelde_per_jaar(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS)
     peers: dict = {
         "ingeschrevenen": _per_peer(df_mbo, code_col, inst_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
         "eerstejaars": peers_eerstejaars,
@@ -878,12 +886,13 @@ def _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, ins
     bm: dict = {
         "label": _benchmark_label(ctx),
         "regio_type": ctx.regio_type,
-        "n_instellingen": len(peer_codes),
-        "ingeschrevenen": _gemiddelde_per_jaar(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
+        "ingeschrevenen": gem,
         "totaal_ingeschrevenen": _totaal_regio(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
         "eerstejaars": bm_eerstejaars,
         "peers": peers,
     }
+    _met_aantal_peers(bm, "ingeschrevenen", n_ins)
+    _met_aantal_peers(bm, "eerstejaars", n_ej)
     _met_onderdrukt(bm, "ingeschrevenen", _peer_leeg(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS))
     _met_onderdrukt(bm, "eerstejaars", leeg_ej)
     if df_dipl_mbo is not None:
@@ -1099,6 +1108,38 @@ def load_dashboard(instelling: str) -> dict:
 # ─── Nationaal Marktaandeel ───────────────────────────────────────────────────
 
 
+# Landelijke cijfers (#903). Het landelijke dashboard rangschikt instellingen en rekent aandelen per sector, dus het
+# telt het DUO-bestand per instelling op. De chat geeft een landelijk aantal uit een vaste CBS-maat (tools/maten.py,
+# #805): een andere telling. Het dashboard neemt die maat niet over (CBS kent geen instellingen en niet dezelfde
+# sectoren), maar zegt welke som het is en welke maat de chat gebruikt; tests/test_dashboard_cijfers.py legt de namen
+# vast tegen tools/maten.py.
+_LANDELIJK = {
+    "ho": {"dataset": "p01hoinges", "chat_maat": "deelnemers_ho_landelijk", "chat_dataset": "85423NED"},
+    "mbo": {
+        "dataset": "mbo-studenten-per-instelling",
+        "chat_maat": "mbo_studenten_landelijk",
+        "chat_dataset": "85354NED",
+    },
+}
+
+
+def _landelijk_definitie(sector: str) -> dict[str, str]:
+    """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven."""
+    bron = _LANDELIJK[sector]
+    return {
+        "maat": "duo_som_per_instelling",
+        **bron,
+        "definitie": (
+            f"de som van DUO {bron['dataset']} over alle instellingen; onderdrukte cellen tellen niet mee, dus een "
+            "totaal kan een ondergrens zijn"
+        ),
+        "verschil_met_chat": (
+            f"De chat geeft het landelijke aantal uit de CBS-tabel {bron['chat_dataset']}. "
+            "Dat is een andere telling: het kan van deze som afwijken."
+        ),
+    }
+
+
 def _nationaal_cijfers(
     df: pd.DataFrame, eigen: pd.DataFrame, kol: dict[str, str], laatste_jaar: int, typen: Callable[[str], str]
 ) -> dict:
@@ -1160,6 +1201,7 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     result["type"] = "ho"
     laatste_jaar = int(hu["STUDIEJAAR"].max())
     result["laatste_jaar"] = laatste_jaar
+    result["landelijk"] = _landelijk_definitie("ho")
 
     naam_to_type = {i["naam"].lower(): i["type"] for i in get_all_instellingen()}
     kol = {"instelling": inst_col, "sector": "ONDERDEEL", "jaar": "STUDIEJAAR", "waarde": "AANTAL_INGESCHREVENEN"}
@@ -1192,6 +1234,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     result["type"] = "mbo"
     laatste_jaar = int(df_mbo["JAAR"].max())
     result["laatste_jaar"] = laatste_jaar
+    result["landelijk"] = _landelijk_definitie("mbo")
 
     kol = {"instelling": inst_col_mbo, "sector": "LEERWEG", "jaar": "JAAR", "waarde": "AANTAL"}
     result.update(

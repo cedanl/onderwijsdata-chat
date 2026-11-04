@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-// Dashboardcijfers heten wat ze tellen en tellen op tot hun totaal (#899); ontbreekt is geen 0 (#902).
+// Dashboardcijfers heten wat ze tellen en tellen op tot hun totaal (#899); ontbreekt is geen 0 (#902); één groeiregel
+// en een landelijk getal dat zegt wat het is (#903).
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -13,7 +14,11 @@ import { buildLeerwegenData, buildSectorTrendData, HoofdgroepenChart, LEERWEGEN_
 import { OndergrensNoot, isOndergrens } from '../components/dashboards/shared/ondergrens'
 import { pctVrouwFromGeslacht } from '../components/dashboards/mijn-instelling/gender-section'
 import { verdeelCohorten } from '../components/dashboards/mijn-instelling/rendement-section'
-import { buildMarktaandeelPerSector } from '../components/dashboards/nationaal/index'
+import { buildMarktaandeelPerSector, LandelijkDefinitie } from '../components/dashboards/nationaal/index'
+import { buildBenchmarkLineData, buildPeerLinesData, groeiPct, groeiStartjaar } from '../components/dashboards/shared/chart-builders'
+import { buildGroeiRankingData, GroeiRankingChart } from '../components/dashboards/shared/charts-markt'
+import { PeersTable } from '../components/dashboards/shared/charts-peers'
+import { buildIndexChartOpts } from '../components/dashboards/shared/chart-opts'
 
 let container
 let root
@@ -127,5 +132,80 @@ describe('een som over onderdrukte cellen is een ondergrens (#902)', () => {
     const el = render(createElement(OndergrensNoot, { reeksen: [{ label: 'Ingeschrevenen', onderdrukt: undefined }] }))
 
     expect(el.textContent).toBe('')
+  })
+})
+
+describe('één groeiregel voor grafiek, ranking en tabel (#903)', () => {
+  // Peer B begint pas in 2022; het gemeenschappelijke startjaar is dan 2022 voor iedereen.
+  const DATA = {
+    laatste_jaar: 2025,
+    ingeschrevenen: { 2021: 1000, 2022: 1100, 2023: 1150, 2025: 1210 },
+    benchmark: {
+      peers: {
+        ingeschrevenen: {
+          'Peer A': { 2021: 500, 2022: 400, 2025: 600 },
+          'Peer B': { 2022: 200, 2023: 210, 2025: 300 },
+        },
+      },
+    },
+  }
+
+  it('kiest het laatste van de eerste jaren met een waarde, en negeert een reeks van één jaar', () => {
+    expect(groeiStartjaar([DATA.ingeschrevenen, ...Object.values(DATA.benchmark.peers.ingeschrevenen)])).toBe(2022)
+    expect(groeiStartjaar([{ 2021: 1, 2022: 2 }, { 2025: 9 }])).toBe(2021)
+    expect(groeiPct({ 2022: 200, 2025: 300 }, 2022, 2025)).toBe(50)
+    expect(groeiPct({ 2023: 200, 2025: 300 }, 2022, 2025)).toBeNull()
+  })
+
+  it('geeft in de lijnen, de ranking en de tabel hetzelfde groeicijfer per instelling', () => {
+    const lijnen = buildPeerLinesData(DATA.ingeschrevenen, DATA.benchmark.peers.ingeschrevenen, 'Eigen', '#000', '#999')
+    const ranking = buildGroeiRankingData(DATA, 'Eigen', false)
+    const laatste = lijnen.labels.indexOf('2025')
+    const lijnGroei = Object.fromEntries(lijnen.datasets.map(d => [d.label, d.data[laatste]]))
+    const rankingGroei = Object.fromEntries(ranking.labels.map((naam, i) => [naam, ranking.datasets[0].data[i]]))
+
+    expect(lijnen.startjaar).toBe(2022)
+    expect(ranking.startjaar).toBe(2022)
+    expect(rankingGroei).toEqual({ Eigen: 10, 'Peer A': 50, 'Peer B': 50 })
+    expect(lijnGroei).toEqual(rankingGroei)
+
+    const el = render(createElement(PeersTable, { data: DATA, instelling: 'Eigen' }))
+    expect(el.textContent).toContain('Groei (2022–2025)')
+    const tabelGroei = Object.fromEntries([...el.querySelectorAll('tbody tr')].map(tr => {
+      const cellen = [...tr.querySelectorAll('td')].map(td => td.textContent)
+      return [cellen[1].replace(' ★', ''), Number(cellen[3].replace('%', ''))]
+    }))
+    expect(tabelGroei).toEqual(rankingGroei)
+  })
+
+  it('zet het startjaar in de kop van de groeiranking', () => {
+    const el = render(createElement(GroeiRankingChart, { data: buildGroeiRankingData(DATA, 'Eigen', false), dark: false }))
+
+    expect(el.textContent).toContain('Groei ingeschrevenen 2022–2025')
+    expect(el.textContent).not.toContain('eerste')
+  })
+
+  it('noemt op de as het startjaar, niet het eerste jaar van elke reeks', () => {
+    expect(buildIndexChartOpts(false).scales.y.title.text).toBe('% verandering t.o.v. het startjaar')
+  })
+
+  it('rekent eigen instelling en benchmark t.o.v. hetzelfde jaar', () => {
+    const data = buildBenchmarkLineData({ 2021: 100, 2022: 110, 2023: 121 }, { 2022: 50, 2023: 55 }, 'Eigen', 'Regio', '#000', '#999')
+
+    expect(data.startjaar).toBe(2022)
+    expect(data.datasets[0].data).toEqual([-9, 0, 10])
+    expect(data.datasets[1].data).toEqual([null, 0, 10])
+  })
+})
+
+describe('landelijk zegt wat het telt (#903)', () => {
+  it('noemt de DUO-som en de CBS-tabel van de chat', () => {
+    const el = render(createElement(LandelijkDefinitie, { landelijk: {
+      definitie: 'de som van DUO p01hoinges over alle instellingen',
+      verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-tabel 85423NED.',
+    } }))
+
+    expect(el.textContent).toContain('Landelijk is hier de som van DUO p01hoinges')
+    expect(el.textContent).toContain('85423NED')
   })
 })

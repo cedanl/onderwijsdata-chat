@@ -183,3 +183,90 @@ def test_een_sector_zonder_inschrijvingen_in_een_jaar_is_een_gat_in_de_trend():
     for onderdeel, trend in result["sectoren_trend"].items():
         jaren = set(hu.loc[hu["ONDERDEEL"] == onderdeel, "STUDIEJAAR"].astype(int))
         assert set(trend) <= jaren, onderdeel  # geen jaar dat in de data ontbreekt, ook niet als 0
+
+
+# ─── #903: dashboard en chat, en het aantal peers achter een gemiddelde ─────────────────────────────────────────────
+
+
+def _per_jaar(uit: str) -> dict[int, int]:
+    import json
+
+    rijen = json.loads(uit)
+    assert "data_key" in rijen, rijen
+    return {int(r[rijen["periodekolom"]]): int(r[rijen["waardekolom"]]) for r in rijen["rijen"]}
+
+
+def test_landelijk_is_de_duo_som_en_noemt_de_vaste_maat_van_de_chat():
+    """Het bewuste verschil: het dashboard telt DUO per instelling op, de chat neemt de vaste CBS-maat (#805)."""
+    from tools import maten
+
+    for sector, maat in (("mbo", maten.MBO_STUDENTEN_LANDELIJK), ("ho", maten.DEELNEMERS_HO_LANDELIJK)):
+        recept = maten.MATEN[maat]
+        bron = dashboard._LANDELIJK[sector]
+        assert bron["chat_maat"] == maat
+        assert bron["chat_dataset"] == recept.dataset
+        assert recept.bron == "cbs"
+        # De DUO-som is het DUO-bestand dat de chat per instelling gebruikt.
+        assert bron["dataset"] == maten.MATEN[maten._PER_INSTELLING[maat]].dataset
+    # Voor het mbo noemt de chat precies dit bestand als alternatieve bron onder het antwoord (#667).
+    recept = maten.MATEN[maten.MBO_STUDENTEN_LANDELIJK]
+    assert isinstance(recept, maten.CbsRecept)
+    alternatief = recept.alternatieve_bron
+    assert alternatief is not None
+    assert alternatief.dataset == dashboard._LANDELIJK["mbo"]["dataset"]
+
+    for instelling, sector in (("Hogeschool Utrecht", "ho"), (_MONDRIAAN, "mbo")):
+        landelijk = dashboard.load_dashboard_nationaal(instelling)["landelijk"]
+        assert landelijk["maat"] == "duo_som_per_instelling"
+        assert landelijk["chat_dataset"] in landelijk["verschil_met_chat"]
+        assert dashboard._LANDELIJK[sector]["dataset"] in landelijk["definitie"]
+
+
+@pytest.mark.usefixtures("gouden")
+def test_een_mbo_instelling_heeft_in_dashboard_en_chat_hetzelfde_aantal():
+    from tools import maten
+    from tools.maten import get_maat
+
+    chat = _per_jaar(get_maat(maten.MBO_STUDENTEN, _MONDRIAAN))
+    regio = dashboard.load_dashboard_regio(_MONDRIAAN)
+    nationaal = dashboard.load_dashboard_nationaal(_MONDRIAAN)
+
+    assert regio["ingeschrevenen"] == chat
+    eigen = next(i for i in nationaal["alle_instellingen"] if i["naam"] == _MONDRIAAN)
+    assert eigen["ingeschrevenen"] == chat[nationaal["laatste_jaar"]]
+
+
+@pytest.mark.usefixtures("gouden")
+def test_een_ho_instelling_wijkt_alleen_af_waar_het_dashboard_een_ondergrens_meldt():
+    """Bewust verschil: het dashboard telt p01hoinges per onderdeel en geslacht, de chat het bestand met
+    opleidingsvorm (bestand 4). Elk onderdrukt andere cellen; een verschil valt dus in een jaar dat het dashboard als
+    ondergrens meldt, en is klein."""
+    from tools import maten
+    from tools.maten import get_maat
+
+    uu = "Universiteit Utrecht"
+    chat = _per_jaar(get_maat(maten.PERSONEN_HO, uu, vorm="alle"))
+    regio = dashboard.load_dashboard_regio(uu)
+
+    assert set(regio["ingeschrevenen"]) == set(chat)
+    verschil = {j: chat[j] - regio["ingeschrevenen"][j] for j in chat if chat[j] != regio["ingeschrevenen"][j]}
+    assert verschil, "de bestanden onderdrukken andere cellen; is dat veranderd, pas dan de test en docs aan"
+    for jaar, d in verschil.items():
+        assert regio["onderdrukt"]["ingeschrevenen"].get(jaar), jaar
+        # Een onderdrukte cel is 1 tot en met 4; het bestand van de chat onderdrukt hier één cel (test_gouden_maten).
+        assert abs(d) <= 4 * regio["onderdrukt"]["ingeschrevenen"][jaar] + 4, (jaar, d)
+
+
+def test_het_aantal_peers_staat_per_jaar_en_telt_alleen_peers_met_data():
+    result = dashboard.load_dashboard_regio(_MONDRIAAN)
+    bm = result["benchmark"]
+
+    mbo = _duo("mbo-studenten-per-instelling")
+    ctx = dashboard._build_regio_context(_MONDRIAAN, "mbo")
+    assert ctx is not None
+    peers = mbo[mbo["INSTELLINGSCODE"].isin(ctx.peer_codes)]
+    verwacht = {int(j): int(n) for j, n in peers.groupby("JAAR")["INSTELLINGSCODE"].nunique().items()}
+    assert bm["n_per_jaar"]["ingeschrevenen"] == verwacht
+    assert bm["n_instellingen"] == verwacht[max(verwacht)]
+    assert bm["n_instellingen"] <= len(ctx.peer_codes)
+    assert set(bm["n_per_jaar"]["eerstejaars"]) == set(bm["eerstejaars"])

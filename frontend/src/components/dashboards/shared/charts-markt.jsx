@@ -2,6 +2,7 @@ import { Line, Bar } from 'react-chartjs-2'
 import { horizontalBarOpts, darkColors } from './chart-opts'
 import { COLOR_EIGEN, COLOR_DIPLOM } from '../../../constants'
 import { ChartCard } from './shell'
+import { groeiStartjaar, groeiPct } from './chart-builders'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -138,24 +139,19 @@ export function buildMarktaandeelData(data, instelling, dark) {
   }
 }
 
+// Groei per instelling met de ene groeiregel van chart-builders (#903): hetzelfde startjaar als de lijnen en de tabel.
 export function buildGroeiRankingData(data, instelling, dark) {
   if (!data?.ingeschrevenen || !data?.benchmark?.peers?.ingeschrevenen) return null
-
-  function groeiPct(dict) {
-    const jaren = Object.keys(dict).map(Number).sort((a, b) => a - b)
-    if (jaren.length < 2) return null
-    const first = dict[jaren[0]]
-    const last = dict[jaren.at(-1)]
-    if (!first) return null
-    return Math.round((last - first) / first * 100)
-  }
+  const peers = data.benchmark.peers.ingeschrevenen
+  const startjaar = groeiStartjaar([data.ingeschrevenen, ...Object.values(peers)])
+  const eindjaar = data.laatste_jaar
 
   const entries = []
-  const g = groeiPct(data.ingeschrevenen)
+  const g = groeiPct(data.ingeschrevenen, startjaar, eindjaar)
   if (g != null) entries.push({ naam: instelling, groei: g, eigen: true })
 
-  for (const [naam, jaarData] of Object.entries(data.benchmark.peers.ingeschrevenen)) {
-    const pg = groeiPct(jaarData)
+  for (const [naam, jaarData] of Object.entries(peers)) {
+    const pg = groeiPct(jaarData, startjaar, eindjaar)
     if (pg != null) entries.push({ naam, groei: pg, eigen: false })
   }
 
@@ -163,6 +159,8 @@ export function buildGroeiRankingData(data, instelling, dark) {
   entries.sort((a, b) => b.groei - a.groei)
 
   return {
+    startjaar,
+    eindjaar,
     labels: entries.map(e => e.naam),
     datasets: [{
       label: 'Groei (%)',
@@ -193,14 +191,15 @@ export function MarktaandeelChart({ data, jaar, dark }) {
 
 export function GroeiRankingChart({ data, dark }) {
   if (!data) return null
-  const h = Math.max(200, data.labels.length * 34 + 40)
+  const { startjaar, eindjaar, ...barData } = data
+  const h = Math.max(200, barData.labels.length * 34 + 40)
   return (
     <ChartCard
-      title="Groei ranking (totale periode)"
-      subtitle="% verandering eerste→laatste beschikbaar jaar per instelling (eigen instelling blauw)"
+      title={`Groei ingeschrevenen ${startjaar}–${eindjaar}`}
+      subtitle={`% verandering van ${startjaar} tot ${eindjaar}, voor elke instelling vanaf hetzelfde jaar (eigen instelling blauw)`}
     >
       <div style={{ height: h }}>
-        <Bar data={data} options={horizontalBarOpts(dark, '%')} />
+        <Bar data={barData} options={horizontalBarOpts(dark, '%')} />
       </div>
     </ChartCard>
   )

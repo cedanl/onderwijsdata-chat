@@ -46,6 +46,17 @@ export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
   }
 }
 
+// Wat "landelijk" hier telt (#903): de som van het DUO-bestand per instelling, niet de vaste CBS-maat van de chat.
+// De backend geeft de definitie en het verschil met de chat (`landelijk`); zonder die velden staat er niets.
+export function LandelijkDefinitie({ landelijk }) {
+  if (!landelijk?.definitie) return null
+  return (
+    <p className="dashboard-noot" role="note" style={{ fontSize: 'var(--font-klein)', color: 'var(--muted-text)', margin: '0 0 16px' }}>
+      Landelijk is hier {landelijk.definitie}. {landelijk.verschil_met_chat}
+    </p>
+  )
+}
+
 // {sector: {jaar: n}} als reeksen voor de ondergrensnoot.
 function sectorReeksen(perSector) {
   return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt }))
@@ -199,8 +210,9 @@ export function InlineDashboardNationaal({ instelling }) {
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           <span className="meta-badge instelling">{instelling}</span>
           <span className="meta-badge date">Landelijk overzicht</span>
-          <span className="meta-badge date">Bron: DUO Open Onderwijsdata</span>
+          <span className="meta-badge date">Bron: DUO Open Onderwijsdata, som per instelling</span>
         </div>
+        <LandelijkDefinitie landelijk={data?.landelijk} />
 
         <SectionHeader title="Positie per sector" subtitle="Ranking binnen alle instellingen per sector/leerweg" />
         <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
