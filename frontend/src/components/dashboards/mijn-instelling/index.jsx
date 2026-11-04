@@ -13,8 +13,11 @@ import {
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
   PeersTable, SectorTrendChart, LeerwegenChart, SectorkamersChart,
-  RendementVergelijkingChart,
+  RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
+
+// Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen; UWV en ROA staan op het arbeidsmarktdashboard.
+const REGIO_BRONNEN = ['DUO']
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
 
@@ -50,8 +53,11 @@ const iconGender = (color) => (
 )
 
 export function InlineDashboardMijnInstelling({ instelling }) {
-  const { data, loading, error } = useRegioDashboardData(instelling)
-  const { data: rendData } = useRendementDashboardData(instelling)
+  const { data, loading, error, opnieuw } = useRegioDashboardData(instelling)
+  const rendement = useRendementDashboardData(instelling)
+  const rendData = rendement.data
+  const gaten = gatenVan([data, rendData], REGIO_BRONNEN)
+  const allesOpnieuw = () => { opnieuw(); rendement.opnieuw() }
   const c = useRegioComputed(data, instelling)
   const dark = useDarkMode()
 
@@ -74,9 +80,10 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   const bmDipl = bm.gediplomeerden ? Object.values(bm.gediplomeerden).at(-1) : null
 
   return (
-    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
         <RegioBadges instelling={instelling} provincie={data?.provincie} arbeidsmarktregio={data?.arbeidsmarktregio} bron="DUO Open Onderwijsdata" />
+        <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <KaartSection figureJson={data?.kaart_figure_json} />
 
@@ -152,7 +159,9 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={`% verandering t.o.v. eerste jaar — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
-        <RendementSection data={rendData} instelling={instelling} dark={dark} />
+        <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>
+          <RendementSection data={rendData} instelling={instelling} dark={dark} />
+        </DeelLading>
 
         {/* ── Sectoren ── */}
         <SectionHeader title="Sectoren" subtitle="Verdeling en trend per onderdeel" />

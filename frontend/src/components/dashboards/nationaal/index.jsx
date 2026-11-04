@@ -162,11 +162,11 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
 }
 
 export function InlineDashboardNationaal({ instelling }) {
-  const { data, loading, error } = useNationaalDashboardData(instelling)
+  const { data, loading, error, opnieuw } = useNationaalDashboardData(instelling)
   const dark = useDarkMode()
 
   return (
-    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           <span className="meta-badge instelling">{instelling}</span>

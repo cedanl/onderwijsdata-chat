@@ -1315,6 +1315,14 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .db-skeleton-kpi { height: 108px; border-radius: var(--radius-lg); background: linear-gradient(90deg,var(--gray-100) 25%,var(--gray-50) 50%,var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .db-skeleton-chart { height: 240px; border-radius: var(--radius-lg); background: linear-gradient(90deg,var(--gray-100) 25%,var(--gray-50) 50%,var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; grid-column: span 1; }
 @media(max-width:640px){ .db-skeleton-grid { grid-template-columns: repeat(2,1fr); } }
+/* Wat er niet laadde (#901): dezelfde rand als een gesprek dat de server niet kreeg (#785), links uitgelijnd. */
+.dashboard-gaten {
+  margin: 0 0 20px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;
+  border: 1px solid rgba(220, 38, 38, .4); background: rgba(220, 38, 38, .07); color: var(--gray-700);
+}
+.dashboard-gaten ul { margin: 4px 0 0; padding-left: 18px; }
+.dashboard-gaten .niet-bewaard-actie { margin-left: 0; padding: 0; }
+.dashboard-deelfout { margin: 0; padding: 8px 0; font-size: 13px; color: var(--gray-700); }
 
 /* Dashboard bronnen footer */
 

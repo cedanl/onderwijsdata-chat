@@ -2,7 +2,13 @@ import { COLOR_EIGEN } from '../../../constants'
 
 // ─── Shell ──────────────────────────────────────────────────────────────────
 
-export function DashboardShell({ instelling, children, loading, data, error }) {
+// Een nieuwe poging onder een melding (#901), met de knop van een gesprek dat de server niet kreeg (#785).
+function OpnieuwKnop({ onOpnieuw }) {
+  if (!onOpnieuw) return null
+  return <button type="button" className="niet-bewaard-actie" onClick={onOpnieuw}>Opnieuw proberen</button>
+}
+
+export function DashboardShell({ instelling, children, loading, data, error, onOpnieuw }) {
   if (loading) {
     return (
       <div className="dashboard-content" style={{ padding: 24 }}>
@@ -20,12 +26,14 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
     )
   }
 
+  // Een storing is geen "niet gevonden" (#901): de melding van de server, en een nieuwe poging als die zin heeft.
   if (error || !data) {
     return (
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <div className="chart-card" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+        <div className="chart-card" role="alert" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
           <div style={{ fontSize: '.85rem', color: '#991B1B' }}>
-            Kon geen data ophalen voor <strong>{instelling}</strong>. {error}
+            Kon geen data ophalen voor <strong>{instelling}</strong>. {error?.melding}
+            {error?.herstelbaar && <OpnieuwKnop onOpnieuw={onOpnieuw} />}
           </div>
         </div>
       </div>
@@ -49,6 +57,57 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
     )
   }
 
+  return children
+}
+
+// De onderdelen die niet laadden (#901): het dashboard noemt ze en waarom, in plaats van ze stil weg te laten.
+// `onderdelen` komt uit `niet_beschikbaar` van de payload: [{ onderdeel, bron, reden }].
+export function NietGeladen({ onderdelen, onOpnieuw }) {
+  if (!onderdelen?.length) return null
+  return (
+    <div className="dashboard-gaten" role="status">
+      <strong>Niet alles kon worden geladen.</strong>
+      <ul>
+        {onderdelen.map(({ onderdeel, reden }) => <li key={onderdeel}>{onderdeel}: {reden}.</li>)}
+      </ul>
+      <OpnieuwKnop onOpnieuw={onOpnieuw} />
+    </div>
+  )
+}
+
+// De gaten van meer payloads samen, elk onderdeel één keer; `bronnen` beperkt ze tot wat dit dashboard toont.
+export function gatenVan(payloads, bronnen = null) {
+  const gezien = new Map()
+  for (const payload of payloads) {
+    for (const gat of payload?.niet_beschikbaar || []) {
+      if (bronnen && !bronnen.includes(gat.bron)) continue
+      if (!gezien.has(gat.onderdeel)) gezien.set(gat.onderdeel, gat)
+    }
+  }
+  return [...gezien.values()]
+}
+
+// Een tweede lading binnen een dashboard (#901), zoals `regio` bij de arbeidsmarkt en `rendement` bij mijn instelling.
+// Tijdens het laden een vlak van vaste hoogte, zodat de pagina niet verschuift als de data binnenkomt (#808); na een
+// fout de melding met een nieuwe poging. Zonder die twee las "Geen vacaturegegevens beschikbaar" als inhoud.
+export function DeelLading({ titel, loading, error, onOpnieuw, hoogte = 240, children }) {
+  if (loading) {
+    return (
+      <ChartCard title={titel}>
+        <div className="db-skeleton-chart" style={{ height: hoogte }} role="status" aria-label={titel + ' laden'} />
+      </ChartCard>
+    )
+  }
+  if (error) {
+    return (
+      <ChartCard title={titel}>
+        <p className="dashboard-deelfout" role="alert">
+          {titel} kon niet worden geladen. {error.melding}
+          {error.herstelbaar && <OpnieuwKnop onOpnieuw={onOpnieuw} />}
+        </p>
+      </ChartCard>
+    )
+  }
   return children
 }
 
