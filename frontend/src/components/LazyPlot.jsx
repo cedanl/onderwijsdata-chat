@@ -6,7 +6,7 @@ import { Component, Suspense, lazy } from 'react'
 const Plot = lazy(() => import('react-plotly.js'))
 
 // Hoogte van de plaatsvervanger als de aanroeper geen hoogte meegeeft; gelijk aan de
-// maxHeight van de kaart (charts-kaart.jsx), zodat die niet verspringt als Plotly laadt.
+// hoogte van de dashboardkaart (KAART_HOOGTE, kaart-figuur.js), zodat die niet verspringt als Plotly laadt.
 const STANDAARD_HOOGTE = 340
 
 const PLAATSHOUDER_STIJL = {
