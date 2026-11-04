@@ -4,7 +4,7 @@
  * geeft; `rapport` vraagt het rapport op zoals de app dat doet (#751), met de onderzoeksvraag erbij.
  */
 import { WebSocket } from 'ws'
-import { WS_URL, nieuwAntwoord, protocollen, verwerk } from './chatstream.js'
+import { WS_URL, binnenLimiet, nieuwAntwoord, protocollen, verwerk } from './chatstream.js'
 
 // Na een message_end kan nog een verduidelijkingsvraag volgen (agent/run.py sluit eerst de
 // lopende tekst af); pas als die uitblijft, is het antwoord af.
@@ -47,34 +47,12 @@ export function verbind(token, model, url = WS_URL) {
     }
 
     const gesprek = {
-      /** Eén beurt: het antwoord zoals chatstream.verwerk het opbouwt; een verduidelijking krijgt de aanbevolen optie. */
-      async vraag(tekst, timeoutMs = VRAAG_TIMEOUT_MS) {
-        const antwoord = nieuwAntwoord()
-        let naEinde = null
-        ws.send(JSON.stringify({ action: 'message', content: tekst }))
-        const extra = await wacht(timeoutMs, (event, rond) => {
-          if (event.type === 'verbroken') return rond(antwoord.einde ? {} : { error: antwoord.error || verbroken })
-          verwerk(antwoord, event)
-          if (event.type === 'clarification') {
-            clearTimeout(naEinde)
-            antwoord.einde = null
-            const opties = event.opties || []
-            const keuze = opties.find(o => o.aanbevolen) || opties[0]
-            if (!keuze) return rond({})
-            console.log(`  CLARIFY: "${event.vraag}" → "${keuze.label}"`)
-            setTimeout(() => ws.send(JSON.stringify({ action: 'clarification_choice', choice: keuze.label })), 500)
-          }
-          if (event.type === 'error') {
-            console.log(`  ERROR: ${event.message}`)
-            rond({})
-          }
-          if (event.type === 'message_end') {
-            clearTimeout(naEinde)
-            naEinde = setTimeout(() => rond({}), NA_EINDE_MS)
-          }
-        })
-        clearTimeout(naEinde)
-        return { ...antwoord, ...extra }
+      /**
+       * Eén beurt: het antwoord zoals chatstream.verwerk het opbouwt; een verduidelijking krijgt de aanbevolen optie.
+       * Weigert de berichtlimiet de vraag, dan volgt hij opnieuw na de wachttijd (#909).
+       */
+      vraag(tekst, timeoutMs = VRAAG_TIMEOUT_MS) {
+        return binnenLimiet(() => eenVraag(tekst, timeoutMs))
       },
 
       /** De beurten met data die de app bij "Genereer rapport" als checklist toont (#908): { items }, anders { error } of { timeout }. */
@@ -87,25 +65,61 @@ export function verbind(token, model, url = WS_URL) {
         })
       },
 
-      /** Het rapport: { spec } bij report_ready, anders { error } of { timeout }. `beurten`: de beurten die aanstaan (#908). */
-      rapport({ onderzoeksvraag, auteur = 'eval', beurten } = {}, timeoutMs = RAPPORT_TIMEOUT_MS) {
-        const vraag = (onderzoeksvraag || '').trim()
-        ws.send(JSON.stringify({
-          action: 'generate_report', author: auteur, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
-        }))
-        return wacht(timeoutMs, (event, rond) => {
-          if (event.type === 'verbroken') return rond({ error: verbroken })
-          if (event.type === 'report_ready') return rond({ spec: event.spec })
-          if (event.type === 'report_error') return rond({ error: event.message || 'report_error zonder melding' })
-          if (event.type === 'report_cancelled') return rond({ error: 'rapport geannuleerd' })
-          // Een weigering vóór de run (busy, verzoeklimiet, te lange vraag) komt als busy of error.
-          if (event.type === 'busy' || event.type === 'error') return rond({ error: event.message || event.type })
-        })
+      /**
+       * Het rapport: { spec } bij report_ready, anders { error } of { timeout }. `beurten`: de beurten die aanstaan (#908).
+       * Net als een vraag opnieuw na de wachttijd van de berichtlimiet (#909).
+       */
+      rapport(opties = {}, timeoutMs = RAPPORT_TIMEOUT_MS) {
+        return binnenLimiet(() => eenRapport(opties, timeoutMs))
       },
 
       sluit() {
         try { ws.close() } catch {}
       },
+    }
+
+    async function eenVraag(tekst, timeoutMs) {
+      const antwoord = nieuwAntwoord()
+      let naEinde = null
+      ws.send(JSON.stringify({ action: 'message', content: tekst }))
+      const extra = await wacht(timeoutMs, (event, rond) => {
+        if (event.type === 'verbroken') return rond(antwoord.einde ? {} : { error: antwoord.error || verbroken })
+        verwerk(antwoord, event)
+        if (event.type === 'clarification') {
+          clearTimeout(naEinde)
+          antwoord.einde = null
+          const opties = event.opties || []
+          const keuze = opties.find(o => o.aanbevolen) || opties[0]
+          if (!keuze) return rond({})
+          console.log(`  CLARIFY: "${event.vraag}" → "${keuze.label}"`)
+          setTimeout(() => ws.send(JSON.stringify({ action: 'clarification_choice', choice: keuze.label })), 500)
+        }
+        if (event.type === 'error') {
+          console.log(`  ERROR: ${event.message}`)
+          rond({})
+        }
+        if (event.type === 'message_end') {
+          clearTimeout(naEinde)
+          naEinde = setTimeout(() => rond({}), NA_EINDE_MS)
+        }
+      })
+      clearTimeout(naEinde)
+      return { ...antwoord, ...extra }
+    }
+
+    function eenRapport({ onderzoeksvraag, auteur = 'eval', beurten } = {}, timeoutMs) {
+      const vraag = (onderzoeksvraag || '').trim()
+      ws.send(JSON.stringify({
+        action: 'generate_report', author: auteur, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
+      }))
+      return wacht(timeoutMs, (event, rond) => {
+        if (event.type === 'verbroken') return rond({ error: verbroken })
+        if (event.type === 'report_ready') return rond({ spec: event.spec })
+        if (event.type === 'report_error') return rond({ error: event.message || 'report_error zonder melding' })
+        if (event.type === 'report_cancelled') return rond({ error: 'rapport geannuleerd' })
+        // Een weigering vóór de run (busy, verzoeklimiet, te lange vraag) komt als busy of error.
+        if (event.type === 'busy' || event.type === 'error') return rond({ error: event.message || event.type })
+      })
     }
 
     ws.on('open', () => {

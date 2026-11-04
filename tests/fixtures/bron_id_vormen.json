@@ -1,0 +1,316 @@
+{
+  "toelichting": "Nulmeting #909 vóór de overgang naar onderwijsbronnen (#890, #910-#914): de vormen van tool-namen, dataset-ID's, DUO-bestanden, store-keys en snippetregels die in de opgeslagen gegevens van test en playground staan (data_recipes, conversations.messages[].tools, workbooks, beurtbewijs, answer_feedback), met waar elke vorm nu naar herleidt. tests/test_bron_id_vormen.py haalt elke vorm door de huidige herleiding; na de overgang moet elke vorm hetzelfde blijven opleveren. Alleen publieke ID's (CBS-tabellen, DUO-datasets en -bestanden, RIO-typen); niets wat naar een gebruiker te herleiden is. Aantallen: voorkomens in de opgeslagen gegevens, op tientallen afgerond, onder de 10 exact; 0 is een invoervorm die de code nu accepteert maar die niet opgeslagen is.",
+  "gemeten_op": "2026-11-04",
+  "omgevingen": {
+    "test": {"versie": "2.5.4-rc.2309+84137d19", "commit": "84137d19", "recepten": 561, "gesprekken": 263, "rapporten_met_html": 53},
+    "playground": {"versie": "2.5.2", "commit": "d691ea50", "recepten": 910, "gesprekken": 144, "rapporten_met_html": 77}
+  },
+  "dataset_ids": [
+    {
+      "vorm": "CBS-tabel, kaal, hoofdletters",
+      "plekken": ["data_recipes laad get_cbs_data.dataset_id", "snippet data(<id>)"],
+      "voorbeelden": [
+        {"invoer": "85423NED", "dataset": "85423NED"},
+        {"invoer": "85354NED", "dataset": "85354NED"},
+        {"invoer": "84312NED", "dataset": "84312NED"},
+        {"invoer": "85367NED", "dataset": "85367NED"}
+      ],
+      "leverancier": "CBS",
+      "binnen_profiel": true,
+      "aantal": {"test": 610, "playground": 790}
+    },
+    {
+      "vorm": "CBS-tabel, kaal, kleine letters zoals de catalogus haar spelt",
+      "plekken": ["invoer van het model of een recept"],
+      "voorbeelden": [{"invoer": "71733ned", "dataset": "71733ned"}],
+      "leverancier": "CBS",
+      "binnen_profiel": true,
+      "aantal": {"test": 0, "playground": 0}
+    },
+    {
+      "vorm": "CBS-tabel, andere spelling of met voorvoegsel (cbs_bron_id normaliseert naar de catalogus)",
+      "plekken": ["invoer van het model of een recept"],
+      "voorbeelden": [
+        {"invoer": "85423ned", "dataset": "85423NED"},
+        {"invoer": "cbs:85423NED", "dataset": "85423NED"},
+        {"invoer": "cbs_85423ned", "dataset": "85423NED"},
+        {"invoer": "71733NED", "dataset": "71733ned"}
+      ],
+      "leverancier": "CBS",
+      "binnen_profiel": true,
+      "aantal": {"test": 0, "playground": 0}
+    },
+    {
+      "vorm": "CBS-tabel, kleine letters, buiten het profiel (laadt nu niet)",
+      "plekken": ["snippet data(<id>)", "store-key cbs:<id>", "rapport-HTML"],
+      "voorbeelden": [
+        {"invoer": "70072ned", "dataset": "70072ned"},
+        {"invoer": "70060ned", "dataset": "70060ned"},
+        {"invoer": "80040ned", "dataset": "80040ned"}
+      ],
+      "leverancier": null,
+      "binnen_profiel": false,
+      "aantal": {"test": 2, "playground": 0}
+    },
+    {
+      "vorm": "CBS-tabel, hoofdletters, buiten het profiel (laadt nu niet)",
+      "plekken": ["snippet data(<id>)", "rapport-HTML"],
+      "voorbeelden": [
+        {"invoer": "86008NED", "dataset": "86008NED"},
+        {"invoer": "80857NED", "dataset": "80857NED"}
+      ],
+      "leverancier": null,
+      "binnen_profiel": false,
+      "aantal": {"test": 1, "playground": 0}
+    },
+    {
+      "vorm": "DUO-dataset, CKAN-naam (kleine letters, met - of _)",
+      "plekken": ["data_recipes laad get_duo_data.dataset_id", "snippet duo.load(<id>, …)"],
+      "voorbeelden": [
+        {"invoer": "p01hoinges", "dataset": "p01hoinges"},
+        {"invoer": "p02ho1ejrs", "dataset": "p02ho1ejrs"},
+        {"invoer": "mbo-studenten-per-instelling", "dataset": "mbo-studenten-per-instelling"},
+        {"invoer": "mbo-studenten-per-sectorkamer-en-leerweg", "dataset": "mbo-studenten-per-sectorkamer-en-leerweg"},
+        {"invoer": "adressen_mbo", "dataset": "adressen_mbo"},
+        {"invoer": "mbo_opleidingsaanbod", "dataset": "mbo_opleidingsaanbod"}
+      ],
+      "leverancier": "DUO",
+      "binnen_profiel": true,
+      "aantal": {"test": 550, "playground": 840}
+    },
+    {
+      "vorm": "DUO-dataset met voorvoegsel of hoofdletters (bron_id normaliseert)",
+      "plekken": ["invoer van het model of een recept"],
+      "voorbeelden": [
+        {"invoer": "duo:p01hoinges", "dataset": "p01hoinges"},
+        {"invoer": "P01HOINGES", "dataset": "p01hoinges"}
+      ],
+      "leverancier": "DUO",
+      "binnen_profiel": true,
+      "aantal": {"test": 0, "playground": 0}
+    },
+    {
+      "vorm": "RIO-type",
+      "plekken": ["data_recipes laad get_rio_data.resource", "snippet fetch(<type>, …)"],
+      "voorbeelden": [
+        {"invoer": "aangeboden-opleidingen", "dataset": "aangeboden-opleidingen"},
+        {"invoer": "opleidingen", "dataset": "opleidingen"},
+        {"invoer": "opleidingsonderdelen", "dataset": "opleidingsonderdelen"},
+        {"invoer": "opleidingsfasen", "dataset": "opleidingsfasen"},
+        {"invoer": "rio/aangeboden-opleidingen", "dataset": "aangeboden-opleidingen"}
+      ],
+      "leverancier": "RIO",
+      "binnen_profiel": true,
+      "aantal": {"test": 9, "playground": 5}
+    },
+    {
+      "vorm": "RIO-type buiten het profiel van main (laadt nu niet; playground draait 2.5.2)",
+      "plekken": ["snippet fetch(<type>, …)"],
+      "voorbeelden": [
+        {"invoer": "onderwijslocaties", "dataset": "onderwijslocaties"},
+        {"invoer": "organisatorische-eenheden", "dataset": "organisatorische-eenheden"}
+      ],
+      "leverancier": null,
+      "binnen_profiel": false,
+      "aantal": {"test": 0, "playground": 4}
+    },
+    {
+      "vorm": "ROA-editie (geen leverancier in de catalogus: de bron volgt uit get_roa_benchmark)",
+      "plekken": ["snippet roa.load(<editie>, …)", "KeyMeta.dataset van roa:<regio>"],
+      "voorbeelden": [{"invoer": "ais2030", "dataset": "ais2030"}],
+      "leverancier": null,
+      "binnen_profiel": true,
+      "aantal": {"test": 0, "playground": 4}
+    },
+    {
+      "vorm": "UWV-dataset (alleen als KeyMeta.dataset; de snippet laadt uwv.load(\"latest\"))",
+      "plekken": ["KeyMeta.dataset van uwv:<provincie>"],
+      "voorbeelden": [{"invoer": "uwv-open-match-data", "dataset": "uwv-open-match-data"}],
+      "leverancier": "UWV",
+      "binnen_profiel": true,
+      "aantal": {"test": 0, "playground": 0}
+    }
+  ],
+  "duo_resources": [
+    {
+      "vorm": "index als getal",
+      "plekken": ["data_recipes laad get_duo_data.resource", "snippet duo.load(<id>, 4)"],
+      "voorbeelden": [{"dataset": "p01hoinges", "invoer": 4, "index": 4}, {"dataset": "p02ho1ejrs", "invoer": 0, "index": 0}],
+      "aantal": {"test": 480, "playground": 680}
+    },
+    {
+      "vorm": "index als tekst",
+      "plekken": ["snippet duo.load(<id>, \"4\")"],
+      "voorbeelden": [{"dataset": "p01hoinges", "invoer": "4", "index": 4}],
+      "aantal": {"test": 60, "playground": 130}
+    },
+    {
+      "vorm": "exacte bestandsnaam",
+      "plekken": ["snippet duo.load(<id>, \"<naam>\")"],
+      "voorbeelden": [
+        {"dataset": "p01hoinges", "invoer": "Ingeschrevenen hoger beroepsonderwijs inclusief opleidingsvorm in het domein hoger onderwijs", "index": 3},
+        {"dataset": "p01hoinges", "invoer": "Ingeschrevenen hoger beroepsonderwijs inclusief geslacht in het domein hoger onderwijs", "index": 0},
+        {"dataset": "mbo-studenten-per-instelling", "invoer": "Studenten per instelling plaats van de instelling sectorkamer leerweg opleiding niveau geslacht", "index": 2},
+        {"dataset": "mbo-studenten-per-instelling", "invoer": "Studenten per instelling plaats instelling leerweg woongemeente woonprovincie leeftijdscategorie", "index": 4},
+        {"dataset": "studentprognoses-mbo-per-instelling", "invoer": "mbo-studentenprognose_sectorkamer_instelling", "index": 15},
+        {"dataset": "studentprognoses-mbo-per-instelling", "invoer": "mbo-studentenprognose_instelling", "index": 3}
+      ],
+      "aantal": {"test": 7, "playground": 20}
+    },
+    {
+      "vorm": "resource-ID (UUID van DUO)",
+      "plekken": ["invoer van het model"],
+      "voorbeelden": [{"dataset": "p01hoinges", "invoer": "f9a16992-8f11-4579-809c-bcdbc93c9d2b", "index": 4}],
+      "aantal": {"test": 0, "playground": 0}
+    },
+    {
+      "vorm": "naamdeel dat op één bestand past",
+      "plekken": ["invoer van het model"],
+      "voorbeelden": [{"dataset": "p01hoinges", "invoer": "wetenschappelijk onderwijs inclusief opleidingsvorm", "index": 4}],
+      "aantal": {"test": 0, "playground": 0}
+    },
+    {
+      "vorm": "tekst die op geen bestand past (blijft zoals gegeven; de bron meldt de fout)",
+      "plekken": ["snippet duo.load(<id>, \"…\")"],
+      "voorbeelden": [{"dataset": "p01hoinges", "invoer": "50bcf693", "index": "50bcf693"}],
+      "aantal": {"test": 5, "playground": 3}
+    }
+  ],
+  "store_keys": [
+    {"vorm": "duo:<dataset>:<index>", "voorbeeld": "duo:p01hoinges:4", "bron": "duo", "aantal": {"test": 60, "playground": 100}},
+    {"vorm": "duo:<dataset>:<index>:<selectie>", "voorbeeld": "duo:p01hoinges:4:4542528b", "bron": "duo", "aantal": {"test": 100, "playground": 170}},
+    {"vorm": "duo:<dataset>:<index>:<selectie>:<selectie>", "voorbeeld": "duo:p01hoinges:4:4542528b:0a1b2c3d", "bron": "duo", "aantal": {"test": 40, "playground": 10}},
+    {"vorm": "duo:<dataset>:<index>:<selectie>:<maat> (get_maat)", "voorbeeld": "duo:p01hoinges:4:2acd4869:ingeschreven_personen_ho", "bron": "duo", "aantal": {"test": 3, "playground": 2}},
+    {"vorm": "cbs:<tabel>", "voorbeeld": "cbs:85423NED", "bron": "cbs", "aantal": {"test": 0, "playground": 1}},
+    {"vorm": "cbs:<tabel>:<filters> (canonieke digest of md5 van vóór #342)", "voorbeeld": "cbs:85423NED:1e45b6cf", "bron": "cbs", "aantal": {"test": 140, "playground": 150}},
+    {"vorm": "cbs:<tabel>:<filters>:<selectie>", "voorbeeld": "cbs:85423NED:1e45b6cf:4542528b", "bron": "cbs", "aantal": {"test": 120, "playground": 110}},
+    {"vorm": "cbs:<tabel>:<filters>:<selectie>:<selectie>", "voorbeeld": "cbs:85423NED:1e45b6cf:4542528b:0a1b2c3d", "bron": "cbs", "aantal": {"test": 5, "playground": 20}},
+    {"vorm": "cbs:<tabel>:<filters>:<maat> (get_maat)", "voorbeeld": "cbs:85423NED:1e45b6cf:deelnemers_ho_landelijk", "bron": "cbs", "aantal": {"test": 1, "playground": 0}},
+    {"vorm": "cbs:<tabel in kleine letters>, buiten het profiel", "voorbeeld": "cbs:70072ned", "bron": "cbs", "aantal": {"test": 3, "playground": 0}},
+    {"vorm": "rio:<type>:<filters>", "voorbeeld": "rio:aangeboden-opleidingen:type=AANGEBODENMBOOPLEIDING", "bron": "rio", "aantal": {"test": 1, "playground": 0}},
+    {"vorm": "rio:<type>:<filters>:<selectie>", "voorbeeld": "rio:aangeboden-opleidingen:type=AANGEBODENMBOOPLEIDING:4542528b", "bron": "rio", "aantal": {"test": 1, "playground": 0}},
+    {"vorm": "uwv:<provincie>", "voorbeeld": "uwv:flevoland", "bron": "uwv", "aantal": {"test": 3, "playground": 70}},
+    {"vorm": "roa:<regio>", "voorbeeld": "roa:nederland", "bron": "roa", "aantal": {"test": 1, "playground": 20}},
+    {"vorm": "roa:<regio>:<sector>", "voorbeeld": "roa:nederland:onderwijs", "bron": "roa", "aantal": {"test": 0, "playground": 40}},
+    {"vorm": "roa:<regio>:<selectie>", "voorbeeld": "roa:nederland:4542528b", "bron": "roa", "aantal": {"test": 0, "playground": 2}},
+    {"vorm": "analysis:<hash> (eigen berekening; geen bron, het voorvoegsel is geen bron)", "voorbeeld": "analysis:0123456789ab", "bron": "analysis", "aantal": {"test": 70, "playground": 170}},
+    {"vorm": "analysis:<hash>:<selectie>", "voorbeeld": "analysis:0123456789ab:4542528b", "bron": "analysis", "aantal": {"test": 30, "playground": 50}},
+    {"vorm": "analysis:<hash>:<selectie>:<selectie>", "voorbeeld": "analysis:0123456789ab:4542528b:0a1b2c3d", "bron": "analysis", "aantal": {"test": 0, "playground": 3}},
+    {"vorm": "analysis:<getal> (oude vorm)", "voorbeeld": "analysis:3", "bron": "analysis", "aantal": {"test": 0, "playground": 2}}
+  ],
+  "recepten": {
+    "toelichting": "Toolnaam en argumentnamen per recept in data_recipes ({laad: [tool, args]} of {afgeleid_van, tool, args, stap}); waarden alleen voor publieke ID's (zie dataset_ids).",
+    "laad": [
+      {"tool": "get_cbs_data", "argumenten": ["dataset_id", "filters"], "aantal": {"test": 140, "playground": 150}},
+      {"tool": "get_duo_data", "argumenten": ["dataset_id", "resource"], "aantal": {"test": 60, "playground": 100}},
+      {"tool": "get_rio_data", "argumenten": ["filters", "resource"], "aantal": {"test": 1, "playground": 0}},
+      {"tool": "get_uwv_vacatures", "argumenten": ["provincie"], "aantal": {"test": 3, "playground": 70}},
+      {"tool": "get_roa_benchmark", "argumenten": ["sector"], "aantal": {"test": 0, "playground": 40}},
+      {"tool": "get_roa_benchmark", "argumenten": [], "aantal": {"test": 0, "playground": 10}},
+      {"tool": "get_roa_benchmark", "argumenten": ["regio"], "aantal": {"test": 1, "playground": 7}},
+      {"tool": "get_roa_benchmark", "argumenten": ["regio", "sector"], "aantal": {"test": 0, "playground": 1}}
+    ],
+    "afgeleid": [
+      {"tool": "query_data", "argumenten": ["columns", "filters"], "aantal": {"test": 80, "playground": 110}},
+      {"tool": "query_data", "argumenten": ["filters"], "aantal": {"test": 50, "playground": 40}},
+      {"tool": "query_data", "argumenten": ["columns"], "aantal": {"test": 50, "playground": 20}},
+      {"tool": "query_data", "argumenten": ["aggregate", "filters", "group_by"], "aantal": {"test": 30, "playground": 60}},
+      {"tool": "query_data", "argumenten": ["aggregate", "group_by"], "aantal": {"test": 10, "playground": 7}},
+      {"tool": "query_data", "argumenten": ["columns", "filters", "max_rows"], "aantal": {"test": 8, "playground": 30}},
+      {"tool": "query_data", "argumenten": ["aggregate", "filters", "group_by", "max_rows"], "aantal": {"test": 8, "playground": 20}},
+      {"tool": "query_data", "argumenten": ["columns", "max_rows"], "aantal": {"test": 4, "playground": 6}},
+      {"tool": "query_data", "argumenten": ["aggregate", "group_by", "max_rows"], "aantal": {"test": 3, "playground": 6}},
+      {"tool": "query_data", "argumenten": ["filters", "max_rows"], "aantal": {"test": 1, "playground": 6}},
+      {"tool": "query_data", "argumenten": ["aggregate", "columns", "filters", "group_by", "max_rows"], "aantal": {"test": 0, "playground": 1}},
+      {"tool": "get_maat", "argumenten": ["instelling", "maat"], "aantal": {"test": 20, "playground": 50}},
+      {"tool": "get_maat", "argumenten": ["instelling", "maat", "schooljaren"], "aantal": {"test": 30, "playground": 10}},
+      {"tool": "get_maat", "argumenten": ["instelling", "maat", "vorm"], "aantal": {"test": 1, "playground": 0}},
+      {"tool": "get_maat", "argumenten": ["maat"], "aantal": {"test": 1, "playground": 0}}
+    ],
+    "eigen_berekening": {"stap": "eigen berekening (run_analysis)", "herlaadbaar": false, "aantal": {"test": 70, "playground": 170}},
+    "maten": {
+      "ingeschreven_personen_ho": {"test": 40, "playground": 30},
+      "eerstejaars_ho": {"test": 2, "playground": 30},
+      "inschrijvingen_ho": {"test": 4, "playground": 3},
+      "mbo_studenten_instelling": {"test": 3, "playground": 2},
+      "doorstroom_vmbo_mbo": {"test": 1, "playground": 0}
+    }
+  },
+  "herlaadvoorbeelden": {
+    "toelichting": "Recepten met publieke argumenten, op de bevroren bronnen van de gouden tests (tests/gouden.py) opnieuw uitgevoerd door tools.herlaad: dezelfde key, bron, dataset en hetzelfde bestand.",
+    "recepten": [
+      {
+        "key": "duo:p01hoinges:4",
+        "recept": {"laad": ["get_duo_data", {"dataset_id": "p01hoinges", "resource": 4}]},
+        "bron": "duo", "dataset": "p01hoinges", "resource": 4
+      },
+      {
+        "key": "duo:p01hoinges:4:4542528b",
+        "recept": {"afgeleid_van": "duo:p01hoinges:4", "tool": "query_data", "args": {"filters": {"INSTELLINGSCODE_ACTUEEL": "21PD"}, "columns": ["STUDIEJAAR"]}, "stap": "filters {\"INSTELLINGSCODE_ACTUEEL\": \"21PD\"}; kolommen [\"STUDIEJAAR\"]"},
+        "bron": "duo", "dataset": "p01hoinges", "resource": 4
+      },
+      {
+        "key": "cbs:85423NED:1e45b6cf",
+        "recept": {"laad": ["get_cbs_data", {"dataset_id": "85423NED", "filters": {"$filter": "trim(Geslacht) eq 'T001038' and trim(Onderwijssoort) eq 'A025294' and trim(Opleidingsfase) eq 'A045745' and trim(Opleidingsvorm) eq 'A028666' and (trim(Perioden) eq '2024SJ00' or trim(Perioden) eq '2025SJ00')", "$select": "TotaalIngeschrevenen_1"}}]},
+        "bron": "cbs", "dataset": "85423NED", "resource": null
+      },
+      {
+        "key": "cbs:85423NED:56b6ad1b",
+        "toelichting": "dezelfde lading onder de oude md5-key van vóór #342 (canoniek.legacy_cbs_key)",
+        "recept": {"laad": ["get_cbs_data", {"dataset_id": "85423NED", "filters": {"$filter": "trim(Geslacht) eq 'T001038' and trim(Onderwijssoort) eq 'A025294' and trim(Opleidingsfase) eq 'A045745' and trim(Opleidingsvorm) eq 'A028666' and (trim(Perioden) eq '2024SJ00' or trim(Perioden) eq '2025SJ00')", "$select": "TotaalIngeschrevenen_1"}}]},
+        "bron": "cbs", "dataset": "85423NED", "resource": null
+      },
+      {
+        "key": "rio:aangeboden-opleidingen:type=AANGEBODENMBOOPLEIDING",
+        "recept": {"laad": ["get_rio_data", {"resource": "aangeboden-opleidingen", "filters": {"type": "AANGEBODENMBOOPLEIDING"}}]},
+        "bron": "rio", "dataset": "aangeboden-opleidingen", "resource": null
+      },
+      {
+        "key": "uwv:flevoland",
+        "recept": {"laad": ["get_uwv_vacatures", {"provincie": "Flevoland"}]},
+        "bron": "uwv", "dataset": "uwv-open-match-data", "resource": null
+      },
+      {
+        "key": "roa:nederland",
+        "recept": {"laad": ["get_roa_benchmark", {}]},
+        "bron": "roa", "dataset": "ais2030", "resource": null
+      }
+    ],
+    "niet_herlaadbaar": [
+      {
+        "key": "analysis:0123456789ab",
+        "recept": {"afgeleid_van": "duo:p01hoinges:4", "stap": "eigen berekening (run_analysis)", "herlaadbaar": false},
+        "melding_bevat": "wordt niet automatisch opnieuw uitgevoerd"
+      }
+    ]
+  },
+  "snippets": {
+    "toelichting": "De regels in tools[].snippet van opgeslagen gesprekken: wat iemand later opnieuw draait. Oude snippets installeren hun eigen commit uit de oude pakketrepo's (#889); de shims van #910 zijn voor de overgang binnen deze repo.",
+    "imports": [
+      {"regel": "from riodata import duo", "module": "riodata", "naam": "duo", "aantal": {"test": 470, "playground": 730}},
+      {"regel": "from onderwijsdata import data", "module": "onderwijsdata", "naam": "data", "aantal": {"test": 470, "playground": 650}},
+      {"regel": "from riodata import fetch", "module": "riodata", "naam": "fetch", "aantal": {"test": 8, "playground": 9}},
+      {"regel": "from riodata import roa", "module": "riodata", "naam": "roa", "aantal": {"test": 0, "playground": 4}},
+      {"regel": "from riodata import uwv", "module": "riodata", "naam": "uwv", "aantal": {"test": 0, "playground": 3}}
+    ],
+    "aanroepen": [
+      {"aanroep": "duo.load(<dataset>, <bestand>)", "object": ["riodata", "duo", "load"], "aantal": {"test": 490, "playground": 740}},
+      {"aanroep": "data(<tabel>, **filters)", "object": ["onderwijsdata", "data"], "aantal": {"test": 470, "playground": 650}},
+      {"aanroep": "fetch(<type>, **filters)", "object": ["riodata", "fetch"], "aantal": {"test": 8, "playground": 9}},
+      {"aanroep": "roa.load(\"ais2030\", \"arbeidsmarkt\")", "object": ["riodata", "roa", "load"], "aantal": {"test": 0, "playground": 4}},
+      {"aanroep": "uwv.load(\"latest\", rec_type=\"Vacature\")", "object": ["riodata", "uwv", "load"], "aantal": {"test": 0, "playground": 3}}
+    ],
+    "installatieregels": [
+      {"vorm": "git+https://github.com/cedanl/rio-onderwijsdata.git@<sha>", "aantal": {"test": 280, "playground": 10}},
+      {"vorm": "git+https://github.com/cedanl/cbs-onderwijsdata.git@<sha>", "aantal": {"test": 250, "playground": 0}},
+      {"vorm": "riodata @ git+https://github.com/cedanl/onderwijsdata-chat@<sha>#subdirectory=packages/riodata", "aantal": {"test": 8, "playground": 0}},
+      {"vorm": "onderwijsdata @ git+https://github.com/cedanl/onderwijsdata-chat@<sha>#subdirectory=packages/onderwijsdata", "aantal": {"test": 6, "playground": 0}}
+    ],
+    "pakketversies": {"riodata 0.7.0": {"test": 300, "playground": 10}, "onderwijsdata 0.2.2": {"test": 250, "playground": 0}}
+  },
+  "niet_gevonden": {
+    "toelichting": "Gezocht in alle opgeslagen JSON en HTML; nergens aangetroffen. Ze hoeven na de overgang dus niet als alias te blijven werken voor opgeslagen gegevens.",
+    "modulepaden": "riodata.<module> of onderwijsdata.<module> als pad (alleen 'from riodata import duo'-regels, zie snippets.imports)",
+    "source_waarden": "\"source\": … of source=… (de waarde 'riodata' van search_catalog is intern en wordt niet opgeslagen)"
+  }
+}

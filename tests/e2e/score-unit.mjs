@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
+import { binnenLimiet, bronVan, limietWacht, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
 import { scoreResult } from './score.js'
 import { getallen, waardeInAntwoord, waardeInBron } from './antwoord.js'
 import { drempel, foutenVan, isKritiek, kritiekVerslag, nieuweStand, samenvatting, voegRunToe } from './kritiek.js'
@@ -37,6 +37,44 @@ test('een antwoord zonder message_end of met een afgebroken einde is geen geldig
   assert.deepEqual(poorten(antwoord([{ type: 'message_end', content: 'x' }])), {
     geldig_einde: true, tekst: true, geen_fout: true, geen_timeout: true,
   })
+})
+
+test('de bron per toolaanroep komt uit de input van tool_start, alleen bij een tool met een bron (#909)', () => {
+  const a = antwoord([
+    { type: 'tool_start', name: 'search_catalog', input: { query: 'eerstejaars hoger onderwijs' } },
+    { type: 'tool_start', name: 'get_duo_data', input: { dataset_id: 'p02ho1ejrs', resource: 4 } },
+    { type: 'tool_start', name: 'get_cbs_data', input: { dataset_id: '85423NED', filters: { Perioden: '2024SJ00' } } },
+    { type: 'tool_start', name: 'get_maat', input: { maat: 'eerstejaars_ho', instelling: 'Universiteit Utrecht' } },
+    { type: 'tool_start', name: 'query_data', input: { data_key: 'duo:p02ho1ejrs:4' } },
+    { type: 'tool_start', name: 'create_plot' },
+  ])
+  assert.deepEqual(a.toolCalls, ['search_catalog', 'get_duo_data', 'get_cbs_data', 'get_maat', 'query_data', 'create_plot'])
+  assert.deepEqual(a.bronnen, [
+    { tool: 'get_duo_data', dataset_id: 'p02ho1ejrs', resource: 4 },
+    { tool: 'get_cbs_data', dataset_id: '85423NED' },
+    { tool: 'get_maat', maat: 'eerstejaars_ho' },
+  ])
+  assert.equal(bronVan({ type: 'tool_start', name: 'get_duo_data', input: { dataset_id: '' } }), null)
+})
+
+test('de berichtlimiet: de runner wacht de genoemde tijd en vraagt opnieuw, alleen als er nog niets gebeurde (#909)', async () => {
+  const melding = 'Te veel verzoeken in korte tijd. Probeer het over 7 seconden opnieuw.'
+  assert.equal(limietWacht(melding), 7)
+  assert.equal(limietWacht('Te veel verzoeken naar de API. Wacht even en probeer opnieuw.'), null)
+  assert.equal(limietWacht(null), null)
+
+  const gewacht = []
+  const uitkomsten = [{ ...nieuwAntwoord(), error: melding }, { ...nieuwAntwoord(), content: 'Er zijn 29.941 studenten.' }]
+  const uit = await binnenLimiet(async () => uitkomsten.shift(), async (ms) => { gewacht.push(ms) })
+  assert.equal(uit.content, 'Er zijn 29.941 studenten.')
+  assert.deepEqual(gewacht, [8000])
+
+  // Liep de beurt al (een tool, tekst), dan is de weigering een fout van die beurt: niet opnieuw vragen.
+  const halverwege = { ...nieuwAntwoord(), toolCalls: ['search_catalog'], error: melding }
+  let keren = 0
+  const fout = await binnenLimiet(async () => { keren += 1; return halverwege }, async () => {})
+  assert.equal(fout, halverwege)
+  assert.equal(keren, 1)
 })
 
 test('ingetrokken tekst telt niet mee', () => {

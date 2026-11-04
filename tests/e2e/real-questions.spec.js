@@ -46,8 +46,9 @@ test.describe('Productie-vragen (evaluatie)', () => {
         const r = await losseVraag(token, ev.message, model)
         const scores = ev.expected.must_refuse ? { ...scoreRefusal(r), poorten: poorten(r) } : scoreResult(r, ev)
         allScores[short] = scores
-        // Op schijf, niet in het geheugen: na een mislukte test begint een nieuwe worker (#753).
-        legVast({ soort: 'vraag', model, label: ev.label, fouten: foutenVan(ev, scores) })
+        // Op schijf, niet in het geheugen: na een mislukte test begint een nieuwe worker (#753). Met de tools en de
+        // bron per aanroep, zodat een latere run de bronkeuze tegen de nulmeting kan leggen (#909).
+        legVast({ soort: 'vraag', model, label: ev.label, fouten: foutenVan(ev, scores), tools: r.toolCalls, bronnen: r.bronnen })
 
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)

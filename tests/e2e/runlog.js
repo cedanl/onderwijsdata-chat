@@ -18,10 +18,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
 const RUNS = resolve(RESULTATEN, 'runs.jsonl')
 
-/** Eén run: { soort: 'vraag', model, label, fouten } of { soort: 'rapport', scenario, model, fouten }. */
+/**
+ * Eén run: { soort: 'vraag', model, label, fouten, tools, bronnen } of { soort: 'rapport', scenario, model, fouten }.
+ * `tools` zijn de toolnamen in volgorde, `bronnen` per aanroep met een bron { tool, dataset_id?, resource?, maat? }; elke
+ * regel krijgt `op`, het tijdstip (#909).
+ */
 export function legVast(run) {
   mkdirSync(RESULTATEN, { recursive: true })
-  appendFileSync(RUNS, JSON.stringify(run) + '\n')
+  // Met het tijdstip: test volgt main, dus een deploy tijdens de run is zo aan de runs te koppelen (#909).
+  appendFileSync(RUNS, JSON.stringify({ ...run, op: new Date().toISOString() }) + '\n')
 }
 
 export function wisRuns() {
