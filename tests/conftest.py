@@ -6,7 +6,31 @@ import pandas as pd
 import pytest
 
 from agent import beurtbewijs, recepten
+from tests.netwerkblok import BLOK, melding
 from tools import cbs, cbs_preflight, profiel, store
+
+
+def pytest_configure(config):
+    """Uitgaand netwerk dicht voor de hele run, ook tijdens het verzamelen (#915); zie tests/netwerkblok.py."""
+    BLOK.installeer()
+
+
+def pytest_unconfigure(config):
+    BLOK.verwijder()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Vóór de fixtures van de test, ook die met scope module: alleen een test met marker `live` mag naar buiten."""
+    BLOK.begin(open=item.get_closest_marker("live") is not None)
+
+
+@pytest.fixture(autouse=True)
+def netwerk_dicht():
+    """Een test die naar buiten probeerde, faalt, ook als de code de weigering opving en terugviel (#915)."""
+    yield
+    if pogingen := BLOK.einde():
+        pytest.fail(melding(pogingen), pytrace=False)
 
 
 @pytest.fixture(autouse=True)
@@ -49,6 +73,22 @@ def bronretry_zonder_wachten(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def geen_registerdownload(monkeypatch):
+    """Unittests bouwen het instellingsregister niet uit live DUO op (#915): het staat leeg en vers klaar.
+
+    Zonder dit downloadde de eerste test die een instellingsnaam toetste het register, en welke test dat was, hing af
+    van de volgorde. `duo_fixtures` en de tests van het register zetten `_cache` op None en bouwen het dan zelf op.
+    """
+    from core import actualiteit
+    from data import instellingen
+
+    monkeypatch.setattr(instellingen, "_cache", [])
+    monkeypatch.setattr(instellingen, "_alias_lookup", None)
+    monkeypatch.setattr(instellingen, "_ADRES_CACHE", {})
+    monkeypatch.setattr(instellingen, "_opgehaald_op", actualiteit.nu())
+
+
+@pytest.fixture(autouse=True)
 def geen_adresdownload(monkeypatch):
     """Unittests downloaden geen DUO-adresbestanden voor de instellingsprovincie (#453); tests die hem nodig hebben patchen zelf."""
     monkeypatch.setattr("tools.instellingsprovincie.get_adres_lookup", lambda: {})
@@ -86,6 +126,36 @@ def duo_fixtures(monkeypatch):
     wis_caches()
     yield
     wis_caches()
+
+
+_PROVINCIES = (
+    "Drenthe", "Flevoland", "Friesland", "Gelderland", "Groningen", "Limburg", "Noord-Brabant", "Noord-Holland",
+    "Overijssel", "Utrecht", "Zeeland", "Zuid-Holland",
+)  # fmt: skip
+
+
+@pytest.fixture
+def arbeidsmarkt_fixtures(monkeypatch):
+    """UWV en ROA zonder netwerk (#915), voor de vormtests van dashboards en chat.
+
+    ROA is de bevroren snapshot van de gouden tests (`tests/fixtures/gouden/`). De gouden UWV-snapshot kent alleen
+    Flevoland; hier krijgt elke provincie tien vacatures per beroepencluster uit de sectorindeling, zodat elke
+    instelling clusters heeft. Die aantallen zijn niet echt: wie UWV-waarden toetst, gebruikt de fixture `gouden`.
+    """
+    from data import arbeidsmarkt
+    from scripts import gouden_testfixtures as g
+
+    clusters = sorted({c for lijst in arbeidsmarkt.SECTOR_CLUSTER_MAP.values() for c in lijst})
+    uwv = pd.DataFrame(
+        [
+            {"PEILDATUM": "16-05-2023", "PROVINCIE": p, "GEMEENTE": p, "BEROEPENCLUSTER": c, "AANTAL": 10}
+            for p in _PROVINCIES
+            for c in clusters
+        ]
+    )
+    roa = pd.read_csv(g.MAP / g.ROA, dtype={"versie": str})
+    monkeypatch.setattr(arbeidsmarkt, "_uwv", lambda: uwv.copy())
+    monkeypatch.setattr(arbeidsmarkt, "_roa", lambda: roa.copy())
 
 
 @pytest.fixture

@@ -1,11 +1,19 @@
 """Een afgekapte CBS-tabel is niet de hele bron: geen totaal en geen aggregatie (#5)."""
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from tools import store
 from tools.cbs import get_cbs_data
 from tools.query import query_data
+
+
+@pytest.fixture(autouse=True)
+def geen_cbs_metadata(monkeypatch):
+    """De DataProperties van CBS komen niet live (#915): deze tests gaan over de rijen, niet over de kolommen."""
+    monkeypatch.setattr("tools.cbs.definitions", MagicMock(return_value={}))
 
 
 def _rows(n):

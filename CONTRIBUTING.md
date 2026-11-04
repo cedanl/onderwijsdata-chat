@@ -63,9 +63,19 @@ bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py
 `uv run python scripts/duo_testfixtures.py` als een test een ander DUO-bestand of een andere instelling
 nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, dagelijks).
 
+**Uitgaand netwerk is dicht in de tests** (#915). `tests/conftest.py` zet het netwerkblok van `tests/netwerkblok.py`
+aan voor de hele run: een DNS-vraag of verbinding naar een host buiten deze machine faalt met `NetwerkGeblokkeerd`
+("uitgaand netwerk naar data.overheid.nl is dicht in tests: markeer de test als live of gebruik een fixture"). Vangt
+de code die fout op en valt ze terug, dan faalt de test daarna alsnog met dezelfde melding: zo'n pad hing in CI af van
+het netwerk van de runner. Localhost, 127.0.0.0/8, ::1 en Unix-sockets blijven open (TestClient, lokale testservers,
+een Postgres op dezelfde host); subprocessen zoals `helm` en `uv build` vallen erbuiten. Alleen een test met de
+marker `live` mag naar buiten. De pakketten hebben dezelfde module in `packages/<naam>/tests/` (ze importeren de chat
+niet); daar zet `RIODATA_LIVE=1` het blok open. `tests/test_netwerkblok.py` bewaakt het blok en dat de kopieën gelijk
+blijven.
+
 De rekenende tools (get_maat, get_mbo_indicatoren, get_accreditatie, get_inspectieoordeel(_vo), UWV/ROA, compute_kpi)
 hebben gouden tests met verwachte getallen in `tests/test_gouden_*.py`, op bevroren bronnen in
-`tests/fixtures/gouden/` (fixture `gouden`, die ook het netwerk dichtzet; #870). `bronnen.json` noemt per bestand de
+`tests/fixtures/gouden/` (fixture `gouden`; #870). `bronnen.json` noemt per bestand de
 bron en de ophaaldatum. Ververs ze met `uv run python scripts/gouden_testfixtures.py` en reken de verwachte waarden
 daarna opnieuw na met pandas op de nieuwe bestanden (de berekening staat bij elke test).
 

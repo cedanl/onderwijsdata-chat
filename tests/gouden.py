@@ -10,13 +10,13 @@ hun bron laden, zo laag mogelijk, zodat het rekenwerk van de tools zelf getest w
   kent;
 - UWV en ROA: `data.arbeidsmarkt._uwv` en `_roa`.
 
-`blokkeer_netwerk` laat elke socketverbinding falen: een tool die toch naar buiten gaat, breekt de test.
+Het netwerk is dicht via het netwerkblok van alle tests (`tests/netwerkblok.py`, #915): een tool die toch naar
+buiten gaat, breekt de test.
 """
 
 from __future__ import annotations
 
 import json
-import socket
 from functools import cache
 
 import httpx
@@ -30,24 +30,12 @@ _ODS = "application/vnd.oasis.opendocument.spreadsheet"
 
 
 class NetwerkInGoudenTest(AssertionError):
-    """Een gouden test probeerde een verbinding te maken: de fixture dekt de bron niet."""
+    """Een gouden test vroeg een URL waarvoor geen bevroren bestand is: de fixture dekt de bron niet."""
 
 
 @cache
 def bronnen() -> dict[str, dict]:
     return json.loads(g.BRONNEN.read_text())
-
-
-def blokkeer_netwerk(monkeypatch) -> None:
-    """Elke uitgaande verbinding (ook de DNS-vraag ervoor) faalt met NetwerkInGoudenTest."""
-
-    def weiger(*args, **kwargs):
-        raise NetwerkInGoudenTest(f"netwerk in een gouden test: {args[1:] or kwargs}")
-
-    monkeypatch.setattr(socket.socket, "connect", weiger)
-    monkeypatch.setattr(socket.socket, "connect_ex", weiger)
-    monkeypatch.setattr(socket, "create_connection", weiger)
-    monkeypatch.setattr(socket, "getaddrinfo", weiger)
 
 
 def _duo(monkeypatch) -> None:
@@ -145,8 +133,7 @@ def wis_caches() -> None:
 
 
 def zet_klaar(monkeypatch) -> None:
-    """Alle bevroren bronnen op hun plek en het netwerk dicht."""
-    blokkeer_netwerk(monkeypatch)
+    """Alle bevroren bronnen op hun plek; het netwerk is al dicht (`tests/netwerkblok.py`)."""
     _duo(monkeypatch)
     _cbs(monkeypatch)
     _mbo_indicatoren(monkeypatch)
