@@ -85,6 +85,25 @@ git push origin env/playground/X.Y.Z
 - `playground` geen vaste `X.Y.Z` pint (een range of rc-build);
 - de gepinde release-tag niet op de remote bestaat (de chart bestaat dan ook niet).
 
+## Bevriezing tijdens de overgang naar onderwijsbronnen
+
+Besluit 04-11 (#890): de bronpakketten `riodata` en `onderwijsdata` gaan op in één pakket `onderwijsbronnen`
+(#909–#914). Playground heeft bestaande gebruikers met opgeslagen gesprekken en recepten. Het gaat daarom pas over
+als de nieuwe bronlaag op test bewezen werkt.
+
+1. **Vóór #910:** na de dashboard-MR's (#899, #901, #902, #903, #905, #906) komt eerst een gewone release met
+   promotie. Die bevat alleen de monorepo-stappen #885 en #888 (pakketten onder de oude namen, sinds 03-11 op test).
+   Daarna begint #910.
+2. **Van de merge van #910 tot de go in #913: geen promotie naar playground.** Elke release vanaf die merge bevat
+   `onderwijsbronnen`, ook met de vlag `BRON_ID_CONTRACT` op `uit`. Playground blijft op de laatste release van
+   daarvóór. Taggen mag, promoveren niet.
+3. **Hotfix in die periode:** een release vanaf een zijbranch kan niet, want `version:promote` publiceert alleen een
+   chart voor een commit met een groene main-pipeline. Bij een dringende fix kiest de maintainer: eerder promoveren
+   met `BRON_ID_CONTRACT=uit` (alleen als #910 en #911 op test stabiel zijn), of #910 tijdelijk terugdraaien op
+   `main`. Leg die keuze vast in #913.
+4. **#914** is de eerste promotie met `onderwijsbronnen`, met `BRON_ID_CONTRACT=aan` in `manifests/playground`.
+   Daarna vervalt deze sectie; haal haar weg in de MR die de shims verwijdert.
+
 ## Jaarlijks
 
 Loop eens per jaar [Operatie](operatie.md), [Deployment](deployment.md), `manifests/README.md` en
@@ -104,3 +123,4 @@ staan. `bron:ping` wordt rood zodra het lopende studiejaar ontbreekt.
 - Niet pinnen op `2.0.0`: die tag heeft geen chart. `promotie.py promote` weigert hem.
 - Geen `v`-prefix op release-tags.
 - Niet taggen voordat `main` groen is.
+- Niet promoveren tijdens de bevriezing van de overgang naar onderwijsbronnen (zie hierboven), tenzij volgens stap 3.
