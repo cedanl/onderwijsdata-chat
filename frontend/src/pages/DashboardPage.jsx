@@ -5,6 +5,7 @@ import { instellingType } from '../instellingenMatch'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
+import { DashboardLadingen } from '../components/dashboards/shared/hooks'
 import ConfirmModal from '../components/ConfirmModal'
 import VerwijderFout from '../components/VerwijderFout'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
@@ -38,22 +39,27 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
     return BUILTINS.map(b => (b.id === BUILTIN_MIJN_INSTELLING.id ? { ...b, description: mijnInstellingBeschrijving(sector) } : b))
   }, [instelling, instellingen])
 
+  // De galerij en het dashboard delen hun ladingen (#933): de miniatuur van een kaart en het dashboard erachter
+  // vragen de server één keer. Beide takken beginnen met dezelfde provider, dus React houdt hem (en wat hij bewaart)
+  // vast bij openen en teruggaan.
   if (selected) {
     return (
-      <WorkbookViewer
-        workbook={selected}
-        instelling={instelling}
-        gekozenInstelling={settings?.instelling?.trim() || ''}
-        onBack={() => setSearchParams({}, { replace: true })}
-        onUpdate={() => {}}
-        backLabel="Dashboards"
-        feedbackEnabled={feedbackEnabled}
-      />
+      <DashboardLadingen>
+        <WorkbookViewer
+          workbook={selected}
+          instelling={instelling}
+          gekozenInstelling={settings?.instelling?.trim() || ''}
+          onBack={() => setSearchParams({}, { replace: true })}
+          onUpdate={() => {}}
+          backLabel="Dashboards"
+          feedbackEnabled={feedbackEnabled}
+        />
+      </DashboardLadingen>
     )
   }
 
   return (
-    <>
+    <DashboardLadingen>
       {pendingConfirm && (
         <ConfirmModal
           message={pendingConfirm.message}
@@ -70,6 +76,6 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
         onSelect={wb => setSearchParams({ id: wb.id }, { replace: true })}
         onDelete={handleDelete}
       />
-    </>
+    </DashboardLadingen>
   )
 }

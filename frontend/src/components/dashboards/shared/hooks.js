@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { createContext, createElement, useState, useEffect, useMemo, useCallback, useContext } from 'react'
 import { useDarkMode } from '../../../hooks/useDarkMode'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
@@ -40,33 +40,81 @@ export function dashboardFout(e, verlopen = false) {
   return { melding: 'De server kreeg het verzoek niet. Controleer je verbinding en probeer het opnieuw.', herstelbaar: true }
 }
 
+// Eén aanvraag met de tijdsgrens (#901). De belofte faalt nooit: ze geeft { data }, { fout } of { afgebroken } (een
+// andere instelling of een nieuwe poging nam het over; niets om te tonen).
+function nieuweLading(endpoint, instelling) {
+  const ac = new AbortController()
+  let verlopen = false
+  const grens = setTimeout(() => { verlopen = true; ac.abort() }, DASHBOARD_TIMEOUT_MS)
+  const belofte = fetchDashboardData(endpoint, instelling, { signal: ac.signal })
+    .then(data => ({ data }), e => (ac.signal.aborted && !verlopen ? { afgebroken: true } : { fout: dashboardFout(e, verlopen) }))
+    .finally(() => clearTimeout(grens))
+  return { belofte, afbreken: () => ac.abort() }
+}
+
+// Op de dashboardpagina delen de miniaturen in de galerij en het dashboard erachter één lading per endpoint en
+// instelling (#933): wie een dashboard opent nadat zijn miniatuur laadde, of terwijl die nog laadt, vraagt de server
+// niets nieuws. Alleen een geslaagde lading blijft staan; na een fout vraagt een nieuwe poging het opnieuw (#901). De
+// ladingen leven zo lang als de pagina, dus wie later terugkomt krijgt verse cijfers. Zonder deze provider laadt elk
+// dashboard zelf, zoals voorheen.
+const Ladingen = createContext(null)
+
+export function DashboardLadingen({ children }) {
+  const [ladingen] = useState(() => new Map())
+  return createElement(Ladingen.Provider, { value: ladingen }, children)
+}
+
+const sleutel = (endpoint, instelling) => `${endpoint}?${instelling}`
+
+// Een gedeelde lading loopt door als één gebruiker weggaat: een ander wacht er misschien op.
+function gedeeldeLading(ladingen, endpoint, instelling) {
+  const k = sleutel(endpoint, instelling)
+  let lading = ladingen.get(k)
+  if (!lading) {
+    lading = { ...nieuweLading(endpoint, instelling), afbreken: () => {} }
+    ladingen.set(k, lading)
+    lading.belofte.then(({ data }) => {
+      if (data !== undefined) lading.data = data
+      else if (ladingen.get(k) === lading) ladingen.delete(k)
+    })
+  }
+  return lading
+}
+
 function useDashboardFetch(endpoint, instelling) {
-  const [data, setData] = useState(null)
+  const ladingen = useContext(Ladingen)
+  // Een lading die er al is, staat er meteen: geen laadscherm tussen de miniatuur en het dashboard.
+  const [data, setData] = useState(() => (instelling && ladingen?.get(sleutel(endpoint, instelling))?.data) || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [poging, setPoging] = useState(0)
 
   useEffect(() => {
     if (!instelling) return
-    const ac = new AbortController()
-    let verlopen = false
-    const grens = setTimeout(() => { verlopen = true; ac.abort() }, DASHBOARD_TIMEOUT_MS)
+    const lading = ladingen ? gedeeldeLading(ladingen, endpoint, instelling) : nieuweLading(endpoint, instelling)
+    setError(null)
+    if (lading.data !== undefined) {
+      setData(lading.data)
+      setLoading(false)
+      return
+    }
+    let weg = false
     setLoading(true)
     setData(null)
-    setError(null)
-    fetchDashboardData(endpoint, instelling, { signal: ac.signal })
-      .then(d => { if (!ac.signal.aborted) { setData(d); setLoading(false) } })
-      .catch(e => {
-        if (ac.signal.aborted && !verlopen) return // een andere instelling of een nieuwe poging nam het over
-        setError(dashboardFout(e, verlopen))
-        setLoading(false)
-      })
-      .finally(() => clearTimeout(grens))
-    return () => { clearTimeout(grens); ac.abort() }
-  }, [endpoint, instelling, poging])
+    lading.belofte.then(({ data: d, fout, afgebroken }) => {
+      if (weg || afgebroken) return
+      if (fout) setError(fout)
+      else setData(d)
+      setLoading(false)
+    })
+    return () => { weg = true; lading.afbreken() }
+  }, [ladingen, endpoint, instelling, poging])
 
-  // Een nieuwe poging: dezelfde aanvraag opnieuw. De server cachet geen mislukte lading (#901).
-  const opnieuw = useCallback(() => setPoging(p => p + 1), [])
+  // Een nieuwe poging: dezelfde aanvraag opnieuw, ook als de vorige slaagde maar een deel niet kon laden (#901).
+  const opnieuw = useCallback(() => {
+    if (instelling) ladingen?.delete(sleutel(endpoint, instelling))
+    setPoging(p => p + 1)
+  }, [ladingen, endpoint, instelling])
 
   return { data, loading, error, opnieuw }
 }
