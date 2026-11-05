@@ -632,25 +632,47 @@ def _load_mbo_gediplomeerden() -> pd.DataFrame:
     return _duo_load("gediplomeerde-mbo-studenten", 0)
 
 
-# De resources van instromende-mbo-studenten met JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N) + AANTAL; 0 is de
-# momentopname per hoofdgroep. Vast, net als de fixtures (scripts/duo_testfixtures.py): ze opvragen kost een live
-# CKAN-aanroep per lading.
-_INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7)
+# De resources van instromende-mbo-studenten met JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N) + AANTAL: per jaar het
+# bestand "met soorten instroom" (2021 tot en met 2025). Het andere bestand van elk jaar (0, 2, …) is per hoofdgroep,
+# zonder JAAR. Vast, net als de fixtures (scripts/duo_testfixtures.py): ze opvragen kost een live CKAN-aanroep per
+# lading, en de pytest-job draait zonder netwerk. Publiceert DUO een jaar, dan wordt de ping duo-instroom-mbo van
+# scripts/bronping.py rood (instromende_mbo_afwijkingen) tot het jaar hier en in de fixtures staat (#924).
+_INSTROMENDE_MBO = "instromende-mbo-studenten"
+_INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7, 9)
+_INSTROMENDE_MBO_SOORT = "met-soorten-instroom"  # in de resourcenaam bij CKAN
+
+
+def instromende_mbo_afwijkingen() -> list[str]:
+    """Waar de CKAN-lijst van instromende-mbo-studenten afwijkt van _INSTROMENDE_MBO_HISTORISCH (live, #924).
+
+    Een bestand met soorten instroom dat de dashboards niet laden (DUO publiceerde een jaar), of een index in de lijst
+    die geen zo'n bestand meer is (DUO verschoof de volgorde). Leeg als ze overeenkomen.
+    """
+    namen = [r.get("naam", "") for r in duo.resources(_INSTROMENDE_MBO)]
+    soorten = {i for i, naam in enumerate(namen) if _INSTROMENDE_MBO_SOORT in naam}
+    nieuw = [
+        f"bestand {i} ({namen[i]}) staat niet in _INSTROMENDE_MBO_HISTORISCH (data/dashboard.py)"
+        for i in sorted(soorten - set(_INSTROMENDE_MBO_HISTORISCH))
+    ]
+    weg = [
+        f"bestand {i} uit _INSTROMENDE_MBO_HISTORISCH is bij CKAN geen bestand met soorten instroom"
+        for i in _INSTROMENDE_MBO_HISTORISCH
+        if i not in soorten
+    ]
+    return nieuw + weg
 
 
 @actualiteit.Lading
 def _load_instromende_mbo_historisch() -> pd.DataFrame:
     """Alle jaren samen, of een fout: een ontbrekende resource gaf eerder stil minder jaren, en dat bleef in de
     cache tot de pod herstartte (#901)."""
-    return pd.concat(
-        [_duo_load("instromende-mbo-studenten", i) for i in _INSTROMENDE_MBO_HISTORISCH], ignore_index=True
-    )
+    return pd.concat([_duo_load(_INSTROMENDE_MBO, i) for i in _INSTROMENDE_MBO_HISTORISCH], ignore_index=True)
 
 
 @actualiteit.Lading
 def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     """Partition 0: INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO (latest year snapshot)."""
-    return _duo_load("instromende-mbo-studenten", 0)
+    return _duo_load(_INSTROMENDE_MBO, 0)
 
 
 def _mbo_leerwegen(rij: pd.Series) -> dict[str, int]:
