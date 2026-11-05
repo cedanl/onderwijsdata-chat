@@ -89,14 +89,14 @@ def test_een_onbekende_stand_telt_als_uit(stand, waarde, caplog, monkeypatch):
     assert caplog.text.count("BRON_ID_CONTRACT onbekend") == 1
 
 
-def test_de_standaard_in_de_code_is_uit_en_test_zet_schaduw():
+def test_de_standaard_in_de_code_is_uit_en_test_en_playground_zetten_aan():
     from pathlib import Path
 
     import yaml
 
     assert 'os.getenv("BRON_ID_CONTRACT", "uit")' in Path(config.__file__).read_text(encoding="utf-8")
     root = Path(__file__).resolve().parent.parent
-    for omgeving, verwacht in (("test", "schaduw"), ("playground", None), ("production", None)):
+    for omgeving, verwacht in (("test", "aan"), ("playground", "aan"), ("production", None)):
         waarden = yaml.safe_load((root / "manifests" / omgeving / "values.yaml").read_text(encoding="utf-8"))
         env = {e["name"]: e.get("value") for e in waarden.get("env", [])}
         assert env.get("BRON_ID_CONTRACT") == verwacht, omgeving
