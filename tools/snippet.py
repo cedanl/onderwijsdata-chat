@@ -32,7 +32,7 @@ from . import (
     store,
 )
 from .canoniek import parse_filter_key
-from .duo import is_prognose
+from .duo import cijferresource, is_prognose
 from .herlaad import Receptbron
 from .pakketversies import versiekop
 from .periode import STUDIEJAAR_LABEL
@@ -80,7 +80,8 @@ def _duo_laadregels(args: dict) -> list[str]:
         "import pandas as pd",
         "from riodata import duo",
         "",
-        f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})",
+        # De resource zoals de app hem laadde: "4" is index 4, niet een naamdeel (#944).
+        f"df = duo.load({_lit(args['dataset_id'])}, {_lit(cijferresource(args.get('resource', 0)))})",
         *_duo_sentinelregels(),
         # De app voegt dit label toe (#115); analysecode mag het gebruiken.
         'if "STUDIEJAAR" in df.columns:',

@@ -900,3 +900,32 @@ def test_create_plot_snippet_zet_de_y_as_op_nul_zoals_de_app():
     assert standaard is not None and vrij is not None
     assert 'fig.update_yaxes(rangemode="tozero")' in standaard
     assert "rangemode" not in vrij
+
+
+@pytest.mark.parametrize("resource", ["4", " 4 ", 4])
+def test_duo_snippet_laadt_de_index_die_de_app_laadde(resource):
+    # De app zet "4" om naar index 4 (tools.duo._resource_index); riodata leest een tekst nooit
+    # als index en gaf ResourceNietGevonden voor duo.load("p04hogdipl", "4") (#944).
+    snippet = generate("get_duo_data", {"dataset_id": "p04hogdipl", "resource": resource})
+    assert snippet is not None
+    assert 'duo.load("p04hogdipl", 4)' in snippet
+
+
+def test_duo_snippet_uit_data_key_met_cijferresource():
+    snippet = generate("query_data", {"data_key": "duo:p04hogdipl:4"})
+    assert snippet is not None
+    assert 'duo.load("p04hogdipl", 4)' in snippet
+
+
+def test_duo_snippet_houdt_een_naam_als_naam():
+    # Een naam of naamdeel lossen app en riodata op dezelfde manier op (ID, exacte naam, uniek naamdeel).
+    snippet = generate("get_duo_data", {"dataset_id": "p04hogdipl", "resource": "opleidingsvorm in het domein"})
+    assert snippet is not None
+    assert 'duo.load("p04hogdipl", "opleidingsvorm in het domein")' in snippet
+
+
+def test_cijferresource_en_app_kiezen_hetzelfde():
+    from tools.duo import _resource_index, cijferresource
+
+    for resource in ("4", " 4", 4, "0"):
+        assert cijferresource(resource) == _resource_index("p04hogdipl", resource)
