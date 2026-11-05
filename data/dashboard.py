@@ -655,15 +655,28 @@ def _load_mbo_gediplomeerden() -> pd.DataFrame:
 _INSTROMENDE_MBO = "instromende-mbo-studenten"
 _INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7, 9)
 _INSTROMENDE_MBO_SOORT = "met-soorten-instroom"  # in de resourcenaam bij CKAN
+# Het bestand per hoofdgroep van het laatste jaar (TOTAAL MBO per HOOFDGROEP NAAM), met dat jaar. Het bestand heeft geen
+# JAAR-kolom: het jaar staat alleen vooraan in de resourcenaam ("2025 nieuw-instromende-…-hoofdgroep-…"). Vast om
+# dezelfde reden als de lijst hierboven, en dezelfde ping wordt rood zodra CKAN een nieuwer hoofdgroep-bestand heeft.
+# Tot #934 laadden de dashboards hier bestand 0, dat van 2021, als "laatste jaar".
+_INSTROMENDE_MBO_HOOFDGROEP = 8
+_INSTROMENDE_MBO_HOOFDGROEP_JAAR = 2025
+_INSTROMENDE_MBO_HOOFDGROEP_SOORT = "-hoofdgroep-"  # in de resourcenaam bij CKAN
 
 
 def instromende_mbo_afwijkingen() -> list[str]:
-    """Waar de CKAN-lijst van instromende-mbo-studenten afwijkt van _INSTROMENDE_MBO_HISTORISCH (live, #924).
+    """Waar de CKAN-lijst van instromende-mbo-studenten afwijkt van de vaste bestanden van de dashboards (live).
 
-    Een bestand met soorten instroom dat de dashboards niet laden (DUO publiceerde een jaar), of een index in de lijst
-    die geen zo'n bestand meer is (DUO verschoof de volgorde). Leeg als ze overeenkomen.
+    Een bestand met soorten instroom dat de dashboards niet laden (DUO publiceerde een jaar), of een index in
+    _INSTROMENDE_MBO_HISTORISCH die geen zo'n bestand meer is (DUO verschoof de volgorde) (#924). En een nieuwste
+    hoofdgroep-bestand dat niet _INSTROMENDE_MBO_HOOFDGROEP van _INSTROMENDE_MBO_HOOFDGROEP_JAAR is (#934). Leeg als
+    ze overeenkomen.
     """
     namen = [r.get("naam", "") for r in duo.resources(_INSTROMENDE_MBO)]
+    return _soorten_afwijkingen(namen) + _hoofdgroep_afwijkingen(namen)
+
+
+def _soorten_afwijkingen(namen: list[str]) -> list[str]:
     soorten = {i for i, naam in enumerate(namen) if _INSTROMENDE_MBO_SOORT in naam}
     nieuw = [
         f"bestand {i} ({namen[i]}) staat niet in _INSTROMENDE_MBO_HISTORISCH (data/dashboard.py)"
@@ -677,6 +690,21 @@ def instromende_mbo_afwijkingen() -> list[str]:
     return nieuw + weg
 
 
+def _hoofdgroep_afwijkingen(namen: list[str]) -> list[str]:
+    """Het nieuwste hoofdgroep-bestand bij CKAN, naar het jaar vooraan in de naam, tegen het bestand dat we laden."""
+    jaren = {i: int(naam[:4]) for i, naam in enumerate(namen) if _INSTROMENDE_MBO_HOOFDGROEP_SOORT in naam}
+    vast = (_INSTROMENDE_MBO_HOOFDGROEP, _INSTROMENDE_MBO_HOOFDGROEP_JAAR)
+    if not jaren:
+        return ["CKAN heeft geen hoofdgroep-bestand meer (_INSTROMENDE_MBO_HOOFDGROEP, data/dashboard.py)"]
+    nieuwste = max(jaren, key=lambda i: (jaren[i], i))
+    if (nieuwste, jaren[nieuwste]) == vast:
+        return []
+    return [
+        f"het nieuwste hoofdgroep-bestand bij CKAN is bestand {nieuwste} ({jaren[nieuwste]}), niet bestand {vast[0]} "
+        f"({vast[1]}) uit _INSTROMENDE_MBO_HOOFDGROEP (data/dashboard.py)"
+    ]
+
+
 @actualiteit.Lading
 def _load_instromende_mbo_historisch() -> pd.DataFrame:
     """Alle jaren samen, of een fout: een ontbrekende resource gaf eerder stil minder jaren, en dat bleef in de
@@ -685,9 +713,9 @@ def _load_instromende_mbo_historisch() -> pd.DataFrame:
 
 
 @actualiteit.Lading
-def _load_instromende_mbo_snapshot() -> pd.DataFrame:
-    """Partition 0: INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO (latest year snapshot)."""
-    return _duo_load(_INSTROMENDE_MBO, 0)
+def _load_instromende_mbo_hoofdgroep() -> pd.DataFrame:
+    """INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO in _INSTROMENDE_MBO_HOOFDGROEP_JAAR (#934)."""
+    return _duo_load(_INSTROMENDE_MBO, _INSTROMENDE_MBO_HOOFDGROEP)
 
 
 def _mbo_leerwegen(rij: pd.Series) -> dict[str, int]:
@@ -702,14 +730,15 @@ def _mbo_sectoren(rij: pd.Series) -> dict[str, int]:
 
 
 def _mbo_ingeschrevenen_per_hoofdgroep(instelling: str) -> tuple[dict[str, int], dict[str, int]]:
-    """({hoofdgroep: ingeschrevenen}, {hoofdgroep: lege cellen}) in het laatste jaar van instromende-mbo-studenten.
+    """({hoofdgroep: ingeschrevenen}, {hoofdgroep: lege cellen}) in _INSTROMENDE_MBO_HOOFDGROEP_JAAR, het laatste jaar
+    van instromende-mbo-studenten.
 
     TOTAAL MBO telt wie in het mbo ingeschreven staat, nieuw of niet: geen eerstejaars en geen gediplomeerden
     (domeinregel mbo-instroom-totaal-mbo, #899). Het is een ander DUO-bestand dan mbo-studenten-per-instelling: de
     som per hoofdgroep wijkt af van het totaal ingeschrevenen daaruit.
     """
     try:
-        df = _load_instromende_mbo_snapshot()
+        df = _load_instromende_mbo_hoofdgroep()
         rows = df[df["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
         if rows.empty:
             return {}, {}
@@ -1011,6 +1040,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     per_hoofdgroep, leeg = _mbo_ingeschrevenen_per_hoofdgroep(instelling)
     if per_hoofdgroep:
         result["ingeschrevenen_per_hoofdgroep"] = per_hoofdgroep
+        result["ingeschrevenen_per_hoofdgroep_jaar"] = _INSTROMENDE_MBO_HOOFDGROEP_JAAR  # niet in het bestand (#934)
         _met_onderdrukt(result, "ingeschrevenen_per_hoofdgroep", leeg)
 
     df_dipl_mbo, (dipl, leeg_dipl) = _mbo_load_gediplomeerden(inst_col, instelling)

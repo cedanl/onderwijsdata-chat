@@ -72,11 +72,13 @@ BESTANDEN: dict[tuple[str, int], tuple[str, set[str]] | None] = {
     ("p04hogdipl", 1): ("INSTELLINGSCODE_ACTUEEL", ALLE),
     ("mbo-studenten-per-instelling", 0): ("INSTELLINGSCODE", ALLE),
     ("gediplomeerde-mbo-studenten", 0): ("INSTELLINGSCODE", MBO_DASHBOARD),
-    ("instromende-mbo-studenten", 0): ("INSTELLINGSCODE", MBO_DASHBOARD),
+    # 1, 3, …, 9: de bestanden "met soorten instroom" (_INSTROMENDE_MBO_HISTORISCH); 8: het hoofdgroep-bestand van het
+    # laatste jaar (_INSTROMENDE_MBO_HOOFDGROEP, #934).
     ("instromende-mbo-studenten", 1): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 3): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 5): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 7): ("INSTELLINGSCODE", MBO_DASHBOARD),
+    ("instromende-mbo-studenten", 8): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 9): ("INSTELLINGSCODE", MBO_DASHBOARD),
     # Het opleidingsaanbod per onderwijslocatie (#744): alleen de locaties in Doetinchem en Lochem, de twee plaatsen van
     # Graafschap College (24ZZ, Doetinchem) en Zone.college (31JC, Lochem, met 22 opleidingen in Doetinchem).

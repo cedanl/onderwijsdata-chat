@@ -138,8 +138,9 @@ def test_een_nieuw_jaar_bij_ckan_is_een_afwijking():
     with patch.object(dashboard.duo, "resources", return_value=_ckan(2021, 2022, 2023, 2024, 2025, 2026)):
         afwijkingen = dashboard.instromende_mbo_afwijkingen()
 
-    assert len(afwijkingen) == 1
-    assert "11" in afwijkingen[0] and "2026" in afwijkingen[0]
+    soorten, hoofdgroep = afwijkingen
+    assert "11" in soorten and "2026" in soorten
+    assert "bestand 10" in hoofdgroep and "2026" in hoofdgroep  # #934: ook het hoofdgroep-bestand van dat jaar
 
 
 def test_een_verschoven_volgorde_bij_ckan_is_een_afwijking():
@@ -147,7 +148,11 @@ def test_een_verschoven_volgorde_bij_ckan_is_een_afwijking():
     with patch.object(dashboard.duo, "resources", return_value=verschoven):
         afwijkingen = dashboard.instromende_mbo_afwijkingen()
 
-    assert afwijkingen == ["bestand 9 uit _INSTROMENDE_MBO_HISTORISCH is bij CKAN geen bestand met soorten instroom"]
+    assert afwijkingen == [
+        "bestand 9 uit _INSTROMENDE_MBO_HISTORISCH is bij CKAN geen bestand met soorten instroom",
+        "het nieuwste hoofdgroep-bestand bij CKAN is bestand 6 (2025), niet bestand 8 (2025) uit "
+        "_INSTROMENDE_MBO_HOOFDGROEP (data/dashboard.py)",
+    ]
 
 
 def test_de_bronping_meldt_een_afwijking_in_de_instroombestanden():
@@ -166,8 +171,52 @@ def test_de_bronping_meldt_een_afwijking_in_de_instroombestanden():
 def test_de_fixtures_volgen_de_vaste_lijst():
     from scripts.duo_testfixtures import BESTANDEN
 
-    vast = {i for (dataset, i) in BESTANDEN if dataset == "instromende-mbo-studenten"} - {0}
-    assert vast == set(dashboard._INSTROMENDE_MBO_HISTORISCH)
+    vast = {i for (dataset, i) in BESTANDEN if dataset == "instromende-mbo-studenten"}
+    assert vast == {*dashboard._INSTROMENDE_MBO_HISTORISCH, dashboard._INSTROMENDE_MBO_HOOFDGROEP}
+
+
+# ─── #934: de ingeschrevenen per hoofdgroep komen uit het hoofdgroep-bestand van het laatste jaar ────────────────────
+
+
+def test_alleen_een_nieuw_hoofdgroep_bestand_bij_ckan_is_ook_een_afwijking():
+    # DUO zet de twee bestanden van een jaar niet per se tegelijk online.
+    eerst_hoofdgroep = [*_ckan(2021, 2022, 2023, 2024, 2025), *_ckan(2026)[:1]]
+    with patch.object(dashboard.duo, "resources", return_value=eerst_hoofdgroep):
+        afwijkingen = dashboard.instromende_mbo_afwijkingen()
+
+    assert afwijkingen == [
+        "het nieuwste hoofdgroep-bestand bij CKAN is bestand 10 (2026), niet bestand 8 (2025) uit "
+        "_INSTROMENDE_MBO_HOOFDGROEP (data/dashboard.py)"
+    ]
+
+
+def test_geen_hoofdgroep_bestand_bij_ckan_is_een_afwijking():
+    alleen_soorten = [r for r in _ckan(2021, 2022, 2023, 2024, 2025) if "soorten" in r["naam"]]
+    with patch.object(dashboard.duo, "resources", return_value=alleen_soorten):
+        afwijkingen = dashboard.instromende_mbo_afwijkingen()
+
+    assert any("geen hoofdgroep-bestand" in a for a in afwijkingen)
+
+
+@pytest.mark.usefixtures("duo_fixtures")
+def test_de_hoofdgroepen_zijn_van_hetzelfde_jaar_als_de_laatste_ingeschrevenen_en_eerstejaars():
+    """Het hoofdgroep-bestand heeft geen JAAR-kolom: het jaar in het payload moet het laatste van de mbo-reeksen zijn.
+
+    Laadt het dashboard een ouder hoofdgroep-bestand (tot #934 dat van 2021, onder "laatste jaar"), dan faalt dit.
+    """
+    result = dashboard.load_dashboard_regio(_CURIO)
+
+    jaar = result["ingeschrevenen_per_hoofdgroep_jaar"]
+    assert jaar == max(result["ingeschrevenen"]) == max(result["eerstejaars"]) == 2025
+    assert jaar == int(dashboard._load_instromende_mbo_historisch()["JAAR"].max())
+
+    # 8: het hoofdgroep-bestand van 2025, het nieuwste bij CKAN op 05-11-2026. Beide codes van Curio heten er "Curio".
+    hoofdgroep = _duo("instromende-mbo-studenten", 8)
+    rijen = hoofdgroep[hoofdgroep["INSTELLINGSNAAM"] == _CURIO]
+    som = rijen.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum()
+    assert result["ingeschrevenen_per_hoofdgroep"] == {
+        k: int(v) for k, v in som.sort_values(ascending=False).items() if v > 0
+    }
 
 
 # ─── #925: een peer zonder gegevens telt niet mee ────────────────────────────────────────────────────────────────────
