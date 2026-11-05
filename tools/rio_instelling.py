@@ -21,7 +21,7 @@ from datetime import date
 from urllib.parse import urlparse
 
 import httpx
-from riodata import fetch, get, opvolgers, related
+from riodata import Stap, fetch, get, opvolgers, related
 
 from . import bronretry, fouten, fusies, scopeprofiel
 from .catalog import catalogus_titel
@@ -37,9 +37,8 @@ _VESTIGING = "ERKENDE_VESTIGING"
 _PARALLEL = 8
 _HIERARCHISCH = "HIERARCHISCH"
 # mbo (WEB) en ho (WHW) maken een bestuur tot een bestuur binnen het profiel (#355);
-# po/vo/so-instellingen eronder tellen niet mee.
+# po/vo/so-instellingen eronder tellen niet mee (`scopeprofiel.wet_buiten_scope`).
 _WETTEN_IN_SCOPE = frozenset({"WEB", "WHW"})
-_WETTEN_BUITEN_SCOPE = ("WPO", "WVO", "WEC")
 _MAX_INSTELLINGEN_OMHOOG = 10
 # Een BRIN-code van een instelling: twee cijfers en twee letters (25LG); dan zoekt de code niet op naam (#728).
 _BRIN = re.compile(r"\d{2}[A-Z]{2}")
@@ -222,7 +221,7 @@ def _overzicht(bestuur: dict, peildatum: str) -> dict:
                 "Geef er geen aantallen voor en zeg niet dat de instelling niet bestaat."
             ),
         }
-    binnen = [i for i in instellingen if not str(i["wet"] or "").startswith(_WETTEN_BUITEN_SCOPE)]
+    binnen = [i for i in instellingen if not scopeprofiel.wet_buiten_scope(i["wet"])]
     weggelaten = sorted(i["code"] for i in instellingen if i not in binnen)
     vestigingen = sum(i["vestigingen"] for i in binnen)
     tellingen = [onder, *(t for i, t in paren if i in binnen)]
@@ -249,6 +248,11 @@ def _overzicht(bestuur: dict, peildatum: str) -> dict:
     return uit
 
 
+def _stap(stap: Stap) -> dict:
+    """Een overgang zoals het model hem ziet; de wet van de opvolger (#937) is voor de fusieregel, niet voor hier."""
+    return {k: v for k, v in asdict(stap).items() if k != "wet"}
+
+
 def _opgegaan(opgeheven: list[dict], peildatum: str) -> list[dict]:
     """Per opgeheven instelling met een overgang: waarin ze opging, als stappen en als vaste zin (#728)."""
     uit = []
@@ -260,7 +264,7 @@ def _opgegaan(opgeheven: list[dict], peildatum: str) -> list[dict]:
                 {
                     "code": code,
                     "naam": naam,
-                    "opgegaan_in": [asdict(s) for s in stappen],
+                    "opgegaan_in": [_stap(s) for s in stappen],
                     "zin": fusies.opgegaan(code, naam, stappen),
                 }
             )

@@ -29,14 +29,18 @@ def _ping(id: str = "cbs-test", bron: str = "cbs", uitkomst: str | dict = "", be
 
 
 def test_de_fusieping_bewaakt_de_zes_instellingen_met_een_fusie_in_de_duo_reeks():
-    """#728: verdwijnt de overgang van een van de zes uit RIO, dan valt de vaste regel stil weg; de ping ziet het."""
+    """#728: verdwijnt de overgang van een van de vijf uit RIO, dan valt de vaste regel stil weg; de ping ziet het.
+    #937: Landstede houdt geen regel met haar vmbo-voorganger, ook niet als RIO de wet anders gaat geven."""
     ping = next(p for p in bronping.PINGS if p.id == "rio-fusies")
     assert ping.bron == "rio"
-    assert set(bronping.FUSIES_IN_REEKS) == {"25EF", "04FO", "08PG", "25PW", "25PT", "01AA"}
+    assert set(bronping.FUSIES_IN_REEKS) == {"25EF", "04FO", "08PG", "25PW", "25PT"}
+    assert bronping.VO_VOORGANGERS == {"01AA": "02EX"}
 
-    alle = {code: [f"Fusie bij {code}: ..."] for code in bronping.FUSIES_IN_REEKS}
+    alle = {code: [f"Fusie bij {code}: ..."] for code in bronping.FUSIES_IN_REEKS} | {"01AA": []}
     assert ping.bewijs(alle) is None
     assert "08PG" in (ping.bewijs({**alle, "08PG": []}) or "")
+    landstede = "Fusie bij 01AA: ... (voorgangers: Morgen College christelijke scholengemeenschap voor vmbo (02EX))."
+    assert "01AA noemt 02EX" in (ping.bewijs({**alle, "01AA": [landstede]}) or "")
 
 
 def test_elke_bron_van_de_chat_heeft_een_ping():

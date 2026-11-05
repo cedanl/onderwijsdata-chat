@@ -65,9 +65,12 @@ _MIN_VO_AFDELINGEN = 3000
 # De editie 2026 heeft 54 mbo-instellingen; minder dan dit is een kapot of half bestand (#727).
 _MIN_MBO_INSTELLINGEN = 40
 _AERES = "30TX"  # de instellingscode achter de RIO-ijkwaarde rio-aeres-hogeschool
-# Vonk, KW1C, Firda, Drenthe College Terra, Talland en Landstede: de zes instellingen met een fusie binnen de
+# Vonk, KW1C, Firda, Drenthe College Terra en Talland: vijf van de zes instellingen met een fusie binnen de
 # DUO-reeksen 2021-2025 (onderzoek #728, 04-11-2026). Elk hoort de vaste fusieregel te krijgen.
-FUSIES_IN_REEKS = ("25EF", "04FO", "08PG", "25PW", "25PT", "01AA")
+FUSIES_IN_REEKS = ("25EF", "04FO", "08PG", "25PW", "25PT")
+# De zesde, Landstede, nam een vmbo-school op (Morgen College, WVO); die hoort niet in de regel bij een mbo-reeks
+# (#937). Noemt de regel haar toch, dan geeft RIO de wet niet meer zoals de chat hem leest.
+VO_VOORGANGERS = {"01AA": "02EX"}
 _DUO_REEKS = (2021, 2025)
 
 
@@ -117,12 +120,20 @@ def _rio_bewijs(uitkomst: dict) -> str | None:
 
 def _fusies() -> dict:
     # Dezelfde weg als een DUO-reeks per instelling (dekking.van): RIO-voorgangers, dagcache, vaste regel (#728).
-    return {code: list(fusies.in_reeks({code: code}, _DUO_REEKS)) for code in FUSIES_IN_REEKS}
+    return {code: list(fusies.in_reeks({code: code}, _DUO_REEKS)) for code in (*FUSIES_IN_REEKS, *VO_VOORGANGERS)}
 
 
 def _fusies_bewijs(uitkomst: dict) -> str | None:
     zonder = [code for code in FUSIES_IN_REEKS if not uitkomst.get(code)]
-    return f"geen fusieregel voor {', '.join(zonder)}" if zonder else None
+    vo = [
+        f"{code} noemt {vo}"
+        for code, vo in VO_VOORGANGERS.items()
+        if any(f"({vo})" in r for r in uitkomst.get(code) or [])
+    ]
+    fouten = ([f"geen fusieregel voor {', '.join(zonder)}"] if zonder else []) + (
+        [f"vo-voorganger in de regel: {', '.join(vo)}"] if vo else []
+    )
+    return "; ".join(fouten) or None
 
 
 def _kaart() -> dict:
@@ -200,7 +211,7 @@ PINGS: tuple[Ping, ...] = (
     Ping(
         "rio-fusies",
         "rio",
-        "fusies binnen de DUO-reeks van zes mbo-instellingen (RIO-overgangen)",
+        "fusies binnen de DUO-reeks van vijf mbo-instellingen, zonder vo-voorganger bij Landstede (RIO-overgangen)",
         _fusies,
         _fusies_bewijs,
     ),

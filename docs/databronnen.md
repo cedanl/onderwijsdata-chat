@@ -68,14 +68,17 @@ hbo en wo niets aan toe (onderzoek 04-11-2026, no-go): de chat gebruikt alleen R
 - **Meerjarige DUO-reeks per instelling:** DUO rekent elke reeks om naar de huidige code. Firda telt in 2021 en 2022 dus
   ook Friesland College mee. Valt een fusie na de telling (1 oktober) van het eerste jaar en uiterlijk op die van het
   laatste, dan krijgt het Telling-blok de regel "Fusie bij Firda (08PG): DUO telt de jaren vóór de fusie (1 augustus
-  2023) bij de huidige instelling (voorgangers: …)". In de reeksen 2021–2025 geldt dat voor zes instellingen: Vonk, KW1C,
-  Firda, Drenthe College Terra, Talland en Landstede (die laatste met een vmbo-school als voorganger). Yuverta (fusie
-  1-8-2021) valt vóór de eerste telling.
+  2023) bij de huidige instelling (voorgangers: …)". In de reeksen 2021–2025 geldt dat voor vijf instellingen: Vonk, KW1C,
+  Firda, Drenthe College Terra en Talland. Yuverta (fusie 1-8-2021) valt vóór de eerste telling.
+  - Een voorganger uit po, vo of so (wet `WPO`, `WVO` of `WEC` in RIO, op de dag vóór de overgang) staat niet in de
+    regel: een mbo- of ho-reeks van DUO telt die leerlingen niet (#937). Landstede nam per 1-8-2025 Morgen College
+    (02EX, vmbo) op en krijgt daarom geen regel. Een voorganger waarvan RIO de wet niet kent, blijft staan.
   - De selectie legt de regel vast bij het afleiden (`dekking.van`, `KeyMeta.fusies`), alleen bij DUO, minstens twee
     jaren en hooguit tien instellingen: een ranglijst van alle instellingen vraagt RIO niets.
   - De voorgangers per code staan een dag in de cache (`core/actualiteit.py`). Een fout komt niet in de cache; bij een
     storing komt er geen regel en een WARNING `FUSIES_ONBEKEND`, en het antwoord gaat gewoon door.
-  - De bron-ping `rio-fusies` (`scripts/bronping.py`) bewaakt dat de zes hun regel houden.
+  - De bron-ping `rio-fusies` (`scripts/bronping.py`) bewaakt dat de vijf hun regel houden en dat Landstede haar
+    vmbo-voorganger niet noemt.
 - **Peildatum in het verleden:** `get_rio_instelling` leest de relaties en erkenningen met `datumGeldigOp`. "Friesland
   College" op 2022-10-01 vindt zo bestuur 40295 met 25LG, in plaats van "geen mbo-, hbo- of wo-instelling".
 

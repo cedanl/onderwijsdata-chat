@@ -38,6 +38,15 @@ from .canoniek import zonder_bronprefix
 from .schemas import TOOL_GET_RIO_INSTELLING
 
 SECTOREN = frozenset({"MBO", "HBO", "WO", "HO"})
+# Het wettelijk kader van een RIO-erkenning (`wet`) voor po, vo en so (WPO, WVO, WEC, ook met een toevoeging): zo'n
+# instelling noemt de chat niet, ook niet onder een bestuur (#355) of als voorganger in een fusie (#937).
+_WETTEN_BUITEN_SCOPE = ("WPO", "WVO", "WEC")
+
+
+def wet_buiten_scope(wet: str | None) -> bool:
+    """Of een erkenning met dit wettelijk kader po, vo of so is; een onbekende wet valt er niet onder."""
+    return str(wet or "").startswith(_WETTEN_BUITEN_SCOPE)
+
 
 # Woorden waarmee een vraag po, so of vo noemt, buiten de scope van de chat (#355): voor de vervolgvragen
 # (agent/vervolgvragen.py), de scope-uitleg vóór het model (agent/po_vraag.py, #647; daar beslist een losse
