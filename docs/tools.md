@@ -371,9 +371,16 @@ registertoestand geeft hetzelfde resultaat. Past de naam op meer besturen, dan k
 `kandidaten` in plaats van aantallen. Een bestuur zonder mbo- of ho-instelling (WEB/WHW) valt
 buiten het profiel; po/vo/so-instellingen onder een mbo-bestuur tellen niet mee.
 
+Een BRIN-code (`"25LG"`) zoekt de instelling zelf in plaats van op naam. Is de instelling met die naam of code
+opgeheven en ging ze op in een andere (RIO-overgang, #728), dan geeft de tool `opgegaan` (de stappen) en
+`fusiemelding`: "… (25LG) is per 1 augustus 2023 opgegaan in Firda (08PG) (volledige overgang)". Zonder actieve
+instelling is de status `opgegaan` in plaats van `niet_gevonden`. De zin komt uit code en staat ook in het
+Telling-blok onder het antwoord. Relaties en erkenningen worden gelezen met `datumGeldigOp` op de peildatum. Zie
+[Databronnen → Fusies](databronnen.md#fusies-rio-overgangen-728).
+
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `naam` | string | Naam van de instelling of het bestuur, bijv. `"ROC Mondriaan"` |
+| `naam` | string | Naam van de instelling of het bestuur, bijv. `"ROC Mondriaan"`, of de BRIN-code, bijv. `"25LG"` |
 
 ---
 

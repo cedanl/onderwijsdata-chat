@@ -6,11 +6,13 @@ het antwoord. Het model formuleerde ze eerder zelf en kreeg er vals alarm van ee
 regex achteraf (#239): elke parafrase van de DUO-tekst gold als een fout.
 """
 
+import json
 import re
 
 from core.sentinels import BETEKENIS, CBS_BETEKENIS
 from tools import cbs_afronding, duo, duo_bestandskeuze, periode, store
 from tools.catalog import bron_naam
+from tools.rio_instelling import FUSIEMELDING
 
 from .binding import zin_op
 from .claimbinding import betekenis, kenmerken, kies
@@ -142,6 +144,28 @@ def _historienoten(tool_results: list[str]) -> dict[str, str]:
     return noten
 
 
+def _fusiemelding(result: str) -> str | None:
+    """De vaste zin van get_rio_instelling bij een opgeheven instelling: waarin ze opging."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return None
+    melding = parsed.get(FUSIEMELDING) if isinstance(parsed, dict) else None
+    return melding if isinstance(melding, str) and melding.strip() else None
+
+
+def _fusieregels(tool_results: list[str]) -> list[str]:
+    """De vaste fusieregels van de beurt, elk één keer (#728): uit code, het model kiest niets.
+
+    Waarin een opgeheven instelling opging (get_rio_instelling), en per selectie de fusies binnen haar DUO-reeks; die
+    staan al op de selectie (`KeyMeta.fusies`)."""
+    regels: dict[str, None] = dict.fromkeys(m for r in tool_results if (m := _fusiemelding(r)))
+    for key in data_keys(tool_results):
+        if (known := store.meta(key)) is not None:
+            regels.update(dict.fromkeys(known.fusies))
+    return [f"- {regel}" for regel in regels]
+
+
 def _datasets(bestanden: set[_Bestand]) -> str:
     return ", ".join(sorted({dataset for _, dataset, _ in bestanden}))
 
@@ -173,7 +197,7 @@ def _teldefinities(tool_results: list[str]) -> dict[str, str]:
 
 def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding, CBS-selectie,
-    jaarkolom zonder schooljaar of Historie-jaren uit een prognosebestand raakte.
+    jaarkolom zonder schooljaar, Historie-jaren uit een prognosebestand of fusie (#728) raakte.
 
     Onder- en bovengrens horen bij de selecties waarop de getallen in `tekst` rusten, niet
     bij elke verkenning van de beurt (#414). Rust er geen getal op een selectie, dan gelden
@@ -196,6 +220,7 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     ]
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in _historienoten(tool_results).items()]
     regels += selectie_regels(tool_results)
+    regels += _fusieregels(tool_results)
     regels += _ondergrensregels(ondergrens)
     if bovengrens:
         regels.append(

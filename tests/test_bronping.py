@@ -28,6 +28,17 @@ def _ping(id: str = "cbs-test", bron: str = "cbs", uitkomst: str | dict = "", be
 # --- de lijst -------------------------------------------------------------------------
 
 
+def test_de_fusieping_bewaakt_de_zes_instellingen_met_een_fusie_in_de_duo_reeks():
+    """#728: verdwijnt de overgang van een van de zes uit RIO, dan valt de vaste regel stil weg; de ping ziet het."""
+    ping = next(p for p in bronping.PINGS if p.id == "rio-fusies")
+    assert ping.bron == "rio"
+    assert set(bronping.FUSIES_IN_REEKS) == {"25EF", "04FO", "08PG", "25PW", "25PT", "01AA"}
+
+    alle = {code: [f"Fusie bij {code}: ..."] for code in bronping.FUSIES_IN_REEKS}
+    assert ping.bewijs(alle) is None
+    assert "08PG" in (ping.bewijs({**alle, "08PG": []}) or "")
+
+
 def test_elke_bron_van_de_chat_heeft_een_ping():
     assert {p.bron for p in bronping.PINGS} == {"cbs", "duo", "rio", "inspectie", "kaart", "collegegeld"}
     assert len({p.id for p in bronping.PINGS}) == len(bronping.PINGS)

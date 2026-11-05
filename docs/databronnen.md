@@ -51,9 +51,38 @@ Bij een doorstroomvraag die zelf het vo noemt, laten `aangeboden-opleidingen`, `
 
 Sinds v3 heet het typefilter op elk register `type` (v2: `erkenningtype`, `opleidingseenheidtype`, …), en bestaan `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` alleen nog als sub-resource van een ander record, niet als lijst. De chat laadt ze daarom niet; de catalogus noemt ze wel.
 
+### Fusies (RIO-overgangen, #728)
+
+RIO legt elke fusie en overdracht vast als instellingsrelatie `OVERGANG_VOLLEDIG` of `OVERGANG_GEDEELTELIJK`, van de oude
+erkenning naar de nieuwe, met de dag van de overgang. Het DUO-register "Basisgegevens instellingen" voegt daar bij mbo,
+hbo en wo niets aan toe (onderzoek 04-11-2026, no-go): de chat gebruikt alleen RIO.
+
+- **Pakket:** `riodata.opvolgers(brin, peildatum)` en `riodata.voorgangers(brin, sinds)` volgen de overgangen, ook door
+  een keten en veilig bij een cyclus, en geven altijd `datumGeldigOp` mee. Per stap: code, naam, volledig/gedeeltelijk en
+  datum.
+- **Oude naam of BRIN:** `get_rio_instelling("Friesland College")` of `get_rio_instelling("25LG")` geeft `status:
+  opgegaan` met de vaste zin "Regionaal Opleidingen Centrum Friesland College (25LG) is per 1 augustus 2023 opgegaan in
+  Firda (08PG) (volledige overgang)." Vindt de naam ook een actieve instelling (Regio College → Talland), dan komt de
+  zin naast het overzicht. De zin staat ook onder het antwoord, in het Telling-blok. Een opgeheven po/vo-instelling
+  krijgt geen zin (#355).
+- **Meerjarige DUO-reeks per instelling:** DUO rekent elke reeks om naar de huidige code. Firda telt in 2021 en 2022 dus
+  ook Friesland College mee. Valt een fusie na de telling (1 oktober) van het eerste jaar en uiterlijk op die van het
+  laatste, dan krijgt het Telling-blok de regel "Fusie bij Firda (08PG): DUO telt de jaren vóór de fusie (1 augustus
+  2023) bij de huidige instelling (voorgangers: …)". In de reeksen 2021–2025 geldt dat voor zes instellingen: Vonk, KW1C,
+  Firda, Drenthe College Terra, Talland en Landstede (die laatste met een vmbo-school als voorganger). Yuverta (fusie
+  1-8-2021) valt vóór de eerste telling.
+  - De selectie legt de regel vast bij het afleiden (`dekking.van`, `KeyMeta.fusies`), alleen bij DUO, minstens twee
+    jaren en hooguit tien instellingen: een ranglijst van alle instellingen vraagt RIO niets.
+  - De voorgangers per code staan een dag in de cache (`core/actualiteit.py`). Een fout komt niet in de cache; bij een
+    storing komt er geen regel en een WARNING `FUSIES_ONBEKEND`, en het antwoord gaat gewoon door.
+  - De bron-ping `rio-fusies` (`scripts/bronping.py`) bewaakt dat de zes hun regel houden.
+- **Peildatum in het verleden:** `get_rio_instelling` leest de relaties en erkenningen met `datumGeldigOp`. "Friesland
+  College" op 2022-10-01 vindt zo bestuur 40295 met 25LG, in plaats van "geen mbo-, hbo- of wo-instelling".
+
 **Voorbeeldvragen:**
 - *"Welke hbo-opleidingen biedt de Hogeschool Rotterdam aan?"*
 - *"Hoeveel vestigingen heeft ROC Mondriaan?"*
+- *"Hoeveel vestigingen had Friesland College?"* (opgegaan in Firda)
 
 ---
 

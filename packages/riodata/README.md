@@ -46,6 +46,21 @@ instelling = get("organisatorische-eenheden", "some-uuid")
 cohorten = related("aangeboden-opleidingen", uuid, "aangeboden-opleiding-cohorten")
 ```
 
+### Fusies en overdrachten
+
+RIO legt elke overgang vast als instellingsrelatie `OVERGANG_VOLLEDIG` of `OVERGANG_GEDEELTELIJK`. `opvolgers` en
+`voorgangers` volgen die, ook door een keten (A → B → C) en veilig bij een cyclus, en geven altijd `datumGeldigOp` mee.
+Per stap: `code`, `naam`, `overgang` (`"volledig"`/`"gedeeltelijk"`), `datum` en `via` (de erkenning aan de andere kant).
+
+```python
+from riodata import opvolgers, voorgangers
+
+opvolgers("25LG", "2026-11-05")
+# [Stap(code='08PG', naam='Firda', overgang='volledig', datum='2023-08-01', via='25LG')]
+voorgangers("08PG", sinds="2021-10-01")
+# [Stap(code='25LG', naam='Regionaal Opleidingen Centrum Friesland College', overgang='volledig', datum='2023-08-01', via='08PG')]
+```
+
 ## DUO Open Data
 
 ```python
