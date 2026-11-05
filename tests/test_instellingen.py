@@ -490,83 +490,26 @@ def test_dashboard_nationaal_endpoint(client):
 
 
 # ─── Task 5: Rendementsmonitor ────────────────────────────────────────────────
+# Wat de tegel betekent, staat in tests/test_dashboard_rendement.py (#898); hier alleen het eindpunt.
 
 
-def test_dashboard_rendement_ho():
-    from data.dashboard import load_dashboard_rendement
-
-    result = load_dashboard_rendement("Hogeschool Utrecht")
-    assert result["gevonden"] is True
-    assert result["type"] == "ho"
-    assert "instelling" in result
-    assert "laatste_jaar" in result
-
-    # pseudo_cohorten: [{instroom_jaar, instroom, gediplomeerden_t3, gediplomeerden_t4, gediplomeerden_t5}]
-    assert "pseudo_cohorten" in result
-    pc = result["pseudo_cohorten"]
-    assert isinstance(pc, list)
-    assert len(pc) > 0
-    for cohort in pc:
-        assert "instroom_jaar" in cohort
-        assert "instroom" in cohort
-        assert "gediplomeerden_t3" in cohort
-        assert "gediplomeerden_t4" in cohort
-        assert "gediplomeerden_t5" in cohort
-
-    # rendement_per_jaar: {jaar: float}
-    assert "rendement_per_jaar" in result
-    ry = result["rendement_per_jaar"]
-    assert isinstance(ry, dict)
-    assert len(ry) > 0
-    for v in ry.values():
-        assert isinstance(v, float)
-        assert 0.0 <= v <= 1.0
-
-    # sector_rendement: {onderdeel: float} (HO only)
-    assert "sector_rendement" in result
-    sr = result["sector_rendement"]
-    assert isinstance(sr, dict)
-
-    # benchmark_rendement: {jaar: float}
-    assert "benchmark_rendement" in result
-    br = result["benchmark_rendement"]
-    assert isinstance(br, dict)
-
-    # peers_rendement: {naam: {jaar: float}}
-    assert "peers_rendement" in result
-    pr = result["peers_rendement"]
-    assert isinstance(pr, dict)
+def test_dashboard_rendement_endpoint_mbo(client):
+    resp = client.get("/api/dashboard/rendement?instelling=ROC+Mondriaan")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["gevonden"] is True and data["type"] == "mbo"
+    assert data["definitie"]["naam"] == "Diploma's na 3 jaar per eerstejaars"
+    assert set(data["rendement_per_jaar"]) == {"2021", "2022"}
+    assert "pseudo_cohorten" in data
 
 
-def test_dashboard_rendement_ho_rekent_de_cohorten_zoals_de_fixture():
-    from data.dashboard import load_dashboard_rendement
-
-    ej = _som_per_jaar(
-        _duo_ho("p02ho1ejrs", "AANTAL_EERSTEJAARS_INGESCHREVENEN"), "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"
-    )
-    dipl = _som_per_jaar(_duo_ho("p04hogdipl", "AANTAL_GEDIPLOMEERDEN"), "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN")
-    result = load_dashboard_rendement(_HU)
-
-    cohorten = {c["instroom_jaar"]: c for c in result["pseudo_cohorten"]}
-    assert cohorten
-    assert {j: c["instroom"] for j, c in cohorten.items()} == ej
-    for jaar, cohort in cohorten.items():
-        for t in (3, 4, 5):
-            # Een diplomajaar dat er (nog) niet is, is None, geen 0 (#902).
-            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t), (jaar, t)
-
-    # Rendement na 3 jaar: gediplomeerden in jaar+3 gedeeld door de instroom, alleen als dat niet boven 1 komt.
-    verwacht = {j: round(dipl[j + 3] / ej[j], 4) for j in ej if 0 < dipl.get(j + 3, 0) <= ej[j]}
-    assert verwacht == {2021: round(6438 / 7108, 4)}  # ijkpunt: instroom 2021, diploma's 2024
-    assert result["rendement_per_jaar"] == verwacht
-
-
-def test_dashboard_rendement_endpoint(client):
+def test_dashboard_rendement_endpoint_ho_geeft_de_reden(client):
     resp = client.get("/api/dashboard/rendement?instelling=Hogeschool+Utrecht")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["gevonden"] is True
-    assert "pseudo_cohorten" in data
+    assert data["gevonden"] is True and data["type"] == "ho"
+    assert data["geen_rendement"].startswith("Voor hbo en wo staat hier geen rendement.")
+    assert "rendement_per_jaar" not in data
 
 
 # ─── Task 6: Arbeidsmarktmatch ────────────────────────────────────────────────

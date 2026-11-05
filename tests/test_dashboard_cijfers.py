@@ -164,7 +164,7 @@ def test_een_pseudocohort_zonder_diplomajaar_is_none_geen_nul():
         "gediplomeerden_t5": None,
     }
     assert cohorten[1]["gediplomeerden_t3"] is None
-    assert dashboard._rendement_per_jaar(cohorten) == {2023: 0.6}
+    assert dashboard._rendement([2023], {2023: 100, 2024: 120}, {2026: 60}) == ({2023: 0.6}, {})
 
 
 def test_een_sector_zonder_inschrijvingen_in_een_jaar_is_een_gat_in_de_trend():

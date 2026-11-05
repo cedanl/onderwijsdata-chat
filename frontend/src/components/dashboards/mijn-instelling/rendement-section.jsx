@@ -1,11 +1,18 @@
 import { useMemo } from 'react'
 import TabelScroll from '../../TabelScroll'
 import { CHART_COLORS } from '../../../constants'
-import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, afgekapteAs, benchmarkColor, oordeelKleur, sectorKleuren, WeggelatenNoot } from '../shared/index'
+import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, afgekapteAs, benchmarkColor, oordeelKleur, WeggelatenNoot } from '../shared/index'
 import { asJaar, jaarLabel } from '../../../schooljaar'
 
-// Een cohort heet naar het jaar van zijn eerstejaars: een schooljaar (#904); het soort komt uit de payload.
+const NOOT = { fontSize: '12.5px', color: 'var(--muted-text)' }
+const pct = v => Math.round(v * 1000) / 10
+// Een cohort heet naar het jaar van zijn eerstejaars: een schooljaar (#904); het soort komt uit de payload, net als
+// dat van het diplomajaar.
 const cohortJaar = (data, jaar) => jaarLabel(jaar, data?.perioden?.cohorten)
+const diplomaJaar = (data, jaar) => jaarLabel(jaar, data?.perioden?.gediplomeerden)
+
+// Mbo: diploma's na drie jaar per eerstejaars, met de definitie en wat niet meetelt uit de payload, zoals het rapport
+// (#736, #743). Hbo en wo krijgen geen rendement, alleen de reden (`geen_rendement`, #898).
 
 function LatestCohortKpi({ data }) {
   const last = data.pseudo_cohorten.at(-1)
@@ -19,18 +26,21 @@ function LatestCohortKpi({ data }) {
 }
 
 function RendementKpis({ data, dark }) {
-  if (!data?.rendement_per_jaar) return null
-  const entries = Object.entries(data.rendement_per_jaar).sort((a, b) => Number(b[0]) - Number(a[0]))
+  const entries = Object.entries(data.rendement_per_jaar || {}).sort((a, b) => Number(b[0]) - Number(a[0]))
   const latest = entries[0]
   const prev = entries[1]
-  const delta = latest && prev ? Math.round((latest[1] - prev[1]) * 10000) / 100 : null
+  const delta = latest && prev ? pct(latest[1]) - pct(prev[1]) : null
+  const termijn = data.definitie?.termijn
+  const cohort = latest && data.pseudo_cohorten?.find(c => String(c.instroom_jaar) === latest[0])
   return (
     <div className="kpi-grid">
       {latest && (
         <div className="kpi-card">
-          <div className="kpi-label">Rendement cohort {cohortJaar(data, latest[0])}</div>
-          <div className="kpi-value">{fmt(Math.round(latest[1] * 1000) / 10)}%</div>
-          <div className="kpi-sub">gediplomeerden t+3 / instroom</div>
+          <div className="kpi-label">Cohort {cohortJaar(data, latest[0])}</div>
+          <div className="kpi-value">{fmt(pct(latest[1]))}%</div>
+          <div className="kpi-sub">
+            {cohort ? `${fmt(cohort[`gediplomeerden_t${termijn}`])} diploma's in ${diplomaJaar(data, Number(latest[0]) + termijn)} / ${fmt(cohort.instroom)} eerstejaars` : `diploma's na ${termijn} jaar per eerstejaars`}
+          </div>
           {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)}pp t.o.v. {cohortJaar(data, prev[0])}</div>}
         </div>
       )}
@@ -39,8 +49,44 @@ function RendementKpis({ data, dark }) {
   )
 }
 
-function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendement, instelling, soort, dark }) {
+// Wat de verhouding telt en wat niet, vóór de cijfers: ook zonder één cohort staat de uitleg er.
+function RendementDefinitie({ definitie }) {
+  if (!definitie?.definitie) return null
+  return (
+    <div className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 16px' }}>
+      <p style={{ margin: '0 0 4px' }}><strong>Definitie:</strong> {definitie.definitie}</p>
+      {definitie.niet_meegeteld && <p style={{ margin: '0 0 4px' }}><strong>Niet meegeteld:</strong> {definitie.niet_meegeteld}.</p>}
+      {definitie.wel_meegeteld && <p style={{ margin: 0 }}><strong>Wel meegeteld:</strong> {definitie.wel_meegeteld}.</p>}
+    </div>
+  )
+}
+
+// {cohort: reden} van de instelling, of {peer: {cohort: reden}}, als [{ reden, namen }]: per reden de cohorten, of de
+// peers met hun cohorten. Zo noemt het dashboard elk cohort dat afviel (#898), in plaats van het weg te laten.
+export function weggelatenPerReden(weggelaten, peers = false, jaar = String) {
+  const per = new Map()
+  const voeg = (reden, naam) => per.set(reden, [...(per.get(reden) || []), naam])
+  for (const [sleutel, waarde] of Object.entries(weggelaten || {})) {
+    if (!peers) { voeg(waarde, jaar(sleutel)); continue }
+    const cohorten = new Map()
+    for (const [cohort, reden] of Object.entries(waarde)) cohorten.set(reden, [...(cohorten.get(reden) || []), jaar(cohort)])
+    for (const [reden, jaren] of cohorten) voeg(reden, `${sleutel} (${jaren.join(', ')})`)
+  }
+  return [...per].map(([reden, namen]) => ({ reden, namen }))
+}
+
+function WeggelatenNoten({ weggelaten, peers, label, jaar }) {
+  return weggelatenPerReden(weggelaten, peers, jaar).map(({ reden, namen }) => (
+    <WeggelatenNoot key={reden} namen={namen} reden={label ? `${label}: ${reden}` : reden} />
+  ))
+}
+
+function RendementTrendChart({ data, instelling, dark }) {
   const { tick, grid, label } = darkColors(dark)
+  const { rendement_per_jaar: rendementPerJaar, benchmark_rendement: benchmarkRendement, peers_rendement: peersRendement } = data
+  const benchmarkLabel = data.benchmark_label || 'Regiogemiddelde'
+  const nPerJaar = data.benchmark_n_per_jaar
+  const soort = data.perioden?.cohorten
   const chartData = useMemo(() => {
     if (!rendementPerJaar || Object.keys(rendementPerJaar).length < 2) return null
     const jaren = [...new Set([
@@ -50,7 +96,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
 
     const datasets = [{
       label: instelling,
-      data: jaren.map(j => rendementPerJaar[j] != null ? Math.round(rendementPerJaar[j] * 1000) / 10 : null),
+      data: jaren.map(j => rendementPerJaar[j] != null ? pct(rendementPerJaar[j]) : null),
       borderColor: CHART_COLORS[0],
       backgroundColor: CHART_COLORS[0] + '33',
       borderWidth: 3, tension: 0.3, spanGaps: true,
@@ -58,8 +104,9 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
 
     if (benchmarkRendement && Object.keys(benchmarkRendement).length > 0) {
       datasets.push({
-        label: 'Benchmark (regio)',
-        data: jaren.map(j => benchmarkRendement[j] != null ? Math.round(benchmarkRendement[j] * 1000) / 10 : null),
+        label: benchmarkLabel,
+        data: jaren.map(j => benchmarkRendement[j] != null ? pct(benchmarkRendement[j]) : null),
+        aantalPeers: jaren.map(j => nPerJaar?.[j] ?? null),
         borderColor: benchmarkColor(dark), backgroundColor: benchmarkColor(dark) + '33',
         borderWidth: 2, borderDash: [5, 4], tension: 0.3, spanGaps: true,
       })
@@ -69,7 +116,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
       Object.entries(peersRendement).forEach(([naam, rend], i) => {
         datasets.push({
           label: naam,
-          data: jaren.map(j => rend[j] != null ? Math.round(rend[j] * 1000) / 10 : null),
+          data: jaren.map(j => rend[j] != null ? pct(rend[j]) : null),
           borderColor: CHART_COLORS[(i + 2) % CHART_COLORS.length],
           borderWidth: 1, tension: 0.3, spanGaps: true, hidden: true,
         })
@@ -77,18 +124,19 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
     }
 
     return { labels: jaren.map(j => asJaar(j, soort)), datasets }
-  }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling, soort, dark])
+  }, [rendementPerJaar, benchmarkRendement, peersRendement, benchmarkLabel, nPerJaar, instelling, soort, dark])
 
   if (!chartData) return null
+  const peers = n => (n == null ? '' : ` (${n} ${n === 1 ? 'instelling' : 'instellingen'})`)
   return (
-    <ChartCard title="Diplomarendement over tijd" subtitle="Gediplomeerden t+3 / instroom — eigen instelling vs. benchmark">
+    <ChartCard title={`${data.definitie?.naam || 'Diploma\'s per eerstejaars'} over tijd`} subtitle={`Per cohort — eigen instelling vs. ${benchmarkLabel}`}>
       <Grafiek soort="line" data={chartData} hoogte={280} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
             legend: {
               display: true, position: 'top', labels: { color: label, boxWidth: 14 },
             },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}%` } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}%${peers(ctx.dataset.aantalPeers?.[ctx.dataIndex])}` } },
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: tick } },
@@ -99,36 +147,10 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
   )
 }
 
-function SectorRendementChart({ sectorRendement, dark }) {
-  const chartData = useMemo(() => {
-    if (!sectorRendement || Object.keys(sectorRendement).length === 0) return null
-    const entries = Object.entries(sectorRendement)
-      .map(([s, v]) => ({ sector: s, pct: Math.round(v * 1000) / 10 }))
-      .sort((a, b) => b.pct - a.pct)
-    const kleuren = sectorKleuren(entries.map(e => e.sector))
-    return {
-      labels: entries.map(e => e.sector),
-      datasets: [{
-        label: 'Rendement %',
-        data: entries.map(e => e.pct),
-        backgroundColor: entries.map(e => kleuren.get(e.sector)),
-        borderWidth: 0, borderRadius: 4,
-      }],
-    }
-  }, [sectorRendement])
-
-  if (!chartData) return null
-  return (
-    <ChartCard title="Rendement per sector" subtitle="Gediplomeerden / ingeschrevenen (cumulatief)">
-      <Grafiek soort="bar" data={chartData} options={horizontalBarOpts(dark, '%')} hoogte={Math.max(160, chartData.labels.length * 36)} categorie="Sector" />
-    </ChartCard>
-  )
-}
-
 const _T = ['gediplomeerden_t3', 'gediplomeerden_t4', 'gediplomeerden_t5']
 
-// Een cohort met meer gediplomeerden dan instroom (WO: de diploma's van een jaar tellen bachelors én masters) of
-// zonder enig diplomajaar laat de tabel weg, en zegt welke (#902). Een ontbrekend diplomajaar is null: '—', geen 0.
+// Een cohort met meer gediplomeerden dan instroom of zonder enig diplomajaar laat de tabel weg, en zegt welke (#902).
+// Een ontbrekend diplomajaar is null: '—', geen 0.
 export function verdeelCohorten(cohorten) {
   const rows = []
   const teVeel = []
@@ -143,20 +165,27 @@ export function verdeelCohorten(cohorten) {
   return { rows, teVeel, zonderDiploma }
 }
 
+// Ook als geen cohort overblijft, zegt de tabel welke er afvielen: de noten staan dan zonder kaart (#898).
 function CohortenTable({ data, dark }) {
   const cohorten = data?.pseudo_cohorten
   if (!cohorten?.length) return null
   const { rows, teVeel, zonderDiploma } = verdeelCohorten(cohorten)
-  const jaar = j => cohortJaar(data, j)
-  if (!rows.length) return null
   const { tick } = darkColors(dark)
+  const jaar = j => cohortJaar(data, j)
+  const noten = (
+    <>
+      <WeggelatenNoot namen={teVeel.map(jaar)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
+      <WeggelatenNoot namen={zonderDiploma.map(jaar)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
+    </>
+  )
+  if (!rows.length) return <div style={NOOT}>{noten}</div>
   return (
-    <ChartCard title="Pseudo-cohorten" subtitle="Instroom vs. gediplomeerden na 3, 4 en 5 jaar">
-      <TabelScroll label="Pseudo-cohorten" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
-        <caption className="sr-only">Pseudo-cohorten: instroom en gediplomeerden na 3, 4 en 5 jaar</caption>
+    <ChartCard title="Eerstejaars en diploma's per cohort" subtitle="Eerstejaars van het cohort en de diploma's van de instelling 3, 4 en 5 jaar later">
+      <TabelScroll label="Eerstejaars en diploma's per cohort" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
+        <caption className="sr-only">{"Eerstejaars per cohort en de diploma's van de instelling 3, 4 en 5 jaar later"}</caption>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Instroom</th>
+            <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Cohort</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+4</th>
@@ -173,27 +202,33 @@ function CohortenTable({ data, dark }) {
           ))}
         </tbody>
       </TabelScroll>
-      <WeggelatenNoot namen={teVeel.map(jaar)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
-      <WeggelatenNoot namen={zonderDiploma.map(jaar)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
+      {noten}
     </ChartCard>
+  )
+}
+
+// Hbo en wo: geen lege sectie, één noot waarom er geen rendement staat en waar het wel kan (#898).
+function GeenRendement({ reden }) {
+  return (
+    <>
+      <SectionHeader title="Diplomarendement" />
+      <p className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 16px' }}>{reden}</p>
+    </>
   )
 }
 
 export function RendementSection({ data, instelling, dark }) {
   if (!data?.gevonden) return null
+  if (data.geen_rendement) return <GeenRendement reden={data.geen_rendement} />
+  const naam = data.definitie?.naam || 'Diplomarendement'
   return (
     <>
-      <SectionHeader title="Diplomarendement" subtitle="Rendement per cohort en sector, vergeleken met regio-peers" />
+      <SectionHeader title={naam} subtitle="Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met de regio" />
+      <RendementDefinitie definitie={data.definitie} />
       <RendementKpis data={data} dark={dark} />
-      <RendementTrendChart
-        rendementPerJaar={data?.rendement_per_jaar}
-        benchmarkRendement={data?.benchmark_rendement}
-        peersRendement={data?.peers_rendement}
-        instelling={instelling}
-        soort={data?.perioden?.cohorten}
-        dark={dark}
-      />
-      <SectorRendementChart sectorRendement={data?.sector_rendement} dark={dark} />
+      <div style={NOOT}><WeggelatenNoten weggelaten={data.weggelaten} jaar={j => cohortJaar(data, j)} /></div>
+      <RendementTrendChart data={data} instelling={instelling} dark={dark} />
+      <div style={NOOT}><WeggelatenNoten weggelaten={data.peers_weggelaten} peers label="niet in het regiogemiddelde" jaar={j => cohortJaar(data, j)} /></div>
       <CohortenTable data={data} dark={dark} />
     </>
   )

@@ -132,7 +132,7 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot,
             </div>
           </div>
           <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{fmt(ratio.procent)}%</div>
-          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} en ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)} — proxy, geen cohortmeting, zie Rendementsmonitor</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} en ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)} — proxy, geen cohortmeting</div>
         </div>
       )}
     </div>

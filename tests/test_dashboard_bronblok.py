@@ -140,7 +140,8 @@ def test_een_bron_die_niet_laadde_staat_niet_als_gebruikt(monkeypatch):
     ("lader", "verwacht"),
     [
         (dashboard.load_dashboard_nationaal, ["p01hoinges"]),
-        (dashboard.load_dashboard_rendement, ["p01hoinges", "p02ho1ejrs", "p04hogdipl"]),
+        # Hbo en wo krijgen geen rendement, alleen de reden: geen getal, dus geen bron (#898).
+        (dashboard.load_dashboard_rendement, []),
         # In de volgorde van laden: de regio laadt ROA vóór de vacatures van UWV.
         (dashboard.load_dashboard_regio, ["p01hoinges", "p02ho1ejrs", "p04hogdipl", "ais2030", "uwv-open-match-data"]),
     ],
