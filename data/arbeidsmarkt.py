@@ -113,7 +113,7 @@ class UwvStand:
 # meldt haar bestand met peildatum of editie voor het bronblok van de dashboards (#904, data/bronblok.py).
 @actualiteit.Lading
 def _uwv() -> pd.DataFrame:
-    from riodata import uwv
+    from onderwijsbronnen import uwv
 
     df = uwv.load("latest", rec_type="Vacature")
     brongebruik.meld(
@@ -243,7 +243,7 @@ _ROA_ID = "ais2030"
 
 @actualiteit.Lading
 def _roa() -> pd.DataFrame:
-    from riodata import roa
+    from onderwijsbronnen import roa
 
     df = roa.load(_ROA_ID, "arbeidsmarkt")
     brongebruik.meld(

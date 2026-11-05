@@ -96,14 +96,14 @@ _ROA = pd.DataFrame(
 
 def test_roa_na_een_storing_geeft_bij_herstel_weer_data(klok):
     # functools.cache op _roa_prognose hield de `{}` van één storing tot de herstart.
-    with patch("riodata.roa.load", side_effect=ConnectionError("ROA onbereikbaar")):
+    with patch("onderwijsbronnen.roa.load", side_effect=ConnectionError("ROA onbereikbaar")):
         assert dashboard._roa_prognose("mbo") == {}
-    with patch("riodata.roa.load", return_value=_ROA):
+    with patch("onderwijsbronnen.roa.load", return_value=_ROA):
         assert dashboard._roa_prognose("mbo") == {"Mbo4": {"ITA toekomstige arbeidsmarktsituatie in 2030": "redelijk"}}
 
 
 def test_uwv_en_roa_verlopen_na_de_ttl(klok):
-    with patch("riodata.roa.load", return_value=_ROA) as roa:
+    with patch("onderwijsbronnen.roa.load", return_value=_ROA) as roa:
         arbeidsmarkt.roa_versie()
         klok(hours=23)
         arbeidsmarkt.roa_versie()

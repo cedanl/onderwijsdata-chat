@@ -16,7 +16,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 import pytest
-from riodata import duo
+from onderwijsbronnen import duo
 
 from agent.telling import telling_blok
 from core import actualiteit

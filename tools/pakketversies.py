@@ -1,6 +1,6 @@
 """Met welke pakketversies een snippet is gemaakt (#714, #888).
 
-Een snippet laadt zijn bron via `onderwijsdata` of `riodata`. Wie hem later draait, installeert wat dan actueel is en
+Een snippet laadt zijn bron via `onderwijsbronnen` (#910). Wie hem later draait, installeert wat dan actueel is en
 kan een andere uitkomst krijgen. De kop noemt daarom de versies waarop de app draait en een installatieregel die op
 precies die code uitkomt. De pakketten staan in deze repo (`core/pakketherkomst.py`): de regel pint ze op de commit
 waaruit de app is gebouwd. Niets hier is hardcoded, dus een versiebump verandert de kop zonder codewijziging.
@@ -9,8 +9,8 @@ waaruit de app is gebouwd. Niets hier is hardcoded, dus een versiebump verandert
 from config import Config
 from core.pakketherkomst import installatiespec, pakketversie
 
-# Welke regel in de snippet welk pakket betekent.
-_IMPORTS = {"from onderwijsdata import": "onderwijsdata", "from riodata import": "riodata"}
+# Welke regel in de snippet welk pakket betekent: `from onderwijsbronnen import duo`, `from onderwijsbronnen.cbs import`.
+_IMPORTS = {"from onderwijsbronnen": "onderwijsbronnen"}
 
 
 def versiekop(snippet: str) -> list[str]:

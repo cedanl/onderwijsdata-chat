@@ -7,7 +7,7 @@ pagina gebruikte.
 from datetime import UTC, datetime
 
 import pytest
-from riodata import duo
+from onderwijsbronnen import duo
 
 import data.dashboard as dashboard
 from core import actualiteit
@@ -83,7 +83,7 @@ def test_roa_draagt_de_editie_uit_de_data(monkeypatch):
     roa = arbeidsmarkt._roa()  # de bevroren snapshot van arbeidsmarkt_fixtures
     arbeidsmarkt._roa.cache_clear()
     roa.attrs["schema"] = {"editie": "2025"}
-    monkeypatch.setattr("riodata.roa.load", lambda *a, **k: roa)
+    monkeypatch.setattr("onderwijsbronnen.roa.load", lambda *a, **k: roa)
 
     result = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))["ais2030"]
 

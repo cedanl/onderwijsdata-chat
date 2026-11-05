@@ -15,9 +15,8 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "onderwijsdata",
+    "onderwijsbronnen",
     "onderwijsdata-chat",
-    "riodata",
 ]
 
 [[package]]
@@ -2578,9 +2577,9 @@ wheels = [
 ]
 
 [[package]]
-name = "onderwijsdata"
-version = "0.2.2"
-source = { editable = "packages/onderwijsdata" }
+name = "onderwijsbronnen"
+version = "0.8.0"
+source = { editable = "packages/onderwijsbronnen" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -2588,14 +2587,24 @@ dependencies = [
 [package.optional-dependencies]
 analyse = [
     { name = "matplotlib" },
+    { name = "openpyxl" },
     { name = "pandas" },
 ]
 catalogus = [
     { name = "anthropic" },
+    { name = "pyyaml" },
+]
+duo = [
+    { name = "openpyxl" },
+]
+sbb = [
+    { name = "openpyxl" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "openpyxl" },
+    { name = "pandas" },
     { name = "pytest" },
 ]
 
@@ -2604,12 +2613,20 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'catalogus'", specifier = ">=0.87.0" },
     { name = "httpx" },
     { name = "matplotlib", marker = "extra == 'analyse'" },
+    { name = "openpyxl", marker = "extra == 'analyse'", specifier = ">=3.1.5" },
+    { name = "openpyxl", marker = "extra == 'duo'", specifier = ">=3.1.5" },
+    { name = "openpyxl", marker = "extra == 'sbb'", specifier = ">=3.1.5" },
     { name = "pandas", marker = "extra == 'analyse'" },
+    { name = "pyyaml", marker = "extra == 'catalogus'" },
 ]
-provides-extras = ["analyse", "catalogus"]
+provides-extras = ["analyse", "catalogus", "sbb", "duo"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.1.1" }]
+dev = [
+    { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "pandas" },
+    { name = "pytest", specifier = ">=9.1.1" },
+]
 
 [[package]]
 name = "onderwijsdata-chat"
@@ -2622,12 +2639,11 @@ dependencies = [
     { name = "litellm" },
     { name = "markdown" },
     { name = "mcp" },
-    { name = "onderwijsdata" },
+    { name = "onderwijsbronnen", extra = ["analyse"] },
     { name = "openpyxl" },
     { name = "plotly" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
-    { name = "riodata", extra = ["analyse"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -2663,13 +2679,12 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.108,<1.109" },
     { name = "markdown", specifier = ">=3.10.2" },
     { name = "mcp", specifier = ">=2.3" },
-    { name = "onderwijsdata", editable = "packages/onderwijsdata" },
+    { name = "onderwijsbronnen", extras = ["analyse"], editable = "packages/onderwijsbronnen" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "plotly", specifier = ">=5.0" },
     { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "riodata", extras = ["analyse"], editable = "packages/riodata" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 provides-extras = ["postgres"]
@@ -3751,58 +3766,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
-]
-
-[[package]]
-name = "riodata"
-version = "0.7.0"
-source = { editable = "packages/riodata" }
-dependencies = [
-    { name = "httpx" },
-]
-
-[package.optional-dependencies]
-analyse = [
-    { name = "matplotlib" },
-    { name = "openpyxl" },
-    { name = "pandas" },
-]
-catalogus = [
-    { name = "anthropic" },
-    { name = "pyyaml" },
-]
-duo = [
-    { name = "openpyxl" },
-]
-sbb = [
-    { name = "openpyxl" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "openpyxl" },
-    { name = "pandas" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'catalogus'", specifier = ">=0.87.0" },
-    { name = "httpx" },
-    { name = "matplotlib", marker = "extra == 'analyse'" },
-    { name = "openpyxl", marker = "extra == 'analyse'", specifier = ">=3.1.5" },
-    { name = "openpyxl", marker = "extra == 'duo'", specifier = ">=3.1.5" },
-    { name = "openpyxl", marker = "extra == 'sbb'", specifier = ">=3.1.5" },
-    { name = "pandas", marker = "extra == 'analyse'" },
-    { name = "pyyaml", marker = "extra == 'catalogus'" },
-]
-provides-extras = ["analyse", "catalogus", "sbb", "duo"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "pandas" },
-    { name = "pytest", specifier = ">=9.1.1" },
 ]
 
 [[package]]

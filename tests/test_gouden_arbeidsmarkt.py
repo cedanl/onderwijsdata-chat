@@ -184,7 +184,7 @@ def test_landelijk_onderdeel_zonder_melding_over_de_regio():
 
 
 def test_tabel_meetwaarden_recept_en_snippet_dragen_de_ho_cijfers(monkeypatch):
-    from riodata import roa
+    from onderwijsbronnen import roa
 
     from agent.meetwaarden import meetwaarden
     from data import arbeidsmarkt

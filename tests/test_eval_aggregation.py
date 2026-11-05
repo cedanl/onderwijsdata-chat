@@ -21,7 +21,7 @@ import json
 import os
 
 import pytest
-from riodata import duo
+from onderwijsbronnen import duo
 
 from core.config import MODEL, get_required_api_key_env_var
 

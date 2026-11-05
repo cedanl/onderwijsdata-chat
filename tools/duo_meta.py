@@ -13,7 +13,7 @@ Ook het toegangspunt van de tools tot de domeinregels in data/domeinregels.toml 
 import re
 from functools import cache
 
-from riodata import catalog as _rio_catalog
+from onderwijsbronnen import catalog as _rio_catalog
 
 from core import domeinregels
 

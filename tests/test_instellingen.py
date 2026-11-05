@@ -13,7 +13,7 @@ _INST = "INSTELLINGSNAAM_ACTUEEL"
 
 def _duo_ho(dataset_id: str, waardekolom: str) -> pd.DataFrame:
     """Beide resources van een HO-bestand uit de fixtures; DUO's -1 (onderdrukt) telt als 0, zoals het dashboard."""
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     df = pd.concat([duo.load(dataset_id, 0), duo.load(dataset_id, 1)], ignore_index=True)
     df[waardekolom] = df[waardekolom].where(df[waardekolom] >= 0, 0)

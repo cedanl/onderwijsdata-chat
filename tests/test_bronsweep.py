@@ -8,7 +8,7 @@ import json
 
 import httpx
 import pytest
-from riodata import duo as riodata_duo
+from onderwijsbronnen import duo as riodata_duo
 
 from scripts import bronping, bronsweep
 from tools import catalog, duo_laden

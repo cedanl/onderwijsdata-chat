@@ -17,7 +17,7 @@ de cache; een storing geeft geen regel en een WARNING, en breekt het antwoord ni
 import logging
 from datetime import date
 
-from riodata import Stap, voorgangers
+from onderwijsbronnen.rio import Stap, voorgangers
 
 from core import actualiteit
 

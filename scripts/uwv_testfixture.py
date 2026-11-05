@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from riodata import uwv
+from onderwijsbronnen import uwv
 
 BESTAND = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "uwv" / "beroepenclusters.json"
 

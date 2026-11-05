@@ -1,6 +1,6 @@
 """Server-side preflight op het CBS-contract (#370, AC3 en AC5): codes, periode en sector vóór de datacall.
 
-Het contract (`onderwijsdata.validate_selection`) is hier een nep: per (dimensie, code) of periode-jaar
+Het contract (`onderwijsbronnen.cbs.validate_selection`) is hier een nep: per (dimensie, code) of periode-jaar
 een oordeel in de vorm die de package teruggeeft. De oordelen hieronder zijn letterlijk wat de package
 op 14-10-2026 voor 85423NED gaf.
 """
@@ -9,7 +9,7 @@ import json
 from unittest.mock import patch
 
 import pytest
-from onderwijsdata.contract import DatasetNietGevonden
+from onderwijsbronnen.cbs.contract import DatasetNietGevonden
 
 from tools import cbs_preflight
 from tools.cbs import get_cbs_data

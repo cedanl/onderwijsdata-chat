@@ -94,7 +94,7 @@ def _bronnen():
             "tools.maten.instellingen.instellingsprofiel", side_effect=lambda naam: _REGISTER.get(naam.strip().lower())
         ),
         patch("tools.duo._duo.load", side_effect=laad),
-        patch("riodata.duo.load", side_effect=laad),
+        patch("onderwijsbronnen.duo.load", side_effect=laad),
     ):
         yield
 

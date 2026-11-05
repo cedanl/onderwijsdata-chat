@@ -246,7 +246,7 @@ _INST = "INSTELLINGSNAAM_ACTUEEL"
 def _ho_laatste_jaar() -> tuple[pd.DataFrame, set[str]]:
     """De ingeschrevenen ho van het laatste jaar (beide resources, -1 als leeg) en de hogescholen: de namen uit de
     hbo-resource. Een hogeschool met wo-studenten (HvA) staat ook in de wo-resource, maar is een hogeschool."""
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     hbo, wo = duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)
     df = pd.concat([hbo, wo], ignore_index=True)

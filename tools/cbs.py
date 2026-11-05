@@ -8,8 +8,8 @@ from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 import pandas as pd
-from onderwijsdata import data, definitions
-from onderwijsdata.client import get
+from onderwijsbronnen.cbs import data, definitions
+from onderwijsbronnen.cbs.client import get
 
 from core import actualiteit
 from core.config import CBS_ROW_LIMIT
@@ -274,7 +274,7 @@ _metadata = actualiteit.Verversing(
 def bron_laatste_update(dataset_id: str) -> str | None:
     """De datum waarop CBS de tabel het laatst bijwerkte (TableInfos.Modified), per aanroep gevraagd (#524).
 
-    De catalogus is een momentopname: onderwijsdata.catalog() leest een JSON uit de
+    De catalogus is een momentopname: onderwijsbronnen.cbs.catalog() leest een JSON uit de
     package, waar `_laatste_update` dezelfde TableInfos.Modified van het buildmoment is.
     Een tabel die CBS daarna bijwerkt, ziet alleen deze functie. Alleen voor tabellen in
     de catalogus (binnen het profiel), zodat een recept van de client geen willekeurig

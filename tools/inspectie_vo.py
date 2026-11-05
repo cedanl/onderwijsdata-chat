@@ -27,7 +27,7 @@ from datetime import date
 from functools import lru_cache
 
 import httpx
-from riodata import duo
+from onderwijsbronnen import duo
 
 from . import fouten, ho_markers, inspectie, scopeprofiel
 from .schemas import TOOL_GET_INSPECTIEOORDEEL

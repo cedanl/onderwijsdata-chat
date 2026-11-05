@@ -32,7 +32,7 @@ elke bronregel van die lading noemt het vo-deel als vo-context voor vervolgonder
 import re
 from dataclasses import dataclass
 
-from riodata import scope
+from onderwijsbronnen import scope
 
 from .canoniek import zonder_bronprefix
 from .schemas import TOOL_GET_RIO_INSTELLING

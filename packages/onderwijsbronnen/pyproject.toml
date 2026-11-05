@@ -1,0 +1,48 @@
+[project]
+name = "onderwijsbronnen"
+# Gaat verder waar riodata (0.7.0) en onderwijsdata (0.2.2) ophielden: een versievergelijking loopt nooit terug.
+version = "0.8.0"
+description = "Python client voor open Nederlandse onderwijs- en arbeidsmarktdata: CBS, DUO, RIO, ROA, UWV, Inspectie en SBB"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "cedanl", email = "info@cedanl.nl" }]
+requires-python = ">=3.11"
+dependencies = ["httpx"]
+
+[project.optional-dependencies]
+analyse = [
+    "pandas",
+    "matplotlib",
+    "openpyxl>=3.1.5",
+]
+catalogus = ["anthropic>=0.87.0", "pyyaml"]
+sbb = [
+    "openpyxl>=3.1.5",
+]
+duo = [
+    "openpyxl>=3.1.5",
+]
+
+[project.urls]
+Homepage = "https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/"
+Catalogus-CBS = "https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/"
+Repository = "https://github.com/cedanl/onderwijsdata-chat"
+
+[tool.hatch.build.targets.wheel]
+# De shims riodata en onderwijsdata horen tijdens de overgang bij deze distributie (#910); weg in #914.
+packages = ["src/onderwijsbronnen", "src/riodata", "src/onderwijsdata"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pandas",
+    "pytest>=9.1.1",
+    "openpyxl>=3.1.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]  # verken/ zijn scripts, geen tests
+markers = ["echt_schema: test gebruikt het gevalideerde ROA-schema (checksum, kolommen) in plaats van een nep-CSV"]

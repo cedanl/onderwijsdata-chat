@@ -430,7 +430,7 @@ def test_een_dashboardonderdeel_dat_niet_laadt_logt_type_en_kenmerk(caplog, monk
 def test_een_dashboard_dat_niet_laadt_logt_de_instelling_alleen_als_kenmerk(caplog, monkeypatch, duo_fixtures, lader):
     # `instelling` is een ongevalideerde queryparameter, dus gebruikerstekst: op WARNING lengte en hash, de naam op
     # DEBUG (#907).
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     from data import dashboard as data_dashboard
 

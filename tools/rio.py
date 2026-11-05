@@ -2,7 +2,7 @@ import json
 from datetime import date
 
 import pandas as pd
-from riodata import fetch, filtercontract, valideer_filters
+from onderwijsbronnen.rio import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 

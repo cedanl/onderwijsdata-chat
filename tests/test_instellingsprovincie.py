@@ -6,8 +6,6 @@ kolom komt nu uit DUO's adressenbestand op INSTELLINGSCODE; een onbekende code b
 """
 
 import json
-import sys
-import types
 from unittest.mock import patch
 
 import pandas as pd
@@ -213,10 +211,9 @@ def _snippet_df(monkeypatch, dataset: str, bron: pd.DataFrame) -> pd.DataFrame:
         assert dataset_id == arbeidsmarktregio.bron()["tabel"]
         return indeling
 
-    duo_module = types.SimpleNamespace(load=fake_load)
-    monkeypatch.setitem(sys.modules, "riodata", types.SimpleNamespace(duo=duo_module))
-    monkeypatch.setitem(sys.modules, "riodata.duo", duo_module)
-    monkeypatch.setitem(sys.modules, "onderwijsdata", types.SimpleNamespace(data=fake_data))
+    # Op de echte modules: `from onderwijsbronnen import duo` in de snippet pakt het attribuut van het pakket.
+    monkeypatch.setattr("onderwijsbronnen.duo.load", fake_load)
+    monkeypatch.setattr("onderwijsbronnen.cbs.data", fake_data)
 
     snippet = generate("get_duo_data", {"dataset_id": dataset, "resource": 0})
     assert snippet is not None

@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from riodata import duo as riodata_duo
+from onderwijsbronnen import duo as riodata_duo
 
 from tests.nepserver import Antwoord, Nepserver, nepserver
 from tools import duo, duo_laden, store

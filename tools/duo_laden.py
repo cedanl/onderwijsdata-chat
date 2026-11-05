@@ -1,6 +1,6 @@
 """Een DUO-bestand laden met een encodingterugval en een controle op kolomdrift (#868).
 
-`riodata.duo.load` leest een CSV met de standaardinstellingen van pandas (UTF-8), en leest de codekolommen als tekst
+`onderwijsbronnen.duo.load` leest een CSV met de standaardinstellingen van pandas (UTF-8), en leest de codekolommen als tekst
 volgens een offline schema-snapshot van riodata. Twee dingen kunnen dan stil misgaan:
 
 - DUO publiceert een bestand in cp1252: het laden faalt met een `UnicodeDecodeError`. Hier volgt dan een tweede
@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 import httpx
 import pandas as pd
-from riodata import duo as _duo
+from onderwijsbronnen import duo as _duo
 
 from . import bestandsversie
 from .bronretry import haal_op_met_retry
@@ -65,7 +65,7 @@ _drift_per_bestand: dict[str, Kolomdrift] = {}
 
 
 def laad(dataset_id: str, resource: int | str) -> pd.DataFrame:
-    """`riodata.duo.load` met herhaling bij een tijdelijke fout (#867) en een tweede poging in cp1252."""
+    """`onderwijsbronnen.duo.load` met herhaling bij een tijdelijke fout (#867) en een tweede poging in cp1252."""
     try:
         return haal_op_met_retry("DUO", lambda: _duo.load(dataset_id, resource))
     except UnicodeDecodeError:

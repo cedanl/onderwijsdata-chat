@@ -108,7 +108,7 @@ def lees_json_gz(naam: str):
 
 def _duo(bronnen: dict, tekst: dict) -> None:
     import pandas as pd
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     for (dataset_id, resource), (kolom, codes) in DUO.items():
         df = duo.load(dataset_id, resource)
@@ -185,7 +185,7 @@ def _inspectie_vo(bronnen: dict) -> None:
     """Het po-so-vo-bestand met de rijen van de vo-vestigingen in INSPECTIE_VO_GEMEENTE (volgens DUO) en een paar po- en
     so-rijen erbij."""
     import httpx
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     from tools import inspectie as i
     from tools import inspectie_vo as v
@@ -254,7 +254,7 @@ def _cbs(bronnen: dict) -> None:
 
 
 def _uwv(bronnen: dict) -> None:
-    from riodata import uwv
+    from onderwijsbronnen import uwv
 
     df = uwv.load("latest", rec_type="Vacature")
     df = df.loc[df["PROVINCIE"] == UWV_PROVINCIE, UWV_KOLOMMEN]
@@ -264,7 +264,7 @@ def _uwv(bronnen: dict) -> None:
 
 
 def _roa(bronnen: dict) -> None:
-    from riodata import roa
+    from onderwijsbronnen import roa
 
     from data import arbeidsmarkt as a
 

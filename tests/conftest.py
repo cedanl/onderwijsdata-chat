@@ -127,7 +127,7 @@ def duo_fixtures(monkeypatch):
     Voor de instellingenregister- en dashboardtests: de pytest-job blokkeert elke MR en mag niet omvallen
     op een storing bij DUO. Een bestand zonder fixture faalt met de naam erbij, zodat het script hem krijgt.
     """
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     import data.dashboard
     import data.instellingen
@@ -171,8 +171,8 @@ def arbeidsmarkt_fixtures(monkeypatch):
     De fixture vervangt de laders van riodata, niet `_uwv` en `_roa`: zo melden die hun bestand voor het bronblok van
     de dashboards (#904), zoals buiten de tests.
     """
-    from riodata import roa as riodata_roa
-    from riodata import uwv as riodata_uwv
+    from onderwijsbronnen import roa as riodata_roa
+    from onderwijsbronnen import uwv as riodata_uwv
 
     from data import arbeidsmarkt
     from scripts import gouden_testfixtures as g

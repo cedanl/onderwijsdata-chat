@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import httpx
 import pandas as pd
-from riodata import duo
+from onderwijsbronnen import duo
 
 from core import actualiteit, brongebruik
 from core.logging_util import foutkenmerk, tekst_kenmerk

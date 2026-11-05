@@ -136,7 +136,7 @@ def client(app_client):
 
 def test_version_noemt_het_manifest_van_de_meegebouwde_cbs_catalogus(client):
     catalogus = client.get("/version").json()["catalogus"]
-    manifest = next(p for p in catalogus if p["pakket"] == "onderwijsdata")["manifest"]
+    manifest = next(p for p in catalogus if p["pakket"] == "onderwijsbronnen")["manifest"]
     assert manifest["consistent"] is True
     assert manifest["catalogusrevisie"] and manifest["aantal"] > 0
     assert set(manifest["versheid"]) >= {"oudste_controle", "afleiding_verouderd", "perioden_verouderd"}
@@ -144,7 +144,7 @@ def test_version_noemt_het_manifest_van_de_meegebouwde_cbs_catalogus(client):
 
 
 def test_version_blijft_werken_zonder_manifest():
-    with patch("onderwijsdata.catalog_manifest", side_effect=RuntimeError("geen artefact")):
+    with patch("onderwijsbronnen.cbs.catalog_manifest", side_effect=RuntimeError("geen artefact")):
         assert catalogusversie._cbs_manifest() is None
 
 

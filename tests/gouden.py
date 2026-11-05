@@ -4,7 +4,7 @@
 `bronnen.json` noemt per bestand de bron-URL, het filter en de ophaaldatum. Deze module zet ze op de plek waar de tools
 hun bron laden, zo laag mogelijk, zodat het rekenwerk van de tools zelf getest wordt:
 
-- DUO: `riodata.duo.load` (zoals de fixture `duo_fixtures`, waar de rest vandaan komt: het instellingenregister);
+- DUO: `onderwijsbronnen.duo.load` (zoals de fixture `duo_fixtures`, waar de rest vandaan komt: het instellingenregister);
 - CBS: `tools.cbs.definitions`, `tools.cbs.get` en `tools.cbs.data`, die laatste filtert als CBS (`tests/cbs_feed.py`);
 - de mbo-indicatoren en de Inspectie (bg en po-so-vo): een httpx-client die alleen het bevroren bestand op de bron-URL
   kent;
@@ -39,7 +39,7 @@ def bronnen() -> dict[str, dict]:
 
 
 def _duo(monkeypatch) -> None:
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     terugval = duo.load  # de DUO-fixtures van #766, voor het register en de adressen
     tekst = json.loads(g.TEKSTKOLOMMEN.read_text())

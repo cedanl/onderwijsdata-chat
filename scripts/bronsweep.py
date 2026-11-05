@@ -23,9 +23,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 import httpx
-from onderwijsdata.client import get as cbs_get
-from riodata import duo as riodata_duo
-from riodata import fetch as rio_fetch
+from onderwijsbronnen import duo as riodata_duo
+from onderwijsbronnen.cbs.client import get as cbs_get
+from onderwijsbronnen.rio import fetch as rio_fetch
 
 from tools import catalog, duo_laden
 from tools.bronretry import haal_op_met_retry

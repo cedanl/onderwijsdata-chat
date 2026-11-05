@@ -247,7 +247,7 @@ def haal_cbs(punt: Ijkpunt) -> dict[str, Any]:
 
 @cache
 def _duo_bestand(dataset: str, resource: int):
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     return duo.load(dataset, resource)
 
@@ -287,7 +287,7 @@ def vestigingsplaats(volledige_naam: str) -> str:
 
 
 def haal_rio(punt: Ijkpunt) -> dict[str, Any]:
-    from riodata import fetch, get, related
+    from onderwijsbronnen.rio import fetch, get, related
 
     s = punt.selectie
     vandaag = date.today().isoformat()

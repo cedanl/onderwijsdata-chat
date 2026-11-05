@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import litellm
-from riodata import uwv
+from onderwijsbronnen import uwv
 
 from core.config import MODEL
 from data.arbeidsmarkt import MAPPING_HERKOMST

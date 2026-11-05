@@ -1,8 +1,8 @@
 """Waar de bronpakketten vandaan komen en hoe je ze installeert (#888).
 
-`onderwijsdata` en `riodata` zijn sinds #885 leden van de uv-workspace onder `packages/` en staan niet op PyPI. Hun
-metadata heeft daarom geen git-commit meer (`direct_url.json` zonder `vcs_info`): het pakket komt uit dezelfde commit
-als de app. Herleidbaar is een pakket dus via het versienummer plus de commit van de chat-repo waaruit het image is
+`onderwijsbronnen` (tot #910 `onderwijsdata` en `riodata`) is sinds #885 lid van de uv-workspace onder `packages/` en
+staat niet op PyPI. Zijn metadata heeft daarom geen git-commit meer (`direct_url.json` zonder `vcs_info`): het pakket
+komt uit dezelfde commit als de app. Herleidbaar is een pakket dus via het versienummer plus de commit van de chat-repo waaruit het image is
 gebouwd (`GIT_COMMIT`, #231).
 
 Installeren kan alleen uit die repo. De publieke GitHub-spiegel heeft dezelfde commits als GitLab `main` (Agents.md),

@@ -17,7 +17,7 @@ hij staat in `niet_beschikbaar` (#901). Per dataset één regel, in de volgorde 
 import functools
 from collections.abc import Callable, Iterable, Mapping
 
-import riodata
+import onderwijsbronnen
 
 from tools import bestandsversie
 
@@ -26,7 +26,7 @@ from tools import bestandsversie
 def _catalogus() -> dict[str, dict]:
     """Het catalogusrecord per dataset-ID: DUO en UWV op CKAN-naam, ROA op ROA-ID."""
     uit: dict[str, dict] = {}
-    for record in riodata.catalog(source="all"):
+    for record in onderwijsbronnen.catalog(source="all"):
         if dataset := record.get("_ckan_id") or record.get("_roa_id"):
             uit[dataset] = record
     return uit

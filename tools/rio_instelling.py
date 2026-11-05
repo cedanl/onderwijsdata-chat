@@ -21,7 +21,7 @@ from datetime import date
 from urllib.parse import urlparse
 
 import httpx
-from riodata import Stap, fetch, get, opvolgers, related
+from onderwijsbronnen.rio import Stap, fetch, get, opvolgers, related
 
 from . import bronretry, fouten, fusies, scopeprofiel
 from .catalog import catalogus_titel

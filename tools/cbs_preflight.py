@@ -15,8 +15,8 @@ contract niet kent is geen onvolledige selectie, en get_cbs_data meldt een lege 
 import logging
 import re
 
-from onderwijsdata import validate_selection
-from onderwijsdata.contract import DatasetNietGevonden
+from onderwijsbronnen.cbs import validate_selection
+from onderwijsbronnen.cbs.contract import DatasetNietGevonden
 
 from core.logging_util import foutkenmerk
 

@@ -3,7 +3,7 @@ import math
 from collections import Counter
 
 import pandas as pd
-from riodata import duo as _duo
+from onderwijsbronnen import duo as _duo
 
 from core.sentinels import BETEKENIS, CBS_BETEKENIS, EMPTY_CELLS
 
