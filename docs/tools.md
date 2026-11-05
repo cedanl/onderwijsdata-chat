@@ -223,7 +223,7 @@ platte tekst bij een miss en pseudo-records met een `melding`; het model las dri
 | `needs_clarification` | Alleen zwakke suggesties (drempel #351) | Laadt er geen, stelt met `clarify_scope` één vraag met deze datasets als opties |
 | `out_of_scope` | De zoekvraag gaat over po, so of vo en noemt geen ho of mbo (dezelfde regel als `agent/po_vraag.py`) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
 | `metadata_unknown` | Met `geo_niveau`: geen dataset heeft het niveau zeker, wel van enkele is de dekking onbekend | Controleert de dekking met `dataset_details` |
-| `source_unavailable` | De catalogus (packages `onderwijsdata`, `riodata`) is niet leesbaar | Zegt dat zoeken nu niet werkt |
+| `source_unavailable` | De catalogus (package `onderwijsbronnen`) is niet leesbaar | Zegt dat zoeken nu niet werkt |
 | `tool_error` | Een onverwachte fout in de zoekfunctie | Probeert hooguit één keer opnieuw |
 
 Een kandidaat is de compacte hit, plus `dataset_id` (het ID om in `dataset_details` en de datatools te gebruiken) en

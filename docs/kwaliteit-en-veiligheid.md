@@ -173,7 +173,7 @@ Elke vraag definieert:
 
 De bronwaarheid-cases (`ijk-*` en de bijbehorende `weigering-*` in `evaluations.json`) stellen ongehulpte,
 natuurlijke vragen en toetsen het antwoord tegen waarden die `scripts/ijkwaarden.py` rechtstreeks bij CBS
-(OData), DUO en RIO (`riodata`) ophaalt, buiten `tools/` om: een fout in de tools verandert de ijkwaarde niet
+(OData), DUO en RIO (`onderwijsbronnen`) ophaalt, buiten `tools/` om: een fout in de tools verandert de ijkwaarde niet
 mee. De vastgelegde stand staat in `tests/e2e/ijkwaarden.json`, per waarde met bron, selectie, eenheid,
 schooljaar, CBS-status en ophaaldag; een eval verwijst ernaar (`data_points.ijkwaarden`) en is exact, zonder
 tolerantie. Zonder `--schrijf` toont het script elk verschil met de bron en faalt het; een nieuwe stand is een

@@ -14,7 +14,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 |------------|---------|
 | Toegang | CBS Open Data OData API |
 | Catalogus | [catalogus/cbs](https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/) |
-| Pakket | `onderwijsdata`, in deze repo onder `packages/onderwijsdata`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
+| Pakket | `onderwijsbronnen.cbs` (tot #910 het pakket `onderwijsdata`), in deze repo onder `packages/onderwijsbronnen`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
 | Granulariteit | Nationaal, regionaal, per onderwijstype |
 | Tijdreeksen | Beschikbaar voor de meeste datasets |
 
@@ -33,7 +33,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 |------------|---------|
 | Toegang | RIO LOD (Linked Open Data) API v3 (`https://lod.onderwijsregistratie.nl/api/rio/v3`; v2 is op 19-10-2026 verwijderd) |
 | Catalogus | [catalogus/rio](https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/) |
-| Pakket | `riodata`, in deze repo onder `packages/riodata`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
+| Pakket | `onderwijsbronnen.duo` en `onderwijsbronnen.rio` (tot #910 het pakket `riodata`), in deze repo onder `packages/onderwijsbronnen`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
 | Inhoud | Instellingen, locaties, opleidingen, besturen |
 
 **Beschikbare resources** (de namen van de RIO-API):
@@ -57,7 +57,7 @@ RIO legt elke fusie en overdracht vast als instellingsrelatie `OVERGANG_VOLLEDIG
 erkenning naar de nieuwe, met de dag van de overgang. Het DUO-register "Basisgegevens instellingen" voegt daar bij mbo,
 hbo en wo niets aan toe (onderzoek 04-11-2026, no-go): de chat gebruikt alleen RIO.
 
-- **Pakket:** `riodata.opvolgers(brin, peildatum)` en `riodata.voorgangers(brin, sinds)` volgen de overgangen, ook door
+- **Pakket:** `onderwijsbronnen.rio.opvolgers(brin, peildatum)` en `onderwijsbronnen.rio.voorgangers(brin, sinds)` volgen de overgangen, ook door
   een keten en veilig bij een cyclus, en geven altijd `datumGeldigOp` mee. Per stap: code, naam, volledig/gedeeltelijk en
   datum.
 - **Oude naam of BRIN:** `get_rio_instelling("Friesland College")` of `get_rio_instelling("25LG")` geeft `status:
@@ -217,7 +217,7 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | Via DataverseNL (`riodata.roa`, AIS 2030) |
+| Toegang | Via DataverseNL (`onderwijsbronnen.roa`, AIS 2030) |
 | Inhoud | Schoolverlatersinformatie en arbeidsmarktprognoses per opleidingsniveau, -sector, -subsector en -type (ONR2019) |
 | Formaat | Landelijke referentiewaarden; de prognose per niveau, sector en subsector ook per arbeidsmarktregio (35) en provincie (12); het opleidingstype alleen landelijk |
 
