@@ -85,23 +85,18 @@ git push origin env/playground/X.Y.Z
 - `playground` geen vaste `X.Y.Z` pint (een range of rc-build);
 - de gepinde release-tag niet op de remote bestaat (de chart bestaat dan ook niet).
 
-## Bevriezing tijdens de overgang naar onderwijsbronnen
+## Bevriezing tijdens de overgang naar onderwijsbronnen (afgerond)
 
-Besluit 04-11 (#890): de bronpakketten `riodata` en `onderwijsdata` gaan op in één pakket `onderwijsbronnen`
-(#909–#914). Playground heeft bestaande gebruikers met opgeslagen gesprekken en recepten. Het nieuwe bron-ID-contract
-gaat daar daarom pas aan als het op test én playground bewezen werkt.
+Besluit 04-11 (#890): de bronpakketten `riodata` en `onderwijsdata` gingen op in één pakket `onderwijsbronnen`
+(#909–#914), met het ID-contract `bron:id` eerst achter de vlag `BRON_ID_CONTRACT`. Besluit 05-11
+([comment op #890](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/890#note_1318539)
+en de comment op #913) verving de bevriezing: geen aparte release vóór #910 en geen schaduwperiode; release 2.7.0 ging
+met `BRON_ID_CONTRACT: "aan"` naar test en playground.
 
-Besluit 05-11 ([comment op #890](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/890#note_1318539))
-vervangt de bevriezing van 04-11: er komt geen aparte release vóór #910.
-
-1. **#910, #911 en #912 gaan in één release naar playground**, met `BRON_ID_CONTRACT: "schaduw"` in
-   `manifests/playground`, op dezelfde manier als in `manifests/test`. In schaduwmodus volgt het gedrag het oude pad;
-   de app logt alleen waar het nieuwe contract zou afwijken. Volgorde: eval #909 (nulmeting) → merge #910+#911 en
-   #912 → rooktest en eval op test → release → promotie-MR met de pin en de vlag. Na de promotie: `/health`,
-   `/version`, en in de pod-log dat de schaduwmodus aan staat.
-2. **Van die promotie tot de go in #913: de vlag blijft op `schaduw`**, op test en op playground. Pas na enkele
-   dagen schaduwlog op beide omgevingen en de go van de gebruiker in #913 gaat de vlag naar `aan`.
-3. **#914** haalt daarna de shims en het oude pad weg. Daarna vervalt deze sectie; haal haar weg in die MR.
+Afgerond met #914: de vlag, de oude herleiding en de shims `riodata`/`onderwijsdata` zijn weg. Eén restpunt voor de
+**eerste promotie-MR van een release met #914**: haal `BRON_ID_CONTRACT` uit `manifests/playground/values.yaml`. Eerder
+niet: 2.7.0 leest de vlag nog en valt zonder vlag terug op het oude pad (`uit`). Een terugval gaat vanaf die release
+via de pin (terug naar 2.7.0, mét de vlag op `aan` in de manifests), niet meer via een vlag.
 
 ## Jaarlijks
 
@@ -122,4 +117,3 @@ staan. `bron:ping` wordt rood zodra het lopende studiejaar ontbreekt.
 - Niet pinnen op `2.0.0`: die tag heeft geen chart. `promotie.py promote` weigert hem.
 - Geen `v`-prefix op release-tags.
 - Niet taggen voordat `main` groen is.
-- `BRON_ID_CONTRACT` in `manifests/playground` niet op `aan` zetten vóór de go in #913 (zie de bevriezing hierboven).

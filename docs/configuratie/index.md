@@ -51,7 +51,6 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `DATABASE_PATH` | `onderwijsdata.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `false` | Zet op `true` om de drie vaste dashboards (pagina `/dashboards` en `GET /api/dashboard/*`) aan te zetten. Standaard uit; de dashboardbouwer is verwijderd (#765). `manifests/test/values.yaml` en `manifests/playground/values.yaml` zetten hem aan, productie houdt hem uit |
-| `BRON_ID_CONTRACT` | `uit` | Het ID-contract `bron:id` (#912, ADR-010): `uit` (de oude herleiding), `schaduw` (de oude beslist, de nieuwe draait ernaast; elk verschil komt als `BRON_ID_VERSCHIL` in het log) of `aan` (het contract beslist). Een andere waarde telt als `uit`. `manifests/test/values.yaml` zet `schaduw` |
 | `MAX_DASHBOARD_LOADS` | `4` | Gelijktijdige dashboardladingen op de pod; een koude lading haalt tot zes DUO-bestanden in het geheugen (#901) |
 | `DASHBOARD_QUEUE_TIMEOUT_S` | `30` | Seconden dat een dashboardlading op een plaats wacht; daarna HTTP 503 met de melding dat het druk is |
 | `DASHBOARD_TIMEOUT_S` | `90` | Seconden tot de gebruiker een melding met een nieuwe poging krijgt (HTTP 504); de lading loopt door en vult de cache |

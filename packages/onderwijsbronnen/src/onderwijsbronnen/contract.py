@@ -1,6 +1,6 @@
 """Versieerbaar, modelonafhankelijk datasetcontract voor alle zes bronnen (RIO-03).
 
-Afgestemd op ``onderwijsdata.contract`` (CBS-03): dezelfde functienamen
+Afgestemd op ``onderwijsbronnen.cbs.contract`` (CBS-03): dezelfde functienamen
 (``catalog_records``, ``get_dataset``, ``catalog_manifest``, ``scope_review``,
 ``valideer_record``), dezelfde statussen en dezelfde ``scopeprofiel``-vorm. Daarnaast
 ``get_resource`` voor resources met een stabiele ID.

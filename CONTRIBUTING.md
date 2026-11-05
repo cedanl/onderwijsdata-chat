@@ -32,7 +32,7 @@ Dezelfde twee regels staan in de CI-job `pytest`, vóór de chattests (#886). Te
 **De grens tussen pakket en chat** bewaakt `tests/test_importgrens.py` (draait mee met `pytest tests/`): een pakket
 importeert de chat (`tools`, `agent`, `core`, `routes`, `persistence`, …) en het andere pakket niet, en de chat
 importeert alleen de publieke API van het pakket, dus niets met een underscore in het pad (`onderwijsbronnen.duo` wel,
-`onderwijsbronnen._kern` niet), en niet de oude namen `riodata`/`onderwijsdata` (shims tot #914). Binnen het pakket
+`onderwijsbronnen._kern` niet), en niet de oude namen `riodata`/`onderwijsdata` (weg sinds #914). Binnen het pakket
 importeert een bron (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`) alleen zichzelf en `_kern`, nooit een andere
 bron; samenvoegen gebeurt in de bovenlaag (`onderwijsbronnen/__init__.py`, `contract.py`). Elke bron levert dezelfde
 interface (`BRON`, `catalogusrecords()`, `laad`, `metadata()`, `tests/test_broncontract.py` in het pakket). Ophalen en bronlogica horen in `packages/`, beleid (scope, poorten, etiketten) in `tools/`.

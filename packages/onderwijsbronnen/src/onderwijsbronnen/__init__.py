@@ -9,7 +9,7 @@ bron-subpakket heeft dezelfde interface (`BRON`, `catalogusrecords()`, `laad`, `
     from onderwijsbronnen.cbs import data
     from onderwijsbronnen.rio import fetch, get, related
 
-`riodata` en `onderwijsdata` blijven tijdens de overgang importeerbaar als shim (DeprecationWarning).
+De oude namen `riodata` en `onderwijsdata` (tot #910) bestaan sinds 0.9.0 niet meer (#914).
 """
 
 from functools import cache

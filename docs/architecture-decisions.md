@@ -455,9 +455,9 @@ app.
 
 ## ADR-010: Eén ID-contract `bron:id` voor alle bronnen, eerst in schaduwmodus
 
-**Date:** 2026-11-05 (besluit 2026-11-04 op #890)
-**Status:** Decided; gebouwd achter de vlag `BRON_ID_CONTRACT`, op test in `schaduw`; `aan` na de acceptatie (#913)
-**Issue:** #912 (epic #890; nulmeting #909, verhuizing #910, importgrenzen #911)
+**Date:** 2026-11-05 (besluit 2026-11-04 op #890); bijgewerkt 2026-11-05 (#914)
+**Status:** Decided; sinds #914 het enige pad: de vlag `BRON_ID_CONTRACT` en de oude herleiding zijn weg
+**Issue:** #912 (epic #890; nulmeting #909, verhuizing #910, importgrenzen #911, acceptatie #913, opruimen #914)
 
 ### Problem
 Welke bron bij een ID hoort, werd op drie plekken beslist, elk met een eigen regel: `tools/catalog.py` `bron_id` en
@@ -480,7 +480,7 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 - **In de chat één plek**: `tools/bron_ids.py` (`bron_id`, `cbs_tabel_id`, `bron_van`) vervangt de drie oude
   functies. De vlag `BRON_ID_CONTRACT` kiest: `uit` (oude herleiding), `schaduw` (oude herleiding beslist, de nieuwe
   draait ernaast; elk verschil komt als `BRON_ID_VERSCHIL` met een telling in het log) of `aan` (het contract
-  beslist). Standaard `uit`; test draait `schaduw`.
+  beslist). Standaard `uit`; test draait `schaduw`. Dat was de overgang; zie **Afgerond (#914)** hieronder.
 - **Niet nu:** waarden die het model ziet (`source="riodata"` in `search_catalog`, toolbeschrijvingen) en het
   catalogusformaat blijven gelijk; dat vraagt een eval tegen de nulmeting. BRIN- en bestuursnummers vallen buiten dit
   contract (#728): die identificeren een instelling, geen dataset.
@@ -494,14 +494,29 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 - **Terugvalknop:** de vlag schakelt zonder nieuwe release terug (`docs/promoten.md`, bevriezing).
 
 ### Trade-off(s)
-- Zolang de vlag bestaat, staat de oude herleiding nog in `tools/bron_ids.py` (`_oud_*`) naast het contract; ze gaat
-  weg met de vlag, na de go in #913 (#914).
 - In `aan` herleidt het contract ook vormen die de oude regel niet kende (`roa:ais2030` → `ais2030`); dat zijn
   verbeteringen, en ze staan vooraf in het schaduwlog.
+- Zonder vlag is er geen terugval meer zonder release: een fout in het contract herstel je met een fix of met de pin
+  van playground terug naar een release van vóór #914 (`docs/promoten.md`).
 - **Heroverwegen** zodra een van deze zich voordoet:
     - het schaduwlog op test toont een verschil voor een vorm die gebruikers echt opsloegen;
     - een nieuwe bron heeft ID's die met een bestaande bron botsen (de test wordt rood);
     - het model moet het volledige `bron:id` gaan zien (dan eerst een eval tegen de nulmeting).
+
+### Afgerond (#914, 2026-11-05)
+- **Geen schaduwperiode** (besluit gebruiker 05-11, comment op #913): het schaduwlog op test gaf 0 verschillen sinds
+  de deploy van 80a77d9a, en de nulmeting en de volledige suite waren groen onder alle drie de standen. Release 2.7.0
+  ging met `BRON_ID_CONTRACT=aan` naar test en playground.
+- **De vlag en de oude herleiding zijn weg:** `tools/bron_ids.py` volgt alleen het contract (`parse_bron_id`,
+  `bron_van_sleutel`); `_oud_*`, de modus, de telling en de logregel `BRON_ID_VERSCHIL` bestaan niet meer, en
+  `core/config.py` leest de vlag niet meer. `manifests/test` zet hem niet meer; `manifests/playground` houdt hem tot
+  de eerste promotie van een release met #914, omdat 2.7.0 hem nog leest (zonder vlag zou 2.7.0 terugvallen op `uit`).
+- **De aliassen blijven:** elke vorm uit de nulmeting (`tests/fixtures/bron_id_vormen.json`, ongewijzigd) herleidt
+  onder het contract naar dezelfde bron, dataset en hetzelfde bestand (`tests/test_bron_id_vormen.py`).
+- **Ook weg:** de overgangsnamen `riodata` en `onderwijsdata` (shims uit #910). Opgeslagen recepten noemen geen
+  modulepaden (#909); oude snippets installeren hun eigen commit van de oude pakketten en draaien daartegen
+  (live-test in `tests/test_bron_id_vormen.py`). Pakketversie 0.9.0.
+- **Nog niet:** `source="riodata"` in `search_catalog` en de toolbeschrijvingen; dat vraagt een eval (vervolg).
 
 ---
 

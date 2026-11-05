@@ -11,10 +11,12 @@ Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit zeven bronnen,
 - **Inspectie van het Onderwijs** — open data (2 datasets) (`onderwijsbronnen.inspectie`)
 - **SBB** — CREBO-lijst en kwalificatiedossiers (2 datasets) (`onderwijsbronnen.sbb`, met `sbb.crebo` en `sbb.dossiers`)
 
-Tot november 2026 waren dit twee pakketten: `onderwijsdata` (CBS) en `riodata` (de rest). Die namen werken in deze
-repo nog als shim met een `DeprecationWarning` (`import riodata`, `from onderwijsdata import data`) en verdwijnen na de
-overgang (#914). Een installatieregel met een oudere commit en `#subdirectory=packages/riodata` of
-`packages/onderwijsdata` blijft werken: die commit heeft de oude mappen nog.
+Tot november 2026 waren dit twee pakketten: `onderwijsdata` (CBS) en `riodata` (de rest). Sinds 0.9.0 (#914) bestaan
+die namen niet meer in dit pakket. Overstappen: `from riodata import duo` wordt `from onderwijsbronnen import duo`
+(net zo `roa`, `uwv`, `inspectie`, `sbb`), `from riodata import fetch` wordt `from onderwijsbronnen.rio import fetch`,
+en `from onderwijsdata import data` wordt `from onderwijsbronnen.cbs import data`. Code met de oude namen draait
+tegen haar eigen installatie: een installatieregel met een oudere commit en `#subdirectory=packages/riodata` of
+`packages/onderwijsdata` blijft werken, want die commit heeft de oude mappen nog.
 
 Elke bron heeft dezelfde interface (`BRON`, `catalogusrecords()`, `laad`, `metadata(record)`; zie
 `src/onderwijsbronnen/_kern/broncontract.py`), en een bron importeert nooit een andere bron, alleen `_kern`.
@@ -194,7 +196,6 @@ src/onderwijsbronnen/
   rio/                  RIO LOD API-client (fetch, get, related), filtercontract, overgangen; data/
   roa/ uwv/ inspectie/  loaders; elk een data/ met de eigen catalogus
   sbb/                  SBB-loader, crebo (CREBO-lijst), dossiers (kwalificatiedossiers-XML); data/
-src/riodata/, src/onderwijsdata/   shims voor de overgang (#910), weg in #914
 data/02-prepared/       bron-JSONs voor de catalogus (CBS en RIO)
 catalogus/cbs/, catalogus/rio/     scripts die de catalogi en sites bouwen
 voorbeelden/cbs/, voorbeelden/rio/ analysescripts + plots

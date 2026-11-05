@@ -61,7 +61,7 @@ def code(result: str) -> str | None:
 def bronfout(bron: str, e: Exception, uitleg: str = "") -> str:
     """Een providerfout als code en vaste tekst; de ruwe tekst gaat naar het log.
 
-    Een ValueError komt uit de eigen packages (riodata, onderwijsdata), die een aanvraag
+    Een ValueError komt uit het eigen pakket (onderwijsbronnen), dat een aanvraag
     lokaal toetsen ("Geen resource met 'mbo'", de geldige resources): die tekst helpt
     het model verder en blijft staan.
     """

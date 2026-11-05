@@ -15,7 +15,7 @@ bron, en de tests lopen vanzelf over elke regel in het bestand.
 |---|---|---|
 | `[sentinel]` | Maken de waarden leeg in elke DUO-tabel die de chat laadt en melden hoeveel cellen dat waren; een totaal over zo'n cel heet een ondergrens. | `get_duo_data`, `query_data`, het Telling-blok, de voetnoot onder een tabel met lege cellen (#811), dashboards en code-snippets |
 | `[opleidingsvorm]` | Geven de codes een definitie en een woord (VT → Voltijd), alleen bij de genoemde bestanden; de antwoordcontrole toetst "deeltijd (DU)" eraan. | kolomdefinitie in `get_duo_data`, grafieklabels, rapportdefinities |
-| `[[kolomcorrectie]]` | Vervangen de riodata-definitie van één kolom in de genoemde bestanden. | `get_duo_data`, `dataset_details`, `search_catalog` |
+| `[[kolomcorrectie]]` | Vervangen de definitie uit `onderwijsbronnen` van één kolom in de genoemde bestanden. | `get_duo_data`, `dataset_details`, `search_catalog` |
 | `[[herkomst_is_vestiging]]` | Zetten een melding `niet_geschikt_voor` op de genoemde bestanden en herschrijven voorbeeldvragen die naar woonplaats vragen. | `dataset_details`, `search_catalog` |
 
 `[soort]` komt precies één keer voor; `[[soort]]` is een lijst: elk blok met die kop is één regel.
@@ -41,7 +41,7 @@ Daarnaast per soort:
 | | `codes` | tabel `CODE = "woord"` | Bijv. `{ VT = "voltijd", DT = "deeltijd", DU = "duaal" }`. Losse woorden, geen leestekens. |
 | `kolomcorrectie` | `datasets` | lijst van dataset-ID's | De bestanden waarin de kolom deze betekenis heeft. |
 | | `kolom` | tekst | De kolomnaam precies zoals in het bestand, bijv. `"TOTAAL MBO"`. |
-| | `definitie` | tekst | De definitie die het model krijgt, in plaats van die van riodata. |
+| | `definitie` | tekst | De definitie die het model krijgt, in plaats van die uit `onderwijsbronnen`. |
 | `herkomst_is_vestiging` | `datasets` | lijst van dataset-ID's | Bestanden waarvan de plaatskolommen de vestiging zijn. |
 | | `melding` | tekst | Wat de catalogus als `niet_geschikt_voor` toont. |
 | | `voorbeeldvragen` | tabel, optioneel | `"vraag uit de catalogus" = "herschreven vraag"`. |
@@ -113,7 +113,7 @@ opnieuw nagaat, ook als de tekst niet verandert.
 
 `tests/test_domeinregels.py` leest het echte bestand en draait voor **elke regel** twee tests:
 
-- **contract**: wat de regel noemt bestaat in de gepinde riodata-catalogus, binnen mbo/hbo/wo.
+- **contract**: wat de regel noemt bestaat in de catalogus van `onderwijsbronnen`, binnen mbo/hbo/wo.
   Een kolomcorrectie: elke dataset staat erin en de kolom staat in `_kolommen` van die dataset. Hernoemt
   DUO een kolom, dan faalt deze test, in plaats van dat de correctie stil wegvalt. Herkomst: elke te
   herschrijven vraag stelt de catalogus nog. Opleidingsvorm: de DUO-beschrijving noemt OPLEIDINGSVORM en

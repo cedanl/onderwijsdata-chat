@@ -247,7 +247,7 @@ tool, zoals `get_uwv_vacatures`), `alleen_documentatie` (de bron heeft alleen ee
 `alleen_catalogus` (vindbaar en voor de package leesbaar, maar zonder chat-adapter). Zoekbaar, package-leesbaar en
 chat-opvraagbaar zijn zo drie verschillende dingen; `_niet_opvraagbaar` in `tools/catalog.py` is de enige plek die
 beslist, de package meldt alleen wat ze kan lezen. De interne bronfilter `source` betekent wat hij zegt: `cbs`,
-`rio` (alleen RIO), `duo` (alleen DUO), `riodata` (alles uit de riodata-package) of `both`.
+`rio` (alleen RIO), `duo` (alleen DUO), `riodata` (RIO, DUO, ROA en UWV: wat tot #910 het pakket `riodata` was) of `both`.
 
 De tien vo-bronnen in `VO_CONTEXT` (`tools/scopeprofiel.py`, epic #554, #877) zitten achter een zoekpoort in code
 (`_zoekbaar` in `tools/catalog.py`, #557): ze komen alleen in de resultaten als `ho_markers.vo_context_poort` waar is.
@@ -279,9 +279,9 @@ Voor een CBS-tabel komen de velden uit het contract van de CBS-package (`tools/c
 additiviteit, definitiebreuken, publicatiestatus), `perioden` (frequentie, eerste en laatste periode, en per
 periodecode de titel met de CBS-status zolang die niet definitief is) en `geografie` (niveaus, dekking). Wat het
 contract niet vastlegt, staat er niet in. Het contract-ID `cbs:85423NED`, `cbs_85423ned` en `85423NED` wijzen in
-`dataset_details`, `get_cbs_data` en `get_cbs_dimension` naar dezelfde tabel (`tools/catalog.py::cbs_bron_id`: zonder voorvoegsel, in de spelling van de catalogus).
+`dataset_details`, `get_cbs_data` en `get_cbs_dimension` naar dezelfde tabel (`tools/bron_ids.py::cbs_tabel_id`, het ID-contract van ADR-010: zonder voorvoegsel, in de spelling van de catalogus).
 Hetzelfde geldt voor DUO en RIO (#356): `duo:p01hoinges`, `DUO/P01HOINGES` en `rio:erkenningen` wijzen in `dataset_details`,
-`get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde record (`tools/catalog.py::bron_id`); de evals en de packages
+`get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde record (`tools/bron_ids.py::bron_id`); de evals en de packages
 spellen `<bron>:<id>`. Het detailrecord draagt dezelfde `status` als een zoekhit.
 
 ---
@@ -292,7 +292,7 @@ Geeft het aantal datasets per bron (CBS, DUO, RIO) dat de chat kan opvragen, plu
 
 **Gebruik:** bij een vraag naar hoeveel datasets er zijn. Een telling van zoekresultaten is geen catalogustotaal (#168).
 
-De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopeprofiel.py`, #355). Een record valt erbinnen als `onderwijstype` alleen MBO, HBO, WO of HO noemt, of als het ID met een reden in `TOEGELATEN` staat. De enige vo-uitzondering zijn de tien bronnen in `VO_CONTEXT`: ze vallen binnen het profiel en tellen mee, maar zoeken toont ze alleen bij een vraag over het ho of over doorstroom uit het vo (zie [`search_catalog`](#search_catalog)). Al het andere valt erbuiten: po/so/vo, gemengde bestanden, records zonder besluit, en wat riodata als `buiten_scope` markeert (#375). Zoeken telt ze niet mee; `dataset_details`, `get_duo_data` en `get_rio_data` geven voor zo'n ID `opvraagbaar: false` en `buiten_scope: true` in plaats van data, ook als het ID rechtstreeks uit de vraag komt.
+De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopeprofiel.py`, #355). Een record valt erbinnen als `onderwijstype` alleen MBO, HBO, WO of HO noemt, of als het ID met een reden in `TOEGELATEN` staat. De enige vo-uitzondering zijn de tien bronnen in `VO_CONTEXT`: ze vallen binnen het profiel en tellen mee, maar zoeken toont ze alleen bij een vraag over het ho of over doorstroom uit het vo (zie [`search_catalog`](#search_catalog)). Al het andere valt erbuiten: po/so/vo, gemengde bestanden, records zonder besluit, en wat `onderwijsbronnen` als `buiten_scope` markeert (#375). Zoeken telt ze niet mee; `dataset_details`, `get_duo_data` en `get_rio_data` geven voor zo'n ID `opvraagbaar: false` en `buiten_scope: true` in plaats van data, ook als het ID rechtstreeks uit de vraag komt.
 
 ---
 

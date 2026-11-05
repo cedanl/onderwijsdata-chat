@@ -5,7 +5,7 @@ Python client voor publieke Nederlandse onderwijsdata via de [CBS OData API](htt
 ## Installatie
 
 De CBS-client is het subpakket `onderwijsbronnen.cbs` van het pakket `onderwijsbronnen` (tot november 2026 het
-losse pakket `onderwijsdata`; die naam werkt in deze repo nog als shim, #910). Het staat **niet op PyPI** en woont in
+losse pakket `onderwijsdata`; die naam bestaat sinds #914 niet meer). Het staat **niet op PyPI** en woont in
 de repo van de chat
 ([`packages/onderwijsbronnen`](https://github.com/cedanl/onderwijsdata-chat/tree/main/packages/onderwijsbronnen)).
 Installeer vanuit Git met een vaste commit van die repo (gebruik niet `main` voor reproduceerbare omgevingen):

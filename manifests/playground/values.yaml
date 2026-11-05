@@ -104,7 +104,9 @@ env:
   # Dashboards staan op playground weer aan (vlag uit 47e7727f), net als op test; production houdt ze uit.
   - name: ENABLE_DASHBOARDS
     value: "true"
-  # Het ID-contract bron:id (#912) staat aan, zoals op test (besluit gebruiker 05-11, #890). Terugval: `uit`.
+  # Het ID-contract bron:id (#912) staat aan (besluit gebruiker 05-11, #890). Alleen 2.7.0 leest deze vlag; de code
+  # vanaf #914 niet meer. Weg in de eerste promotie-MR van een release met #914 (docs/promoten.md), niet eerder:
+  # zonder deze regel valt 2.7.0 terug op de standaard `uit`, het oude pad.
   - name: BRON_ID_CONTRACT
     value: "aan"
   # Azure AI Foundry — optioneel naast Willma.

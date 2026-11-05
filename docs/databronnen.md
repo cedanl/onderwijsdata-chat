@@ -125,7 +125,7 @@ erbij in dezelfde mbo-bestanden als `PROVINCIE INSTELLING` (`tools/instellingspr
 hoofdvestiging (`GEMEENTENUMMER INSTELLING` als het bestand die heeft, anders het adres uit `adressen_mbo`) en de
 CBS-indeling van `data/arbeidsmarktregio.py`, dezelfde als in het instellingsprofiel en voor ROA. Een gemeente zonder
 regio blijft leeg. Op 05-11-2026 kregen alle 55 instellingen van mbo-studenten-per-instelling een regio (28 regio's).
-De snippet zet de kolom op dezelfde manier, met de CBS-tabel via `onderwijsdata.data`.
+De snippet zet de kolom op dezelfde manier, met de CBS-tabel via `onderwijsbronnen.cbs.data`.
 
 **Totalen blijven bij de hoofdvestiging.** Een som over de instellingen heen (bijvoorbeeld per jaar) telt alleen de
 instellingen met hun hoofdvestiging in het gebied, zoals vóór #744: anders telde een instelling met één locatie in het
@@ -136,7 +136,7 @@ telling gebruikt dezelfde dagcache als de vergelijking per instelling.
 - **Locaties:** `mbo_opleidingsaanbod`, DUO's dagelijkse export van het RIO-aanbod per onderwijslocatie (plaats en
   aanbieder, `ONDERWIJSAANBIEDERID`). RIO zelf filtert locaties niet op plaats: de lijst telt 13.655 locaties in pagina's
   van 100. De plaatsnamen zijn die van RIO (nagegaan voor alle 570 mbo-locaties).
-- **Aanbieder → BRIN:** RIO, `/erkenningen/{brin}/organisatorische-eenheden` (`riodata.onderwijsaanbieders`), voor
+- **Aanbieder → BRIN:** RIO, `/erkenningen/{brin}/organisatorische-eenheden` (`onderwijsbronnen.rio.onderwijsaanbieders`), voor
   alle instellingen in het bestand in één lading. De andere routes in RIO zijn niet bruikbaar (05-11-2026): de
   locatiegebruiken dragen bij 459 van de 570 mbo-locaties geen erkenning, `/organisatorische-eenheden/{aanbieder}/erkenningen`
   gaf HTTP 500 voor 23 van de 407 aanbieders (Summa College, Koning Willem I College) en
@@ -411,10 +411,9 @@ schrijft `85423NED` naast `80040ned`). Een kale ID die bij twee bronnen past, is
 stille keuze; een test bewaakt dat geen ID in twee bronnen voorkomt. Alle vormen die in opgeslagen recepten en
 gesprekken staan (de nulmeting van #909, `tests/fixtures/bron_id_vormen.json`), blijven geldig.
 
-De chat gebruikt het contract via `tools/bron_ids.py`, achter de vlag `BRON_ID_CONTRACT`: `uit` (de oude
-herleiding), `schaduw` (op test: de oude herleiding beslist, elk verschil met het contract staat in het log als
-`BRON_ID_VERSCHIL`) of `aan`. Het model ziet de ID's zoals voorheen: zonder voorvoegsel, en `search_catalog` kent nog
-`source="riodata"`.
+De chat gebruikt alleen dit contract, via `tools/bron_ids.py`; de vlag `BRON_ID_CONTRACT` en de oude herleiding
+zijn weg sinds #914. Het model ziet de ID's zoals voorheen: zonder voorvoegsel, en `search_catalog` kent nog
+`source="riodata"` (een waarde die het model kiest; wijzigen vraagt eerst een eval).
 
 ## Bronnen onder een antwoord
 

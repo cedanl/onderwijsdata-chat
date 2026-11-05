@@ -119,9 +119,6 @@ env:
   # Dashboards staan op test en playground aan (vlag uit 47e7727f); production houdt ze uit.
   - name: ENABLE_DASHBOARDS
     value: "true"
-  # Het ID-contract bron:id (#912) staat aan, zoals op playground (besluit gebruiker 05-11, #890). Terugval: `uit`.
-  - name: BRON_ID_CONTRACT
-    value: "aan"
   # Azure AI Foundry — optioneel naast Willma.
   # AZURE_AI_API_KEY + AZURE_AI_API_BASE moeten in onderwijsdata-chat-secrets staan.
   - name: AZURE_AI_API_KEY

@@ -152,9 +152,9 @@ pytest:
     # De eigen tests van het bronpakket (#886, #910), in de map van het pakket met zijn eigen pytest-config: in één run
     # met de chattests botsen de modulenamen (beide hebben tests/__init__.py). Tests met netwerk staan achter
     # RIODATA_LIVE=1 en slaan over (-rs toont ze); test_release bouwt wheel en sdist met uv. De dekking van het pakket
-    # (ook de shims riodata en onderwijsdata) staat in het log maar telt niet mee in de poort. Deze stap staat VOOR de
-    # chattests: GitLab neemt de laatste `TOTAL`-regel voor `coverage` hieronder, en dat moet die van de chat zijn.
-    - uv run --frozen --no-sync --directory packages/onderwijsbronnen pytest -q -rs --cov=onderwijsbronnen --cov=riodata --cov=onderwijsdata --cov-report=term
+    # staat in het log maar telt niet mee in de poort. Deze stap staat VOOR de chattests: GitLab neemt de laatste
+    # `TOTAL`-regel voor `coverage` hieronder, en dat moet die van de chat zijn.
+    - uv run --frozen --no-sync --directory packages/onderwijsbronnen pytest -q -rs --cov=onderwijsbronnen --cov-report=term
     # Dekking: `fail_under` in pyproject.toml laat deze stap falen onder de ondergrens (#691); `coverage` hieronder
     # zet het totaal op de MR en in de pipeline.
     # -rs: de reden van elke skip staat in het log, zodat een stil overgeslagen test opvalt (#768).
