@@ -14,7 +14,8 @@ import pytest
 
 from core import catalogusversie
 from tools import canoniek, cbs_meta
-from tools.catalog import cbs_bron_id, dataset_details
+from tools.bron_ids import cbs_tabel_id
+from tools.catalog import dataset_details
 from tools.cbs import get_cbs_data, get_cbs_dimension
 
 # ── Eén ID-spelling (#370, sluit aan op #356) ──────────────────────────────────────────
@@ -26,21 +27,21 @@ def test_zonder_cbs_prefix_haalt_alleen_het_voorvoegsel_weg(spelling):
 
 
 @pytest.mark.parametrize("spelling", ["85423NED", "cbs:85423NED", "CBS_85423ned", "85423ned", " cbs/85423NED "])
-def test_cbs_bron_id_brengt_elke_spelling_terug_tot_de_catalogusspelling(spelling):
+def test_cbs_tabel_id_brengt_elke_spelling_terug_tot_de_catalogusspelling(spelling):
     """Tegen de echte CBS-inventaris: 85423NED staat erin, in hoofdletters."""
-    assert cbs_bron_id(spelling) == "85423NED"
+    assert cbs_tabel_id(spelling) == "85423NED"
 
 
-def test_cbs_bron_id_volgt_de_spelling_van_de_catalogus_niet_een_hoofdletterregel():
+def test_cbs_tabel_id_volgt_de_spelling_van_de_catalogus_niet_een_hoofdletterregel():
     """CBS schrijft 85423NED naast 80040ned: de catalogus beslist, niet upper()."""
     with patch("tools.catalog._cbs_alles", return_value=[{"_cbs_id": "80040ned"}]):
-        assert cbs_bron_id("cbs:80040NED") == "80040ned"
-        assert cbs_bron_id("80040ned") == "80040ned"
+        assert cbs_tabel_id("cbs:80040NED") == "80040ned"
+        assert cbs_tabel_id("80040ned") == "80040ned"
 
 
 @pytest.mark.parametrize("ander", ["p01hoinges", "cbs:foo", "mbo-studenten-per-instelling", "uwv-open-match-data", ""])
-def test_cbs_bron_id_laat_een_ander_of_onbekend_id_met_rust(ander):
-    assert cbs_bron_id(ander) == canoniek.zonder_cbs_prefix(ander)
+def test_cbs_tabel_id_laat_een_ander_of_onbekend_id_met_rust(ander):
+    assert cbs_tabel_id(ander) == canoniek.zonder_cbs_prefix(ander)
 
 
 _ENTRY = {"_cbs_id": "85423NED", "bron": "Hoger onderwijs; ingeschrevenen", "_kolommen": {"x": {}}}

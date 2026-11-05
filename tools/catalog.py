@@ -10,14 +10,14 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cache
 
-from onderwijsbronnen import catalog as _rio_catalog
-from onderwijsbronnen.cbs import catalog as _cbs_catalog
+import onderwijsbronnen
 from onderwijsbronnen.rio.client import zonder_lijstendpoint
 
 from core.config import TOOL_RESULT_MAX_CHARS
 from core.logging_util import foutkenmerk, tekst_kenmerk
 
-from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
+from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
+from .bron_ids import bron_id
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
@@ -291,8 +291,14 @@ def _compacte_hit(entry: dict) -> dict:
 
 
 @cache
+def _alles() -> dict[str, list[dict]]:
+    """De samengevoegde catalogus van onderwijsbronnen (#912): per bron haar records, CBS eerst."""
+    return onderwijsbronnen.catalogus()
+
+
+@cache
 def _cbs_alles() -> list:
-    return _cbs_catalog()
+    return _alles()["cbs"]
 
 
 @cache
@@ -303,7 +309,8 @@ def _cbs() -> list:
 
 @cache
 def _rio_duo_alles() -> list:
-    return _rio_catalog(source="all")
+    """De andere bronnen in de volgorde van `onderwijsbronnen.catalog(source="all")`: RIO, DUO, ROA, UWV, …."""
+    return [record for bron, records in _alles().items() if bron != "cbs" for record in records]
 
 
 @cache
@@ -319,38 +326,6 @@ def _rio_duo() -> list:
 def _ruw_record(dataset_id: str) -> dict | None:
     """Het record uit de volledige CBS- en riodata-inventaris, ook als het buiten het profiel valt."""
     return next((e for e in [*_cbs_alles(), *_rio_duo_alles()] if scopeprofiel.dataset_id(e) == dataset_id), None)
-
-
-def cbs_bron_id(dataset_id: str) -> str:
-    """Het bron-ID van een CBS-tabel in de spelling van de catalogus (#370).
-
-    Het contract van de CBS-package noemt een tabel `cbs:85423NED`; een model of een bewaard
-    recept spelt ook `cbs_85423ned` of `85423ned`. Zonder voorvoegsel en, als de volledige
-    inventaris het ID hoofdletterongevoelig kent, in de spelling van de catalogus (`85423NED`
-    naast `80040ned`). Een ander ID (DUO, RIO) of een onbekend ID blijft zoals het is.
-    """
-    kaal = canoniek.zonder_cbs_prefix(dataset_id)
-    gezocht = kaal.lower()
-    for entry in _cbs_alles():
-        if isinstance(cbs_id := entry.get("_cbs_id"), str) and cbs_id.lower() == gezocht:
-            return cbs_id
-    return kaal
-
-
-def bron_id(dataset_id: str) -> str:
-    """Het catalogus-ID achter een genamespaced of anders gespeld ID (#356, sluit aan op #370).
-
-    `duo:p01hoinges`, `rio/erkenningen`, `cbs_85423ned` en `P01HOINGES` wijzen naar het ID zoals de
-    catalogus het schrijft; de evals en de packages spellen `<bron>:<id>`, een model of een bewaard
-    recept van alles. Zonder voorvoegsel en, als de volledige inventaris het ID hoofdletterongevoelig
-    kent, in de spelling van de catalogus. Een onbekend ID blijft zoals het is, zonder voorvoegsel.
-    """
-    kaal = canoniek.zonder_bronprefix(dataset_id)
-    gezocht = kaal.lower()
-    for entry in (*_cbs_alles(), *_rio_duo_alles()):
-        if isinstance(eid := scopeprofiel.dataset_id(entry), str) and eid.lower() == gezocht:
-            return eid
-    return kaal
 
 
 def _id_kenmerk(dataset_id: str) -> str:

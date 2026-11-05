@@ -210,8 +210,8 @@ def catalogus():
         *_CBS_VO_CONTEXT_RECORDS,
     ]
     with (
-        patch("tools.catalog._cbs_catalog", return_value=cbs),
-        patch("tools.catalog._rio_catalog", return_value=rio_duo),
+        patch("tools.catalog._cbs_alles", return_value=cbs),
+        patch("tools.catalog._rio_duo_alles", return_value=rio_duo),
     ):
         for c in _CACHES:
             c.cache_clear()

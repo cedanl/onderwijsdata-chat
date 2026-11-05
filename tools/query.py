@@ -17,6 +17,7 @@ from core.config import DUO_ROW_LIMIT
 
 from . import (
     afhankelijkheid,
+    bron_ids,
     canoniek,
     cbs_afronding,
     dekking,
@@ -382,7 +383,7 @@ def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggreg
     # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
     # leest, en onderdrukte cellen in de selectie maken een totaal een ondergrens;
     # een gemiddelde, minimum of telling is alleen zonder die cellen berekend (#866).
-    notes = _onderdrukkingsnoten(duo.count_cells(sel.cells), aggregate, duo.bron_van(data_key))
+    notes = _onderdrukkingsnoten(duo.count_cells(sel.cells), aggregate, bron_ids.bron_van(data_key))
     notes += _lege_groepen_noten(agg, group_by, aggregate)
     if noot := cbs_afronding.van_key(data_key):
         notes.append(noot)
@@ -455,7 +456,7 @@ def _resultaat(result_key: str, sel: _Selectie, known, labels, complete: bool, m
     n_cols = len(sel.df.columns)
     maximum = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(sel.df)
-    rows = _rijen(sel, known, maximum, gegroepeerd, duo.bron_van(result_key))
+    rows = _rijen(sel, known, maximum, gegroepeerd, bron_ids.bron_van(result_key))
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
     if known and known.scriptconstanten:
         # Een eigen berekening maakte deze getallen; ook hier zijn ze geen bron (CH-27, #456).
@@ -531,7 +532,7 @@ def query_data(
         if isinstance(geaggregeerd, str):
             return geaggregeerd
         sel = geaggregeerd
-    sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "", duo.bron_van(data_key))
+    sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "", bron_ids.bron_van(data_key))
 
     result_key = _bewaar(data_key, sel, filters, columns, group_by, aggregate, gedekt)
     return _resultaat(result_key, sel, known, labels, complete, max_rows, gegroepeerd)

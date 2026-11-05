@@ -10,7 +10,7 @@ waar de lege cellen staan, ook zonder totaal in de tekst.
 import re
 
 from core.sentinels import BETEKENIS, CBS_BETEKENIS
-from tools import duo
+from tools import bron_ids, duo
 
 from .beschermd import lopende_regels
 from .getalnotatie import tabelscheiding
@@ -32,7 +32,7 @@ _OPMAAK = " \t*_`"
 
 def _bronnen(tool_results: list[str]) -> list[str]:
     """De bronnen met een onderdrukte cel achter een stap van de beurt, in de volgorde van NOTEN."""
-    gevonden = {duo.bron_van(key) for result in tool_results for key in stapkeys(result) if duo.onderdrukt(key)}
+    gevonden = {bron_ids.bron_van(key) for result in tool_results for key in stapkeys(result) if duo.onderdrukt(key)}
     return [bron for bron in NOTEN if bron in gevonden]
 
 

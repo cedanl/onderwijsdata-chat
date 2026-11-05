@@ -79,7 +79,7 @@ def test_een_dataset_buiten_scope_is_voor_de_chat_onzichtbaar():
     ook bij een ondersteunde leverancier."""
     with (
         patch("tools.catalog._cbs", return_value=[]),
-        patch("tools.catalog._rio_catalog", return_value=[*_RIO_DUO, _BUITEN_SCOPE]),
+        patch("tools.catalog._rio_duo_alles", return_value=[*_RIO_DUO, _BUITEN_SCOPE]),
     ):
         _rio_duo_alles.cache_clear()
         _rio_duo.cache_clear()

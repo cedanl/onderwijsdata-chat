@@ -113,8 +113,8 @@ def test_tool_end_van_een_po_tabel_heet_geweigerd(monkeypatch):
     """De echte get_cbs_data met een po-tabel uit de catalogus: geen data, dus geen data_key of export_key."""
     po = {"leverancier": "CBS", "_cbs_id": "80040ned", "bron": "Vo; leerlingen", "onderwijstype": ["VO"]}
     caches = (catalog._cbs_alles, catalog._cbs, catalog._rio_duo_alles, catalog._rio_duo)
-    monkeypatch.setattr(catalog, "_cbs_catalog", lambda: [po])
-    monkeypatch.setattr(catalog, "_rio_catalog", lambda **_: [])
+    monkeypatch.setattr(catalog, "_cbs_alles", lambda: [po])
+    monkeypatch.setattr(catalog, "_rio_duo_alles", lambda: [])
     for c in caches:
         c.cache_clear()
     events: list[dict] = []

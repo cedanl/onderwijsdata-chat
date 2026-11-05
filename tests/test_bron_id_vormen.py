@@ -2,10 +2,12 @@
 
 De fixture somt op welke tool-namen, dataset-ID's, DUO-bestanden, store-keys en snippetregels in de opgeslagen
 gegevens van test en playground staan (data_recipes, gesprekken, rapporten). Deze test legt vast waar elke vorm nu
-naar herleidt: `catalog.bron_id`, `catalog.cbs_bron_id`, `catalog.leverancier` en de scopegrens voor dataset-ID's,
-`duo._resource_index` voor DUO-bestanden, `duo.bron_van` voor store-keys, en `herlaad.herlaad` op de bevroren bronnen
-van de gouden tests voor recepten. Dat is het referentiepunt voor de verhuizing naar `onderwijsbronnen` (#910) en het
-ID-contract (#912): daarna moet elke vorm hetzelfde opleveren. Een nieuwe opgeslagen vorm hoort eerst in de fixture.
+naar herleidt: `catalog.bron_id`, `bron_ids.cbs_tabel_id`, `catalog.leverancier` en de scopegrens voor dataset-ID's,
+`duo._resource_index` voor DUO-bestanden, `bron_ids.bron_van` voor store-keys, en `herlaad.herlaad` op de bevroren
+bronnen van de gouden tests voor recepten. Dat is het referentiepunt voor de verhuizing naar `onderwijsbronnen` (#910)
+en het ID-contract (#912): elke vorm levert hetzelfde op met de vlag BRON_ID_CONTRACT op `uit`, `schaduw` en `aan`, en
+in `schaduw` telt de chat voor geen enkele vorm een verschil tussen de oude en de nieuwe herleiding. Een nieuwe
+opgeslagen vorm hoort eerst in de fixture.
 """
 
 import importlib
@@ -16,11 +18,13 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import onderwijsbronnen
 import pytest
 
 import tools.cbs
+from core import config
 from scripts import gouden_testfixtures as g
-from tools import catalog, duo, herlaad, store
+from tools import bron_ids, catalog, duo, herlaad, store
 from tools.maten import get_maat
 from tools.query import query_data
 
@@ -40,9 +44,19 @@ _HERLAAD = FIXTURE["herlaadvoorbeelden"]["recepten"]
 _RECEPT_VAN = {r["key"]: r["recept"] for r in _HERLAAD}
 
 
+@pytest.fixture(params=bron_ids.MODI)
+def modus(request, monkeypatch):
+    """Elke herleiding onder elke stand van BRON_ID_CONTRACT (#912); in `schaduw` zonder één gelogd verschil."""
+    monkeypatch.setattr(config, "BRON_ID_CONTRACT", request.param)
+    voor = bron_ids.verschillen()
+    yield request.param
+    assert bron_ids.verschillen() == voor, "de nieuwe herleiding wijkt af van de oude voor een opgeslagen vorm"
+
+
 # --- dataset-ID's -----------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("modus")
 @pytest.mark.parametrize(("vorm", "invoer", "dataset"), _ID_VOORBEELDEN)
 def test_een_opgeslagen_dataset_id_herleidt_naar_zijn_dataset_en_bron(vorm, invoer, dataset):
     assert catalog.bron_id(invoer) == dataset
@@ -59,9 +73,28 @@ def test_een_opgeslagen_dataset_id_herleidt_naar_zijn_dataset_en_bron(vorm, invo
         for v in vorm["voorbeelden"]
     ],
 )
+@pytest.mark.usefixtures("modus")
 def test_een_cbs_id_krijgt_de_spelling_van_de_catalogus(invoer, dataset):
-    """`cbs_bron_id` aan de toolgrens van CBS (#370): 85423NED naast 71733ned, nooit upper()."""
-    assert catalog.cbs_bron_id(invoer) == dataset
+    """`cbs_tabel_id` aan de toolgrens van CBS (#370): 85423NED naast 71733ned, nooit upper()."""
+    assert bron_ids.cbs_tabel_id(invoer) == dataset
+
+
+@pytest.mark.parametrize(("vorm", "invoer", "dataset"), _ID_VOORBEELDEN)
+def test_het_contract_kent_elke_opgeslagen_vorm_bij_precies_een_bron(vorm, invoer, dataset):
+    """`bron:id` (#912): elke vorm, ook buiten het profiel, wijst naar één bron en de catalogusspelling.
+
+    Een tabel die in geen enkele catalogus staat (`70060ned`), is ook voor het contract onbekend; de chat laat het ID
+    dan staan, zoals voorheen.
+    """
+    if catalog._ruw_record(dataset) is None:
+        with pytest.raises(onderwijsbronnen.OnbekendBronId):
+            onderwijsbronnen.parse_bron_id(invoer)
+        return
+    gevonden = onderwijsbronnen.parse_bron_id(invoer)
+    assert gevonden.id == dataset
+    if vorm["leverancier"]:
+        assert gevonden.bron == vorm["leverancier"].lower()
+    assert onderwijsbronnen.normaliseer_bron_id(invoer) == str(gevonden)
 
 
 # --- DUO-bestanden ----------------------------------------------------------------------------------------------------
@@ -73,6 +106,7 @@ def _bestanden_uit_de_catalogus(dataset_id: str) -> list[dict]:
     return [{"naam": r["naam"], "id": r["id"]} for r in entry["_resources"]]
 
 
+@pytest.mark.usefixtures("modus")
 @pytest.mark.parametrize(("dataset", "invoer", "index"), _RESOURCE_VOORBEELDEN)
 def test_een_opgeslagen_duo_bestand_herleidt_naar_zijn_index(dataset, invoer, index):
     with patch.object(duo._duo, "resources", _bestanden_uit_de_catalogus):
@@ -82,11 +116,12 @@ def test_een_opgeslagen_duo_bestand_herleidt_naar_zijn_index(dataset, invoer, in
 # --- store-keys -------------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("modus")
 @pytest.mark.parametrize("vorm", FIXTURE["store_keys"], ids=lambda v: v["voorbeeld"])
 def test_een_store_key_zonder_metadata_noemt_zijn_bron_in_het_voorvoegsel(vorm):
     """Na een herstart kent de store een key niet meer: dan beslist het voorvoegsel (ook `analysis`, geen bron)."""
     store.clear()
-    assert duo.bron_van(vorm["voorbeeld"]) == vorm["bron"]
+    assert bron_ids.bron_van(vorm["voorbeeld"]) == vorm["bron"]
 
 
 # --- recepten ---------------------------------------------------------------------------------------------------------
@@ -125,7 +160,7 @@ def bevroren_bronnen(gouden, monkeypatch):
     store.clear()
 
 
-@pytest.mark.usefixtures("bevroren_bronnen")
+@pytest.mark.usefixtures("bevroren_bronnen", "modus")
 @pytest.mark.parametrize("voorbeeld", _HERLAAD, ids=lambda v: v["key"])
 def test_een_opgeslagen_recept_geeft_dezelfde_key_bron_en_dataset(voorbeeld):
     uit = herlaad.herlaad(voorbeeld["key"], voorbeeld["recept"], _RECEPT_VAN.get)
@@ -134,7 +169,7 @@ def test_een_opgeslagen_recept_geeft_dezelfde_key_bron_en_dataset(voorbeeld):
     meta = store.meta(voorbeeld["key"])
     assert meta is not None
     assert (meta.bron, meta.dataset, meta.resource) == (voorbeeld["bron"], voorbeeld["dataset"], voorbeeld["resource"])
-    assert duo.bron_van(voorbeeld["key"]) == voorbeeld["bron"]
+    assert bron_ids.bron_van(voorbeeld["key"]) == voorbeeld["bron"]
 
 
 @pytest.mark.usefixtures("bevroren_bronnen")
