@@ -2,12 +2,16 @@ import { useMemo } from 'react'
 import TabelScroll from '../../TabelScroll'
 import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, afgekapteAs, benchmarkColor, oordeelKleur, sectorKleuren, WeggelatenNoot } from '../shared/index'
+import { asJaar, jaarLabel } from '../../../schooljaar'
 
-function LatestCohortKpi({ cohorten }) {
-  const last = cohorten.at(-1)
+// Een cohort heet naar het jaar van zijn eerstejaars: een schooljaar (#904); het soort komt uit de payload.
+const cohortJaar = (data, jaar) => jaarLabel(jaar, data?.perioden?.cohorten)
+
+function LatestCohortKpi({ data }) {
+  const last = data.pseudo_cohorten.at(-1)
   return (
     <div className="kpi-card">
-      <div className="kpi-label">Instroom {last.instroom_jaar}</div>
+      <div className="kpi-label">Instroom {cohortJaar(data, last.instroom_jaar)}</div>
       <div className="kpi-value">{fmt(last.instroom)}</div>
       <div className="kpi-sub">eerstejaars in cohort</div>
     </div>
@@ -24,18 +28,18 @@ function RendementKpis({ data, dark }) {
     <div className="kpi-grid">
       {latest && (
         <div className="kpi-card">
-          <div className="kpi-label">Rendement cohort {latest[0]}</div>
-          <div className="kpi-value">{(latest[1] * 100).toFixed(1)}%</div>
+          <div className="kpi-label">Rendement cohort {cohortJaar(data, latest[0])}</div>
+          <div className="kpi-value">{fmt(Math.round(latest[1] * 1000) / 10)}%</div>
           <div className="kpi-sub">gediplomeerden t+3 / instroom</div>
-          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}pp t.o.v. {prev[0]}</div>}
+          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)}pp t.o.v. {cohortJaar(data, prev[0])}</div>}
         </div>
       )}
-      {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi cohorten={data.pseudo_cohorten} />}
+      {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi data={data} />}
     </div>
   )
 }
 
-function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendement, instelling, dark }) {
+function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendement, instelling, soort, dark }) {
   const { tick, grid, label } = darkColors(dark)
   const chartData = useMemo(() => {
     if (!rendementPerJaar || Object.keys(rendementPerJaar).length < 2) return null
@@ -72,8 +76,8 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
       })
     }
 
-    return { labels: jaren, datasets }
-  }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling, dark])
+    return { labels: jaren.map(j => asJaar(j, soort)), datasets }
+  }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling, soort, dark])
 
   if (!chartData) return null
   return (
@@ -84,11 +88,11 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
             legend: {
               display: true, position: 'top', labels: { color: label, boxWidth: 14 },
             },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}%` } },
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: tick } },
-            y: afgekapteAs({ grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } }, chartData.datasets, tick),
+            y: afgekapteAs({ grid: { color: grid }, ticks: { color: tick, callback: v => `${fmt(v)}%` } }, chartData.datasets, tick),
           },
         }} />
     </ChartCard>
@@ -139,9 +143,11 @@ export function verdeelCohorten(cohorten) {
   return { rows, teVeel, zonderDiploma }
 }
 
-function CohortenTable({ cohorten, dark }) {
+function CohortenTable({ data, dark }) {
+  const cohorten = data?.pseudo_cohorten
   if (!cohorten?.length) return null
   const { rows, teVeel, zonderDiploma } = verdeelCohorten(cohorten)
+  const jaar = j => cohortJaar(data, j)
   if (!rows.length) return null
   const { tick } = darkColors(dark)
   return (
@@ -160,15 +166,15 @@ function CohortenTable({ cohorten, dark }) {
         <tbody>
           {rows.map(c => (
             <tr key={c.instroom_jaar} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-              <td style={{ padding: '5px 8px' }}>{c.instroom_jaar}</td>
+              <td style={{ padding: '5px 8px' }}>{jaar(c.instroom_jaar)}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(c.instroom)}</td>
               {_T.map(t => <td key={t} style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(c[t])}</td>)}
             </tr>
           ))}
         </tbody>
       </TabelScroll>
-      <WeggelatenNoot namen={teVeel.map(String)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
-      <WeggelatenNoot namen={zonderDiploma.map(String)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
+      <WeggelatenNoot namen={teVeel.map(jaar)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
+      <WeggelatenNoot namen={zonderDiploma.map(jaar)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
     </ChartCard>
   )
 }
@@ -184,10 +190,11 @@ export function RendementSection({ data, instelling, dark }) {
         benchmarkRendement={data?.benchmark_rendement}
         peersRendement={data?.peers_rendement}
         instelling={instelling}
+        soort={data?.perioden?.cohorten}
         dark={dark}
       />
       <SectorRendementChart sectorRendement={data?.sector_rendement} dark={dark} />
-      <CohortenTable cohorten={data?.pseudo_cohorten} dark={dark} />
+      <CohortenTable data={data} dark={dark} />
     </>
   )
 }

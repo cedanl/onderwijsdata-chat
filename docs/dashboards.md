@@ -80,6 +80,27 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 
+### Jaren en getalnotatie
+
+De reeksen hebben jaartallen als sleutel (`{2025: n}`); een gevonden instelling krijgt in elke payload `perioden` erbij:
+welk soort jaar elke reeks heeft (#904, `PERIODEN` in `data/dashboard.py`).
+
+```json
+{"ingeschrevenen": "schooljaar", "eerstejaars": "schooljaar", "cohorten": "schooljaar", "gediplomeerden": "diplomajaar"}
+```
+
+- **Schooljaar:** ingeschrevenen en eerstejaars (ho `STUDIEJAAR`, mbo `JAAR`, peildatum 1 oktober) en de cohorten van
+  het rendement (het jaar van de eerstejaars). De frontend schrijft ze als "2025/26", zoals chat en rapport (#847).
+  Geslacht, sectoren, leerwegen, hoofdgroepen en Landelijk volgen de ingeschrevenen.
+- **Diplomajaar:** de gediplomeerden (ho `DIPLOMAJAAR`, mbo de `DIP…`-kolommen). DUO legt niet vast of dat een kalender-
+  of studiejaar is, dus het blijft een jaartal: "diplomajaar 2024" (CH-41, domeinregel `p04-diplomajaar`,
+  `tools/periode.GEEN_SCHOOLJAAR`). De ratio diploma/inschrijving en de rendementvergelijking delen een diplomajaar door
+  een schooljaar met hetzelfde jaartal (#927) en noemen beide.
+
+Alle getallen gaan door één formatter, `fmt` in `frontend/src/components/dashboards/shared/getal.js`: komma als
+decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callbacks van de assen. Chart.js zelf staat op
+`nl-NL` voor de ticks zonder eigen callback.
+
 ### Wat de getallen tellen
 
 - **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit

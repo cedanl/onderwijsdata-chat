@@ -43,7 +43,7 @@ describe('genderbalken per sector (#931)', () => {
 
   it('zegt niets over onbekenden als die er niet zijn', () => {
     const tekst = render(BREDA)
-    expect(tekst).toContain('67.2% vrouw — 4.860 vrouw + man')
+    expect(tekst).toContain('67,2% vrouw — 4.860 vrouw + man')
     expect(tekst).toContain('32% vrouw — 1.782 vrouw + man')
     expect(tekst).not.toContain('onbekend')
   })

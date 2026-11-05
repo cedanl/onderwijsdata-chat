@@ -158,6 +158,12 @@ describe('de vergelijking per instelling', () => {
 
 describe('de noot bij de gediplomeerden', () => {
   it('noemt het laatste jaar uit de data als de diploma\'s achterlopen op de ingeschrevenen', () => {
+    expect(gediplomeerdenNoot({ diplJaar: '2024', ingesJaar: '2025', perioden: HBO.perioden })).toBe(
+      'DUO publiceert de gediplomeerden tot en met diplomajaar 2024; de ingeschrevenen lopen door tot 2025/26.',
+    )
+  })
+
+  it('laat de jaartallen kaal zonder het soort jaar uit de payload (#904)', () => {
     expect(gediplomeerdenNoot({ diplJaar: '2024', ingesJaar: '2025' })).toBe(
       'DUO publiceert de gediplomeerden tot en met 2024; de ingeschrevenen lopen door tot 2025.',
     )
@@ -173,29 +179,28 @@ describe('de noot bij de gediplomeerden', () => {
 })
 
 describe('Mijn instelling met hbo/wo-data (diploma\'s 2024, inschrijvingen 2025)', () => {
-  it('de ratio-KPI noemt het jaar van beide cijfers', async () => {
+  it('de ratio-KPI noemt het jaar van beide cijfers, als diplomajaar en als schooljaar (#904)', async () => {
     await dashboard(HBO)
     const tegel = kpiTegel('Ratio diploma/inschrijving')
     expect(tegel).toBeTruthy()
-    expect(tegel.querySelector('.kpi-label').textContent).toContain('2024')
     expect(tegel.querySelector('.kpi-value').textContent).toBe('18%')
-    expect(tegel.textContent).toContain('gediplomeerden en ingeschrevenen 2024')
-    expect(tegel.textContent).not.toContain('2025')
+    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2024 en ingeschrevenen 2024/25')
+    expect(tegel.textContent).not.toContain('2025/26')
   })
 
   it('de gediplomeerden-KPI en de kerncijfers-tegel zeggen tot en met welk jaar DUO publiceert', async () => {
     await dashboard(HBO)
     expect(noten()).toHaveLength(2)
     for (const noot of noten()) {
-      expect(noot.textContent).toContain('tot en met 2024')
-      expect(noot.textContent).toContain('tot 2025')
-      expect(noot.closest('.kpi-card').querySelector('.kpi-label').textContent).toBe('Gediplomeerden 2024')
+      expect(noot.textContent).toContain('tot en met diplomajaar 2024')
+      expect(noot.textContent).toContain('tot 2025/26')
+      expect(noot.closest('.kpi-card').querySelector('.kpi-label').textContent).toBe('Gediplomeerden diplomajaar 2024')
     }
   })
 
   it('de grafiek Gediplomeerden per jaar herhaalt het in haar onderschrift', async () => {
     await dashboard(HBO)
-    expect(kaart('Gediplomeerden per jaar').querySelector('.chart-sub').textContent).toContain('tot en met 2024')
+    expect(kaart('Gediplomeerden per jaar').querySelector('.chart-sub').textContent).toContain('tot en met diplomajaar 2024')
   })
 
   it('de vergelijking noemt het jaar en geen groene drempel', async () => {
@@ -210,7 +215,7 @@ describe('Mijn instelling met mbo-data (beide 2025)', () => {
   it('de ratio-KPI gebruikt 2025 en er is geen diplomanoot', async () => {
     await dashboard(MBO)
     const tegel = kpiTegel('Ratio diploma/inschrijving')
-    expect(tegel.querySelector('.kpi-label').textContent).toContain('2025')
+    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2025 en ingeschrevenen 2025/26')
     expect(tegel.querySelector('.kpi-value').textContent).toBe('18%')
     expect(noten()).toHaveLength(0)
     expect(kaart('Gediplomeerden per jaar').querySelector('.chart-sub').textContent).not.toContain('tot en met')

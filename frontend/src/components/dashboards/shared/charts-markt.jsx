@@ -3,6 +3,9 @@ import { COLOR_EIGEN, COLOR_DIPLOM } from '../../../constants'
 import { ChartCard } from './shell'
 import { groeiStartjaar, groeiPct } from './chart-builders'
 import { Grafiek } from './grafiek'
+import { WeggelatenNoot, perJaar } from './ondergrens'
+import { fmt } from './getal'
+import { asJaar, jaarLabel } from '../../../schooljaar'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -20,7 +23,7 @@ export function buildMarktaandeelTrendData(data) {
     return t > 0 ? Math.round((e / (e + t)) * 1000) / 10 : null
   })
   return {
-    labels: jaren.map(String),
+    labels: jaren.map(j => asJaar(j, data.perioden?.ingeschrevenen)),
     datasets: [{
       label: 'Marktaandeel %',
       data: values,
@@ -46,7 +49,7 @@ export function buildInstroomRatioData(data) {
     return ig > 0 ? Math.round((ej / ig) * 1000) / 10 : null
   })
   return {
-    labels: jaren.map(String),
+    labels: jaren.map(j => asJaar(j, data.perioden?.eerstejaars)),
     datasets: [{
       label: 'Eerstejaars %',
       data: values,
@@ -67,14 +70,14 @@ function _ratioLineOpts(dark, tooltipLabel) {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% ${tooltipLabel}` } },
+      tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}% ${tooltipLabel}` } },
     },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick } },
       y: {
         min: 0,
         grid: { color: grid },
-        ticks: { color: tick, callback: v => `${v}%` },
+        ticks: { color: tick, callback: v => `${fmt(v)}%` },
       },
     },
   }
@@ -111,25 +114,30 @@ export function InstroomRatioChart({ data, dark, type }) {
 
 // ─── Marktaandeel & Groei helpers ───────────────────────────────────────────
 
+// Eén jaar voor iedereen, het laatste jaar van de eigen instelling, zoals de ratio van #927: een peer zonder cijfers in
+// dat jaar valt weg en staat in `weggelaten`, in plaats van stil zijn eigen laatste jaar te lenen.
 export function buildMarktaandeelData(data, instelling, dark) {
   if (!data?.ingeschrevenen || !data?.benchmark?.peers?.ingeschrevenen) return null
   const jaar = data.laatste_jaar
-  const jaarStr = String(jaar)
   const entries = []
+  const weggelaten = []
 
-  const ownVal = data.ingeschrevenen[jaar] ?? data.ingeschrevenen[jaarStr]
+  const ownVal = perJaar(data.ingeschrevenen, jaar)
   if (ownVal != null) entries.push({ naam: instelling, waarde: ownVal, eigen: true })
 
   for (const [naam, jaarData] of Object.entries(data.benchmark.peers.ingeschrevenen)) {
-    const val = jaarData[jaar] ?? jaarData[jaarStr] ??
-      jaarData[Object.keys(jaarData).sort((a, b) => b - a)[0]]
+    const val = perJaar(jaarData, jaar)
     if (val != null) entries.push({ naam, waarde: val, eigen: false })
+    else weggelaten.push(naam)
   }
 
   if (entries.length < 2) return null
   entries.sort((a, b) => b.waarde - a.waarde)
 
   return {
+    jaar,
+    soort: data.perioden?.ingeschrevenen,
+    weggelaten,
     labels: entries.map(e => e.naam),
     datasets: [{
       label: 'Ingeschrevenen',
@@ -162,6 +170,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
   return {
     startjaar,
     eindjaar,
+    soort: data.perioden?.ingeschrevenen,
     labels: entries.map(e => e.naam),
     datasets: [{
       label: 'Groei (%)',
@@ -175,22 +184,27 @@ export function buildGroeiRankingData(data, instelling, dark) {
 }
 
 
-export function MarktaandeelChart({ data, jaar, dark }) {
+export function MarktaandeelChart({ data, dark }) {
   if (!data) return null
-  const h = Math.max(200, data.labels.length * 34 + 40)
+  const { jaar: jaartal, soort, weggelaten, ...barData } = data
+  const jaar = jaarLabel(jaartal, soort)
+  const h = Math.max(200, barData.labels.length * 34 + 40)
   return (
     <ChartCard
       title={`Marktpositie ${jaar}`}
       subtitle="Totaal ingeschrevenen per instelling in de regio (eigen instelling blauw)"
     >
-      <Grafiek soort="bar" data={data} options={horizontalBarOpts(dark)} hoogte={h} categorie="Instelling" />
+      <Grafiek soort="bar" data={barData} options={horizontalBarOpts(dark)} hoogte={h} categorie="Instelling" />
+      <WeggelatenNoot namen={weggelaten} reden={`geen cijfers over ${jaar}`} />
     </ChartCard>
   )
 }
 
 export function GroeiRankingChart({ data, dark }) {
   if (!data) return null
-  const { startjaar, eindjaar, ...barData } = data
+  const { startjaar: van, eindjaar: tot, soort, ...barData } = data
+  const startjaar = jaarLabel(van, soort)
+  const eindjaar = jaarLabel(tot, soort)
   const h = Math.max(200, barData.labels.length * 34 + 40)
   return (
     <ChartCard

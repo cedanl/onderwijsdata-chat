@@ -6,7 +6,7 @@ import {
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
   DashboardSources, bronnenVan, bronBadge, buildSupplyDemandData, WeggelatenNoot,
-  NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst,
+  NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst, fmt,
 } from '../shared/index'
 
 // Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
@@ -95,9 +95,9 @@ function RoaNiveauTable({ roaPerNiveau, dark }) {
           {entries.map(([niveau, vals]) => (
             <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100)' }}>
               <th scope="row" style={{ textAlign: 'left', fontWeight: 400, padding: '5px 8px' }}>{niveau}</th>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.werkloosheid != null ? `${vals.werkloosheid}%` : '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.vast_dienstverband != null ? `${vals.vast_dienstverband}%` : '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.buiten_vakrichting != null ? `${vals.buiten_vakrichting}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.werkloosheid != null ? `${fmt(vals.werkloosheid)}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.vast_dienstverband != null ? `${fmt(vals.vast_dienstverband)}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.buiten_vakrichting != null ? `${fmt(vals.buiten_vakrichting)}%` : '—'}</td>
             </tr>
           ))}
         </tbody>

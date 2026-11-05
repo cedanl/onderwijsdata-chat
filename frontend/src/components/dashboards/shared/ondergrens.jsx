@@ -3,6 +3,8 @@
 // ondergrens: "ten minste". Een ontbrekend jaar of een ontbrekende sector is een gat, geen 0, en een categorie die
 // een grafiek weglaat, wordt genoemd.
 
+import { asJaar } from '../../../schooljaar'
+
 export const ONDERDRUKT_UITLEG = 'DUO publiceert kleine aantallen niet; die cellen tellen niet mee'
 
 // Waarde uit een {jaar: n}-dict, met de jaarsleutel als getal of als tekst.
@@ -27,15 +29,22 @@ function jarenMetLegeCellen(onderdrukt) {
     .sort((a, b) => Number(a) - Number(b))
 }
 
-// Eén regel per reeks met lege cellen: "Ingeschrevenen in 2022, 2023: ten minste (…)".
+// De jaren van een reeks naar hun soort (#904): "2022/23, 2023/24" of "diplomajaar 2022, 2023".
+function jarenTekst(jaren, soort) {
+  const tekst = jaren.map(j => asJaar(j, soort)).join(', ')
+  return soort && soort !== 'schooljaar' ? `${soort} ${tekst}` : tekst
+}
+
+// Eén regel per reeks met lege cellen: "Ingeschrevenen in 2022/23, 2023/24: ten minste (…)". `soort` per reeks is
+// het soort jaar uit de payload.
 export function OndergrensNoot({ reeksen }) {
   const regels = (reeksen || [])
-    .map(({ label, onderdrukt }) => ({ label, jaren: jarenMetLegeCellen(onderdrukt) }))
+    .map(({ label, onderdrukt, soort }) => ({ label, soort, jaren: jarenMetLegeCellen(onderdrukt) }))
     .filter(r => r.jaren.length > 0)
   if (!regels.length) return null
   return (
     <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '4px 0 16px' }}>
-      {regels.map(r => `${r.label} in ${r.jaren.join(', ')}`).join('; ')}: ten minste ({ONDERDRUKT_UITLEG}).
+      {regels.map(r => `${r.label} in ${jarenTekst(r.jaren, r.soort)}`).join('; ')}: ten minste ({ONDERDRUKT_UITLEG}).
     </p>
   )
 }

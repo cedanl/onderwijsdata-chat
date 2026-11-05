@@ -65,7 +65,7 @@ describe('HoofdgroepenChart (#899)', () => {
   })
 
   it('noemt het schooljaar van het hoofdgroep-bestand, niet "laatste jaar" (#934)', () => {
-    const el = render(createElement(HoofdgroepenChart, { perHoofdgroep: { Entree: 300 }, jaar: 2025, dark: false }))
+    const el = render(createElement(HoofdgroepenChart, { perHoofdgroep: { Entree: 300 }, jaar: 2025, soort: 'schooljaar', dark: false }))
 
     expect(el.textContent).toContain('2025/26')
     expect(el.textContent).not.toMatch(/laatste jaar/i)

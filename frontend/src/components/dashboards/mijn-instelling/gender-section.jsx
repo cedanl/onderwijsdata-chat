@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { COLOR_DIPLOM } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, benchmarkColor } from '../shared/index'
+import { asJaar, jaarLabel } from '../../../schooljaar'
 
 // Man in de verdeelbalken: grijs met 3:1 tegen de kaart in beide thema's (#905); #94A3B8 haalde op wit 2,6:1.
 const KLEUR_MAN = '#64748B'
@@ -16,10 +17,11 @@ export function pctVrouwFromGeslacht(g) {
 // niet mee; zijn ze er, dan noemt het label ze, want "totaal" was hier vrouw + man zonder hen (#931).
 function genderBalkLabel(g) {
   const onbekend = g.ONBEKEND > 0 ? ` (${fmt(g.ONBEKEND)} onbekend)` : ''
-  return `${pctVrouwFromGeslacht(g)}% vrouw — ${fmt(g.VROUW + g.MAN)} vrouw + man${onbekend}`
+  return `${fmt(pctVrouwFromGeslacht(g))}% vrouw — ${fmt(g.VROUW + g.MAN)} vrouw + man${onbekend}`
 }
 
-export function buildTrendLineData(geslachtTrend) {
+// `soort`: het soort jaar van de ingeschrevenen uit de payload (#904); de as toont een schooljaar als 2025/26.
+export function buildTrendLineData(geslachtTrend, soort) {
   if (!geslachtTrend || Object.keys(geslachtTrend).length < 2) return null
   const entries = Object.entries(geslachtTrend)
     .sort((a, b) => Number(a[0]) - Number(b[0]))
@@ -27,7 +29,7 @@ export function buildTrendLineData(geslachtTrend) {
     .filter(([, pct]) => pct != null)
   if (entries.length < 2) return null
   return {
-    labels: entries.map(([y]) => y),
+    labels: entries.map(([y]) => asJaar(y, soort)),
     datasets: [{
       label: '% vrouw',
       data: entries.map(([, v]) => v),
@@ -69,7 +71,7 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
         <div className="kpi-card-header">
           <span className="kpi-label">% vrouw {lastJaar}</span>
         </div>
-        <div className="kpi-value">{pctVrouw != null ? `${pctVrouw}%` : '—'}</div>
+        <div className="kpi-value">{pctVrouw != null ? `${fmt(pctVrouw)}%` : '—'}</div>
         {pctVrouw != null && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
@@ -85,7 +87,7 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
             <span className="kpi-label">Verandering t.o.v. 5 jaar geleden</span>
           </div>
           <div className="kpi-value" style={{ color: fiveYearChange >= 0 ? 'var(--teal-600)' : '#E11D48' }}>
-            {fiveYearChange >= 0 ? '+' : ''}{fiveYearChange} pp
+            {fiveYearChange >= 0 ? '+' : ''}{fmt(fiveYearChange)} pp
           </div>
           <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>procentpunt verandering in aandeel vrouw</div>
         </div>
@@ -117,7 +119,7 @@ export function GenderSection({ data, instelling, dark }) {
     const pctVrouw = pctVrouwFromGeslacht(geslacht)
 
     const geslachtTrend = data.geslacht_trend ?? null
-    const trendLineData = buildTrendLineData(geslachtTrend)
+    const trendLineData = buildTrendLineData(geslachtTrend, data.perioden?.ingeschrevenen)
 
     let fiveYearChange = null
     if (geslachtTrend) {
@@ -144,10 +146,10 @@ export function GenderSection({ data, instelling, dark }) {
 
   const trendOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% vrouw` } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}% vrouw` } } },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick } },
-      y: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
+      y: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${fmt(v)}%` } },
     },
   }
 
@@ -156,14 +158,14 @@ export function GenderSection({ data, instelling, dark }) {
     ...balkOpts,
     scales: {
       ...balkOpts.scales,
-      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
+      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${fmt(v)}%` } },
     },
   }
 
   return (
     <>
       <SectionHeader title="Gender & diversiteit" subtitle={`Verdeling vrouw/man — ${instelling}`} />
-      <GeslachtKpis pctVrouw={pctVrouw} vrouw={vrouw} man={man} fiveYearChange={fiveYearChange} lastJaar={data?.laatste_jaar} />
+      <GeslachtKpis pctVrouw={pctVrouw} vrouw={vrouw} man={man} fiveYearChange={fiveYearChange} lastJaar={jaarLabel(data?.laatste_jaar, data?.perioden?.ingeschrevenen)} />
 
       {trendLineData && (
         <ChartCard title="% vrouw per jaar" subtitle="Aandeel vrouwelijke ingeschrevenen over tijd">

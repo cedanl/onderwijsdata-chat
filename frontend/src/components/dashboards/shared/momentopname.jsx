@@ -2,6 +2,8 @@
 // niet een vaste maand. De arbeidsmarktmatch zegt daarbij wat haar labels betekenen en wat ze niet zeggen; de drempel,
 // de jaren en de herkomst van de sectorindeling komen uit `match_duiding` (data/dashboard.py, _match_duiding).
 
+import { fmt } from './getal'
+
 const DATUM = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 // "2023-05-16" → "16 mei 2023"; meer peildata (komma's, zoals de server ze geeft) elk; iets anders ongewijzigd.
@@ -37,12 +39,10 @@ export function MomentopnameBanner({ peildatum }) {
   )
 }
 
-const getal = n => Number(n).toLocaleString('nl-NL')
-
 // Onder de match-tegels: bron, peildatum, drempel, de drie labels en wat de score niet zegt.
 export function MatchDuiding({ duiding }) {
   if (!duiding) return null
-  const drempel = duiding.drempel != null ? getal(duiding.drempel) : null
+  const drempel = duiding.drempel != null ? fmt(duiding.drempel) : null
   const jaren = jarenTekst(duiding.diplomajaren)
   const mapping = duiding.sectormapping || {}
   const mappingVersie = mapping.mapping_versie && mapping.mapping_versie !== 'onbekend' ? `, versie ${mapping.mapping_versie}` : ''
