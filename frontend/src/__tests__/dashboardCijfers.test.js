@@ -198,6 +198,26 @@ describe('één groeiregel voor grafiek, ranking en tabel (#903)', () => {
   })
 })
 
+describe('een peer zonder gegevens (#925)', () => {
+  it('staat in de concurrententabel met "geen gegevens", onderaan en zonder rang', () => {
+    const data = {
+      laatste_jaar: 2025,
+      ingeschrevenen: { 2024: 1000, 2025: 1100 },
+      benchmark: {
+        peers: { ingeschrevenen: { 'Peer A': { 2024: 500, 2025: 600 } } },
+        geen_gegevens: { ingeschrevenen: ['BBO de Schalm'] },
+      },
+    }
+
+    const el = render(createElement(PeersTable, { data, instelling: 'Eigen' }))
+    const rijen = [...el.querySelectorAll('tbody tr')].map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent))
+
+    expect(rijen.map(r => r[1])).toEqual(['Eigen ★', 'Peer A', 'BBO de Schalm'])
+    expect(rijen[2]).toEqual(['—', 'BBO de Schalm', 'geen gegevens', '—'])
+    expect(el.textContent).toContain('3 instellingen in de benchmark-regio')
+  })
+})
+
 describe('landelijk zegt wat het telt (#903)', () => {
   it('noemt de DUO-som en de CBS-tabel van de chat', () => {
     const el = render(createElement(LandelijkDefinitie, { landelijk: {
