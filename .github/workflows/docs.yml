@@ -23,12 +23,12 @@ jobs:
         run: uv run mkdocs build --strict
 
       # De catalogussites van de bronpakketten (#887), vroeger op cedanl.github.io/cbs-onderwijsdata en
-      # /rio-onderwijsdata. De CI-job catalogus:site in GitLab houdt packages/*/docs bij (docs/operatie.md).
+      # /rio-onderwijsdata. De CI-job catalogus:site in GitLab houdt packages/onderwijsbronnen/docs/{cbs,rio} bij (docs/operatie.md).
       - name: Catalogussites van de bronpakketten
         run: |
           mkdir -p site/catalogus
-          cp -r packages/onderwijsdata/docs site/catalogus/cbs
-          cp -r packages/riodata/docs site/catalogus/rio
+          cp -r packages/onderwijsbronnen/docs/cbs site/catalogus/cbs
+          cp -r packages/onderwijsbronnen/docs/rio site/catalogus/rio
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
