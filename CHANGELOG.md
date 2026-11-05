@@ -2,7 +2,7 @@
 
 Alle wijzigingen die voor gebruikers of beheerders van belang zijn. Formaat naar
 [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versienummers volgen de git-tags;
-de laatste tag is 2.6.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.6.0 beschrijven de
+de laatste tag is 2.7.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.7.0 beschrijven de
 GitHub-releases; 2.5.1 (een tag zonder release) en 2.5.2 (een herstelrelease) staan niet apart: wat erin zat, staat
 onder 2.5.3.
 
@@ -10,6 +10,141 @@ onder 2.5.3.
 
 Nieuwe items komen niet hier, maar als fragment in `changelog.d/`: één bestand per MR (`CONTRIBUTING.md`). Bij een
 release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de items die hier nog staan.
+
+## 2.7.0 — 2026-11-05
+
+### Dashboards: ruimere vergelijkingsgroep, de match als staafgrafiek en marktaandeel per type (#948, #949, #950)
+- Mijn instelling vergelijkt pas in een regio als daar ten minste drie andere instellingen van hetzelfde type zitten
+  (was twee); anders schuift de vergelijking een trede op, met de reden in de kop. De Haagse Hogeschool vergelijkt nu
+  in provincie Zuid-Holland met 8 andere hogescholen in plaats van in Haaglanden met 2, Erasmus landelijk met 17
+  andere universiteiten in plaats van in Zuid-Holland met 2.
+- Arbeidsmarkt toont de match vanaf acht sectoren als liggende staafgrafiek "Match per sector" (vacature-aandeel
+  gedeeld door diploma-aandeel) met de drempels als stippellijn, in plaats van een muur van tegels; onder de acht
+  blijven het tegels.
+- Landelijk rekent het marktaandeel over het eigen type: een universiteit heeft een aandeel in alle wo-studenten van
+  een sector, een hogeschool in alle hbo-studenten, en titel en tooltip zeggen dat. Eerder was de noemer alle hbo- plus
+  wo-studenten. Het mbo verandert niet.
+
+### De fusieregel noemt geen voorganger uit po, vo of so (#937)
+- Een meerjarige DUO-reeks van een instelling met een fusie binnen de reeks noemde alle voorgangers uit RIO, ook een
+  vmbo-school: bij Landstede stond Morgen College (02EX) als voorganger, terwijl een mbo-reeks geen vmbo-leerlingen telt.
+  De regel laat voorgangers met wet `WPO`, `WVO` of `WEC` nu weg; Landstede krijgt zo geen regel meer.
+- riodata: `Stap` heeft een veld `wet`, uit dezelfde RIO-aanroep als de naam. Geen extra aanroep.
+- De bron-ping `rio-fusies` bewaakt vijf instellingen met een regel en controleert dat Landstede 02EX niet noemt.
+
+### Mijn instelling en Landelijk vergelijken een instelling met instellingen van hetzelfde type (#926, #928)
+- Mijn instelling vergelijkt een hogeschool met hogescholen, een universiteit met universiteiten en een mbo-instelling
+  met mbo-instellingen. De regio verbreedt van arbeidsmarktregio via provincie naar landelijk tot er ten minste twee
+  andere van dat type in zitten. Eerder stonden universiteiten tussen de peers van 28 van de 36 hogescholen, vergeleek
+  elke universiteit stil landelijk en kregen HZ en NHL Stenden geen vergelijking.
+- De kop van de kerncijfers noemt de groep met regio, aantal en de reden van een terugval: "Provincie Noord-Brabant, 5
+  andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)". Ondertitels en legenda
+  noemen het type ("gemiddelde hogescholen in provincie Noord-Brabant").
+- Landelijk rangschikt alleen instellingen van het eigen type en zet de populatie bij elke positie: "4e van 9 wo". De
+  ranking heet "alle 18 universiteiten (wo)" in plaats van "alle HO-instellingen (hbo + wo)".
+
+### Eén ID-contract bron:id, eerst in schaduwmodus (#912)
+- Elke dataset heeft één sleutel `bron:id` (`cbs:85423NED`, `duo:p01hoinges`, `rio:aangeboden-opleidingen`), met één
+  normalisatie in onderwijsbronnen. Alle ID-vormen uit opgeslagen recepten en gesprekken blijven geldig; een kale ID die
+  bij twee bronnen past, is een fout met de opties in plaats van een stille keuze.
+- De vlag `BRON_ID_CONTRACT` (`uit`, `schaduw`, `aan`) bepaalt of de chat de oude of de nieuwe herleiding gebruikt. Op
+  test staat hij op `schaduw`: de chat werkt zoals voorheen en logt elk verschil als `BRON_ID_VERSCHIL`.
+- Wat het model ziet, blijft gelijk.
+
+### Eén bronpakket: onderwijsbronnen, met een grens tussen de bronnen (#910, #911)
+- De bronpakketten `onderwijsdata` (CBS) en `riodata` (RIO, DUO, ROA, UWV, Inspectie, SBB) zijn samengevoegd tot één
+  pakket `onderwijsbronnen`, met per bron een subpakket (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`) en de
+  gedeelde code in `_kern`. De chat werkt hetzelfde: zelfde catalogus, zelfde bronkeuze, zelfde waarden die het model
+  ziet. Het pakket heet in `/version` nu `onderwijsbronnen` (versie 0.8.0).
+- Een nieuwe snippet importeert `from onderwijsbronnen import duo` (CBS: `from onderwijsbronnen.cbs import data`) en
+  installeert `#subdirectory=packages/onderwijsbronnen`. Oude snippets blijven werken: ze installeren hun eigen commit,
+  en `riodata`/`onderwijsdata` bestaan tijdens de overgang nog als shim met een waarschuwing.
+- Een test bewaakt dat een bron nooit een andere bron importeert, alleen `_kern`, en dat elke bron dezelfde metadata
+  levert (bron, ID, titel, peildatum of editie, voorlopig, laatste update), met een reden als een veld ontbreekt.
+
+### De dashboards zijn af te drukken en zeggen waar regio en provincie vandaan komen (#904, besluiten)
+- Elk dashboard heeft een knop "Afdrukken of als pdf bewaren". De afdruk toont alleen het dashboard, zonder knoppen,
+  met de bronnen onderaan en hun links uitgeschreven. Een CSV-export komt er niet; daarvoor zijn chat en rapport.
+- De regio- en provinciebadges hebben een sterretje met een noot eronder: ze volgen het adres van de hoofdvestiging
+  bij DUO, en vestigingen in andere regio's tellen niet mee. Op Arbeidsmarkt staat erbij dat de vacatures (UWV) over
+  deze provincie gaan.
+- Heeft DUO geen adres met een provincie, dan zegt de noot dat de provincie komt uit de inschrijvingen (de provincie
+  die daar het vaakst bij de instelling staat). Zonder provincie staat er geen badge "Provincie Onbekend" meer.
+
+### De dashboards noemen hun bronnen uit de payload, met versie, peildatum en voorlopige jaren (#904, deel 1)
+- Elk dashboard-eindpunt geeft een bronblok (`bronnen`): per gebruikte bron de dataset, de titel en link uit de
+  catalogus, de versie of editie, de peildatum, of er voorlopige cijfers in zitten en wanneer de app de bron ophaalde.
+  DUO met resource-ID en `last_modified` per bestand ("versie van 08-04-2026", zoals de bronregel in de chat), UWV met
+  de peildatum van de momentopname, ROA met de editie en de versie uit het bestand.
+- Het blok komt uit wat de lading echt laadde: een bron die niet laadde, staat er niet in (wel in `niet_beschikbaar`),
+  en een mbo-dashboard noemt de ho-bestanden niet waarin de app eerst naar de naam zocht. Landelijk en Arbeidsmarkt
+  laden van het ho alleen de bestanden die ze gebruiken.
+- De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok in plaats van vaste lijsten per dashboard;
+  de ROA-teksten noemen nu de editie uit de data.
+
+### De dashboards schrijven schooljaren als 2025/26 en getallen in Nederlandse notatie (#904, deel 2)
+- Ingeschrevenen, eerstejaars en cohorten staan als schooljaar ("Ingeschrevenen 2025/26", ook op de assen); de
+  gediplomeerden als diplomajaar ("Gediplomeerden diplomajaar 2024"), want DUO legt niet vast of dat een kalender- of
+  studiejaar is. Het soort jaar per reeks komt uit de payload (`perioden`). De ratio diploma/inschrijving noemt beide
+  jaren.
+- Elk getal op de dashboards staat met komma als decimaalteken en punt als duizendtal ("52,3% vrouw"), ook in tooltips,
+  op de assen en in de ROA-tabel.
+- De marktpositie en het overzicht van concurrenten tonen voor een peer zonder cijfers in het laatste jaar geen getal
+  van een ander jaar meer; de grafiek noemt die peer onder "niet getoond".
+
+### De arbeidsmarktmatch noemt bron, peildatum, drempel en definitie bij schaarste en overaanbod (#900)
+- `/api/dashboard/arbeidsmarktmatch` geeft `match_duiding`: de drempel (1,2), de peildatum van de UWV-momentopname, de
+  diplomajaren van het gemiddelde, de ROA-versie en de herkomst van de sectorindeling (LLM-classificatie, niet van UWV).
+- De match-tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod in de regio tonen een banner met de
+  peildatum uit de data in plaats van de vaste tekst "mei 2023".
+- Onder de tegels staat wat schaarste, overaanbod en evenwicht betekenen, met de drempel, en wat de score niet zegt:
+  vacatures hebben geen opleidingsniveau en zijn een stand van één dag tegenover een meerjarig gemiddelde. Een sector
+  zonder score staat in een noot in plaats van stil weg te vallen.
+
+### Mijn instelling: diploma's na 3 jaar per eerstejaars bij mbo, geen rendement bij hbo en wo (#898)
+- Het "rendement" was geen rendement: diploma's van een jaar gedeeld door eerstejaars van drie jaar eerder, zonder
+  definitie. Bij mbo heet de tegel nu "Diploma's na 3 jaar per eerstejaars", met boven de cijfers de definitie, wat
+  niet meetelt en wat wel, zoals het rapport. Voorbeeld Curio (fixtures): cohort 2021, 4.037 diploma's in 2024 /
+  4.459 eerstejaars = 90,5 %.
+- De instelling en het regiogemiddelde rekenen met dezelfde regel over dezelfde cohorten. Een cohort zonder verhouding
+  (geen eerstejaars, geen diploma's, of meer diploma's dan eerstejaars) wordt met de reden genoemd, ook bij een peer;
+  het regiogemiddelde kan niet meer boven 100 % komen, noemt per cohort zijn aantal peers en de legenda noemt de regio.
+- Hbo en wo: de tegel, het rendement per sector en de ho-peerberekening zijn weg tot er een echte cohortbron is. Op
+  hun plaats staat één noot waarom, en dat de chat en het rapport het landelijk uit de CBS-cohorttabellen halen.
+- De uitleg staat er ook als er geen cohort overblijft (eerder verdween de sectie dan vóór de noten).
+
+### Arbeidsmarkt per ho-opleiding: ROA-subsector per regio en opleidingstype landelijk (#745)
+- `get_roa_benchmark` heeft een optioneel argument `onderdeel`: het DUO-onderdeel van een hbo- of wo-opleiding. De tool
+  geeft dan naast Bachelor en "Master, doctor" de gekoppelde ROA-subsector (of sector) voor de regio en de
+  opleidingstypen eronder, die ROA alleen landelijk heeft. Een vraag als "sluiten de opleidingen van de RUG aan op de
+  arbeidsmarkt in de regio" krijgt zo voor Gedrag en maatschappij de prognose van de master-subsector in Groningen en
+  de landelijke cijfers voor psychologie, sociale wetenschappen en communicatie, in plaats van alleen het niveau.
+- De koppeling van DUO-onderdeel naar ROA-categorie is een vaste tabel (`data/roa_koppeling.py`), gemeten op de
+  ISCED-rubrieken van de erkende opleidingen in DUO. Wat niet eenduidig is, blijft ongekoppeld: Natuur,
+  Sectoroverstijgend en de bachelors van Gedrag en maatschappij. Per niveau zegt het resultaat hoeveel opleidingen in
+  een andere ROA-categorie vallen.
+- De tool meldt zelf wat de bronnen niet kunnen: opleidingstype alleen landelijk, geen hbo/wo-splitsing bij ROA, en
+  geen opleidingsniveau bij UWV-vacatures.
+
+### Een regiovergelijking van mbo-instellingen kiest de instellingen via hun onderwijslocaties (#744, deel 2)
+- Vergelijkt de chat mbo-instellingen in een plaats, gemeente, provincie of arbeidsmarktregio (een filter op de regio
+  van de instelling, met een resultaat per instelling), dan telt nu ook elke instelling mee met een onderwijslocatie in
+  dat gebied.
+  Zone.college (hoofdvestiging Lochem) staat zo in een vergelijking van de instellingen in Doetinchem, waar het 22
+  opleidingen geeft. Het niveau volgt uit het filter, niet uit een vaste keuze.
+- Een totaal over de instellingen heen blijft bij de hoofdvestiging, zoals voorheen: een instelling met één locatie in
+  Gelderland telt daar niet met al haar studenten mee. De toolresponse zegt hoeveel instellingen zo buiten het totaal
+  blijven.
+- Een vaste regel onder het antwoord noemt wie alleen via een locatie meedoet, met de hoofdvestiging, en zegt dat hun
+  studentaantallen per instelling gelden en niet per locatie. De regel komt uit code; de snippet herhaalt dezelfde
+  selectie.
+- De locaties komen uit het opleidingsaanbod per locatie (DUO's export van RIO), de koppeling aan de instelling uit RIO
+  (nieuw in riodata: `onderwijsaanbieders`) en de gemeente en provincie van een plaats uit CBS. Een storing bij een van
+  die bronnen breekt het antwoord niet: dan alleen de instellingen met hun hoofdvestiging in het gebied.
+- De mbo-bestanden krijgen de kolom `ARBEIDSMARKTREGIO INSTELLING`: de arbeidsmarktregio van de hoofdvestiging, uit
+  de gemeente van de instelling en de CBS-indeling die ROA ook kent. Een vergelijking per instelling in de Achterhoek
+  noemt zo het Graafschap College en, via zijn locatie in Doetinchem, Zone.college.
+- Nog niet: de peers van het dashboard "mijn instelling" (#904).
 
 ## 2.6.0 — 2026-11-05
 
