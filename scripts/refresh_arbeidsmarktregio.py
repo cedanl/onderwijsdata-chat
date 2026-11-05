@@ -65,6 +65,8 @@ def main(tabel: str = "86247NED") -> None:
                     "titel": info["Title"],
                     "url": f"https://opendata.cbs.nl/statline/#/CBS/nl/dataset/{tabel}",
                     "opgehaald": date.today().isoformat(),
+                    # De kolom met de naam van de arbeidsmarktregio in deze jaargang: de snippet leest hem (#744).
+                    "kolom": regio,
                 },
                 "gemeenten": dict(sorted(gemeenten.items())),
             },

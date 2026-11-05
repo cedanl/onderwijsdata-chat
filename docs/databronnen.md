@@ -112,12 +112,20 @@ hbo en wo niets aan toe (onderzoek 04-11-2026, no-go): de chat gebruikt alleen R
 **Regio en nevenlocaties (mbo, #744):** adressen en studentaantallen bestaan bij DUO alleen per instelling (BRIN), met
 de plaats van de hoofdvestiging. Zone.college (31JC) heeft zijn hoofdvestiging in Lochem en geeft 22 opleidingen in
 Doetinchem, waar het Graafschap College (24ZZ) staat; het is geen vestiging van het Graafschap College. Filtert
-`query_data` een mbo-bestand op de plaats, de gemeente of de provincie van de instelling (`PLAATSNAAM INSTELLING`,
-`GEMEENTE INSTELLING`/`GEMEENTENUMMER INSTELLING`, `PROVINCIE INSTELLING`) en blijft het resultaat per instelling (geen
+`query_data` een mbo-bestand op de plaats, de gemeente, de provincie of de arbeidsmarktregio van de instelling
+(`PLAATSNAAM INSTELLING`, `GEMEENTE INSTELLING`/`GEMEENTENUMMER INSTELLING`, `PROVINCIE INSTELLING`,
+`ARBEIDSMARKTREGIO INSTELLING`) en blijft het resultaat per instelling (geen
 aggregatie, of een groepering op `INSTELLINGSCODE` of `INSTELLINGSNAAM`), dan neemt de code ook de instellingen mee met
 een onderwijslocatie in dat gebied (`tools/regiolocaties.py`). Het niveau volgt uit de kolom van het filter, niet uit
 een vaste keuze. Een vaste regel in het Telling-blok noemt wie alleen zo meedoet, met de hoofdvestiging, en zegt dat
 hun studentaantallen per instelling gelden en niet per locatie; de snippet herhaalt dezelfde selectie.
+
+**`ARBEIDSMARKTREGIO INSTELLING`:** geen DUO-bestand heeft de arbeidsmarktregio van de instelling. De chat zet haar
+erbij in dezelfde mbo-bestanden als `PROVINCIE INSTELLING` (`tools/instellingsprovincie.py`): de gemeente van de
+hoofdvestiging (`GEMEENTENUMMER INSTELLING` als het bestand die heeft, anders het adres uit `adressen_mbo`) en de
+CBS-indeling van `data/arbeidsmarktregio.py`, dezelfde als in het instellingsprofiel en voor ROA. Een gemeente zonder
+regio blijft leeg. Op 05-11-2026 kregen alle 55 instellingen van mbo-studenten-per-instelling een regio (28 regio's).
+De snippet zet de kolom op dezelfde manier, met de CBS-tabel via `onderwijsdata.data`.
 
 **Totalen blijven bij de hoofdvestiging.** Een som over de instellingen heen (bijvoorbeeld per jaar) telt alleen de
 instellingen met hun hoofdvestiging in het gebied, zoals vóór #744: anders telde een instelling met één locatie in het
@@ -137,14 +145,15 @@ telling gebruikt dezelfde dagcache als de vergelijking per instelling.
   `data/woonplaatsen.json`, ververs met `scripts/refresh_woonplaatsen.py`). Een woonplaatsnaam in meer gemeenten (Velp:
   Rheden en Land van Cuijk; ook Hoorn en Beek) krijgt geen gemeente: zo'n locatie telt alleen als het filter op de
   plaats staat.
+- **Arbeidsmarktregio** van een locatie: de gemeente uit de woonplaats, dan de CBS-indeling gemeente → arbeidsmarktregio
+  van `data/arbeidsmarktregio.py` (86247NED, "Gebieden in Nederland 2026", de 35 regio's van UWV en ROA).
 - Beide bronnen staan een dag in de cache. Een storing geeft geen extra instellingen, geen regel en een WARNING
   (`REGIOLOCATIES_ONBEKEND`).
 
 Bekende grenzen: de locaties zijn die van het huidige aanbod, ook bij een reeks over eerdere jaren. Op 05-11-2026 koppelden
 486 van de 570 mbo-locaties aan een van de 55 instellingen in mbo-studenten-per-instelling; de rest zijn vooral
 niet-bekostigde aanbieders, en aanbieders die RIO nog onder een opgeheven instelling of een eigen bestuur voert (de
-Zaanse locaties van het Regio College, nu Talland; de Kop van Noord-Holland, nu Vonk). Een
-arbeidsmarktregio kan nog niet als filter: geen mbo-bestand heeft er een kolom voor. Een selectie die het model met
+Zaanse locaties van het Regio College, nu Talland; de Kop van Noord-Holland, nu Vonk). Een selectie die het model met
 `run_analysis` zelf op regio maakt, gaat er buiten om. Het dashboard "mijn instelling" kiest zijn peers nog op het
 adres van de hoofdvestiging (#904).
 

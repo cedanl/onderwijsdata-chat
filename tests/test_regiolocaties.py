@@ -20,7 +20,7 @@ from riodata import duo
 
 from agent.telling import telling_blok
 from core import actualiteit
-from tools import regiolocaties, store
+from tools import instellingsprovincie, regiolocaties, store
 from tools.query import query_data
 from tools.snippet import generate
 from tools.store import KeyMeta
@@ -69,7 +69,8 @@ def _zet_studenten() -> None:
         periodekolom="JAAR",
         instellingskolom="INSTELLINGSCODE",
     )
-    store.put(_KEY, pd.DataFrame(_RIJEN, columns=_KOLOMMEN), meta)
+    df = instellingsprovincie.met_regio(pd.DataFrame(_RIJEN, columns=_KOLOMMEN), "mbo-studenten-per-instelling")
+    store.put(_KEY, df, meta)
 
 
 @pytest.fixture
@@ -151,6 +152,24 @@ def test_een_regio_zonder_locaties_vraagt_rio_niets(rio, studenten):
     assert rio == []
 
 
+def test_in_de_arbeidsmarktregio_achterhoek_telt_zone_college_mee_via_doetinchem(rio, studenten):
+    """Lochem ligt in Veluwe Stedendriehoek; de locatie in Doetinchem ligt in de Achterhoek."""
+    uit = _selectie({"ARBEIDSMARKTREGIO INSTELLING": "Achterhoek"})
+
+    assert _codes(uit) == {"24ZZ", "31JC"}
+    assert (
+        "in de arbeidsmarktregio Achterhoek (RIO): Zone.college (31JC, hoofdvestiging Veluwe Stedendriehoek)."
+        in _blok(uit)
+    )
+
+
+def test_in_regio_zwolle_tellen_drie_instellingen_mee_via_hardenberg(rio, studenten):
+    uit = _selectie({"ARBEIDSMARKTREGIO INSTELLING": "regio zwolle"})
+
+    assert _codes(uit) == {"25LU", "27YU", "31JC"}
+    assert "in de arbeidsmarktregio Regio Zwolle (RIO)" in _blok(uit)
+
+
 # --- alleen een vergelijking per instelling verbreedt; een totaal blijft bij de hoofdvestiging ---
 
 
@@ -177,6 +196,13 @@ def test_een_totaal_zegt_wie_er_niet_in_zit(rio, studenten):
 
 def test_een_totaal_zonder_nevenlocaties_krijgt_geen_regel(rio, studenten):
     assert "databewerking" not in _som({"PROVINCIE INSTELLING": "Gelderland"}, ["JAAR"])
+
+
+def test_een_som_per_arbeidsmarktregio_blijft_bij_de_hoofdvestiging(rio, studenten):
+    uit = _som({"ARBEIDSMARKTREGIO INSTELLING": "Achterhoek"}, ["JAAR"])
+
+    assert uit["rijen"][0]["BOLVT"] == 5431  # alleen Graafschap College
+    assert any("1 instelling met alleen een onderwijslocatie daar telt niet mee" in n for n in uit["databewerking"])
 
 
 def test_een_som_per_jaar_verbreedt_niet(rio, studenten):

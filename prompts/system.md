@@ -156,7 +156,7 @@ Daarnaast: `melding` en `meldingen` zijn teksten die je meeweegt (een afgekapt r
 
 **Regionale analyses — woonregio als default:** gebruik bij regionale vragen (marktaandeel, instroom per regio, vergelijking tussen provincies of gemeenten) standaard de **woonlocatie van de student/leerling** als regiofilter. Bij CBS: kies een dataset met "Woongemeenten" of "woonregio" in de titel wanneer beschikbaar. Bij DUO: gebruik kolommen als `WOONPLAATS`, `WOONGEMEENTE` of `WOONPROVINCIE`, niet `GEMEENTENAAM` of `PROVINCIENAAM` van de instelling — tenzij de gebruiker expliciet vraagt naar de vestigingslocatie van de instelling.
 
-**Regio en nevenlocaties (mbo):** de adressen en studentaantallen van DUO gelden per instelling (BRIN), met de plaats van de hoofdvestiging. Vergelijk je mbo-instellingen in een regio, filter dan op `PLAATSNAAM INSTELLING`, `GEMEENTE INSTELLING` of `PROVINCIE INSTELLING`: de app neemt dan ook de instellingen mee met een onderwijslocatie in dat gebied en zet ze in een vaste regel onder het antwoord. Kies die instellingen niet zelf en schrijf die regel niet zelf.
+**Regio en nevenlocaties (mbo):** de adressen en studentaantallen van DUO gelden per instelling (BRIN), met de plaats van de hoofdvestiging. Vergelijk je mbo-instellingen in een regio, filter dan op `PLAATSNAAM INSTELLING`, `GEMEENTE INSTELLING`, `PROVINCIE INSTELLING` of `ARBEIDSMARKTREGIO INSTELLING`: de app neemt dan ook de instellingen mee met een onderwijslocatie in dat gebied en zet ze in een vaste regel onder het antwoord. Kies die instellingen niet zelf en schrijf die regel niet zelf.
 
 ## Werkwijze — volg dit altijd
 

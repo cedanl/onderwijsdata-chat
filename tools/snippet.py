@@ -20,7 +20,7 @@ import json
 
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
-from data import arbeidsmarkt, roa_koppeling
+from data import arbeidsmarkt, arbeidsmarktregio, roa_koppeling
 
 from . import (
     cbs_selectie,
@@ -88,21 +88,43 @@ def _duo_laadregels(args: dict) -> list[str]:
         # De app voegt dit label toe (#115); analysecode mag het gebruiken.
         'if "STUDIEJAAR" in df.columns:',
         f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")',
-        *_provincieregels(args["dataset_id"]),
+        *_instellingsregioregels(args["dataset_id"]),
     ]
 
 
-def _provincieregels(dataset_id: str) -> list[str]:
-    """De provincie van de instelling, zoals de app hem bij deze mbo-bestanden toevoegt (#453)."""
+def _instellingsregioregels(dataset_id: str) -> list[str]:
+    """De provincie en de arbeidsmarktregio van de instelling, zoals de app ze bij deze mbo-bestanden toevoegt (#453,
+    #744): de provincie uit DUO's adressenbestand, de regio uit de gemeente en dezelfde CBS-indeling als de app."""
     if dataset_id not in instellingsprovincie.DATASETS:
         return []
-    kolom, (adressen, resource) = instellingsprovincie.KOLOM, instellingsprovincie.ADRESBESTAND
+    kolom, regiokolom = instellingsprovincie.KOLOM, instellingsprovincie.REGIOKOLOM
+    gemeentekolom, (adressen, resource) = instellingsprovincie.GEMEENTEKOLOM, instellingsprovincie.ADRESBESTAND
+    indeling = arbeidsmarktregio.bron()
     return [
-        f"# De app voegt {kolom} toe uit DUO's adressenbestand; een code zonder adres blijft leeg.",
-        f'if "INSTELLINGSCODE" in df.columns and "{kolom}" not in df.columns:',
-        f"    adressen = duo.load({_lit(adressen)}, {resource}).dropna(subset=['PROVINCIE'])",
-        "    provincie = dict(zip(adressen['INSTELLINGSCODE'].astype(str).str.strip(), adressen['PROVINCIE']))",
-        f'    df["{kolom}"] = df["INSTELLINGSCODE"].astype(str).str.strip().map(provincie)',
+        f"# De app voegt {kolom} en {regiokolom} toe uit DUO's adressenbestand; een code zonder adres blijft leeg.",
+        f"adressen = duo.load({_lit(adressen)}, {resource})",
+        "_code = dict(zip(adressen['INSTELLINGSCODE'].astype(str).str.strip(), adressen.index))",
+        'if "INSTELLINGSCODE" in df.columns:',
+        "    _rij = df['INSTELLINGSCODE'].astype(str).str.strip().map(_code)",
+        f'    if "{kolom}" not in df.columns:',
+        f"        df[\"{kolom}\"] = _rij.map(adressen['PROVINCIE'])",
+        f'    if "{regiokolom}" not in df.columns:',
+        f"        # De arbeidsmarktregio van de gemeente: CBS {indeling['tabel']} ({indeling['titel']}).",
+        "        from onderwijsdata import data",
+        "",
+        f"        _indeling = pd.DataFrame(data({_lit(indeling['tabel'])}))",
+        "        _regio = dict(zip(_indeling['RegioS'].str.strip().str.removeprefix('GM'), "
+        f"_indeling[{_lit(indeling['kolom'])}].str.strip()))",
+        "",
+        "        def _gemeentecode(waarde):",
+        "            try:",
+        "                return f'{int(str(waarde).strip()):04d}'",
+        "            except ValueError:",
+        "                return None",
+        "",
+        f'        _gemeente = df["{gemeentekolom}"] if "{gemeentekolom}" in df.columns '
+        "else _rij.map(adressen['GEMEENTENUMMER'])",
+        f'        df["{regiokolom}"] = _gemeente.map(lambda g: _regio.get(_gemeentecode(g)))',
     ]
 
 

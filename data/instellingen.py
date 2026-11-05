@@ -27,9 +27,10 @@ _ADRES_CACHE: dict[str, dict] | None = None
 # profiel.
 HOOFDVESTIGING = "Het adres is dat van de hoofdvestiging: DUO kent één adres per instelling (BRIN), geen nevenlocaties."
 REGIO_VIA_LOCATIES = (
-    "Filter je een mbo-bestand op de plaats, gemeente of provincie van de instelling, dan neemt de app ook de "
-    "instellingen mee met een onderwijslocatie in dat gebied (RIO) en noemt ze in een vaste regel onder het antwoord; "
-    "hun studentaantallen gelden per instelling, niet per locatie."
+    "Vergelijk je mbo-instellingen per instelling met een filter op de plaats, gemeente, provincie of "
+    "arbeidsmarktregio van de instelling, dan neemt de app ook de instellingen mee met een onderwijslocatie in dat "
+    "gebied (RIO) en noemt ze in een vaste regel onder het antwoord; hun studentaantallen gelden per instelling, niet "
+    "per locatie. Een totaal over instellingen heen blijft bij de hoofdvestiging."
 )
 
 # Handgemaakte referentielijsten: wanneer elk voor het laatst is bijgewerkt en

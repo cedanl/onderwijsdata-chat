@@ -3,20 +3,21 @@
 DUO kent studentaantallen en een adres per instelling (BRIN), met de plaats van de hoofdvestiging. Een vergelijking van
 de instellingen "in Doetinchem" liet zo Zone.college (31JC, hoofdvestiging Lochem) weg, dat er 22 opleidingen geeft.
 
-Filtert `query_data` een mbo-bestand op de plaats, de gemeente of de provincie van de instelling, en blijft het resultaat
-per instelling, dan neemt het hier ook de instellingen mee met een onderwijslocatie in dat gebied. Een totaal over de
-instellingen heen blijft bij de hoofdvestiging: anders telde een instelling met één locatie in Gelderland met al haar
-studenten mee (Gelderland 2025: 53.761 werd 104.040). Een lezing zegt dan hoeveel instellingen er niet in zitten
-(`niet_in_totaal`). Het niveau volgt uit de kolom van het filter
-(`KOLOMMEN`), het gebied uit zijn waarden; het model kiest niets. Een vaste regel zegt welke instellingen alleen zo
-meedoen en dat hun aantallen per instelling gelden, niet per locatie (`regels`); hij reist mee op de selectie
-(`KeyMeta.nevenlocaties`) naar het Telling-blok onder het antwoord, zoals de fusieregel van #728.
+Filtert `query_data` een mbo-bestand op de plaats, de gemeente, de provincie of de arbeidsmarktregio van de instelling,
+en blijft het resultaat per instelling, dan neemt het hier ook de instellingen mee met een onderwijslocatie in dat
+gebied. Een totaal over de instellingen heen blijft bij de hoofdvestiging: anders telde een instelling met één locatie in
+Gelderland met al haar studenten mee (Gelderland 2025: 53.761 werd 104.040). Een lezing zegt dan hoeveel instellingen er
+niet in zitten (`niet_in_totaal`). Het niveau volgt uit de kolom van het filter (`KOLOMMEN`), het gebied uit zijn
+waarden; het model kiest niets. Een vaste regel zegt welke instellingen alleen zo meedoen en dat hun aantallen per
+instelling gelden, niet per locatie (`regels`); hij reist mee op de selectie (`KeyMeta.nevenlocaties`) naar het
+Telling-blok onder het antwoord, zoals de fusieregel van #728.
 
 De bronnen:
 - het aanbod per onderwijslocatie, met de plaats en de aanbieder: DUO's dagelijkse export van RIO,
   `mbo_opleidingsaanbod`. RIO zelf kan niet op plaats filteren (13.655 locaties, alleen per pagina van 100).
 - de aanbieders per instelling uit RIO (`riodata.onderwijsaanbieders`): zo komt een locatie bij het BRIN.
-- de gemeente en provincie van een woonplaats uit CBS (`data/woonplaatsen.py`). Een woonplaatsnaam in meer gemeenten
+- de gemeente en provincie van een woonplaats uit CBS (`data/woonplaatsen.py`), de arbeidsmarktregio van die gemeente
+  uit de CBS-indeling van `data/arbeidsmarktregio.py`. Een woonplaatsnaam in meer gemeenten
   (Velp) krijgt geen gemeente: de locatie telt dan alleen op plaatsniveau, de code raadt niet.
 
 Beide bronnen staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in de cache; een storing geeft
@@ -35,7 +36,7 @@ import pandas as pd
 from riodata import duo, onderwijsaanbieders
 
 from core import actualiteit
-from data import woonplaatsen
+from data import arbeidsmarktregio, woonplaatsen
 
 from . import instelling, relaties
 from .kaartlocaties import sleutel
@@ -43,12 +44,13 @@ from .kaartlocaties import sleutel
 logger = logging.getLogger(__name__)
 
 # De kolom van het filter bepaalt het niveau. Deze kolommen staan alleen in DUO's mbo-bestanden; PROVINCIE INSTELLING
-# zet de app ook bij de mbo-bestanden die hem missen (tools/instellingsprovincie.py).
+# en ARBEIDSMARKTREGIO INSTELLING zet de app erbij waar het bestand ze mist (tools/instellingsprovincie.py).
 KOLOMMEN = {
     "PLAATSNAAM INSTELLING": "plaats",
     "GEMEENTE INSTELLING": "gemeente",
     "GEMEENTENUMMER INSTELLING": "gemeente",
     "PROVINCIE INSTELLING": "provincie",
+    "ARBEIDSMARKTREGIO INSTELLING": "arbeidsmarktregio",
 }
 CODEKOLOM = "INSTELLINGSCODE"
 AANBOD = ("mbo_opleidingsaanbod", 0)
@@ -101,10 +103,22 @@ def _gemeente_van_plaats(plaats: str) -> str | None:
     return codes[0] if len(codes) == 1 else None
 
 
+@lru_cache(maxsize=1)
+def _regioindex() -> dict[str, str]:
+    """sleutel(arbeidsmarktregio) → de naam zoals de CBS-indeling hem schrijft."""
+    return {sleutel(regio): regio for regio in set(arbeidsmarktregio.gemeenten().values())}
+
+
+def _arbeidsmarktregio(waarde) -> str | None:
+    return _regioindex().get(sleutel(str(waarde)))
+
+
 def _doelen(niveau: str, waarden: list) -> set[str]:
     """De waarden van het filter in de vorm waarin een locatie getoetst wordt."""
     if niveau == "plaats":
         return {sleutel(str(w)) for w in waarden}
+    if niveau == "arbeidsmarktregio":
+        return {d for w in waarden if (d := _arbeidsmarktregio(w))}
     lees = _gemeentecode if niveau == "gemeente" else relaties.norm_provincie
     return {d for w in waarden if (d := lees(w))}
 
@@ -114,6 +128,8 @@ def _ligt_in(niveau: str, plaats: str, doelen: set[str]) -> bool:
         return sleutel(plaats) in doelen
     if (gemeente := _gemeente_van_plaats(plaats)) is None:
         return False
+    if niveau == "arbeidsmarktregio":
+        return arbeidsmarktregio.gemeenten().get(gemeente) in doelen
     return (gemeente if niveau == "gemeente" else woonplaatsen.gemeenten()[gemeente]["provincie"]) in doelen
 
 
@@ -124,6 +140,8 @@ def _weergave(niveau: str, waarde) -> str:
     if niveau == "gemeente":
         code = _gemeentecode(waarde)
         return woonplaatsen.gemeenten()[code]["naam"] if code else str(waarde)
+    if niveau == "arbeidsmarktregio":
+        return _arbeidsmarktregio(waarde) or str(waarde)
     code = relaties.norm_provincie(waarde)
     return relaties.PROVINCIES[code] if code else str(waarde)
 
