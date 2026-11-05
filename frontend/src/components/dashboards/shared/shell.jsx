@@ -191,7 +191,11 @@ export function DashboardSources({ sources }) {
       <div className="dashboard-sources-title">Bronnen</div>
       <ul className="dashboard-sources-list">
         {sources.map(({ label, url }) => (
-          <li key={url}><a href={url} target="_blank" rel="noreferrer">{label}</a></li>
+          <li key={url}>
+            <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opent in een nieuw tabblad)`}>
+              <span>{label}</span>
+            </a>
+          </li>
         ))}
       </ul>
     </div>

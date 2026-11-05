@@ -1369,6 +1369,8 @@ html.dark .kpi-trend.down { color: #F87171; }
   transition: color .15s, text-decoration .15s;
 }
 .dashboard-sources-list a:hover { color: var(--blue-800); text-decoration: underline; }
+/* Externe link (#921): het pijltje is de zichtbare cue, de aria-label zegt "opent in een nieuw tabblad". */
+.dashboard-sources-list a > span::after { content: '\2197'; content: '\2197' / ''; display: inline-block; margin-left: 4px; }
 
 /* Toast */
 .toast {
