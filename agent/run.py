@@ -197,7 +197,8 @@ def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
         return {}
 
 
-_MAX_CLARIFY_RONDES = 1
+# Hoogstens drie kaarten achter elkaar voor één vraag, uit code of van het model; daarna gaat het model door met aannames.
+_MAX_CLARIFY_RONDES = 3
 
 
 async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: dict, emit: Emit) -> str:
@@ -208,6 +209,7 @@ async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: di
     """
     logger.info("SCOPEVRAAG  slot=%s  opties=%d", kaart.slot, len(kaart.opties))
     messages.append({"role": "assistant", "content": kaart.vraag})
+    session.setdefault("clarify_slots", []).append(kaart.slot)
     session["_clarified"] = True
     session["_last_turn_tool_calls"] = []
     await emit({"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties})
@@ -503,10 +505,13 @@ async def run(
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
 
-    # Een open slot (plaats of instelling, maat) krijgt een vaste kaart uit code, vóór het model (#348).
+    # Een open slot (plaats of instelling, maat, fase, afbakening) krijgt een vaste kaart uit code, vóór het model (#348).
     # Het register en de catalogus laden over het netwerk: niet op de event loop.
     if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
-        kaart = await asyncio.to_thread(scopevraag, last_user_msg, settings)
+        # De vraag samen met de gekozen opties: een eerdere kaart kan een ander slot nog open laten (#348).
+        kaart = await asyncio.to_thread(
+            scopevraag, _poortvraag(messages, session), settings, session.get("clarify_slots", [])
+        )
         if kaart is not None:
             return await _vaste_verduidelijking(kaart, messages, session, emit)
 

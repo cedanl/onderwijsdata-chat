@@ -203,7 +203,7 @@ def zonder_scopekaart(monkeypatch):
     """
     # agent/__init__ exporteert run(), dat het module-attribuut agent.run overschaduwt.
     run_module = importlib.import_module("agent.run")
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings, eerder=(): None)
 
 
 TEST_SECRET = "test-secret-for-tests"

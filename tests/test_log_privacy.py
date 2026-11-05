@@ -22,6 +22,10 @@ from agent.stream import StreamResult
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
 
+# Deze tests gaan over wat het model daarna doet; een kale testvraag als "Hoeveel eerstejaars?" krijgt anders de
+# afbakeningskaart uit code (#932). De kaart zelf staat in test_afbakeningsvraag.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopekaart")
+
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
 

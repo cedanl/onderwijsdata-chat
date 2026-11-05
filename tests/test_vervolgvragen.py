@@ -503,7 +503,7 @@ def _beurt(monkeypatch, steps, *, session=None, problemen=(), toolresultaat=None
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: kaart)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings, eerder=(): kaart)
     monkeypatch.setattr(run_module, "antwoordcontrole", lambda *a: lambda text, results: list(problemen))
     monkeypatch.setattr(vervolgvragen, "_beantwoordbaar", lambda dataset_id: _VETTED.get(dataset_id, ()))
     if max_iteraties is not None:

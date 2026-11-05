@@ -58,7 +58,7 @@ routes; het model slaat een stap over die niet nodig is.
 
 ### Vóór de route: verduidelijking
 
-Drie open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scopevraag.py`, #348):
+Vier open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scopevraag.py`, #348):
 - een telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten heeft
   Utrecht?"): een kaart met de instellingen uit het register en de woonplaats als opties;
 - een kort thema zonder maat ("arbeidsmarkt"): een kaart met de catalogusrecords die `search_catalog` bovenaan zet,
@@ -66,10 +66,17 @@ Drie open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scop
 - instroom in het hoger onderwijs zonder fase ("de instroom van de HvA", #743): een kaart met twee opties. De eerste is
   eerstejaars ho per instelling (DUO, zonder doorstroom naar een master). De tweede is landelijk per hbo en wo, met de
   masters erbij (CBS 85422NED). Dezelfde vraag geeft zo altijd dezelfde eerste stap; de opties zijn
-  altijd geldig. Noemt de vraag een instelling, of bepaalt het profiel haar, dan komt er geen kaart.
+  altijd geldig. Noemt de vraag een instelling, of bepaalt het profiel haar, dan komt er geen kaart;
+- een telling van personen zonder instelling, sector of gebied ("Hoeveel studenten?"): een kaart met twee opties,
+  landelijk (mbo, hbo en wo samen) of per sector. Een instelling of regio noemt de gebruiker via "Anders formuleren".
+  Noemt de vraag een sector, gebied, eigennaam of instelling, of bepaalt het profiel de instelling of sector, dan
+  komt er geen kaart.
 
-Is een vraag op een andere manier dubbelzinnig, dan stelt het model zelf één vraag met `clarify_scope`. Na de keuze
-volgt een van de routes hieronder; `clarify_scope` is dan weg (#75).
+Een vraag kan tot **drie kaarten** achter elkaar krijgen. Code leest daarvoor de vraag samen met de gekozen opties,
+vraagt een slot nooit twee keer (`clarify_slots` in de sessie) en laat het model daarna, tot de limiet, zelf een
+`clarify_scope` stellen als er nog een dimensie openstaat waar het antwoord van afhangt. Is een vraag op een andere
+manier dubbelzinnig, dan stelt het model zelf die vraag. Na de keuze volgt een van de routes hieronder; na de derde
+kaart is `clarify_scope` weg (#75) en gaat het model door met aannames die het noemt.
 
 ### Route 1: een vaste maat
 
