@@ -7,7 +7,7 @@ import {
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
   buildSectorTrendData, buildLeerwegenData, buildRendementVergelijkingData,
-  DemografieKpis, InstroomKpis, DiplomeringKpis, gediplomeerdenNoot, diplomaRatio,
+  DemografieKpis, InstroomKpis, DiplomeringKpis, gediplomeerdenNoot, diplomaRatio, SECTOR_LABELS,
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
@@ -59,7 +59,10 @@ export function InlineDashboardMijnInstelling({ instelling }) {
     { label, onderdrukt: od[sleutel], soort: perioden[sleutel] },
     { label: `${label} ${c.bmZin}`, onderdrukt: bmOd[sleutel], soort: perioden[sleutel] },
   ]
-  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: s, onderdrukt, soort: perioden.ingeschrevenen }))
+  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: SECTOR_LABELS[s] || s, onderdrukt, soort: perioden.ingeschrevenen }))
+  // Een grafiek belooft de vergelijking met het gemiddelde alleen als dat er is (#951: bij het mbo stond bij
+  // "Gediplomeerden per jaar" alleen de eigen lijn).
+  const tegen = sleutel => (bm[sleutel] && Object.keys(bm[sleutel]).length ? `eigen instelling vs. ${c.bmZin}` : 'eigen instelling; geen gemiddelde van de vergelijkingsgroep')
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -74,7 +77,16 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
         {/* ── Instroom & demografie ── */}
         <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
-        <DemografieKpis {...c} regioType={bm.regio_type} nInstellingen={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
+        <DemografieKpis
+          {...c}
+          instelling={instelling}
+          regioType={bm.regio_type}
+          populatie={bm.populatie}
+          nPeers={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen}
+          laatsteJaar={data?.laatste_jaar}
+          onderdrukt={od.ingeschrevenen}
+          bmOnderdrukt={bmOd.ingeschrevenen}
+        />
         <OndergrensNoot reeksen={noot('ingeschrevenen', 'Ingeschrevenen')} />
         <PeersTable data={data} instelling={instelling} dark={c.dark} />
         <PeerLinesChart
@@ -85,7 +97,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         />
         <InstroomKpis {...c} type={data?.type} />
         <OndergrensNoot reeksen={noot('eerstejaars', 'Eerstejaars')} />
-        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf('eerstejaars')(start)} — eigen instelling vs. ${c.bmZin}`} data={c.ejLineData} indexOpts={c.indexOpts} />
+        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf('eerstejaars')(start)} — ${tegen('eerstejaars')}`} data={c.ejLineData} indexOpts={c.indexOpts} />
         <MarktaandeelChart data={marktData} dark={c.dark} />
         <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} />
         <GroeiRankingChart data={groeiData} dark={c.dark} />
@@ -95,7 +107,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />
         <DiplomeringKpis {...c} ratio={ratio} noot={diplNoot} />
         <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
-        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf('gediplomeerden')(start)} — eigen instelling vs. ${c.bmZin}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
+        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf('gediplomeerden')(start)} — ${tegen('gediplomeerden')}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
         <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>

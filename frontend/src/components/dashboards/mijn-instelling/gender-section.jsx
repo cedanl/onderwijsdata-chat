@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { COLOR_DIPLOM } from '../../../constants'
-import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, benchmarkColor } from '../shared/index'
+import { SectionHeader, ChartCard, Grafiek, fmt, fmtProcent, darkColors, horizontalBarOpts, staafHoogte, benchmarkColor, SECTOR_LABELS } from '../shared/index'
 import { asJaar, jaarLabel } from '../../../schooljaar'
 
 // Man in de verdeelbalken: grijs met 3:1 tegen de kaart in beide thema's (#905); #94A3B8 haalde op wit 2,6:1.
@@ -13,11 +13,13 @@ export function pctVrouwFromGeslacht(g) {
   return t > 0 ? Math.round((g.VROUW / t) * 1000) / 10 : null
 }
 
-// Het label van een genderbalk: het aandeel vrouw en zijn noemer, vrouw + man. Studenten met geslacht onbekend tellen
-// niet mee; zijn ze er, dan noemt het label ze, want "totaal" was hier vrouw + man zonder hen (#931).
-function genderBalkLabel(g) {
-  const onbekend = g.ONBEKEND > 0 ? ` (${fmt(g.ONBEKEND)} onbekend)` : ''
-  return `${fmt(pctVrouwFromGeslacht(g))}% vrouw — ${fmt(g.VROUW + g.MAN)} vrouw + man${onbekend}`
+// Het label van een genderbalk: het aandeel vrouw met teller en noemer, vrouw van vrouw en man samen. Studenten met
+// geslacht onbekend tellen niet mee; zijn ze er, dan noemt het label ze, want "totaal" was hier vrouw + man zonder hen
+// (#931). Eén decimaal, voor elke sector gelijk (#951: "32%" stond naast "67,2%", en "1.782 vrouw + man" las als een
+// rekensom).
+export function genderBalkLabel(g) {
+  const onbekend = g.ONBEKEND > 0 ? `; ${fmt(g.ONBEKEND)} met geslacht onbekend tellen niet mee` : ''
+  return `${fmtProcent(pctVrouwFromGeslacht(g))}% vrouw (${fmt(g.VROUW)} van ${fmt(g.VROUW + g.MAN)} vrouwen en mannen${onbekend})`
 }
 
 // `soort`: het soort jaar van de ingeschrevenen uit de payload (#904); de as toont een schooljaar als 2025/26.
@@ -71,7 +73,7 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
         <div className="kpi-card-header">
           <span className="kpi-label">% vrouw {lastJaar}</span>
         </div>
-        <div className="kpi-value">{pctVrouw != null ? `${fmt(pctVrouw)}%` : '—'}</div>
+        <div className="kpi-value">{pctVrouw != null ? `${fmtProcent(pctVrouw)}%` : '—'}</div>
         {pctVrouw != null && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
@@ -146,14 +148,14 @@ export function GenderSection({ data, instelling, dark }) {
 
   const trendOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}% vrouw` } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmtProcent(ctx.raw)}% vrouw` } } },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick } },
       y: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${fmt(v)}%` } },
     },
   }
 
-  const balkOpts = horizontalBarOpts(dark, '% vrouw')
+  const balkOpts = horizontalBarOpts(dark, '% vrouw', fmtProcent)
   const peerOpts = {
     ...balkOpts,
     scales: {
@@ -175,7 +177,7 @@ export function GenderSection({ data, instelling, dark }) {
 
       {peerData && (
         <ChartCard title="% vrouw — benchmark peers" subtitle="Gesorteerd op aandeel vrouw (eigen instelling groen)">
-          <Grafiek soort="bar" data={peerData} options={peerOpts} hoogte={Math.max(200, peerData.labels.length * 34 + 40)} categorie="Instelling" />
+          <Grafiek soort="bar" data={peerData} options={peerOpts} hoogte={staafHoogte(peerData.labels, { minimum: 200 })} categorie="Instelling" />
         </ChartCard>
       )}
 
@@ -190,7 +192,7 @@ export function GenderSection({ data, instelling, dark }) {
                 return (
                   <div key={sector}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--muted-text)', marginBottom: 3 }}>
-                      <span>{sector}</span>
+                      <span>{SECTOR_LABELS[sector] || sector}</span>
                       <span>{genderBalkLabel(g)}</span>
                     </div>
                     <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 14 }}>

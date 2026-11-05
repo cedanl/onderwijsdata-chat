@@ -4,10 +4,10 @@ import {
   useArbeidsmarktmatchDashboardData, useRegioDashboardData,
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
-  darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
+  darkColors, horizontalBarOpts, staafHoogte, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
   DashboardSources, bronnenVan, bronBadge, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst, fmt,
-  MatchVerhoudingChart, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF,
+  MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF,
 } from '../shared/index'
 
 // Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
@@ -32,8 +32,10 @@ function MatchTegels({ entries, dark }) {
 // De labels zijn een indicatie op een momentopname (#900): daarom de banner met de peildatum erboven en eronder wat
 // de drie labels betekenen, met de drempel, de jaren en de herkomst van de sectorindeling uit de payload. Vanaf
 // MATCH_GRAFIEK_VANAF sectoren staat de match als staafgrafiek van `match_verhouding` met de drempels als lijn (#949);
-// zonder verhoudingen (een oudere payload) blijven het tegels.
-export function MatchScoreSection({ matchScore, verhouding, duiding, dark }) {
+// zonder verhoudingen (een oudere payload) blijven het tegels. Een sector zonder label staat met zijn reden eronder
+// (`weggelaten`, #952: te weinig gediplomeerden, geen beroepenclusters); een oudere payload zonder redenen noemt de
+// reden van toen.
+export function MatchScoreSection({ matchScore, verhouding, weggelaten, duiding, dark }) {
   if (!matchScore) return null
   const entries = Object.entries(matchScore).filter(([, v]) => v != null)
   if (entries.length === 0) return null
@@ -46,7 +48,9 @@ export function MatchScoreSection({ matchScore, verhouding, duiding, dark }) {
       {alsGrafiek
         ? <MatchVerhoudingChart matchScore={matchScore} verhouding={verhouding} drempel={duiding?.drempel} dark={dark} />
         : <MatchTegels entries={entries} dark={dark} />}
-      <WeggelatenNoot namen={zonderScore} reden="geen beroepenclusters in de sectorindeling" />
+      {weggelaten
+        ? <MatchWeggelaten weggelaten={weggelaten} />
+        : <WeggelatenNoot namen={zonderScore} reden="geen beroepenclusters in de sectorindeling" />}
       <MatchDuiding duiding={duiding} />
     </>
   )
@@ -69,7 +73,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, duidin
       subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) vs. gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
     >
       <MomentopnameBanner peildatum={duiding?.vacatures_peildatum} />
-      <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={Math.max(200, barData.labels.length * 50)} options={{
+      <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={staafHoogte(barData.labels, { perRij: 50, kader: 60, minimum: 200 })} options={{
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
@@ -131,7 +135,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <RegioBadges instelling={instelling} provincie={plaats?.provincie} herkomst={plaats?.provincie_herkomst} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} vacatures bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
-        <MatchScoreSection matchScore={matchData?.match_score} verhouding={matchData?.match_verhouding} duiding={matchData?.match_duiding} dark={dark} />
+        <MatchScoreSection matchScore={matchData?.match_score} verhouding={matchData?.match_verhouding} weggelaten={matchData?.match_weggelaten} duiding={matchData?.match_duiding} dark={dark} />
 
         <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart

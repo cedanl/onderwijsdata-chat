@@ -20,7 +20,7 @@ vi.mock('react-chartjs-2', async () => {
 
 import { MatchScoreSection } from '../components/dashboards/arbeidsmarkt-consolidated/index'
 import {
-  buildMatchVerhoudingData, matchDrempels, MATCH_GRAFIEK_VANAF,
+  buildMatchVerhoudingData, matchDrempels, MATCH_GRAFIEK_VANAF, MATCH_KAP,
 } from '../components/dashboards/shared/charts-arbeidsmarkt'
 import { DREMPELLIJNEN } from '../components/dashboards/shared/chart-opts'
 
@@ -191,5 +191,56 @@ describe('DREMPELLIJNEN', () => {
 
     expect(lijnen).toEqual([[150, 10], [220, 10]])
     expect(ctx.strokeStyle).toBe('#6B7280')
+  })
+})
+
+// #952: één uitschieter (Tilburg University, Techniek: 52,15) maakte de rest onleesbaar, en een kleine sector kreeg een
+// verhouding waar één diploma tientallen procenten verschil maakt.
+describe('kap op de staaf en kleine sectoren (#952)', () => {
+  it('kapt de staaf op MATCH_KAP en houdt de echte waarde in tooltip, tabel en noot', () => {
+    const { score, verhouding } = sectoren(8)
+    render({ matchScore: { ...score, TECHNIEK: 'schaarste' }, verhouding: { ...verhouding, TECHNIEK: 52.15 } })
+
+    expect(MATCH_KAP).toBe(5)
+    const { data, options } = getekend.at(-1)
+    const schaarste = data.datasets.find(d => d.label === 'Schaarste')
+    const i = data.labels.indexOf('Techniek')
+    expect(schaarste.data[i]).toBe(MATCH_KAP)
+    expect(schaarste.waarden[i]).toBe(52.15)
+    expect(options.scales.x.max).toBe(MATCH_KAP)
+    const tooltip = options.plugins.tooltip.callbacks.label({ dataset: schaarste, dataIndex: i, raw: MATCH_KAP })
+    expect(tooltip).toBe(' Schaarste: 52,15 keer')
+    expect(container.querySelector('.waarden-details').textContent).toContain('52,15')
+    expect(container.querySelector('canvas').getAttribute('aria-label')).toContain('52,15')
+    expect(container.textContent).toContain('Staaf afgekapt bij 5: Techniek (52,15).')
+  })
+
+  it('zonder uitschieter geen kap en geen noot', () => {
+    const { score, verhouding } = sectoren(8)
+    render({ matchScore: score, verhouding })
+
+    expect(getekend.at(-1).options.scales.x.max).toBeUndefined()
+    expect(container.textContent).not.toContain('afgekapt')
+  })
+
+  it('noemt elke sector zonder label met zijn reden uit de payload', () => {
+    const { score, verhouding } = sectoren(8)
+    const weggelaten = {
+      RECHT: 'te weinig gediplomeerden: minder dan 30 per jaar',
+      ONDERWIJS: 'geen beroepenclusters in de sectorindeling',
+    }
+    render({ matchScore: { ...score, RECHT: null, ONDERWIJS: null }, verhouding, weggelaten })
+
+    expect(container.textContent).toContain('Niet getoond (te weinig gediplomeerden: minder dan 30 per jaar): Recht.')
+    expect(container.textContent).toContain('Niet getoond (geen beroepenclusters in de sectorindeling): Onderwijs.')
+  })
+
+  it('de duiding zegt dat teller en noemer verschillende grootheden zijn, en noemt de drempel', () => {
+    const { score, verhouding } = sectoren(3)
+    render({ matchScore: score, verhouding, duiding: { ...DUIDING, min_gediplomeerden: 30 } })
+
+    const duiding = container.querySelector('.db-match-duiding').textContent
+    expect(duiding).toContain('Teller en noemer zijn dus verschillende grootheden')
+    expect(duiding).toContain('minder dan 30 gediplomeerden per jaar krijgt geen label')
   })
 })

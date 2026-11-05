@@ -325,8 +325,8 @@ def test_marktaandeel_mbo_blijft_over_alle_mbo_instellingen():
 
     mbo = dashboard._load_mbo_studenten()
     laatste = result["laatste_jaar"]
-    for leerweg in ("BBL", "BOLVT"):
-        assert result["sectoren_landelijk"][leerweg][laatste] == int(mbo[mbo["JAAR"] == laatste][leerweg].sum())
+    for leerweg, kolom in (("BBL", "BBL"), ("BOL voltijd", "BOLVT")):
+        assert result["sectoren_landelijk"][leerweg][laatste] == int(mbo[mbo["JAAR"] == laatste][kolom].sum())
     assert result["landelijk"]["definitie"].startswith(
         "de som van DUO mbo-studenten-per-instelling over alle mbo-instellingen;"
     )

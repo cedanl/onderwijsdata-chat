@@ -4,3 +4,9 @@ export function fmt(n) {
   if (n == null) return '—'
   return Number(n).toLocaleString('nl-NL')
 }
+
+// Een percentage met een vast aantal decimalen, zodat 32,0% naast 67,2% staat en niet 32% naast 67,2% (#951).
+export function fmtProcent(n, decimalen = 1) {
+  if (n == null) return '—'
+  return Number(n).toLocaleString('nl-NL', { minimumFractionDigits: decimalen, maximumFractionDigits: decimalen })
+}

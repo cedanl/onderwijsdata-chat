@@ -144,13 +144,15 @@ def test_landelijk_meldt_ondergrens_onzekere_positie_en_weggelaten_sectoren(mbo_
         {"naam": "Instelling B", "ingeschrevenen": 1002, "type": "mbo", "onderdrukt": 1},
         {"naam": "Instelling A", "ingeschrevenen": 503, "type": "mbo", "onderdrukt": 1},
     ]
-    # BBL: B is onderdrukt, dus A staat eerste, maar dat kan verschuiven; EX: 3 tegen 2, zeker.
-    assert result["eigen_positie"] == {"BBL": 1, "EX": 1}
+    # De leerwegen heten zoals op Mijn instelling, niet naar hun DUO-kolom (#951: "EX", "BOLVT" op Landelijk).
+    # BBL: B is onderdrukt, dus A staat eerste, maar dat kan verschuiven; Extraneus: 3 tegen 2, zeker.
+    assert result["eigen_positie"] == {"BBL": 1, "Extraneus": 1}
     assert result["onderdrukt"]["eigen_positie"] == {"BBL": 1}
-    # BOLVT: A onderdrukt; BOLDT: A heeft 0. Geen positie, wel genoemd.
-    assert sorted(result["positie_weggelaten"]) == ["BOLDT", "BOLVT"]
-    assert result["sectoren_landelijk"]["BOLVT"] == {2025: 1000}
-    assert result["onderdrukt"]["sectoren_landelijk"] == {"BBL": {2025: 1}, "BOLVT": {2025: 1}}
+    # BOL voltijd: A onderdrukt; BOL deeltijd: A heeft 0. Geen positie, wel genoemd.
+    assert sorted(result["positie_weggelaten"]) == ["BOL deeltijd", "BOL voltijd"]
+    assert result["sectoren_landelijk"]["BOL voltijd"] == {2025: 1000}
+    assert result["onderdrukt"]["sectoren_landelijk"] == {"BBL": {2025: 1}, "BOL voltijd": {2025: 1}}
+    assert set(result["sectoren_landelijk"]) == set(dashboard._MBO_LEERWEGEN)
 
 
 def test_een_pseudocohort_zonder_diplomajaar_is_none_geen_nul():

@@ -24,13 +24,19 @@ zie "Landelijk, groei en het regiogemiddelde" hieronder.
 **Frontend.** De dashboards staan in `frontend/src/components/dashboards/` (een map per dashboard, gedeelde delen in
 `shared/`) en tekenen met Chart.js (`react-chartjs-2`); alleen de kaart is een Plotly-figuur die de backend bouwt.
 `WorkbookViewer` laadt ze lazy, zodat de rapportenroute Chart.js niet meelaadt (#907). Een klik op de legenda volgt
-de standaard van Chart.js. De tests staan in `frontend/src/__tests__/dashboard*.test.js` (bouwfuncties, legenda,
+de standaard van Chart.js. Een liggende staaf noemt elke categorie op de as: `categorieTicks` in `shared/chart-opts.js`
+zet `autoSkip` uit voor elke liggende staaf, `labelRegels` breekt een lang label af in regels (ook een woord dat
+langer is dan de as, met een streepje) en `staafHoogte` geeft elke categorie de ruimte voor haar regels (#951; eerder
+sloeg Chart.js bij veel categorieën elk tweede label over, en viel op 390 px de voorkant van een lang woord weg). De tests staan in `frontend/src/__tests__/dashboard*.test.js` (bouwfuncties, legenda,
 laden, lege en mislukte lading, cijfers, toegankelijkheid) en voor de backend in `tests/test_dashboard_*.py` en
 `tests/test_instellingen.py`.
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen
 (`bronnen`, zie hieronder). De data komt uit `data/dashboard.py`.
-`/api/dashboard/instroom` is weg (#930): geen dashboard gebruikte het, en wat het gaf, staat ook in `regio`.
+`/api/dashboard/instroom` is weg (#930): geen dashboard gebruikte het, en wat het gaf, staat ook in `regio`. Het pad
+geeft 410 met die uitleg; elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met de vier eindpunten
+erin, geen kale 404 (#954, `routes/instellingen.py`). `tests/test_openbare_oppervlakte.py` houdt de eindpunten in de
+API, in `docs/api.md`, in deze pagina en in de hooks van de frontend gelijk.
 
 ### Waarop `instelling` zoekt
 
@@ -98,7 +104,10 @@ welk soort jaar elke reeks heeft (#904, `PERIODEN` in `data/dashboard.py`).
   een schooljaar met hetzelfde jaartal (#927) en noemen beide.
 
 Alle getallen gaan door één formatter, `fmt` in `frontend/src/components/dashboards/shared/getal.js`: komma als
-decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callbacks van de assen. Chart.js zelf staat op
+decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callbacks van de assen. Een aandeel vrouw staat
+met `fmtProcent` altijd op één decimaal ("32,0%" naast "67,2%", #951). Een sector heet bij zijn naam uit
+`SECTOR_LABELS` ("Gedrag & Maatschappij"), ook in de genderbalken, de ondergrensnoot en het UWV-blok; de leerwegen op
+Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar hun DUO-kolom (`_mbo_per_leerweg`). Chart.js zelf staat op
 `nl-NL` voor de ticks zonder eigen callback.
 
 ### Wat de getallen tellen
@@ -117,8 +126,9 @@ decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callback
   aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. Schaarste als het vacature-aandeel meer dan
   `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht; `None` voor een sector
   zonder beroepenclusters in de indeling. `match_duiding` zegt waar de score op rust (#900): `drempel`,
-  `vacatures_peildatum` (de UWV-momentopname in de provincie), `diplomajaren` (de jaren van het gemiddelde),
-  `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet van UWV). De
+  `min_gediplomeerden`, `vacatures_peildatum` (de UWV-momentopname in de provincie), `diplomajaren` (de jaren van het
+  gemiddelde), `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet
+  van UWV; een veld dat de mapping niet vastlegt, zoals nu het model, staat er niet in, #951). De
   tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
@@ -129,7 +139,18 @@ decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callback
   staan op `drempel` (daarboven schaarste) en 1 / `drempel` (daaronder overaanbod), getekend door de inline-plugin
   `DREMPELLIJNEN` (`shared/chart-opts.js`); een noot onder de grafiek noemt beide drempels in tekst. Er is één reeks per
   label, zodat legenda en waardentabel het label in woorden geven en de kleur niet de enige drager is. Een payload
-  zonder `match_verhouding` krijgt de tegels.
+  zonder `match_verhouding` krijgt de tegels. Een staaf is hoogstens `MATCH_KAP` (5) lang (#952): de echte waarde
+  staat in de tooltip, de waardentabel, het tekstalternatief en een noot ("Staaf afgekapt bij 5: Techniek (52,15)").
+- **Kleine sectoren** (#952): een sector met minder dan `_MATCH_MIN_GEDIPLOMEERDEN` (30) gediplomeerden per jaar (het
+  gemiddelde over drie jaar) krijgt geen label en geen verhouding: daar verschoof één diploma de verhouding met
+  tientallen procenten (Tilburg University, Techniek: 52,15 bij 63 gediplomeerden; BUas 7,73 bij 13). Hij telt wel mee
+  in de totalen, dus de aandelen van de andere sectoren veranderen niet. `match_weggelaten` geeft per sector zonder
+  label de reden (te weinig gediplomeerden, geen beroepenclusters, geen vacatures); het dashboard noemt ze per reden.
+  De duiding zegt ook dat teller en noemer verschillende grootheden zijn: een voorraad vacatures in de provincie op
+  één dag tegen een jaarlijkse stroom diploma's van één instelling.
+- **ROA-prognose** (`arbeidsmarkt_prognose`): per niveau de typering van het arbeidsmarktperspectief en de aantallen
+  verwachte baanopeningen en instroom van schoolverlaters tot 2030. ROA geeft die twee als aantal, zonder typering; tot
+  #951 las het dashboard alleen typeringen en stonden ze overal als "—".
 
 ### Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
 
@@ -150,7 +171,14 @@ tegel onder de naam van wat hij telt, hbo en wo krijgen geen tegel tot er een ec
   ze per reden, ook als er geen cohort overblijft. Tot #898 gold de bovengrens alleen voor de instelling, en kwam het
   regiogemiddelde daardoor boven 100 %.
 - **Regiogemiddelde**: `benchmark_rendement` per cohort over de peers met een verhouding, met hun aantal in
-  `benchmark_n_per_jaar` en de naam in `benchmark_label` (de legenda).
+  `benchmark_n_per_jaar`. `benchmark_label` (de ondertitel) telt de peers in dat gemiddelde, niet de gevonden peers
+  (#951: Curio kreeg "7 andere" naast een legenda met 6; BBO de Schalm heeft geen eerstejaars).
+  `benchmark_populatie` is de groep zonder aantal en terugval, voor de legenda ("Gemiddelde mbo-instellingen in
+  provincie Noord-Brabant").
+- **Ondergrenzen**: teller en noemer missen de cellen met 1 tot en met 4 studenten die DUO leeg laat. De diploma's
+  staan ook per geslacht, in kleinere cellen, dus daar valt meestal meer weg (in de fixtures Curio ~19 % tegen ~15 %,
+  Albeda ~10 % tegen ~5 %, geschat op 2,5 per lege cel) en is de verhouding eerder te laag dan te hoog. De definitie
+  zegt dat (#951).
 - **Hbo en wo** (`type: "ho"`): alleen `geen_rendement`, een noot waarom er geen rendement staat en dat de chat en het
   rapport het landelijk uit de CBS-cohorttabellen halen. De diploma's van `p04hogdipl` tellen ook masters, associate
   degrees en eerdere cohorten, de eerstejaars van `p02ho1ejrs` geen hbo-masters en niemand die eerder in het ho stond;
@@ -193,9 +221,16 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
   de kop.
 - **Regiogemiddelde**: per jaar het gemiddelde over de peers met data in dat jaar; `benchmark.n_per_jaar` geeft hoeveel
-  dat er zijn, `n_instellingen` het aantal in het laatste jaar. Een peer met in elk jaar 0 of een lege cel telt niet
-  mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
+  dat er zijn, `n_instellingen` het aantal in het laatste jaar. Ingeschrevenen, eerstejaars en gediplomeerden hebben elk
+  een gemiddelde, ook bij het mbo (tot #951 had het mbo bij de gediplomeerden alleen de peers, terwijl de grafiek een
+  vergelijking beloofde; een grafiek zonder gemiddelde zegt dat nu). Een peer met in elk jaar 0 of een lege cel telt
+  niet mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
   concurrententabel met "geen gegevens" (#925). Een peer met één echt nuljaar telt wel mee.
+- **Regiototaal** (`benchmark.totaal_regio`): per jaar de ingeschrevenen van de eigen instelling plus die van de peers,
+  alleen voor jaren met beide. Het is de tegel "Regio totaal" (of "Landelijk totaal" bij een landelijke vergelijking)
+  met "Curio en 6 andere mbo-instellingen in provincie Noord-Brabant", en de noemer van het marktaandeel. Tot #951 was
+  het veld `totaal_ingeschrevenen`, de som van de peers zonder de eigen instelling, onder "Regio totaal" en "6
+  instellingen in regio" (Curio: 56.816, terwijl de concurrententabel 72.104 gaf, met Curio).
 
 ### De vergelijkingsgroep van Mijn instelling
 
@@ -230,6 +265,12 @@ Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / land
 twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
 
 ### Regio, provincie en afdrukken
+
+- **Kaart**: de punten staan op benaderde coördinaten van de plaats van de hoofdvestiging (`_CITY_COORDS` in
+  `data/dashboard.py`, gespeld zoals de DUO-adressen: "HENGELO OV", "VELP GLD"). Elke plaats uit `adressen_ho` en
+  `adressen_mbo` staat erin; `tests/test_dashboard_kaart.py` legt dat vast tegen de bevroren bestanden. Tot #951
+  ontbrak Etten-Leur, en daarmee stond Curio niet op haar eigen kaart. Een instelling zonder bekende plaats noemt de
+  kaart onder `zonder_locatie` (#906).
 
 - **Regio en provincie** komen uit één adres per instelling: de hoofdvestiging in het DUO-adressenbestand
   (`adressen_ho`, `adressen_mbo`; `get_adres_lookup` in `data/instellingen.py`). Vestigingen elders tellen niet mee

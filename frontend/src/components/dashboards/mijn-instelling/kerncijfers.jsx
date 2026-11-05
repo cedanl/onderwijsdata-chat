@@ -1,21 +1,21 @@
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import { jaarLabel } from '../../../schooljaar'
-import { SectionHeader, fmt, Sparkline, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot, sortedEntries, perJaar, isOndergrens, TenMinste } from '../shared/index'
+import { SectionHeader, fmt, fmtProcent, Sparkline, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot, sortedEntries, perJaar, isOndergrens, TenMinste } from '../shared/index'
 
 // De kerncijfers bovenaan "Mijn instelling": de eigen instelling tegenover het gemiddelde van het benchmark. Een eigen
 // component, omdat de galerijkaart dezelfde rij toont als miniatuur van het dashboard (#933).
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot, nootId }) {
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot, nootId, opmaak = fmt }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
         <span className="kpi-label">{label}</span>
         <div className="kpi-icon" style={{ background: `${color}18` }}>{icon}</div>
       </div>
-      <div className="kpi-value"><TenMinste actief={ondergrens} />{fmt(eigenWaarde)}{suffix}</div>
+      <div className="kpi-value"><TenMinste actief={ondergrens} />{opmaak(eigenWaarde)}{suffix}</div>
       {regioWaarde != null && (
         <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>
-          {regioLabel}: {regioOndergrens ? 'ten minste ' : ''}{fmt(regioWaarde)}
+          {regioLabel}: <TenMinste actief={regioOndergrens} />{opmaak(regioWaarde)}
         </div>
       )}
       <JaarNoot noot={noot} testid={nootId} />
@@ -105,6 +105,7 @@ export function Kerncijfers({ data, instelling, c }) {
           <SamenvattingTile
             label={`Aandeel vrouw ${jaarLabel(data?.laatste_jaar, perioden?.ingeschrevenen)}`}
             eigenWaarde={c.pctVrouw}
+            opmaak={fmtProcent}
             suffix="%"
             regioWaarde={null}
             regioLabel=""

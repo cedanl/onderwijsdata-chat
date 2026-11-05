@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SECTOR_LABELS, darkColors, horizontalBarOpts, sectorKleuren, tellingAs } from './chart-opts'
+import { SECTOR_LABELS, darkColors, horizontalBarOpts, sectorKleuren, staafHoogte, tellingAs } from './chart-opts'
 import { ChartCard } from './shell'
 import { OndergrensCategorieen } from './ondergrens'
 import { Grafiek } from './grafiek'
@@ -127,7 +127,7 @@ export function SectorTrendChart({ data, dark }) {
 export function HoofdgroepenChart({ perHoofdgroep, jaar, soort, onderdrukt, dark }) {
   if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
   const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
-  const h = Math.max(160, entries.length * 36)
+  const h = staafHoogte(entries.map(([k]) => k), { perRij: 36 })
   const kleuren = sectorKleuren(entries.map(([k]) => k))
   const inJaar = jaar ? ` in ${jaarLabel(jaar, soort)}` : ''
   return (

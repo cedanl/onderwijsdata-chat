@@ -46,7 +46,8 @@ const WO = {
     regio_naam: 'Nederland',
     n_instellingen: 16,
     n_per_jaar: { ingeschrevenen: { 2023: 16, 2024: 16, 2025: 16 } },
-    totaal_ingeschrevenen: { 2023: 290000, 2024: 293000, 2025: 295707 },
+    // Eigen instelling plus de 16 andere (#951): het totaal telt de eigen instelling mee.
+    totaal_regio: { 2023: 326201, 2024: 328780, 2025: 330765 },
   },
 }
 
@@ -149,21 +150,45 @@ describe('"(HO)" in de ondertitel van Instroom ratio (#918)', () => {
   })
 })
 
-describe('de totaal-KPI volgt het benchmarktype (#918)', () => {
-  it('wo: "Landelijk totaal" en geen "in regio"', async () => {
+describe('de totaal-KPI volgt het benchmarktype (#918) en telt de eigen instelling mee (#951)', () => {
+  it('wo: "Landelijk totaal" met de eigen universiteit en de andere', async () => {
     await dashboard(WO)
     expect(tekst()).toContain('Landelijk totaal 2025')
-    expect(tekst()).toContain('295.707')
+    expect(tekst()).toContain('330.765')
     expect(tekst()).not.toContain('Regio totaal')
-    expect(tekst()).not.toContain('instellingen in regio')
-    expect(tekst()).toContain('16 instellingen')
+    expect(tekst()).toContain('Universiteit Utrecht en 16 andere universiteiten in heel Nederland')
   })
 
-  it.each([['hbo', HBO], ['mbo', MBO]])('%s: blijft "Regio totaal" met "instellingen in regio"', async (_niveau, regio) => {
+  // "Regio totaal" was de som van de peers zonder de eigen instelling, naast "6 instellingen in regio" terwijl de
+  // tabel er 8 toonde (#951).
+  it.each([
+    ['hbo', HBO, 'Hogeschool Utrecht en 6 andere hogescholen in arbeidsmarktregio Midden-Utrecht'],
+    ['mbo', MBO, 'ROC van Amsterdam en 6 andere mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
+  ])('%s: "Regio totaal" noemt de eigen instelling en de andere', async (_niveau, regio, groep) => {
     await dashboard(regio)
-    expect(tekst()).toContain('Regio totaal')
+    expect(tekst()).toContain('Regio totaal 2025')
+    expect(tekst()).toContain('78.311')
     expect(tekst()).not.toContain('Landelijk totaal')
-    expect(tekst()).toMatch(/\d+ instellingen in regio/)
+    expect(tekst()).toContain(groep)
+    expect(tekst()).not.toMatch(/\d+ instellingen in regio/)
+  })
+})
+
+// #951: "Gediplomeerden per jaar" beloofde een vergelijking met het gemiddelde die bij het mbo ontbrak.
+describe('een lijngrafiek belooft het gemiddelde alleen als het er is (#951)', () => {
+  const ondertitel = titel => [...container.querySelectorAll('.chart-card')]
+    .find(k => k.querySelector('.chart-title')?.textContent === titel)?.querySelector('.chart-sub')?.textContent
+
+  it('met gemiddelde: eigen instelling vs. de groep', async () => {
+    await dashboard(HBO)
+    expect(ondertitel('Gediplomeerden per jaar')).toContain('eigen instelling vs. gemiddelde hogescholen')
+  })
+
+  it('zonder gemiddelde: zegt dat het er niet is', async () => {
+    const { gediplomeerden: _weg, ...zonder } = HBO.benchmark
+    await dashboard({ ...HBO, benchmark: zonder })
+    expect(ondertitel('Gediplomeerden per jaar')).toContain('geen gemiddelde van de vergelijkingsgroep')
+    expect(ondertitel('Gediplomeerden per jaar')).not.toContain(' vs. ')
   })
 })
 

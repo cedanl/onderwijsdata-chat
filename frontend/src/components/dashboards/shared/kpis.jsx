@@ -1,6 +1,7 @@
-import { fmt } from './getal'
+import { fmt, fmtProcent } from './getal'
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import { Sparkline } from './shell'
+import { TenMinste, isOndergrens } from './ondergrens'
 import { jaarLabel } from '../../../schooljaar'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
@@ -29,10 +30,15 @@ export function JaarNoot({ noot, testid }) {
   return <div className="kpi-trend" data-testid={testid ?? 'jaarnoot'} style={{ color: 'var(--muted-text)' }}>{noot}</div>
 }
 
-// Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918).
-export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, regioType, pctVrouw, vrouw, man, laatsteJaar, perioden }) {
+// Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918). Het totaal telt de
+// eigen instelling mee (`totaal_regio`, #951): "Regio totaal" was de som van de peers alleen, naast "6 instellingen in
+// regio" terwijl de tabel er 8 toonde. `nPeers`: de andere instellingen in het totaal van dat jaar; `populatie` de groep
+// in woorden ("mbo-instellingen in provincie Noord-Brabant"). `onderdrukt`/`bmOnderdrukt`: de lege cellen van de eigen
+// reeks en van de peers (#902), voor "ten minste".
+export function DemografieKpis({ instelling, lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nPeers, populatie, regioType, pctVrouw, vrouw, man, laatsteJaar, perioden, onderdrukt, bmOnderdrukt }) {
   const landelijk = regioType === 'nationaal'
   const jaar = j => jaarLabel(j, perioden?.ingeschrevenen)
+  const totaalOndergrens = isOndergrens(onderdrukt, totaalRegioJaar) || isOndergrens(bmOnderdrukt, totaalRegioJaar)
   return (
     <div className="kpi-grid">
       {lastInges && (
@@ -43,7 +49,7 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
               <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
           </div>
-          <div className="kpi-value">{fmt(lastInges[1])}</div>
+          <div className="kpi-value"><TenMinste actief={isOndergrens(onderdrukt, lastInges[0])} />{fmt(lastInges[1])}</div>
           {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
           <Sparkline values={ingesEntries.map(([,v]) => v)} color={COLOR_EIGEN} />
         </div>
@@ -56,8 +62,10 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
               <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
           </div>
-          <div className="kpi-value">{fmt(totaalRegio)}</div>
-          {nInstellingen && <div className="kpi-trend">{nInstellingen} instellingen{landelijk ? '' : ' in regio'}</div>}
+          <div className="kpi-value"><TenMinste actief={totaalOndergrens} />{fmt(totaalRegio)}</div>
+          {nPeers != null && (
+            <div className="kpi-trend">{instelling ? `${instelling} en ` : ''}{nPeers} andere {populatie || 'instellingen'}</div>
+          )}
         </div>
       )}
       {pctVrouw != null && vrouw != null && man != null && (
@@ -68,7 +76,7 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
               <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
           </div>
-          <div className="kpi-value">{fmt(pctVrouw)}% vrouw</div>
+          <div className="kpi-value">{fmtProcent(pctVrouw)}% vrouw</div>
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
               <div style={{ width: `${pctVrouw}%`, background: 'var(--teal-600)' }} />

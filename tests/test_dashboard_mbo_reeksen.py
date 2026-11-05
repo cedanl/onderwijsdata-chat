@@ -224,13 +224,17 @@ def test_de_hoofdgroepen_zijn_van_hetzelfde_jaar_als_de_laatste_ingeschrevenen_e
 
 @pytest.mark.usefixtures("duo_fixtures")
 def test_een_peer_met_vijf_jaar_nul_telt_niet_mee_in_het_gemiddelde():
-    bm = dashboard.load_dashboard_regio(_CURIO)["benchmark"]
+    regio = dashboard.load_dashboard_regio(_CURIO)
+    bm = regio["benchmark"]
 
     # Audit V-05: (17.801 + 3.030 + 6.233 + 10.097 + 16.851 + 2.804) / 6, niet / 7 met de nul van BBO de Schalm.
     assert bm["ingeschrevenen"][2025] == 9469.3
     assert bm["n_per_jaar"]["ingeschrevenen"] == dict.fromkeys(range(2021, 2026), 6)
     assert bm["n_instellingen"] == 6
-    assert bm["totaal_ingeschrevenen"][2025] == 56816
+    # Het regiototaal telt Curio zelf mee (#951): 56.816 van de zes peers plus 15.288 van Curio is 72.104, het getal in
+    # de concurrententabel en de noemer van het marktaandeel e / (e + t). "Regio totaal" zei eerst 56.816.
+    assert regio["ingeschrevenen"][2025] == 15288
+    assert bm["totaal_regio"][2025] == 56816 + 15288 == 72104
     # BBO de Schalm heeft elk jaar een onderdrukte cel; het gemiddelde van de zes is daardoor geen ondergrens.
     assert bm["onderdrukt"]["ingeschrevenen"] == {2021: 1, 2022: 1}  # SiNTLUCAS, Extraneus
 
@@ -238,6 +242,19 @@ def test_een_peer_met_vijf_jaar_nul_telt_niet_mee_in_het_gemiddelde():
         assert _SCHALM not in bm["peers"][sleutel], sleutel
         assert bm["geen_gegevens"][sleutel] == [_SCHALM], sleutel
     assert bm["peers"]["gediplomeerden"]["SiNTLUCAS"][2025] > 0
+
+
+@pytest.mark.usefixtures("duo_fixtures")
+def test_de_gediplomeerden_van_het_mbo_hebben_een_regiogemiddelde():
+    # "Gediplomeerden per jaar" beloofde een vergelijking met het gemiddelde; bij het mbo stond er alleen de eigen lijn
+    # (#951). Het gemiddelde loopt over dezelfde peers als de tabel, zonder BBO de Schalm.
+    bm = dashboard.load_dashboard_regio(_CURIO)["benchmark"]
+
+    per_peer = bm["peers"]["gediplomeerden"]
+    for jaar, gemiddelde in bm["gediplomeerden"].items():
+        waarden = [reeks[jaar] for reeks in per_peer.values() if jaar in reeks]
+        assert gemiddelde == round(sum(waarden) / len(waarden), 1), jaar
+        assert bm["n_per_jaar"]["gediplomeerden"][jaar] == len(waarden), jaar
 
 
 def _peer_df(**reeksen: dict[int, float]) -> pd.DataFrame:
@@ -288,6 +305,7 @@ def test_het_ho_gemiddelde_sluit_een_peer_zonder_gegevens_uit():
         df("DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
         "CODE",
         "NAAM",
+        {2024: 50, 2025: 60},
     )
 
     for sleutel in ("ingeschrevenen", "eerstejaars", "gediplomeerden"):
@@ -296,5 +314,7 @@ def test_het_ho_gemiddelde_sluit_een_peer_zonder_gegevens_uit():
         assert bm["geen_gegevens"][sleutel] == ["Leeg"], sleutel
     assert set(bm["peers"]["ingeschrevenen"]) == set(bm["peers"]["gediplomeerden"]) == {"Peer 1", "Peer 2"}
     assert bm["n_instellingen"] == 2
+    # Het regiototaal is eigen plus peers, zonder de peer zonder gegevens (#951).
+    assert bm["totaal_regio"] == {2024: 450, 2025: 460}
     # Het label telt dezelfde peers als het gemiddelde (#926, #903): de peer zonder gegevens niet.
     assert bm["label"] == "Provincie Testland, 2 andere hogescholen"
