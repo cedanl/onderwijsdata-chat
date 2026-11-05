@@ -188,8 +188,8 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
 De peers zijn de andere instellingen van hetzelfde type (#926): een hogeschool vergelijkt met hogescholen, een
 universiteit met universiteiten, een mbo-instelling met mbo-instellingen. Het type komt uit het register
 (`data/instellingen.py`), de regio van instelling en peers uit hetzelfde DUO-adres (`get_adres_lookup`). De regio
-verbreedt in vaste treden tot er ten minste twee andere instellingen van het type in zitten (`_MIN_PEERS`; een
-gemiddelde over één andere instelling is die instelling):
+verbreedt in vaste treden tot er ten minste drie andere instellingen van het type in zitten (`_MIN_PEERS`; een
+gemiddelde over één andere instelling is die instelling, over twee nog erg smal; tot #948 was de drempel twee):
 
 1. de arbeidsmarktregio van de instelling;
 2. haar provincie;
@@ -201,15 +201,19 @@ gemiddelde over één andere instelling is die instelling):
 legenda: "hogescholen in provincie Noord-Brabant") en `label`, de kop van de kerncijfers met regio, aantal en
 terugval:
 
-- "Arbeidsmarktregio Midden-Utrecht, 2 andere hogescholen"
+- "Arbeidsmarktregio Rijnmond, 5 andere mbo-instellingen"
 - "Provincie Noord-Brabant, 5 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
 - "Landelijk, 17 andere universiteiten — te weinig universiteiten in provincie Noord-Brabant (1 andere)"
 
 Het aantal in het label is `n_instellingen`, het aantal peers achter het gemiddelde in het laatste jaar. Tot #926
 stonden hogescholen en universiteiten samen in één regio (Breda: vijf hogescholen en twee universiteiten in
 Noord-Brabant) en vergeleek elke universiteit stil landelijk; een hogeschool zonder andere ho-instelling in haar
-provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio nu een paar kleine instellingen
-bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek.
+provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio een paar kleine instellingen
+bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek. Met
+drie andere haalt zij ook de drempel van #948; die drempel telt instellingen, niet hun omvang.
+
+Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / landelijk: hbo 20 / 12 / 4 bij drempel
+twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
 
 ### Regio, provincie en afdrukken
 

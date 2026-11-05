@@ -1,8 +1,9 @@
 """Vergelijkingsgroep en landelijke ranking per type van de instelling (#926, #928).
 
 Mijn instelling vergelijkt een hogeschool met hogescholen, een universiteit met universiteiten en een mbo-instelling
-met mbo-instellingen, in de smalste regio met ten minste twee andere (arbeidsmarktregio, provincie, landelijk); het label
-noemt regio, aantal en de reden van een terugval. Landelijk rangschikt alleen instellingen van het eigen type.
+met mbo-instellingen, in de smalste regio met ten minste drie andere (#948; arbeidsmarktregio, provincie, landelijk); het
+label noemt regio, aantal en de reden van een terugval. Landelijk rangschikt alleen instellingen van het eigen type, en
+rekent het marktaandeel over het totaal van dat type (#950).
 
 De trap staat hier met een verzonnen register en verzonnen adressen; de rest draait op de bevroren DUO-bestanden
 (`duo_fixtures`) en rekent de verwachting met pandas na, los van data/dashboard.py.
@@ -44,6 +45,7 @@ def test_hbo_in_de_arbeidsmarktregio_zonder_de_universiteit_ernaast(register):
         ("Hogeschool A", "HA", "hbo", "Utrecht", "Midden-Utrecht"),
         ("Hogeschool B", "HB", "hbo", "Utrecht", "Midden-Utrecht"),
         ("Hogeschool C", "HC", "hbo", "Utrecht", "Midden-Utrecht"),
+        ("Hogeschool D", "HD", "hbo", "Utrecht", "Midden-Utrecht"),
         ("Universiteit U", "UU", "wo", "Utrecht", "Midden-Utrecht"),
         ("Roc R", "RR", "mbo", "Utrecht", "Midden-Utrecht"),
     )
@@ -51,10 +53,10 @@ def test_hbo_in_de_arbeidsmarktregio_zonder_de_universiteit_ernaast(register):
     ctx = _context("Hogeschool A")
 
     assert (ctx.regio_type, ctx.regio_naam, ctx.soort) == ("arbeidsmarktregio", "Midden-Utrecht", "hbo")
-    assert ctx.peer_codes == {"HB", "HC"}
+    assert ctx.peer_codes == {"HB", "HC", "HD"}
     assert ctx.terugval is None
-    kop = dashboard._benchmark_kop(ctx, 2)
-    assert kop["label"] == "Arbeidsmarktregio Midden-Utrecht, 2 andere hogescholen"
+    kop = dashboard._benchmark_kop(ctx, 3)
+    assert kop["label"] == "Arbeidsmarktregio Midden-Utrecht, 3 andere hogescholen"
     assert kop["populatie"] == "hogescholen in arbeidsmarktregio Midden-Utrecht"
 
 
@@ -64,6 +66,7 @@ def test_hbo_valt_terug_op_de_provincie_als_de_arbeidsmarktregio_alleen_universi
         ("Breda", "BR", "hbo", "Noord-Brabant", "West-Brabant"),
         ("Fontys", "FO", "hbo", "Noord-Brabant", "Zuidoost-Brabant"),
         ("Avans", "AV", "hbo", "Noord-Brabant", "Midden-Brabant"),
+        ("HAS", "HS", "hbo", "Noord-Brabant", "Noordoost-Brabant"),
         ("Tilburg", "TI", "wo", "Noord-Brabant", "Midden-Brabant"),
         ("TU Eindhoven", "TE", "wo", "Noord-Brabant", "Zuidoost-Brabant"),
     )
@@ -71,9 +74,9 @@ def test_hbo_valt_terug_op_de_provincie_als_de_arbeidsmarktregio_alleen_universi
     ctx = _context("Breda")
 
     assert (ctx.regio_type, ctx.regio_naam) == ("provincie", "Noord-Brabant")
-    assert ctx.peer_codes == {"FO", "AV"}
-    assert dashboard._benchmark_kop(ctx, 2)["label"] == (
-        "Provincie Noord-Brabant, 2 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
+    assert ctx.peer_codes == {"FO", "AV", "HS"}
+    assert dashboard._benchmark_kop(ctx, 3)["label"] == (
+        "Provincie Noord-Brabant, 3 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
     )
 
 
@@ -107,17 +110,58 @@ def test_mbo_met_één_andere_in_de_arbeidsmarktregio_vergelijkt_in_de_provincie
         ("Roc A", "RA", "mbo", "Gelderland", "FoodValley"),
         ("Roc B", "RB", "mbo", "Gelderland", "FoodValley"),
         ("Roc C", "RC", "mbo", "Gelderland", "Achterhoek"),
+        ("Roc D", "RD", "mbo", "Gelderland", "Rijk van Nijmegen"),
         ("Hogeschool H", "HH", "hbo", "Gelderland", "FoodValley"),
     )
 
     ctx = _context("Roc A", "mbo")
 
     assert (ctx.regio_type, ctx.regio_naam, ctx.soort) == ("provincie", "Gelderland", "mbo")
-    assert ctx.peer_codes == {"RB", "RC"}
+    assert ctx.peer_codes == {"RB", "RC", "RD"}
     assert dashboard._benchmark_kop(ctx, 1)["label"] == (
         "Provincie Gelderland, 1 andere mbo-instelling — te weinig mbo-instellingen in arbeidsmarktregio FoodValley "
         "(1 andere)"
     )
+
+
+_ONDERWIJSTYPE = {"mbo": "mbo", "hbo": "ho", "wo": "ho"}
+# Per trede: (arbeidsmarktregio, provincie) van de `n` andere op die trede, en van drie extra op de trede erboven.
+_OP_DE_TREDE = {
+    "arbeidsmarktregio": (("Thuis", "Eigen"), ("Thuis", "Buur")),
+    "provincie": (("Thuis", "Buur"), ("Ver", "Ver weg")),
+}
+_BREDER = {"arbeidsmarktregio": "provincie", "provincie": "nationaal"}
+
+
+@pytest.mark.parametrize("soort", ["mbo", "hbo", "wo"])
+@pytest.mark.parametrize("trede", ["arbeidsmarktregio", "provincie"])
+@pytest.mark.parametrize("n", [2, 3])
+def test_drempel_van_drie_andere_per_niveau(register, soort, trede, n):
+    """Op elke trede: met twee andere van het type schuift de vergelijking een trede op, met drie blijft ze (#948).
+
+    De eigen instelling staat in arbeidsmarktregio Eigen, provincie Thuis. Op de trede erboven staan er altijd genoeg,
+    zodat het verschil alleen van `n` komt; drie instellingen van een ander type op de trede tellen niet mee.
+    """
+    (provincie, amr), (provincie_erboven, amr_erboven) = _OP_DE_TREDE[trede]
+    ander = "hbo" if soort == "wo" else "wo"
+    register(
+        ("Eigen", "E0", soort, "Thuis", "Eigen"),
+        *[(f"Op de trede {i}", f"T{i}", soort, provincie, amr) for i in range(n)],
+        *[(f"Erboven {i}", f"B{i}", soort, provincie_erboven, amr_erboven) for i in range(3)],
+        *[(f"Ander type {i}", f"A{i}", ander, provincie, amr) for i in range(3)],
+    )
+
+    ctx = _context("Eigen", _ONDERWIJSTYPE[soort])
+
+    assert dashboard._MIN_PEERS == 3
+    assert ctx.soort == soort
+    if n == 3:
+        assert ctx.regio_type == trede
+        assert ctx.peer_codes == {"T0", "T1", "T2"}
+    else:
+        regio_naam = "Eigen" if trede == "arbeidsmarktregio" else "Thuis"
+        assert ctx.regio_type == _BREDER[trede]
+        assert ctx.terugval == f"te weinig {dashboard._SOORTNAAM[soort][1]} in {trede} {regio_naam} (2 andere)"
 
 
 def test_zonder_adres_landelijk_met_die_reden(register):
@@ -152,8 +196,13 @@ def _typen() -> dict[str, str]:
 @pytest.mark.parametrize(
     ("instelling", "soort", "label"),
     [
-        # mbo: Rijnmond heeft Zadkine en Grafisch Lyceum naast Albeda.
-        ("Albeda", "mbo", "Arbeidsmarktregio Rijnmond, 2 andere mbo-instellingen"),
+        # mbo: Rijnmond heeft alleen Zadkine en Grafisch Lyceum naast Albeda; twee is te weinig (#948).
+        (
+            "Albeda",
+            "mbo",
+            "Provincie Zuid-Holland, 3 andere mbo-instellingen — te weinig mbo-instellingen in arbeidsmarktregio "
+            "Rijnmond (2 andere)",
+        ),
         # mbo: West-Brabant heeft geen andere; in Noord-Brabant zeven, waarvan BBO de Schalm zonder gegevens (#925).
         (
             "Curio",

@@ -271,7 +271,8 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 # provincie naar landelijk, tot er ten minste _MIN_PEERS andere instellingen van hetzelfde type in zitten; de trede die
 # afviel, staat met reden in het label. Instelling en peers krijgen hun regio van dezelfde regel: het DUO-adres.
 
-_MIN_PEERS = 2  # een gemiddelde over één andere instelling is die instelling
+# Een gemiddelde over één andere instelling is die instelling, over twee nog erg smal: daarom ten minste drie (#948).
+_MIN_PEERS = 3
 _TREDEN = ("arbeidsmarktregio", "provincie")  # van smal naar breed; daarna landelijk
 _ONDERWIJSTYPEN = {"ho": ("hbo", "wo"), "mbo": ("mbo",)}
 # Het type van een instelling als zelfstandig naamwoord: enkelvoud, meervoud.
