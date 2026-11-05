@@ -2,7 +2,8 @@
 
 RIO legt elke fusie en overdracht vast als instellingsrelatie met soort ``OVERGANG_VOLLEDIG`` of
 ``OVERGANG_GEDEELTELIJK``: van de oude erkenning naar de nieuwe, met de dag van de overgang als ``begindatum``.
-Friesland College (25LG) staat zo per 2023-08-01 volledig in Firda (08PG).
+Friesland College (25LG) staat zo per 2023-08-01 volledig in Firda (08PG). Besturen fuseren langs dezelfde relaties:
+met een bestuursnummer (40864 → 40877, Regio College in Talland) werken beide functies net zo.
 
 Elke aanroep geeft ``datumGeldigOp`` mee: zonder datum geeft RIO de stand van vandaag, en een vraag over een dag in het
 verleden kreeg dan de relaties van vandaag. Een keten (A → B → C) wordt tot het eind gevolgd; een erkenning die al
