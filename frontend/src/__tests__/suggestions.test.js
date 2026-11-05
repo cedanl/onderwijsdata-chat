@@ -91,7 +91,8 @@ describe('suggestionsFor', () => {
   })
 
   it('shows only the questions that hold for every sector when the sector is unknown', () => {
-    const everywhere = SUGGESTED.flatMap(c => c.questions).filter(q => SECTOREN.every(s => q.sectoren.includes(s)))
+    // Without `bronnen` from /api/config no question about an environment-bound source (#956).
+    const everywhere = SUGGESTED.flatMap(c => c.questions).filter(q => SECTOREN.every(s => q.sectoren.includes(s)) && !q.bron)
     expect(questionsFor(null)).toHaveLength(everywhere.filter(q => q.profiel !== false).length)
   })
 })
@@ -102,8 +103,10 @@ describe('suggestions without a profile', () => {
     expect(questionsFor(null, false).filter(q => FIRST_PERSON.test(q))).toEqual([])
   })
 
-  it('still offer a question in every category', () => {
-    expect(suggestionsFor(null, { profiel: false }).map(c => c.category)).toEqual(SUGGESTED.map(c => c.category))
+  // Finances and staff are per institution (its board, its university): without a profile there is nothing to ask (#956).
+  it('still offer a question in every category about the open data in general', () => {
+    const algemeen = SUGGESTED.filter(c => c.category !== FIN_PERSONEEL).map(c => c.category)
+    expect(suggestionsFor(null, { profiel: false }).map(c => c.category)).toEqual(algemeen)
   })
 })
 
@@ -129,5 +132,49 @@ describe('the suggestion set', () => {
   it('puts the vacancy question under the labour market', () => {
     const regionaal = SUGGESTED.find(c => c.category === 'Regionale Context').questions
     expect(regionaal.filter(q => /UWV/.test(q.tekst))).toEqual([])
+  })
+})
+
+// #956: a question about the DUO finances or WOPI only where /api/config says that source answers here
+// (tools/beschikbaarheid.py), and WOPI only for a university.
+const FIN_PERSONEEL = 'Financiën & Personeel'
+describe('suggestions about a source that depends on the environment', () => {
+  const ALLES = { financien: true, wo_personeel: true }
+  const vragen = (sector, bronnen) => suggestionsFor(sector, { profiel: true, bronnen }).flatMap(c => c.questions)
+  const financieel = q => /financieel|solvabiliteit/.test(q)
+  const personeel = q => /personeel/.test(q)
+
+  it('are not shown until /api/config names the source', () => {
+    for (const sector of [...SECTOREN, null]) {
+      expect(vragen(sector, undefined).filter(q => financieel(q) || personeel(q))).toEqual([])
+      expect(vragen(sector, {}).filter(q => financieel(q) || personeel(q))).toEqual([])
+    }
+  })
+
+  it('show the finance questions for mbo, hbo and wo where the finances answer', () => {
+    for (const sector of [...SECTOREN, null]) {
+      expect(vragen(sector, { financien: true }).filter(financieel)).toHaveLength(2)
+      expect(vragen(sector, { financien: false, wo_personeel: true }).filter(financieel)).toEqual([])
+    }
+  })
+
+  it('show the WOPI questions only to a university, and only with the source on', () => {
+    expect(vragen('wo', ALLES).filter(personeel)).toHaveLength(2)
+    expect(vragen('wo', { financien: true, wo_personeel: false }).filter(personeel)).toEqual([])
+    for (const sector of ['mbo', 'hbo', null]) expect(vragen(sector, ALLES).filter(personeel)).toEqual([])
+  })
+
+  it('leave the category out when no question in it holds', () => {
+    expect(suggestionsFor('hbo', { profiel: true, bronnen: { wo_personeel: true } }).map(c => c.category))
+      .not.toContain(FIN_PERSONEEL)
+    expect(suggestionsFor('wo', { profiel: true, bronnen: { wo_personeel: true } }).map(c => c.category))
+      .toContain(FIN_PERSONEEL)
+  })
+
+  it('name the institution', () => {
+    const [vraag] = vragen('wo', ALLES).filter(personeel).map(q => personalizeQuestion(q, 'Universiteit Utrecht'))
+    expect(vraag).toBe('Hoeveel fte wetenschappelijk personeel heeft Universiteit Utrecht?')
+    expect(vragen('mbo', ALLES).filter(financieel).map(q => personalizeQuestion(q, 'ROC Midden Nederland')))
+      .toContain('Hoe staat ROC Midden Nederland er financieel voor?')
   })
 })

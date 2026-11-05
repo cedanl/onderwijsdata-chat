@@ -76,6 +76,8 @@ function AppShell() {
   const [isOnboarding, setIsOnboarding] = useState(false)
   // Dashboards staan standaard uit (ENABLE_DASHBOARDS, #765): de frontend toont ze pas als de server dat zegt (#793).
   const [dashboardsEnabled, setDashboardsEnabled] = useState(false)
+  // Welke bron met een omgevingsregel hier antwoord geeft (/api/config, #956); zonder antwoord geen.
+  const [bronnen, setBronnen] = useState({})
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
   // The context limits of the server (#789): questions per conversation and messages the model sees.
@@ -170,6 +172,7 @@ function AppShell() {
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled === true)
+        setBronnen(config.bronnen && typeof config.bronnen === 'object' ? config.bronnen : {})
         setFeedbackEnabled(config.feedback_enabled === true)
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
         setMaxChatTurns(resolveMaxChatTurns(config.max_chat_turns))
@@ -298,7 +301,7 @@ function AppShell() {
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
               <Routes>
                 <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} functie={profiel.functie} />} />
-                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={profiel} sector={instellingType(profiel.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
+                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={profiel} sector={instellingType(profiel.instelling, instellingen)} bronnen={bronnen} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
                 <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={profiel} instellingen={instellingen} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={profiel} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
