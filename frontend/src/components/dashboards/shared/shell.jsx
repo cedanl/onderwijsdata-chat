@@ -59,7 +59,23 @@ export function DashboardShell({ instelling, children, loading, data, error, onO
     )
   }
 
-  return children
+  return (
+    <>
+      <div className="db-afdrukbalk"><AfdrukKnop /></div>
+      {children}
+    </>
+  )
+}
+
+// Afdrukken (#904, besluit B): de browser drukt af of bewaart een pdf; de print-CSS in styles.css toont alleen het
+// dashboard, over zijn volle lengte, met het bronblok onderaan. Geen CSV: wie verder wil rekenen, gebruikt chat of
+// rapport.
+export function AfdrukKnop() {
+  return (
+    <button type="button" className="db-schakel db-afdrukknop" onClick={() => window.print()}>
+      Afdrukken of als pdf bewaren
+    </button>
+  )
 }
 
 // De onderdelen die niet laadden (#901): het dashboard noemt ze en waarom, in plaats van ze stil weg te laten.
@@ -235,13 +251,39 @@ export function DashboardSources({ sources }) {
   )
 }
 
-export function RegioBadges({ instelling, provincie, arbeidsmarktregio, bron }) {
+// ─── Regiovoorbehoud ─────────────────────────────────────────────────────────
+// Regio en provincie volgen één adres per instelling: de hoofdvestiging in het DUO-adressenbestand; vestigingen elders
+// tellen niet mee (#744). Besluit op #904 (B): de badges krijgen een sterretje en één noot eronder zegt dat. Zonder adres
+// komt de provincie uit de inschrijvingen (`provincie_herkomst` "inschrijvingen") en zegt de noot dat; zonder herkomst
+// staat er geen provinciebadge.
+
+const VESTIGINGEN = 'Vestigingen in andere regio\'s tellen niet mee'
+
+// De noot onder de badges, of null als er geen regio- of provinciebadge staat. `vacatures`: het dashboard toont de
+// vacatures van UWV, en die gaan over deze provincie.
+export function regioNoot({ arbeidsmarktregio, herkomst, vacatures = false }) {
+  if (!arbeidsmarktregio && !herkomst) return null
+  const uwv = vacatures && herkomst ? '; vacatures (UWV) gaan over deze provincie' : ''
+  if (herkomst === 'inschrijvingen') {
+    const regio = arbeidsmarktregio ? 'De regio volgt het adres van de hoofdvestiging bij DUO. ' : ''
+    return `* ${regio}DUO heeft voor deze instelling geen adres met een provincie; de provincie is die welke in de DUO-inschrijvingen het vaakst bij de instelling staat. ${VESTIGINGEN}${uwv}.`
+  }
+  const wat = arbeidsmarktregio && herkomst ? 'Regio en provincie volgen' : arbeidsmarktregio ? 'De regio volgt' : 'De provincie volgt'
+  return `* ${wat} het adres van de hoofdvestiging bij DUO. ${VESTIGINGEN}${uwv}.`
+}
+
+export function RegioBadges({ instelling, provincie, arbeidsmarktregio, herkomst, vacatures, bron }) {
+  const metProvincie = Boolean(provincie && herkomst)
+  const noot = regioNoot({ arbeidsmarktregio, herkomst: metProvincie ? herkomst : null, vacatures })
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-      <span className="meta-badge instelling">{instelling}</span>
-      {arbeidsmarktregio && <span className="meta-badge date">Regio {arbeidsmarktregio}</span>}
-      {provincie && <span className="meta-badge date">Provincie {provincie}</span>}
-      {bron && <span className="meta-badge date">Bron: {bron}</span>}
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="meta-badge instelling">{instelling}</span>
+        {arbeidsmarktregio && <span className="meta-badge date">Regio {arbeidsmarktregio}*</span>}
+        {metProvincie && <span className="meta-badge date">Provincie {provincie}*</span>}
+        {bron && <span className="meta-badge date">Bron: {bron}</span>}
+      </div>
+      {noot && <p className="dashboard-noot db-regionoot" role="note">{noot}</p>}
     </div>
   )
 }

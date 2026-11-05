@@ -114,11 +114,13 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
   const gaten = gatenVan([matchData, { niet_beschikbaar: gatenVan([regioData], REGIO_BRONNEN) }])
   const allesOpnieuw = () => { opnieuw(); regio.opnieuw() }
   const bronnen = bronnenVan([matchData, { bronnen: bronnenVan([regioData], REGIO_BRONNEN) }])
+  // Provincie en haar herkomst uit dezelfde payload (#904): de match zodra die er is, anders de regio.
+  const plaats = matchData?.provincie ? matchData : regioData
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
+        <RegioBadges instelling={instelling} provincie={plaats?.provincie} herkomst={plaats?.provincie_herkomst} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} vacatures bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <MatchScoreSection matchScore={matchData?.match_score} duiding={matchData?.match_duiding} dark={dark} />

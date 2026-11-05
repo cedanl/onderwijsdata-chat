@@ -65,7 +65,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <RegioBadges instelling={instelling} provincie={data?.provincie} arbeidsmarktregio={data?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
+        <RegioBadges instelling={instelling} provincie={data?.provincie} herkomst={data?.provincie_herkomst} arbeidsmarktregio={data?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <KaartSection figureJson={data?.kaart_figure_json} />

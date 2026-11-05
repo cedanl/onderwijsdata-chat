@@ -148,6 +148,23 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
   concurrententabel met "geen gegevens" (#925). Een peer met één echt nuljaar telt wel mee.
 
+### Regio, provincie en afdrukken
+
+- **Regio en provincie** komen uit één adres per instelling: de hoofdvestiging in het DUO-adressenbestand
+  (`adressen_ho`, `adressen_mbo`; `get_adres_lookup` in `data/instellingen.py`). Vestigingen elders tellen niet mee
+  (#744). Staat er geen adres met een provincie, dan is de provincie die welke in het DUO-bestand het vaakst bij de
+  instelling staat; die kan per lading anders uitvallen. `provincie_herkomst` in `regio` en `arbeidsmarktmatch` zegt
+  welke van de twee het is: `"adres"`, `"inschrijvingen"`, of `null` als er geen provincie is (`_provincie` in
+  `data/dashboard.py`, #904).
+- **Het voorbehoud** (besluit B op #904): de regio- en provinciebadge krijgen een sterretje en één noot eronder
+  (`RegioBadges`, `regioNoot` in `shared/shell.jsx`). Zonder adres zegt de noot dat de provincie uit de inschrijvingen
+  komt; zonder herkomst staat er geen provinciebadge. Op Arbeidsmarkt zegt de noot ook dat de vacatures (UWV) over deze
+  provincie gaan.
+- **Afdrukken** (besluit B op #904): elk dashboard heeft een knop "Afdrukken of als pdf bewaren" (`AfdrukKnop` in de
+  `DashboardShell`). De print-CSS in `styles.css` toont alleen het dashboard over zijn volle lengte, zonder knoppen, met
+  het bronblok onderaan en de links ervan uitgeschreven. Er is geen CSV-export: wie verder wil rekenen, gebruikt chat of
+  rapport.
+
 ### Een mbo-instelling met meer instellingscodes
 
 `mbo-studenten-per-instelling` kent een instelling onder meer codes (Curio: 21CY en 25LX); de instroom- en
