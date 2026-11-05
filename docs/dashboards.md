@@ -28,8 +28,8 @@ de standaard van Chart.js. De tests staan in `frontend/src/__tests__/dashboard*.
 laden, lege en mislukte lading, cijfers, toegankelijkheid) en voor de backend in `tests/test_dashboard_*.py` en
 `tests/test_instellingen.py`.
 
-Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
-De data komt uit `data/dashboard.py`.
+Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen
+(`bronnen`, zie hieronder). De data komt uit `data/dashboard.py`.
 `/api/dashboard/instroom` is weg (#930): geen dashboard gebruikte het, en wat het gaf, staat ook in `regio`.
 
 ### Waarop `instelling` zoekt
@@ -46,6 +46,39 @@ Het antwoord noemt in `instelling` de registernaam. Is de instelling onbekend, d
 `/api/dashboard/regio` staan dan in `beschikbare_instellingen` de vijf namen die erop lijken; lijkt er geen op, dan is
 die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron die niet laadde, geeft 503, geen
 `gevonden: false`.
+
+### Bronvermeldingen: het bronblok
+
+Een gevonden instelling krijgt in elke payload `bronnen`: per gebruikte bron één regel (#904, `data/bronblok.py`).
+De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de frontend heeft geen vaste bronlijst.
+
+```json
+{
+  "bron": "DUO",
+  "dataset": "gediplomeerde-mbo-studenten",
+  "titel": "Gediplomeerde mbo-studenten",
+  "url": "https://onderwijsdata.duo.nl/dataset/gediplomeerde-mbo-studenten",
+  "bestanden": [{"resource": 0, "resource_id": "…", "last_modified": "2026-04-08T03:04:43"}],
+  "editie": null,
+  "last_modified": "2026-04-08T03:04:43",
+  "peilmoment": "versie van 08-04-2026",
+  "peildatum": "1 oktober van het studiejaar",
+  "voorlopig": true,
+  "voorlopig_jaren": ["2025"],
+  "opgehaald_op": "2026-11-05T09:30:00+00:00"
+}
+```
+
+- **Wat erin staat:** wat de lading echt laadde. Elke lader meldt een bestand dat hij met succes laadde
+  (`core/brongebruik.py`); `actualiteit.Lading` meldt die bestanden ook bij een cachetreffer opnieuw. Een bron die niet
+  laadde, staat er niet in, wel in `niet_beschikbaar`. De ho-poging van een mbo-instelling (de naam zoeken in
+  `p01hoinges`) telt niet mee.
+- **DUO:** per bestand het resource-ID en `last_modified` van riodata (#717); `peilmoment` in de woorden van de
+  bronregel in de chat. `peildatum` en `voorlopig_jaren` komen uit de DUO-beschrijving in de catalogus.
+- **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM.
+- **ROA:** `editie` uit het schema van riodata, `versie` uit de kolom `versie` van het bestand.
+- `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
+  eigen deel uit, zoals bij `niet_beschikbaar`.
 
 ### Wat de getallen tellen
 

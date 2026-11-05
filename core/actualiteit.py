@@ -7,9 +7,11 @@ plek, zodat een test hem kan verzetten in plaats van te wachten (`monkeypatch.se
 
 import functools
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Generic, TypeVar
+
+from core import brongebruik
 
 T = TypeVar("T")
 
@@ -56,7 +58,8 @@ class Lading(Generic[T]):
 
     - komt alleen een geslaagde lading erin: een fout gaat naar de aanroeper, de volgende aanroep probeert opnieuw;
     - laden gelijktijdige aanroepen één keer: de rest wacht op die lading en krijgt haar uitkomst;
-    - laadt de eerste aanroep na de TTL opnieuw.
+    - laadt de eerste aanroep na de TTL opnieuw;
+    - meldt elke aanroep, ook een cachetreffer, de bestanden die de lading meldde (`brongebruik`, #904).
 
     `cache_clear` heet zoals bij `lru_cache`, zodat de tests de caches van een module op dezelfde manier legen.
     """
@@ -64,17 +67,19 @@ class Lading(Generic[T]):
     def __init__(self, laad: Callable[..., T]) -> None:
         functools.update_wrapper(self, laad)
         self._laad = laad
-        self._bewaard: dict[tuple, tuple[T, datetime]] = {}
+        self._bewaard: dict[tuple, tuple[T, datetime, tuple[Mapping, ...]]] = {}
         self._slot = threading.Lock()
 
     def __call__(self, *args) -> T:
         with self._slot:
             bewaard = self._bewaard.get(args)
-            if bewaard is not None and not verlopen(bewaard[1]):
-                return bewaard[0]
-            waarde = self._laad(*args)
-            self._bewaard[args] = (waarde, nu())
-            return waarde
+            if bewaard is None or verlopen(bewaard[1]):
+                with brongebruik.verzamel() as gemeld:
+                    waarde = self._laad(*args)
+                bewaard = (waarde, nu(), tuple(gemeld))
+                self._bewaard[args] = bewaard
+        brongebruik.meld(*bewaard[2])
+        return bewaard[0]
 
     def cache_clear(self) -> None:
         self._bewaard.clear()

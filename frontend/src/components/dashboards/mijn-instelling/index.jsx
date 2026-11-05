@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import {
   useRegioDashboardData, useRendementDashboardData,
   DashboardShell, SectionHeader, RegioBadges, DashboardSources, KaartSection,
-  BRONNEN_HO, BRONNEN_MBO,
+  bronnenVan, bronBadge,
   useRegioComputed, useDarkMode,
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
@@ -16,7 +16,7 @@ import {
   perJaar, OndergrensNoot,
 } from '../shared/index'
 
-// Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen; UWV en ROA staan op het arbeidsmarktdashboard.
+// Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; UWV en ROA staan op het arbeidsmarktdashboard.
 const REGIO_BRONNEN = ['DUO']
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
@@ -27,6 +27,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   const rendement = useRendementDashboardData(instelling)
   const rendData = rendement.data
   const gaten = gatenVan([data, rendData], REGIO_BRONNEN)
+  const bronnen = bronnenVan([data, rendData], REGIO_BRONNEN)
   const allesOpnieuw = () => { opnieuw(); rendement.opnieuw() }
   const c = useRegioComputed(data, instelling)
   const dark = useDarkMode()
@@ -61,7 +62,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <RegioBadges instelling={instelling} provincie={data?.provincie} arbeidsmarktregio={data?.arbeidsmarktregio} bron="DUO Open Onderwijsdata" />
+        <RegioBadges instelling={instelling} provincie={data?.provincie} arbeidsmarktregio={data?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <KaartSection figureJson={data?.kaart_figure_json} />
@@ -109,7 +110,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         {/* ── Gender & diversiteit ── */}
         <GenderSection data={data} instelling={instelling} dark={dark} />
 
-        <DashboardSources sources={data?.type === 'mbo' ? BRONNEN_MBO : BRONNEN_HO} />
+        <DashboardSources sources={bronnen} />
       </div>
     </DashboardShell>
   )

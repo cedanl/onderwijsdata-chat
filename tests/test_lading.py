@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from core import actualiteit
+from core import actualiteit, brongebruik
 
 _START = datetime(2026, 11, 4, 9, 0, tzinfo=UTC)
 
@@ -114,3 +114,60 @@ def test_cache_clear_leegt_zoals_bij_lru_cache(klok):
     lading()
 
     assert bron.aanroepen == 2
+
+
+# ─── Wat een lading over haar bronnen meldt (#904) ───────────────────────────────────────────────────────────────────
+
+
+def _meldende_lader(bron: _Bron):
+    def laad(*args):
+        uit = bron.laad(*args)
+        brongebruik.meld({"dataset": "p01hoinges", "versie": uit["versie"]})
+        return uit
+
+    return laad
+
+
+def test_een_cachetreffer_meldt_de_bestanden_van_de_lading_opnieuw(klok):
+    bron = _Bron()
+    lading = actualiteit.Lading(_meldende_lader(bron))
+
+    with brongebruik.verzamel() as eerste:
+        lading()
+    with brongebruik.verzamel() as tweede:
+        lading()
+
+    assert bron.aanroepen == 1
+    assert eerste == tweede == [{"dataset": "p01hoinges", "versie": 1}]
+
+
+def test_een_mislukte_lading_meldt_niets(klok):
+    bron = _Bron()
+    bron.storing = True
+    lading = actualiteit.Lading(_meldende_lader(bron))
+
+    with brongebruik.verzamel() as gemeld, pytest.raises(ConnectionError):
+        lading()
+
+    assert gemeld == []
+
+
+def test_buiten_een_verzameling_doet_een_melding_niets(klok):
+    lading = actualiteit.Lading(_meldende_lader(_Bron()))
+
+    lading()  # zoals de chat: geen verzameling, geen fout
+    with brongebruik.verzamel() as gemeld:
+        lading()
+
+    assert gemeld == [{"dataset": "p01hoinges", "versie": 1}]
+
+
+def test_een_geneste_lading_meldt_door_naar_de_buitenste(klok):
+    binnen = actualiteit.Lading(_meldende_lader(_Bron()))
+    buiten = actualiteit.Lading(lambda: binnen())
+
+    buiten()
+    with brongebruik.verzamel() as gemeld:
+        buiten()
+
+    assert gemeld == [{"dataset": "p01hoinges", "versie": 1}]
