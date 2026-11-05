@@ -58,6 +58,13 @@ export function LandelijkDefinitie({ landelijk }) {
   )
 }
 
+// De ranking en de posities lopen over de instellingen van het eigen type (#928): "alle 18 universiteiten (wo)".
+export function populatieTekst(populatie) {
+  const naam = POPULATIE_NATIONAAL[populatie?.soort]
+  if (!naam) return 'alle instellingen van hetzelfde type'
+  return populatie.n != null ? `alle ${populatie.n} ${naam}` : `alle ${naam}`
+}
+
 // {sector: {jaar: n}} als reeksen voor de ondergrensnoot; de jaren zijn die van de ingeschrevenen.
 function sectorReeksen(perSector, soort) {
   return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt, soort }))
@@ -109,9 +116,16 @@ function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
   )
 }
 
-// Een positie waarin een onderdrukte cel meetelt, kan verschuiven: die heet indicatief (#902).
-export function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
+// Een positie waarin een onderdrukte cel meetelt, kan verschuiven: die heet indicatief (#902). Elke positie noemt het
+// aantal instellingen van het eigen type met ingeschrevenen in die sector: "4e van 9 wo" (#928). `data` is de payload van
+// /api/dashboard/nationaal.
+export function PositieKpis({ data }) {
+  const eigenPositie = data?.eigen_positie
   if (!eigenPositie || Object.keys(eigenPositie).length === 0) return null
+  const van = data.positie_populatie || {}
+  const soort = data.populatie?.soort
+  const onzeker = data.onderdrukt?.eigen_positie
+  const weggelaten = data.positie_weggelaten
   const entries = Object.entries(eigenPositie).sort((a, b) => a[1] - b[1])
   return (
     <>
@@ -119,7 +133,7 @@ export function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
         {entries.map(([sector, pos]) => (
           <div key={sector} className="kpi-card">
             <div className="kpi-label">{sectorNaam(sector)}</div>
-            <div className="kpi-value">#{pos}</div>
+            <div className="kpi-value">{pos}e van {van[sector]} {soort}</div>
             <div className="kpi-sub">{onzeker?.[sector] > 0 ? 'positie landelijk, indicatief: onderdrukte cellen tellen niet mee' : 'positie landelijk'}</div>
           </div>
         ))}
@@ -190,7 +204,7 @@ function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, soort, d
 export function InlineDashboardNationaal({ instelling }) {
   const { data, loading, error, opnieuw } = useNationaalDashboardData(instelling)
   const dark = useDarkMode()
-  const populatie = POPULATIE_NATIONAAL[data?.type] || 'alle instellingen'
+  const populatie = populatieTekst(data?.populatie)
   const bronnen = bronnenVan([data])
 
   return (
@@ -204,7 +218,7 @@ export function InlineDashboardNationaal({ instelling }) {
         <LandelijkDefinitie landelijk={data?.landelijk} />
 
         <SectionHeader title="Positie per sector" subtitle={`Ranking binnen ${populatie} per sector/leerweg`} />
-        <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
+        <PositieKpis data={data} />
 
         <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
         <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} soort={data?.perioden?.ingeschrevenen} dark={dark} />

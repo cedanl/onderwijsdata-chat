@@ -31,14 +31,19 @@ globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect
 const HBO = dashboards.regio
 const RATIO_ONDERTITEL = 'pipeline-gezondheid'
 
-// Het wo-dashboard: dezelfde ho-payload, maar het benchmark is het nationale wo-gemiddelde.
+// Het wo-dashboard: dezelfde ho-payload, maar het benchmark is landelijk, met de reden van die terugval (#926).
+const WO_TERUGVAL = 'te weinig universiteiten in provincie Utrecht (0 andere)'
 const WO = {
   ...HBO,
   instelling: 'Universiteit Utrecht',
   benchmark: {
     ...HBO.benchmark,
-    label: 'Nationaal WO gemiddelde (excl. eigen instelling)',
+    label: `Landelijk, 16 andere universiteiten — ${WO_TERUGVAL}`,
+    populatie: 'universiteiten in heel Nederland',
+    soort: 'wo',
+    terugval: WO_TERUGVAL,
     regio_type: 'nationaal',
+    regio_naam: 'Nederland',
     n_instellingen: 16,
     n_per_jaar: { ingeschrevenen: { 2023: 16, 2024: 16, 2025: 16 } },
     totaal_ingeschrevenen: { 2023: 290000, 2024: 293000, 2025: 295707 },
@@ -53,7 +58,14 @@ const MBO = {
   eerstejaars: { 2023: 11000, 2024: 11602 },
   geslacht: undefined,
   geslacht_trend: undefined,
-  benchmark: { ...HBO.benchmark, eerstejaars: { 2023: 5000, 2024: 5200 } },
+  benchmark: {
+    ...HBO.benchmark,
+    label: 'Arbeidsmarktregio Groot Amsterdam, 6 andere mbo-instellingen',
+    populatie: 'mbo-instellingen in arbeidsmarktregio Groot Amsterdam',
+    soort: 'mbo',
+    regio_naam: 'Groot Amsterdam',
+    eerstejaars: { 2023: 5000, 2024: 5200 },
+  },
 }
 
 let root
@@ -146,6 +158,25 @@ describe('de totaal-KPI volgt het benchmarktype (#918)', () => {
     expect(tekst()).toContain('Regio totaal')
     expect(tekst()).not.toContain('Landelijk totaal')
     expect(tekst()).toMatch(/\d+ instellingen in regio/)
+  })
+})
+
+describe('de kop en de teksten noemen de vergelijkingsgroep (#926)', () => {
+  it.each([
+    ['hbo', HBO, 'hogescholen in arbeidsmarktregio Midden-Utrecht'],
+    ['wo', WO, 'universiteiten in heel Nederland'],
+    ['mbo', MBO, 'mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
+  ])('%s: kop met regio, aantal en terugval; ondertitels met het type', async (_niveau, regio, populatie) => {
+    await dashboard(regio)
+    expect(tekst()).toContain(`${regio.instelling} vs. ${regio.benchmark.label}`)
+    expect(tekst()).toContain(`Gem. ${populatie}`)
+    expect(tekst()).toContain(`eigen instelling vs. gemiddelde ${populatie}`)
+    expect(tekst()).not.toMatch(/excl\. eigen instelling|nationaal wo gemiddelde/i)
+  })
+
+  it('wo: de kop zegt waarom de vergelijking landelijk is', async () => {
+    await dashboard(WO)
+    expect(tekst()).toContain('Universiteit Utrecht vs. Landelijk, 16 andere universiteiten — te weinig universiteiten in provincie Utrecht (0 andere)')
   })
 })
 

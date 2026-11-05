@@ -29,13 +29,32 @@ const MARKT = BUILTIN_ARBEIDSMARKT.id
 const LAND = BUILTIN_NATIONAAL.id
 
 const HBO = dashboards.regio
-// Wo: dezelfde ho-payload met het nationale wo-gemiddelde als benchmark; mbo: een eerstejaarsreeks die achterloopt.
+// Wo: dezelfde ho-payload met de universiteiten landelijk als vergelijkingsgroep (#926); mbo: een eerstejaarsreeks die
+// achterloopt.
 const WO = {
   ...HBO,
   instelling: 'Universiteit Utrecht',
-  benchmark: { ...HBO.benchmark, label: 'Nationaal WO gemiddelde (excl. eigen instelling)', regio_type: 'nationaal' },
+  benchmark: {
+    ...HBO.benchmark,
+    label: 'Landelijk, 16 andere universiteiten — te weinig universiteiten in provincie Utrecht (0 andere)',
+    populatie: 'universiteiten in heel Nederland',
+    soort: 'wo',
+    regio_type: 'nationaal',
+  },
 }
-const MBO = { ...HBO, type: 'mbo', instelling: 'ROC van Amsterdam', eerstejaars: { 2023: 11000, 2024: 11602 }, geslacht: undefined }
+const MBO = {
+  ...HBO,
+  type: 'mbo',
+  instelling: 'ROC van Amsterdam',
+  eerstejaars: { 2023: 11000, 2024: 11602 },
+  geslacht: undefined,
+  benchmark: {
+    ...HBO.benchmark,
+    label: 'Arbeidsmarktregio Groot Amsterdam, 6 andere mbo-instellingen',
+    populatie: 'mbo-instellingen in arbeidsmarktregio Groot Amsterdam',
+    soort: 'mbo',
+  },
+}
 
 let payloads
 let root
@@ -159,7 +178,7 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
     const tekst = miniatuur(LAND).textContent
     expect(tekst).toContain('Positie per sector')
     expect(tekst).toContain('Gezondheidszorg')
-    expect(tekst).toContain('#1')
+    expect(tekst).toContain('1e van 18 hbo') // per type, met de populatie erbij (#928)
   })
 
   it('tekent geen grafiek en geen kaart: geen canvas, geen Plotly', async () => {
@@ -169,16 +188,16 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
   })
 
   it.each([
-    ['hbo', HBO, 'Gem. arbeidsmarktregio gemiddelde'],
-    ['wo', WO, 'Gem. nationaal wo gemiddelde'],
-    ['mbo', MBO, 'Gem. arbeidsmarktregio gemiddelde'],
+    ['hbo', HBO, 'Gem. hogescholen in arbeidsmarktregio Midden-Utrecht'],
+    ['wo', WO, 'Gem. universiteiten in heel Nederland'],
+    ['mbo', MBO, 'Gem. mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
   ])('%s: de kerncijfers volgen het niveau van de instelling', async (_niveau, regio, benchmark) => {
     payloads['/api/dashboard/regio'] = regio
     await toon(galerij(regio.instelling))
     await inBeeld(MIJN)
     expect(api.fetchDashboardData.mock.calls[0][1]).toBe(regio.instelling)
     const tekst = miniatuur(MIJN).textContent
-    expect(tekst).toContain(`${regio.instelling} vs. `)
+    expect(tekst).toContain(`${regio.instelling} vs. ${regio.benchmark.label}`)
     expect(tekst).toContain(benchmark)
     expect(tekst).toContain('35.058')
   })

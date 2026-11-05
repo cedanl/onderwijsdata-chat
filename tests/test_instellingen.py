@@ -241,15 +241,6 @@ def test_regio_dashboard_mbo_benchmark_uses_arbeidsmarktregio():
     assert "arbeidsmarktregio" in bm["label"].lower()
 
 
-def test_regio_dashboard_benchmark_has_regio_type():
-    from data.dashboard import load_dashboard_regio
-
-    result = load_dashboard_regio("Hogeschool Utrecht")
-    bm = result.get("benchmark", {})
-    assert "regio_type" in bm
-    assert bm["regio_type"] in ("arbeidsmarktregio", "provincie")
-
-
 def test_regio_dashboard_ho_provincie_still_present():
     from data.dashboard import load_dashboard_regio
 
@@ -467,7 +458,10 @@ def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
     assert result["sectoren_landelijk"] == verwacht_landelijk
     assert result["laatste_jaar"] == 2025
 
-    laatste = ins[ins["STUDIEJAAR"] == 2025]
+    # De ranking loopt over de hogescholen: de namen uit de hbo-resource (#928), ook HvA met haar paar wo-studenten.
+    from riodata import duo
+
+    laatste = ins[(ins["STUDIEJAAR"] == 2025) & ins[_INST].isin(set(duo.load("p01hoinges", 0)[_INST]))]
     per_inst = laatste.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
     assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan het regiodashboard
     alle = result["alle_instellingen"]

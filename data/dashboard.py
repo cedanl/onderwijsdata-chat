@@ -178,6 +178,7 @@ _MBO_LEERWEG_COLS = list(_MBO_LEERWEGEN.values())
 # (domeinregel mbo-instroom-totaal-mbo, #899).
 _MBO_INGESCHREVEN_KOLOM = "TOTAAL MBO"
 _HOOFDGROEP = "HOOFDGROEP NAAM"
+_SOORT = "SOORT"  # het type van de instelling op een rij (hbo, wo of mbo), voor de landelijke ranking per type (#928)
 _SECTOR_GEMIDDELD_JAREN = 3  # de aanbodzijde van de arbeidsmarktmatch: gediplomeerden, gemiddeld over 3 jaar
 # Schaarste: het vacature-aandeel van een sector is meer dan _MATCH_DREMPEL keer zijn diploma-aandeel; overaanbod:
 # omgekeerd; daartussen evenwicht (_match_label). Het dashboard toont de waarde bij de score (#900).
@@ -267,95 +268,85 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 
 
 # ─── Regio context ────────────────────────────────────────────────────────────
+# De vergelijkingsgroep van Mijn instelling is type-zuiver (#926): een hogeschool naast hogescholen, een universiteit
+# naast universiteiten, een mbo-instelling naast mbo-instellingen. De regio verbreedt van arbeidsmarktregio via
+# provincie naar landelijk, tot er ten minste _MIN_PEERS andere instellingen van hetzelfde type in zitten; de trede die
+# afviel, staat met reden in het label. Instelling en peers krijgen hun regio van dezelfde regel: het DUO-adres.
+
+_MIN_PEERS = 2  # een gemiddelde over één andere instelling is die instelling
+_TREDEN = ("arbeidsmarktregio", "provincie")  # van smal naar breed; daarna landelijk
+_ONDERWIJSTYPEN = {"ho": ("hbo", "wo"), "mbo": ("mbo",)}
+# Het type van een instelling als zelfstandig naamwoord: enkelvoud, meervoud.
+_SOORTNAAM = {
+    "hbo": ("hogeschool", "hogescholen"),
+    "wo": ("universiteit", "universiteiten"),
+    "mbo": ("mbo-instelling", "mbo-instellingen"),
+}
 
 
 @dataclass(frozen=True)
 class RegioContext:
-    """Benchmark regio voor een instelling: arbeidsmarktregio (voorkeur) of provincie (fallback)."""
+    """De vergelijkingsgroep van een instelling: de andere instellingen van hetzelfde type in de smalste regio waarin
+    er genoeg zijn (#926)."""
 
-    regio_naam: str  # Naam van de benchmark-regio
-    regio_type: str  # "arbeidsmarktregio" | "provincie"
+    regio_naam: str  # "Midden-Utrecht", "Noord-Brabant"; "Nederland" bij landelijk
+    regio_type: str  # "arbeidsmarktregio" | "provincie" | "nationaal"
     provincie: str | None  # Altijd de provincie (voor UWV-data en display)
     self_code: str  # BRIN-code van de target-instelling
-    peer_codes: frozenset  # BRIN-codes van peers in dezelfde regio (excl. zichzelf)
+    peer_codes: frozenset  # BRIN-codes van de peers: hetzelfde type, dezelfde regio, excl. zichzelf
+    soort: str  # "hbo" | "wo" | "mbo": het type van de instelling en van elke peer
+    terugval: str | None  # waarom de vergelijking niet in een smallere regio staat; None als dat niet speelde
+
+
+def _terugvalreden(soort: str, afgevallen: list[tuple[str, str, int]], zonder_adres: bool) -> str | None:
+    """Waarom de vergelijking niet in een smallere regio staat: de breedste trede die afviel, met haar aantal."""
+    if zonder_adres:
+        return "regio onbekend: DUO heeft geen adres van de instelling"
+    if not afgevallen:
+        return None
+    regio_type, regio_naam, n = afgevallen[-1]
+    return f"te weinig {_SOORTNAAM[soort][1]} in {regio_type} {regio_naam} ({n} andere)"
 
 
 def _build_regio_context(instelling_naam: str, onderwijs_type: str) -> RegioContext | None:
-    """
-    Bouw een RegioContext voor benchmarking.
+    """De vergelijkingsgroep van een instelling (#926); None als het register haar niet kent als `onderwijs_type`
+    ("ho": hbo of wo; "mbo").
 
-    onderwijs_type: "ho" (hbo + wo samen) of "mbo"
-
-    Probeert arbeidsmarktregio; valt terug op provincie als er < 1 peer is.
-    Retourneert None als er geen bruikbare context gevonden kan worden.
+    Per trede (arbeidsmarktregio, provincie) de instellingen van hetzelfde type met hun DUO-adres in die regio; de eerste
+    trede met ten minste _MIN_PEERS wint. Anders landelijk: alle andere instellingen van hetzelfde type.
     """
     adres = get_adres_lookup()
     registry = get_all_instellingen()
 
     target = next((i for i in registry if i["naam"].lower() == instelling_naam.lower()), None)
-    if not target:
+    if not target or target.get("type") not in _ONDERWIJSTYPEN[onderwijs_type]:
         return None
-
     self_code = target.get("instellingscode")
-    if not self_code or self_code not in adres:
+    if not self_code:
         return None
 
-    self_info = adres[self_code]
+    soort = target["type"]
+    zelfde_soort = frozenset(
+        i["instellingscode"]
+        for i in registry
+        if i.get("type") == soort and i.get("instellingscode") and i["instellingscode"] != self_code
+    )
+    self_info = adres.get(self_code, {})
     provincie = self_info.get("provincie")
-    arbeidsmarktregio = self_info.get("arbeidsmarktregio")
 
-    peer_types = {"hbo", "wo"} if onderwijs_type == "ho" else {"mbo"}
-    code_to_type = {inst["instellingscode"]: inst["type"] for inst in registry if inst.get("instellingscode")}
+    def context(regio_naam: str, regio_type: str, peers: frozenset, terugval: str | None) -> RegioContext:
+        return RegioContext(regio_naam, regio_type, provincie, self_code, peers, soort, terugval)
 
-    # WO research universities are distributed nationally, not clustered in one
-    # arbeidsmarktregio. Use all WO institutions as peers for a meaningful benchmark.
-    if target.get("type") == "wo":
-        wo_peers = frozenset(
-            inst["instellingscode"]
-            for inst in registry
-            if inst.get("type") == "wo"
-            and inst.get("instellingscode") != self_code
-            and inst.get("instellingscode") in adres
-        )
-        if wo_peers:
-            return RegioContext(
-                regio_naam="Nationaal (WO)",
-                regio_type="nationaal",
-                provincie=provincie,
-                self_code=self_code,
-                peer_codes=wo_peers,
-            )
-
-    def _peers_for_regio(regio_key: str, regio_value: str) -> frozenset:
-        return frozenset(
-            code
-            for code, info in adres.items()
-            if info.get(regio_key) == regio_value and code != self_code and code_to_type.get(code) in peer_types
-        )
-
-    if arbeidsmarktregio:
-        peers = _peers_for_regio("arbeidsmarktregio", arbeidsmarktregio)
-        if peers:
-            return RegioContext(
-                regio_naam=arbeidsmarktregio,
-                regio_type="arbeidsmarktregio",
-                provincie=provincie,
-                self_code=self_code,
-                peer_codes=peers,
-            )
-
-    if provincie:
-        peers = _peers_for_regio("provincie", provincie)
-        if peers:
-            return RegioContext(
-                regio_naam=provincie,
-                regio_type="provincie",
-                provincie=provincie,
-                self_code=self_code,
-                peer_codes=peers,
-            )
-
-    return None
+    afgevallen: list[tuple[str, str, int]] = []
+    for regio_type in _TREDEN:
+        regio_naam = self_info.get(regio_type)
+        if not regio_naam:
+            continue
+        peers = frozenset(c for c in zelfde_soort if adres.get(c, {}).get(regio_type) == regio_naam)
+        if len(peers) >= _MIN_PEERS:
+            return context(regio_naam, regio_type, peers, _terugvalreden(soort, afgevallen, zonder_adres=False))
+        afgevallen.append((regio_type, regio_naam, len(peers)))
+    return context("Nederland", "nationaal", zelfde_soort, _terugvalreden(soort, afgevallen, not self_info))
 
 
 # ─── Sommen met onderdrukte en ontbrekende cellen (#902) ─────────────────────
@@ -532,11 +523,25 @@ def _mbo_eerstejaars(instroom: pd.DataFrame, naam: str) -> tuple[dict[int, int],
     return _reeks(instroom[instroom[_INSTELLING] == naam], "JAAR", "AANTAL")
 
 
-def _benchmark_label(ctx: RegioContext) -> str:
-    if ctx.regio_type == "nationaal":
-        return "Nationaal WO gemiddelde (excl. eigen instelling)"
-    type_label = "Arbeidsmarktregio" if ctx.regio_type == "arbeidsmarktregio" else "Provincie"
-    return f"{type_label} gemiddelde ({ctx.regio_naam}, excl. eigen instelling)"
+def _benchmark_kop(ctx: RegioContext, n: int) -> dict:
+    """Wie de vergelijkingsgroep is, voor de kop van het dashboard (#926).
+
+    `label` noemt regio, aantal en type van de peers en een eventuele terugval: "Provincie Noord-Brabant, 5 andere
+    hogescholen". `populatie` is de groep in een zin, voor ondertitels en legenda: "hogescholen in provincie
+    Noord-Brabant". `n` is het aantal peers achter het gemiddelde in het laatste jaar (`n_instellingen`, #903).
+    """
+    enkel, meer = _SOORTNAAM[ctx.soort]
+    landelijk = ctx.regio_type == "nationaal"
+    plaats = "Landelijk" if landelijk else f"{ctx.regio_type.capitalize()} {ctx.regio_naam}"
+    label = f"{plaats}, {n} andere {enkel if n == 1 else meer}"
+    return {
+        "label": f"{label} — {ctx.terugval}" if ctx.terugval else label,
+        "populatie": f"{meer} in heel Nederland" if landelijk else f"{meer} in {ctx.regio_type} {ctx.regio_naam}",
+        "soort": ctx.soort,
+        "regio_type": ctx.regio_type,
+        "regio_naam": ctx.regio_naam,
+        "terugval": ctx.terugval,
+    }
 
 
 # ─── Regiodashboard ──────────────────────────────────────────────────────────
@@ -982,7 +987,7 @@ def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> di
         "eerstejaars": (df_ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"),
         "gediplomeerden": (df_dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
     }
-    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type, "peers": {}}
+    bm: dict = {"peers": {}}
     for sleutel, (df, jaar_col, kolom) in reeksen.items():
         reeks = _peer_reeks(df, code_col, inst_col, ctx.peer_codes, jaar_col, kolom)
         _met_gemiddelde(bm, sleutel, reeks)
@@ -990,7 +995,7 @@ def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> di
             bm["totaal_ingeschrevenen"] = reeks.totaal
         if sleutel != "eerstejaars":
             _met_peers(bm, sleutel, reeks)
-    return bm
+    return _benchmark_kop(ctx, bm["n_instellingen"]) | bm
 
 
 def _load_dashboard_regio_ho(instelling: str) -> dict | None:
@@ -1047,7 +1052,7 @@ def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen) -
     def reeks(df: pd.DataFrame, kolommen: Kolommen) -> _PeerReeks:
         return _peer_reeks(df, _INSTELLING, _INSTELLING, peers, "JAAR", kolommen)
 
-    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type, "peers": {}}
+    bm: dict = {"peers": {}}
     ingeschrevenen = reeks(_mbo_per_instelling(df_mbo, code_naam), _MBO_LEERWEG_COLS)
     eerstejaars = reeks(instroom, "AANTAL")
     for sleutel, r in (("ingeschrevenen", ingeschrevenen), ("eerstejaars", eerstejaars)):
@@ -1056,7 +1061,7 @@ def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen) -
     bm["totaal_ingeschrevenen"] = ingeschrevenen.totaal
     if df_dipl_mbo is not None:
         _met_peers(bm, "gediplomeerden", reeks(_mbo_per_instelling(_mbo_dipl_lang(df_dipl_mbo), code_naam), "AANTAL"))
-    return bm
+    return _benchmark_kop(ctx, bm["n_instellingen"]) | bm
 
 
 _Reeks = tuple[dict[int, int], dict[int, int]]
@@ -1225,14 +1230,18 @@ def _landelijk_definitie(sector: str) -> dict[str, str]:
 
 
 def _nationaal_cijfers(
-    df: pd.DataFrame, eigen: pd.DataFrame, kol: dict[str, str], laatste_jaar: int, typen: Callable[[str], str]
+    df: pd.DataFrame, eigen: pd.DataFrame, kol: dict[str, str], laatste_jaar: int, soort: str
 ) -> dict:
     """Landelijke sectortotalen, eigen sectoren, ranking en positie per sector: één berekening voor ho en mbo.
 
-    `kol` noemt de kolommen: instelling, sector, jaar en waarde. Een som over lege cellen is een ondergrens en staat in
-    `onderdrukt`; een positie waarin een onderdrukte cel meetelt, staat er ook in, want die kan verschuiven (#902).
-    Een sector waarin de instelling in het laatste jaar geen waarde heeft, krijgt geen positie en staat in
-    `positie_weggelaten`.
+    `kol` noemt de kolommen: instelling, sector, jaar, waarde en soort (hbo, wo of mbo). De sectortotalen lopen over
+    alle instellingen; de ranking en de posities alleen over de instellingen van `soort`, het type van de eigen
+    instelling (#928): een universiteit staat naast universiteiten. `populatie` noemt dat type en het aantal in de
+    ranking, `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector.
+
+    Een som over lege cellen is een ondergrens en staat in `onderdrukt`; een positie waarin een onderdrukte cel
+    meetelt, staat er ook in, want die kan verschuiven (#902). Een sector waarin de instelling in het laatste jaar geen
+    waarde heeft, krijgt geen positie en staat in `positie_weggelaten`.
     """
     inst_col, sector_col, jaar_col, waarde_col = kol["instelling"], kol["sector"], kol["jaar"], kol["waarde"]
     uit: dict = {}
@@ -1240,17 +1249,19 @@ def _nationaal_cijfers(
         uit[sleutel], leeg = _genest(bron, sector_col, jaar_col, waarde_col)
         _met_onderdrukt(uit, sleutel, leeg)
 
-    laatste = df[df[jaar_col] == laatste_jaar]
+    laatste = df[(df[jaar_col] == laatste_jaar) & (df[kol["soort"]] == soort)]
     per_inst = _som(laatste, inst_col, waarde_col).dropna().sort_values(ascending=False, kind="stable")
     leeg_inst = _leeg(laatste, inst_col, waarde_col)
     uit["alle_instellingen"] = [
-        {"naam": str(naam), "ingeschrevenen": int(aant), "type": typen(str(naam))}
+        {"naam": str(naam), "ingeschrevenen": int(aant), "type": soort}
         | ({"onderdrukt": int(leeg_inst[naam])} if leeg_inst.get(naam) else {})
         for naam, aant in per_inst.items()
     ]
+    uit["populatie"] = {"soort": soort, "n": len(uit["alle_instellingen"])}
 
     eigen_naam = eigen[inst_col].iloc[0]
     positie: dict[str, int] = {}
+    van: dict[str, int] = {}  # per sector: hoeveel instellingen van dat type er ingeschrevenen hebben
     onzeker: dict[str, int] = {}
     weggelaten: list[str] = []
     for sector in eigen[sector_col].drop_duplicates():  # ook een sector met alleen lege cellen
@@ -1261,9 +1272,11 @@ def _nationaal_cijfers(
             weggelaten.append(str(sector))
             continue
         positie[sector] = 1 + int((sommen > eigen_waarde).sum())
+        van[sector] = int((sommen > 0).sum())
         if n := int(_leeg(in_sector, inst_col, waarde_col).sum()):
             onzeker[sector] = n
     uit["eigen_positie"] = positie
+    uit["positie_populatie"] = van
     uit["positie_weggelaten"] = weggelaten
     _met_onderdrukt(uit, "eigen_positie", onzeker)
     return uit
@@ -1278,7 +1291,11 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
     hu = df_inges[df_inges[inst_col].str.lower() == instelling.lower()]
-    if hu.empty:
+    # Het type van een instelling komt uit het register, zoals bij de regiovergelijking (#926, #928). Niet uit de
+    # resource: een hogeschool met een paar wo-studenten (HvA, Hanze, BUas) staat ook in de wo-resource.
+    soorten = {i["naam"].lower(): i["type"] for i in get_all_instellingen()}
+    soort = soorten.get(instelling.lower())
+    if hu.empty or soort not in _ONDERWIJSTYPEN["ho"]:
         return None
 
     result["gevonden"] = True
@@ -1287,11 +1304,15 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     result["laatste_jaar"] = laatste_jaar
     result["landelijk"] = _landelijk_definitie("ho")
 
-    naam_to_type = {i["naam"].lower(): i["type"] for i in get_all_instellingen()}
-    kol = {"instelling": inst_col, "sector": "ONDERDEEL", "jaar": "STUDIEJAAR", "waarde": "AANTAL_INGESCHREVENEN"}
-    result.update(
-        _nationaal_cijfers(df_inges, hu, kol, laatste_jaar, lambda naam: naam_to_type.get(naam.lower(), "ho"))
-    )
+    kol = {
+        "instelling": inst_col,
+        "sector": "ONDERDEEL",
+        "jaar": "STUDIEJAAR",
+        "waarde": "AANTAL_INGESCHREVENEN",
+        "soort": _SOORT,
+    }
+    df = df_inges.assign(**{_SOORT: df_inges[inst_col].str.lower().map(soorten)})
+    result.update(_nationaal_cijfers(df, hu, kol, laatste_jaar, soort))
     return result
 
 
@@ -1299,7 +1320,7 @@ def _mbo_per_leerweg(df: pd.DataFrame) -> pd.DataFrame:
     """mbo-studenten-per-instelling met de leerwegen als rijen (LEERWEG, AANTAL), zoals de ONDERDEEL-rijen van het ho."""
     return df.melt(
         id_vars=["JAAR", "INSTELLINGSNAAM"], value_vars=_MBO_LEERWEG_COLS, var_name="LEERWEG", value_name="AANTAL"
-    )
+    ).assign(**{_SOORT: "mbo"})
 
 
 def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
@@ -1320,10 +1341,8 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     result["laatste_jaar"] = laatste_jaar
     result["landelijk"] = _landelijk_definitie("mbo")
 
-    kol = {"instelling": inst_col_mbo, "sector": "LEERWEG", "jaar": "JAAR", "waarde": "AANTAL"}
-    result.update(
-        _nationaal_cijfers(_mbo_per_leerweg(df_mbo), _mbo_per_leerweg(rows), kol, laatste_jaar, lambda _: "mbo")
-    )
+    kol = {"instelling": inst_col_mbo, "sector": "LEERWEG", "jaar": "JAAR", "waarde": "AANTAL", "soort": _SOORT}
+    result.update(_nationaal_cijfers(_mbo_per_leerweg(df_mbo), _mbo_per_leerweg(rows), kol, laatste_jaar, "mbo"))
     return result
 
 
