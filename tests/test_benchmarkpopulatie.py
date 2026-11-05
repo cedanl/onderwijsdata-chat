@@ -295,7 +295,7 @@ def test_landelijk_mbo_noemt_zijn_populatie():
 def test_marktaandeel_rekent_over_het_totaal_van_het_eigen_type(instelling, soort):
     # #950: de noemer van het marktaandeel (`sectoren_landelijk`) is het totaal van hetzelfde type, in elk jaar; een
     # hogeschool met wo-studenten (HvA) telt met al haar studenten bij de hogescholen, zoals in de ranking.
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     hbo, wo = duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)
     alles = pd.concat([hbo, wo], ignore_index=True)

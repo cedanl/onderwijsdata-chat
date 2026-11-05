@@ -445,7 +445,7 @@ def test_dashboard_nationaal_ho():
 
 
 def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     from data.dashboard import load_dashboard_nationaal
 
