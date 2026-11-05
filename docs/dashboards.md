@@ -53,7 +53,21 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
   de kop.
 - **Regiogemiddelde**: per jaar het gemiddelde over de peers met data in dat jaar; `benchmark.n_per_jaar` geeft hoeveel
-  dat er zijn, `n_instellingen` het aantal in het laatste jaar.
+  dat er zijn, `n_instellingen` het aantal in het laatste jaar. Een peer met in elk jaar 0 of een lege cel telt niet
+  mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
+  concurrententabel met "geen gegevens" (#925). Een peer met één echt nuljaar telt wel mee.
+
+### Een mbo-instelling met meer instellingscodes
+
+`mbo-studenten-per-instelling` kent een instelling onder meer codes (Curio: 21CY en 25LX); de instroom- en
+diplomabestanden tellen per code. Elke mbo-telling per instelling loopt daarom over de naam die
+`mbo-studenten-per-instelling` bij de code geeft: eigen eerstejaars, de peers (ingeschrevenen, eerstejaars,
+gediplomeerden) en het rendement (#923). Een peer met twee codes is één peer.
+
+De mbo-eerstejaars komen uit de bestanden "met soorten instroom" van `instromende-mbo-studenten`, één per jaar, in de
+vaste lijst `_INSTROMENDE_MBO_HISTORISCH` (`data/dashboard.py`). Publiceert DUO een jaar, dan wordt de ping
+`duo-instroom-mbo` van `bron:ping` rood; voeg dan de index toe aan die lijst en aan `scripts/duo_testfixtures.py`, en
+ververs de fixtures (#924).
 
 ---
 
