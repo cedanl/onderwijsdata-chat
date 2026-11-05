@@ -65,7 +65,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
       onClick={isOnboarding ? undefined : onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
+      aria-label={isOnboarding ? 'Welkom onderwijsprofessional' : 'Instellingen'}
       tabIndex={-1}
     >
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
@@ -93,11 +93,11 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
         </div>
 
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: 6 }}>
-          {isOnboarding ? 'Welkom' : 'Instellingen'}
+          {isOnboarding ? 'Welkom onderwijsprofessional' : 'Instellingen'}
         </h2>
         <p style={{ fontSize: '.88rem', color: 'var(--gray-500)', marginBottom: 8 }}>
           {isOnboarding
-            ? 'Met je instelling en functie stemmen we de voorbeeldvragen op je af. Je kunt dit altijd later wijzigen via je gebruikersnaam.'
+            ? 'Vertel ons waar je werkt en wat je doet, dan stemmen we de voorbeeldvragen af op jouw onderwijspraktijk. Je kunt dit later altijd aanpassen via je gebruikersnaam.'
             : 'Pas je profiel en weergave aan.'}
         </p>
         <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', marginBottom: 32, lineHeight: 1.5 }}>

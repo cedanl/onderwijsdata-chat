@@ -48,7 +48,7 @@ async function open(adres) {
   await act(async () => { root.render(createElement(App)) })
 }
 
-const welkom = () => container.querySelector('[role="dialog"][aria-label="Welkom"]')
+const welkom = () => container.querySelector('[role="dialog"][aria-label="Welkom onderwijsprofessional"]')
 const kop = () => container.querySelector('.navbar-profile-instelling')?.textContent ?? null
 const loginForm = () => container.querySelector('#login-username')
 const knop = tekst => [...container.querySelectorAll('button')].find(b => b.textContent.trim() === tekst)
