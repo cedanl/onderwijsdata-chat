@@ -157,6 +157,20 @@ def test_roa_onbekende_sector_noemt_de_geldige(bronnen):
     assert "Mbo4 - techniek en ict" in uit
 
 
+@pytest.mark.parametrize("onderdeel", ["Zorg en welzijn", "Psychologie"])
+def test_roa_onderdeel_buiten_het_ho_noemt_de_geldige_en_raadt_niet(bronnen, onderdeel):
+    """#745: alleen de DUO-onderdelen van hbo/wo; een mbo-sector of een opleidingsnaam koppelt de tool niet."""
+    uit = get_roa_benchmark(onderdeel=onderdeel)
+
+    assert "geen hbo/wo-onderdeel" in uit and "GEDRAG_EN_MAATSCHAPPIJ" in uit
+
+
+def test_roa_sector_en_onderdeel_samen_is_een_fout(bronnen):
+    uit = get_roa_benchmark("Master - techniek en ict", onderdeel="TECHNIEK")
+
+    assert uit == "Kies een ROA-opleidingssector of een DUO-onderdeel, niet beide."
+
+
 def test_uwv_peildatum_komt_uit_de_data(bronnen):
     uit = json.loads(get_uwv_vacatures("Utrecht"))
 

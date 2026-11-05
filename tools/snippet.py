@@ -20,6 +20,7 @@ import json
 
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
+from data import arbeidsmarkt, roa_koppeling
 
 from . import (
     cbs_selectie,
@@ -179,6 +180,27 @@ def _uwv_laadregels(args: dict) -> list[str]:
     return regels
 
 
+def _roa_ho_regels(onderdeel: str) -> list[str]:
+    """De ROA-rijen bij een DUO-onderdeel (#745): de ho-niveaus, de categorieën uit de koppeltabel van de app en de
+    opleidingstypen; die van een subsector zonder eigen type via de ONR2019-code in `waarde` (subsector 32120, typen
+    32121-32129)."""
+    lagen = {k: v.strip() for k, v in arbeidsmarkt.ROA_AGGREGATIE.items()}
+    koppelingen = roa_koppeling.KOPPELING[onderdeel].values()
+    laag = dict.fromkeys(arbeidsmarkt.ROA_NIVEAUS["ho"], lagen["niveau"])
+    laag |= {k.categorie: lagen[str(k.laag)] for k in koppelingen if k.categorie}
+    laag |= {k.opleidingstype: lagen["type"] for k in koppelingen if k.opleidingstype}
+    onderverdeeld = [k.categorie for k in koppelingen if k.laag == "subsector" and not k.opleidingstype]
+    return [
+        f"# De app koppelt het DUO-onderdeel {onderdeel} met een vaste tabel aan deze ROA-categorieën "
+        "(data/roa_koppeling.py).",
+        f"laag = {laag!r}",
+        'lagen = df["aggregatieniveau"].str.strip()',
+        "code = pd.to_numeric(df['waarde'], errors='coerce') // 10",
+        f'subsectoren = code[(lagen == {_lit(lagen["subsector"])}) & df["detailniveau"].isin({onderverdeeld!r})]',
+        f'df = df[(df["detailniveau"].map(laag) == lagen) | ((lagen == {_lit(lagen["type"])}) & code.isin(subsectoren))]',
+    ]
+
+
 def _roa_laadregels(args: dict) -> list[str]:
     """De ROA-rijen achter get_roa_benchmark (#577): de regio (of landelijk) voor schoolverlaters en prognose.
 
@@ -193,8 +215,11 @@ def _roa_laadregels(args: dict) -> list[str]:
         "",
         'df = roa.load("ais2030", "arbeidsmarkt")',
         f'df = df[df["regionaam"].str.lower().isin([{_lit(regio.lower())}, "nederland", "provincie " + {_lit(regio.lower())}])]',
-        f'df = df[df["aggregatieniveau"].str.strip() == {_lit(niveau)}]',
     ]
+    if onderdeel := args.get("onderdeel"):
+        regels += _roa_ho_regels(onderdeel)
+    else:
+        regels.append(f'df = df[df["aggregatieniveau"].str.strip() == {_lit(niveau)}]')
     if sector := args.get("sector"):
         regels.append(f'df = df[df["detailniveau"] == {_lit(sector)}]')
     regels += [
