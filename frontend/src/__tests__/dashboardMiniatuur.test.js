@@ -264,6 +264,8 @@ describe('het dashboard na de miniatuur (#933)', () => {
 
   async function open(id) {
     await act(async () => { kaart(id).click() })
+    // Het dashboard laadt lazy (#907).
+    await act(async () => { await vi.dynamicImportSettled() })
     await act(async () => { await new Promise(r => setTimeout(r, 0)) })
   }
 

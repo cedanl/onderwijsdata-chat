@@ -321,12 +321,12 @@ Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `w
 **Locatie:** `server.py` (`FastAPI(...)`, `security_headers`), `routes/instellingen.py` (`GET /api/dashboard/*`), `frontend/src/api.js` (`fetchDashboardData`), `frontend/src/components/dashboards/shared/hooks.js`  
 **Was:**
 - `/api/docs` (Swagger UI), `/redoc` en `/api/openapi.json` waren zonder token bereikbaar: het schema somt elke route op, en Swagger UI en ReDoc laden hun scripts van `cdn.jsdelivr.net`.
-- `GET /api/dashboard/{instroom,regio,nationaal,rendement,arbeidsmarktmatch}` laadden en rekenden DUO- en CBS-data voor iedereen, ook met login aan en ook met `ENABLE_DASHBOARDS=false`. De frontend haalde ze op zonder token.
+- `GET /api/dashboard/{instroom,regio,nationaal,rendement,arbeidsmarktmatch}` laadden en rekenden DUO-, UWV- en ROA-data voor iedereen, ook met login aan en ook met `ENABLE_DASHBOARDS=false`. De frontend haalde ze op zonder token.
 - Geen `Permissions-Policy`-header.
 
 **Nu (#636):**
 - De API-documentatie bestaat alleen waar ontwikkeld wordt: `Config.api_docs()` is waar voor `APP_ENV` `local`, `development` en `test` (#676; eerst hing het aan `POSTGRES_URI` én een `SESSION_SECRET` die geen omgeving zette). Op playground en productie geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
-- De vijf dashboard-eindpunten vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` een 403 (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
+- De dashboard-eindpunten (vier sinds #930 `/instroom` weghaalde) vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` een 403 (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
 - `Permissions-Policy` op elk antwoord, zie S3.
 - Al gedekt, geen wijziging: het printbericht van een rapport telt alleen als het van de app komt (`event.source === parent`, `PRINT_JS` in `frontend/src/reportHtml.js`; #634, zie S22).
 

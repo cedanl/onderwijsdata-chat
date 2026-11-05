@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import TabelScroll from '../../TabelScroll'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
-  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren,
+  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren, buildSectorTrendData,
   DashboardSources, BRONNEN_NATIONAAL, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
 
@@ -128,26 +128,19 @@ export function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
   )
 }
 
-function SectorTrendChart({ eigenSectoren, dark }) {
-  const chartData = useMemo(() => {
-    if (!eigenSectoren || Object.keys(eigenSectoren).length === 0) return null
-    const sectors = Object.keys(eigenSectoren)
-    const allJaren = [...new Set(sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(String)))].sort((a, b) => a.localeCompare(b, 'nl'))
-    if (allJaren.length < 2) return null
-    const kleuren = sectorKleuren(sectors)
-    return {
-      labels: allJaren,
-      datasets: sectors.map(s => ({
-        label: SECTOR_LABELS[s] || s,
-        data: allJaren.map(j => eigenSectoren[s][j] ?? eigenSectoren[s][Number(j)] ?? null),
-        borderColor: kleuren.get(s),
-        backgroundColor: kleuren.get(s) + '33',
-        borderWidth: 2,
-        tension: 0.3,
-        fill: false,
-      })),
-    }
-  }, [eigenSectoren])
+// De eigen sectoren als lijnen; de reeksen bouwt buildSectorTrendData van Mijn instelling, hier zonder vlakvulling.
+// Een eigen naam: SectorTrendChart in shared/ is de gestapelde grafiek van Mijn instelling (#907).
+export function buildEigenSectorenTrendData(eigenSectoren) {
+  const vlakken = buildSectorTrendData(eigenSectoren)
+  if (!vlakken) return null
+  return {
+    ...vlakken,
+    datasets: vlakken.datasets.map(d => ({ ...d, backgroundColor: d.borderColor + '33', borderWidth: 2, tension: 0.3, fill: false })),
+  }
+}
+
+function EigenSectorenTrendChart({ eigenSectoren, dark }) {
+  const chartData = useMemo(() => buildEigenSectorenTrendData(eigenSectoren), [eigenSectoren])
 
   if (!chartData) return null
   const { tick, grid, label } = darkColors(dark)
@@ -158,13 +151,6 @@ function SectorTrendChart({ eigenSectoren, dark }) {
           plugins: {
             legend: {
               display: true, position: 'top', labels: { color: label, boxWidth: 14 },
-              onClick: (e, legendItem, legend) => {
-                const index = legendItem.datasetIndex
-                const chart = legend.chart
-                const meta = chart.getDatasetMeta(index)
-                meta.hidden = !meta.hidden
-                chart.update()
-              },
             },
           },
           scales: {
@@ -176,7 +162,8 @@ function SectorTrendChart({ eigenSectoren, dark }) {
   )
 }
 
-function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
+// Een eigen naam: MarktaandeelChart in shared/ is de marktpositie per instelling in de regio (#907).
+function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, dark }) {
   const uitkomst = useMemo(
     () => buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk),
     [eigenSectoren, sectorenLandelijk],
@@ -217,14 +204,14 @@ export function InlineDashboardNationaal({ instelling }) {
         <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
 
         <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
-        <MarktaandeelChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} dark={dark} />
+        <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} dark={dark} />
         <OndergrensNoot reeksen={[
           ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
           ...sectorReeksen(data?.onderdrukt?.eigen_sectoren).map(r => ({ ...r, label: `Eigen ${r.label}` })),
         ]} />
 
         <SectionHeader title="Trend" subtitle="Ingeschrevenen per sector over tijd" />
-        <SectorTrendChart eigenSectoren={data?.eigen_sectoren} dark={dark} />
+        <EigenSectorenTrendChart eigenSectoren={data?.eigen_sectoren} dark={dark} />
 
         <SectionHeader title="Ranking" subtitle="Top instellingen naar totaal ingeschrevenen" />
         <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} populatie={populatie} dark={dark} />

@@ -83,13 +83,6 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
           plugins: {
             legend: {
               display: true, position: 'top', labels: { color: label, boxWidth: 14 },
-              onClick: (e, legendItem, legend) => {
-                const index = legendItem.datasetIndex
-                const chart = legend.chart
-                const meta = chart.getDatasetMeta(index)
-                meta.hidden = !meta.hidden
-                chart.update()
-              },
             },
             tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
           },

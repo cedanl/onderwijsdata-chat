@@ -19,7 +19,7 @@ function genderBalkLabel(g) {
   return `${pctVrouwFromGeslacht(g)}% vrouw — ${fmt(g.VROUW + g.MAN)} vrouw + man${onbekend}`
 }
 
-function buildTrendLineData(geslachtTrend) {
+export function buildTrendLineData(geslachtTrend) {
   if (!geslachtTrend || Object.keys(geslachtTrend).length < 2) return null
   const entries = Object.entries(geslachtTrend)
     .sort((a, b) => Number(a[0]) - Number(b[0]))
@@ -41,7 +41,7 @@ function buildTrendLineData(geslachtTrend) {
   }
 }
 
-function buildPeerGenderData(peersGeslacht, ownInstelling, ownPct, dark) {
+export function buildPeerGenderData(peersGeslacht, ownInstelling, ownPct, dark) {
   if (!peersGeslacht || Object.keys(peersGeslacht).length === 0) return null
   const rows = []
   if (ownPct != null) rows.push({ naam: ownInstelling, pct: ownPct, eigen: true })

@@ -95,7 +95,7 @@ async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]
 
 
 # Met login aan alleen voor een ingelogde gebruiker, en alleen als dashboards aan staan (#636): elke aanroep
-# laadt en rekent DUO- en CBS-data. Zonder login (lokaal) voor `gast`, zoals voorheen.
+# laadt en rekent DUO-, UWV- en ROA-data. Zonder login (lokaal) voor `gast`, zoals voorheen.
 _INGELOGD = [Depends(get_current_user)]
 
 
