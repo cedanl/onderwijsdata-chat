@@ -170,7 +170,8 @@ def test_de_key_komt_na_een_herstart_terug_door_het_recept(bron):
     assert store.get(key)["MboStudenten_1"].tolist() == [475460]
 
 
-def test_de_snippet_laadt_de_tabel_met_de_gepinde_codes():
+def test_de_snippet_laadt_de_tabel_met_de_gepinde_codes(gouden):
+    # De snippet vraagt de kolommen zoals de app, met de dimensies uit de bevroren definities (#945).
     script = snippet.generate(TOOL_GET_MAAT, {"maat": MBO_STUDENTEN_LANDELIJK, "vorm": "bbl"})
 
     assert script is not None and _DS in script and _BBL in script

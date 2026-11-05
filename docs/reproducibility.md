@@ -93,6 +93,8 @@ ondergrens: in die selectie vallen onderdrukte cellen (-1).
 
 Een snippet begint altijd met de echte laadstap van zijn bron (bron-ID, resource en filters) via het publieke pakket `onderwijsbronnen` (`onderwijsbronnen.cbs`, `.duo`, `.rio`, `.uwv`, `.roa`; tot #910 de pakketten `onderwijsdata` en `riodata`). Het gebruikt dus nooit iets dat alleen in de app bestaat. Voor DUO-data met een `STUDIEJAAR` voegt de snippet ook `STUDIEJAAR_LABEL` toe (2021 → 2021/2022), zoals de app dat doet.
 
+De laadstap is de aanroep die de app deed, niet de ruwe argumenten van het model (#945): bij DUO de index van het bestand dat de app koos (ook bij een bestandsnaam, een resource-ID, `"4"` of geen resource), de dataset-ID in de spelling van de catalogus (`duo:p01hoinges` en `P01HOINGES` worden `p01hoinges`), bij CBS de `$select` met de dimensies erbij en bij RIO de peildag. Het enige bedoelde verschil is de paginagrens van CBS: de app vraagt hoogstens een pagina rijen, de snippet de hele selectie, met bovenaan een opmerking als de app afkapte. `tests/test_snippet_equivalentie.py` bewaakt dit per tool: het zet de app-tool en de snippet aan het werk op dezelfde invoer, met een opnemer op de laders van `onderwijsbronnen`, en vergelijkt de aanroepen. Een nieuwe tool zonder zo'n geval maakt die test rood.
+
 Boven de code staan twee commentaarregels met de pakketversie waarmee de snippet is gemaakt (`onderwijsbronnen`, en de appversie als die bekend is) en een `pip install` die precies die code ophaalt (#714, #888). Het pakket staat in deze repo (`packages/`) en niet op PyPI, dus de regel installeert het uit een subdirectory van de publieke GitHub-spiegel, op de volledige commit waaruit de app is gebouwd:
 
 ```text

@@ -23,6 +23,7 @@ from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 from data import arbeidsmarkt, arbeidsmarktregio, roa_koppeling
 
 from . import (
+    cbs,
     cbs_selectie,
     cbs_standaard,
     geslacht_opleiding,
@@ -30,7 +31,6 @@ from . import (
     kaartlocaties,
     maten,
     regiolocaties,
-    scopeprofiel,
     store,
     wo_personeel,
 )
@@ -155,12 +155,12 @@ def _cbs_filters(args: dict) -> dict:
 
 
 def _cbs_laadregels(args: dict) -> list[str]:
+    # Dezelfde aanroep als de app (#945): `$select` met de dimensies, en de sectorselectie in de aanroep en op de rijen
+    # (CH-03), met de vo-rijen als de lading ze had (`vo_context` in het recept, #879). Alleen de paginagrens niet: de
+    # snippet laadt de hele selectie, en zegt het als de app afkapte.
     filters = _cbs_filters(args)
-    # Dezelfde sectorselectie als de app, in de aanroep en op de rijen (CH-03), met de vo-rijen als de lading ze had
-    # (`vo_context` in het recept, #879).
-    selectie = scopeprofiel.cbs_sectorselectie(args["dataset_id"], filters, vo_context=bool(args.get("vo_context")))
-    if isinstance(selectie, scopeprofiel.CbsSectorselectie):
-        filters = selectie.params
+    aanroep = cbs.bronparams(args["dataset_id"], filters, vo_context=bool(args.get("vo_context")))
+    filters, selectie = aanroep if not isinstance(aanroep, str) else (filters, None)
     extra = f", **{filters!r}" if filters else ""
     regels = [
         "import pandas as pd",
@@ -168,7 +168,7 @@ def _cbs_laadregels(args: dict) -> list[str]:
         "",
         f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))",
     ]
-    if isinstance(selectie, scopeprofiel.CbsSectorselectie):
+    if selectie:
         rijen = f"df = df[df[{selectie.dimensie!r}].str.strip().isin({sorted(selectie.codes)!r})]"
         regels.append(f"{rijen}  # alleen {selectie.deel}")
     return regels
@@ -868,19 +868,25 @@ def _bewerkingsregels(result: str | None) -> list[str]:
     return [f"# {r}" for r in regels]
 
 
-def _resultaatmeta(result: str | None):
-    """De metadata van de key die een toolresponse noemt; None zonder."""
+def _resultaatkey(result: str | None) -> str | None:
+    """De key die een toolresponse noemt; None zonder."""
     try:
         data = json.loads(result) if result else None
     except ValueError:
         return None
-    return store.meta(data["data_key"]) if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
+    return data["data_key"] if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
 
 
-def _laadde_vo_rijen(result: str | None) -> bool:
-    """Laadde deze get_cbs_data-stap de vo-rijen van een tabel over meer onderwijssoorten (#879)?"""
-    known = _resultaatmeta(result)
-    return bool(known and known.vo_context)
+def _resultaatmeta(result: str | None):
+    """De metadata van de key die een toolresponse noemt; None zonder."""
+    return store.meta(key) if (key := _resultaatkey(result)) else None
+
+
+def _geladen_key(tool_name: str, result: str | None) -> str | None:
+    """De key die deze laadstap in de store zette, als de store zijn laadaanroep kent; anders None."""
+    key = _resultaatkey(result)
+    known = store.meta(key) if key else None
+    return key if known and known.laad and known.laad[0] == tool_name else None
 
 
 def generate(tool_name: str, args: dict, result: str | None = None, recept_van: Receptbron | None = None) -> str | None:
@@ -888,6 +894,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     gen = _GENERATORS.get(tool_name)
     if gen is None:
         return None
+    if isinstance(key := args.get("data_key"), str):
+        # De key zoals tools.dispatch hem opzocht: `DUO:P01HOINGES:1` is `duo:p01hoinges:1` (#331, #945).
+        args = {**args, "data_key": store.canoniek(key)}
     if tool_name == TOOL_CREATE_CHOROPLETH_MAP and args.get("level", "auto") == "auto":
         # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
         args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
@@ -899,10 +908,13 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
         if (keuze := _wo_personeel_keuze(result)) is None:
             return None
         args = keuze
-    if tool_name == TOOL_GET_CBS_DATA and _laadde_vo_rijen(result):
-        # De poort van de beurt, niet het model, liet de vo-rijen toe (#879): dat staat in de lading, niet in de args.
-        args = {**args, "vo_context": True}
-    snippet = gen(args, recept_van=recept_van)
+    if tool_name in _LAADREGELS and (key := _geladen_key(tool_name, result)):
+        # Een laadstap laadt wat de app laadde, uit de laadaanroep in de store, niet uit de ruwe argumenten van het
+        # model (#945): de index achter een bestandsnaam of het standaardbestand, de dataset-ID in de spelling van de
+        # catalogus, de peildag van RIO (#718) en de vo-rijen die de poort van de beurt toeliet (#879).
+        snippet = "\n".join([*_laadregels(key), "print(df)"])
+    else:
+        snippet = gen(args, recept_van=recept_van)
     if not snippet:
         return snippet
     # De versiekop staat boven de code, onder de databewerking: die blijft het eerste wat een lezer ziet (#4).

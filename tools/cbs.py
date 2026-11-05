@@ -414,13 +414,15 @@ def _alternatief(dataset_id: str, selectie: dict, standaard, col_defs) -> _Alter
     return _Alternatief(*gecompileerd)
 
 
-def _haal(dataset_id: str, filters: dict | None, vo_context: bool) -> _Opgehaald | str:
-    """Eén aanroep naar de bron met de scopegrens ervoor en erna (CH-03); een tekst is de weigering of de bronfout.
-    `vo_context` laat bij een tabel over meer onderwijssoorten ook de vo-codes toe (#879)."""
+def bronparams(
+    dataset_id: str, filters: dict | None, vo_context: bool
+) -> tuple[dict, scopeprofiel.CbsSectorselectie | None] | str:
+    """De parameters van de aanroep naar CBS voor deze filters, met de sectorselectie als de tabel er een heeft; een
+    tekst is de weigering. De app (`_haal`, met de paginagrens erbij) en de snippet bouwen hun aanroep hiermee, zodat ze
+    dezelfde kolommen en rijen vragen (#945)."""
     params = dict(filters or {})
-    if "$top" not in params:
-        params["$top"] = CBS_ROW_LIMIT
     if "$select" in params:
+        # Een $select zonder de dimensies geeft rijen die niet van elkaar te onderscheiden zijn (#162).
         col_defs = _load_definitions(dataset_id) or {}
         if fout := _onbekende_select(params["$select"], col_defs):
             return fout
@@ -429,8 +431,16 @@ def _haal(dataset_id: str, filters: dict | None, vo_context: bool) -> _Opgehaald
     sectorselectie = scopeprofiel.cbs_sectorselectie(dataset_id, params, vo_context=vo_context)
     if isinstance(sectorselectie, str):
         return sectorselectie
-    if sectorselectie:
-        params = sectorselectie.params
+    return (sectorselectie.params if sectorselectie else params), sectorselectie
+
+
+def _haal(dataset_id: str, filters: dict | None, vo_context: bool) -> _Opgehaald | str:
+    """Eén aanroep naar de bron met de scopegrens ervoor en erna (CH-03); een tekst is de weigering of de bronfout.
+    `vo_context` laat bij een tabel over meer onderwijssoorten ook de vo-codes toe (#879)."""
+    aanroep = bronparams(dataset_id, {"$top": CBS_ROW_LIMIT, **(filters or {})}, vo_context)
+    if isinstance(aanroep, str):
+        return aanroep
+    params, sectorselectie = aanroep
     try:
         opgehaald = haal_op_met_retry("CBS", lambda: data(dataset_id, **params))
     except Exception as e:
