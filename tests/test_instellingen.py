@@ -445,12 +445,16 @@ def test_dashboard_nationaal_ho():
 
 
 def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
+    from riodata import duo
+
     from data.dashboard import load_dashboard_nationaal
 
     ins = _duo_ho("p01hoinges", "AANTAL_INGESCHREVENEN")
     result = load_dashboard_nationaal(_HU)
 
-    landelijk = ins.groupby(["ONDERDEEL", "STUDIEJAAR"])["AANTAL_INGESCHREVENEN"].sum()
+    # De sectortotalen lopen over de hogescholen, het type van HU (#950): de namen uit de hbo-resource.
+    hogescholen = ins[ins[_INST].isin(set(duo.load("p01hoinges", 0)[_INST]))]
+    landelijk = hogescholen.groupby(["ONDERDEEL", "STUDIEJAAR"])["AANTAL_INGESCHREVENEN"].sum()
     verwacht_landelijk: dict[str, dict[int, int]] = {}
     for (onderdeel, jaar), waarde in landelijk.items():
         verwacht_landelijk.setdefault(onderdeel, {})[int(jaar)] = int(waarde)
@@ -458,10 +462,8 @@ def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
     assert result["sectoren_landelijk"] == verwacht_landelijk
     assert result["laatste_jaar"] == 2025
 
-    # De ranking loopt over de hogescholen: de namen uit de hbo-resource (#928), ook HvA met haar paar wo-studenten.
-    from riodata import duo
-
-    laatste = ins[(ins["STUDIEJAAR"] == 2025) & ins[_INST].isin(set(duo.load("p01hoinges", 0)[_INST]))]
+    # De ranking loopt ook over de hogescholen (#928), met HvA en haar paar wo-studenten.
+    laatste = hogescholen[hogescholen["STUDIEJAAR"] == 2025]
     per_inst = laatste.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
     assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan het regiodashboard
     alle = result["alle_instellingen"]

@@ -122,6 +122,14 @@ decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callback
   tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
+- **Match als staafgrafiek** (#949): vanaf acht sectoren met een score (`MATCH_GRAFIEK_VANAF` in
+  `shared/charts-arbeidsmarkt.jsx`) staat de match niet als tegels maar als liggende staafgrafiek "Match per sector";
+  onder de acht blijven het tegels. De staaf is `match_verhouding`: per sector het vacature-aandeel gedeeld door het
+  diploma-aandeel, op twee decimalen (`_match_verhoudingen`; `null` zonder label of zonder gediplomeerden). Stippellijnen
+  staan op `drempel` (daarboven schaarste) en 1 / `drempel` (daaronder overaanbod), getekend door de inline-plugin
+  `DREMPELLIJNEN` (`shared/chart-opts.js`); een noot onder de grafiek noemt beide drempels in tekst. Er is één reeks per
+  label, zodat legenda en waardentabel het label in woorden geven en de kleur niet de enige drager is. Een payload
+  zonder `match_verhouding` krijgt de tegels.
 
 ### Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
 
@@ -173,8 +181,14 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   paar wo-studenten (HvA, Hanze, BUas staan ook in de wo-resource van `p01hoinges`) blijft een hogeschool en telt
   met al haar studenten. `populatie` noemt type en aantal in de ranking (`{"soort": "wo", "n": 18}`),
   `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector; de pagina
-  toont "4e van 9 wo". De landelijke sectortotalen (`sectoren_landelijk`, het marktaandeel) blijven over alle
-  instellingen van het niveau.
+  toont "4e van 9 wo".
+- **Marktaandeel** op Landelijk is per type (#950): de landelijke sectortotalen (`sectoren_landelijk`, de noemer) lopen
+  over de instellingen van het eigen type, met het type uit het register zoals bij de ranking. Een universiteit heeft
+  zo een aandeel in alle wo-studenten van een sector, een hogeschool in alle hbo-studenten (een hogeschool met een paar
+  wo-studenten telt met al haar studenten bij de hogescholen). Titel, ondertitel, reeksnaam en tooltip noemen die
+  populatie ("aandeel van alle wo-studenten in Recht"), net als `landelijk.definitie` ("de som van DUO p01hoinges over
+  alle universiteiten"). Het mbo was al type-zuiver: het bestand kent alleen mbo-instellingen. Tot #950 was de noemer
+  alle hbo- plus wo-studenten.
 - **Groei** op Mijn instelling loopt voor elke instelling vanaf hetzelfde startjaar (het laatste van de eerste jaren
   met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
   de kop.
@@ -188,8 +202,8 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
 De peers zijn de andere instellingen van hetzelfde type (#926): een hogeschool vergelijkt met hogescholen, een
 universiteit met universiteiten, een mbo-instelling met mbo-instellingen. Het type komt uit het register
 (`data/instellingen.py`), de regio van instelling en peers uit hetzelfde DUO-adres (`get_adres_lookup`). De regio
-verbreedt in vaste treden tot er ten minste twee andere instellingen van het type in zitten (`_MIN_PEERS`; een
-gemiddelde over één andere instelling is die instelling):
+verbreedt in vaste treden tot er ten minste drie andere instellingen van het type in zitten (`_MIN_PEERS`; een
+gemiddelde over één andere instelling is die instelling, over twee nog erg smal; tot #948 was de drempel twee):
 
 1. de arbeidsmarktregio van de instelling;
 2. haar provincie;
@@ -201,15 +215,19 @@ gemiddelde over één andere instelling is die instelling):
 legenda: "hogescholen in provincie Noord-Brabant") en `label`, de kop van de kerncijfers met regio, aantal en
 terugval:
 
-- "Arbeidsmarktregio Midden-Utrecht, 2 andere hogescholen"
+- "Arbeidsmarktregio Rijnmond, 5 andere mbo-instellingen"
 - "Provincie Noord-Brabant, 5 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
 - "Landelijk, 17 andere universiteiten — te weinig universiteiten in provincie Noord-Brabant (1 andere)"
 
 Het aantal in het label is `n_instellingen`, het aantal peers achter het gemiddelde in het laatste jaar. Tot #926
 stonden hogescholen en universiteiten samen in één regio (Breda: vijf hogescholen en twee universiteiten in
 Noord-Brabant) en vergeleek elke universiteit stil landelijk; een hogeschool zonder andere ho-instelling in haar
-provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio nu een paar kleine instellingen
-bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek.
+provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio een paar kleine instellingen
+bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek. Met
+drie andere haalt zij ook de drempel van #948; die drempel telt instellingen, niet hun omvang.
+
+Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / landelijk: hbo 20 / 12 / 4 bij drempel
+twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
 
 ### Regio, provincie en afdrukken
 

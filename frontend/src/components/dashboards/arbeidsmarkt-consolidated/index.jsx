@@ -7,37 +7,45 @@ import {
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
   DashboardSources, bronnenVan, bronBadge, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst, fmt,
+  MatchVerhoudingChart, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF,
 } from '../shared/index'
 
 // Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
 // -bronnen daarvan horen bij mijn instelling.
 const REGIO_BRONNEN = ['UWV', 'ROA']
 
-// Tekst, dus 4,5:1 in beide thema's (#905): evenwicht #16A34A haalde op wit 3,3:1. Het woord staat er ook.
-const MATCH_OORDEEL = { schaarste: 'slecht', overaanbod: 'neutraal', evenwicht: 'goed' }
-const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
+function MatchTegels({ entries, dark }) {
+  return (
+    <div className="kpi-grid">
+      {entries.map(([sector, score]) => (
+        <div key={sector} className="kpi-card">
+          <div className="kpi-label">{SECTOR_LABELS[sector] || sector}</div>
+          <div className="kpi-value" style={{ color: MATCH_OORDEEL[score] ? oordeelKleur(MATCH_OORDEEL[score], dark) : 'inherit', fontSize: '1rem' }}>
+            {MATCH_LABELS[score] || score}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // De labels zijn een indicatie op een momentopname (#900): daarom de banner met de peildatum erboven en eronder wat
-// de drie labels betekenen, met de drempel, de jaren en de herkomst van de sectorindeling uit de payload.
-export function MatchScoreSection({ matchScore, duiding, dark }) {
+// de drie labels betekenen, met de drempel, de jaren en de herkomst van de sectorindeling uit de payload. Vanaf
+// MATCH_GRAFIEK_VANAF sectoren staat de match als staafgrafiek van `match_verhouding` met de drempels als lijn (#949);
+// zonder verhoudingen (een oudere payload) blijven het tegels.
+export function MatchScoreSection({ matchScore, verhouding, duiding, dark }) {
   if (!matchScore) return null
   const entries = Object.entries(matchScore).filter(([, v]) => v != null)
   if (entries.length === 0) return null
   const zonderScore = Object.keys(matchScore).filter(s => matchScore[s] == null).map(s => SECTOR_LABELS[s] || s)
+  const alsGrafiek = entries.length >= MATCH_GRAFIEK_VANAF && entries.some(([s]) => typeof verhouding?.[s] === 'number')
   return (
     <>
       <SectionHeader title="Match score" subtitle="Indicatie per sector: aandeel in de vacatures tegenover aandeel in de gediplomeerden" />
       {duiding && <MomentopnameBanner peildatum={duiding.vacatures_peildatum} />}
-      <div className="kpi-grid">
-        {entries.map(([sector, score]) => (
-          <div key={sector} className="kpi-card">
-            <div className="kpi-label">{SECTOR_LABELS[sector] || sector}</div>
-            <div className="kpi-value" style={{ color: MATCH_OORDEEL[score] ? oordeelKleur(MATCH_OORDEEL[score], dark) : 'inherit', fontSize: '1rem' }}>
-              {MATCH_LABELS[score] || score}
-            </div>
-          </div>
-        ))}
-      </div>
+      {alsGrafiek
+        ? <MatchVerhoudingChart matchScore={matchScore} verhouding={verhouding} drempel={duiding?.drempel} dark={dark} />
+        : <MatchTegels entries={entries} dark={dark} />}
       <WeggelatenNoot namen={zonderScore} reden="geen beroepenclusters in de sectorindeling" />
       <MatchDuiding duiding={duiding} />
     </>
@@ -123,7 +131,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <RegioBadges instelling={instelling} provincie={plaats?.provincie} herkomst={plaats?.provincie_herkomst} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} vacatures bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
-        <MatchScoreSection matchScore={matchData?.match_score} duiding={matchData?.match_duiding} dark={dark} />
+        <MatchScoreSection matchScore={matchData?.match_score} verhouding={matchData?.match_verhouding} duiding={matchData?.match_duiding} dark={dark} />
 
         <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart

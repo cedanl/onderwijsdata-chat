@@ -271,7 +271,8 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 # provincie naar landelijk, tot er ten minste _MIN_PEERS andere instellingen van hetzelfde type in zitten; de trede die
 # afviel, staat met reden in het label. Instelling en peers krijgen hun regio van dezelfde regel: het DUO-adres.
 
-_MIN_PEERS = 2  # een gemiddelde over één andere instelling is die instelling
+# Een gemiddelde over één andere instelling is die instelling, over twee nog erg smal: daarom ten minste drie (#948).
+_MIN_PEERS = 3
 _TREDEN = ("arbeidsmarktregio", "provincie")  # van smal naar breed; daarna landelijk
 _ONDERWIJSTYPEN = {"ho": ("hbo", "wo"), "mbo": ("mbo",)}
 # Het type van een instelling als zelfstandig naamwoord: enkelvoud, meervoud.
@@ -1210,15 +1211,16 @@ _LANDELIJK = {
 }
 
 
-def _landelijk_definitie(sector: str) -> dict[str, str]:
-    """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven."""
+def _landelijk_definitie(sector: str, soort: str) -> dict[str, str]:
+    """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven. De som loopt over de
+    instellingen van `soort`, het type van de eigen instelling (#950)."""
     bron = _LANDELIJK[sector]
     return {
         "maat": "duo_som_per_instelling",
         **bron,
         "definitie": (
-            f"de som van DUO {bron['dataset']} over alle instellingen; onderdrukte cellen tellen niet mee, dus een "
-            "totaal kan een ondergrens zijn"
+            f"de som van DUO {bron['dataset']} over alle {_SOORTNAAM[soort][1]}; onderdrukte cellen tellen niet mee, "
+            "dus een totaal kan een ondergrens zijn"
         ),
         "verschil_met_chat": (
             f"De chat geeft het landelijke aantal uit de CBS-tabel {bron['chat_dataset']}. "
@@ -1232,10 +1234,11 @@ def _nationaal_cijfers(
 ) -> dict:
     """Landelijke sectortotalen, eigen sectoren, ranking en positie per sector: één berekening voor ho en mbo.
 
-    `kol` noemt de kolommen: instelling, sector, jaar, waarde en soort (hbo, wo of mbo). De sectortotalen lopen over
-    alle instellingen; de ranking en de posities alleen over de instellingen van `soort`, het type van de eigen
-    instelling (#928): een universiteit staat naast universiteiten. `populatie` noemt dat type en het aantal in de
-    ranking, `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector.
+    `kol` noemt de kolommen: instelling, sector, jaar, waarde en soort (hbo, wo of mbo). Sectortotalen, ranking en
+    posities lopen alleen over de instellingen van `soort`, het type van de eigen instelling: een universiteit staat
+    naast universiteiten (#928), en haar marktaandeel is haar aandeel in alle wo-studenten van de sector (#950).
+    `populatie` noemt dat type en het aantal in de ranking, `positie_populatie` per sector het aantal instellingen van
+    dat type met ingeschrevenen in die sector.
 
     Een som over lege cellen is een ondergrens en staat in `onderdrukt`; een positie waarin een onderdrukte cel
     meetelt, staat er ook in, want die kan verschuiven (#902). Een sector waarin de instelling in het laatste jaar geen
@@ -1243,11 +1246,12 @@ def _nationaal_cijfers(
     """
     inst_col, sector_col, jaar_col, waarde_col = kol["instelling"], kol["sector"], kol["jaar"], kol["waarde"]
     uit: dict = {}
-    for sleutel, bron in (("sectoren_landelijk", df), ("eigen_sectoren", eigen)):
+    van_soort = df[df[kol["soort"]] == soort]
+    for sleutel, bron in (("sectoren_landelijk", van_soort), ("eigen_sectoren", eigen)):
         uit[sleutel], leeg = _genest(bron, sector_col, jaar_col, waarde_col)
         _met_onderdrukt(uit, sleutel, leeg)
 
-    laatste = df[(df[jaar_col] == laatste_jaar) & (df[kol["soort"]] == soort)]
+    laatste = van_soort[van_soort[jaar_col] == laatste_jaar]
     per_inst = _som(laatste, inst_col, waarde_col).dropna().sort_values(ascending=False, kind="stable")
     leeg_inst = _leeg(laatste, inst_col, waarde_col)
     uit["alle_instellingen"] = [
@@ -1300,7 +1304,7 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     result["type"] = "ho"
     laatste_jaar = int(hu["STUDIEJAAR"].max())
     result["laatste_jaar"] = laatste_jaar
-    result["landelijk"] = _landelijk_definitie("ho")
+    result["landelijk"] = _landelijk_definitie("ho", soort)
 
     kol = {
         "instelling": inst_col,
@@ -1337,7 +1341,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     result["type"] = "mbo"
     laatste_jaar = int(df_mbo["JAAR"].max())
     result["laatste_jaar"] = laatste_jaar
-    result["landelijk"] = _landelijk_definitie("mbo")
+    result["landelijk"] = _landelijk_definitie("mbo", "mbo")
 
     kol = {"instelling": inst_col_mbo, "sector": "LEERWEG", "jaar": "JAAR", "waarde": "AANTAL", "soort": _SOORT}
     result.update(_nationaal_cijfers(_mbo_per_leerweg(df_mbo), _mbo_per_leerweg(rows), kol, laatste_jaar, "mbo"))
@@ -1657,7 +1661,9 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     gps_final = result.get("gediplomeerden_per_sector", {})
     result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
 
-    result["match_score"] = _match_scores(gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    match = (gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    result["match_score"] = _match_scores(*match)
+    result["match_verhouding"] = _match_verhoudingen(*match)
     result["match_duiding"] = _match_duiding(
         provincie, diplomajaren, vacatures_geladen=bool(result["vacatures_per_sector"]), roa_geladen=bool(roa_raw)
     )
@@ -1711,10 +1717,10 @@ def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:
     return "evenwicht"
 
 
-def _match_scores(
+def _match_aandelen(
     gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
-) -> dict[str, str | None]:
-    """Per sector het diploma-aandeel tegenover het vacature-aandeel.
+) -> dict[str, tuple[float, float] | None]:
+    """Per sector (diploma-aandeel, vacature-aandeel).
 
     De vacatures per sector zijn gewogen (#455), dus hun som is het totaal en tellen beide aandelen
     op tot 1. Een sector zonder clusters in de mapping krijgt None, net als elke sector zonder vacatures.
@@ -1724,8 +1730,24 @@ def _match_scores(
     if not totaal_dipl or not totaal_vac:
         return dict.fromkeys(gps)
     return {
-        sector: _match_label(n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac)
-        if scm.get(sector)
-        else None
+        sector: (n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac) if scm.get(sector) else None
         for sector, n in gps.items()
     }
+
+
+def _match_scores(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, str | None]:
+    """Per sector het label van _match_label; None waar _match_aandelen geen aandelen heeft."""
+    aandelen = _match_aandelen(gps, vacatures_per_sector, scm)
+    return {sector: _match_label(*a) if a else None for sector, a in aandelen.items()}
+
+
+def _match_verhoudingen(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, float | None]:
+    """Per sector het vacature-aandeel gedeeld door het diploma-aandeel, op twee decimalen: de lengte van de staaf in
+    de staafgrafiek van de match (#949). Boven _MATCH_DREMPEL is het schaarste, onder 1 / _MATCH_DREMPEL overaanbod.
+    None waar er geen aandelen zijn, of geen gediplomeerden (een deling door 0)."""
+    aandelen = _match_aandelen(gps, vacatures_per_sector, scm)
+    return {sector: round(a[1] / a[0], 2) if a and a[0] else None for sector, a in aandelen.items()}

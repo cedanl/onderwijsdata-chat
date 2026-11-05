@@ -94,6 +94,32 @@ def test_match_scores_sector_zonder_clusters_is_none():
 @pytest.mark.parametrize("vacatures", [{}, {"TECHNIEK": 0, "ECONOMIE": 0}])
 def test_match_scores_zonder_vacatures_is_alles_none(vacatures):
     assert dashboard._match_scores(_GPS, vacatures, _DEELKAART) == {"TECHNIEK": None, "ECONOMIE": None}
+    assert dashboard._match_verhoudingen(_GPS, vacatures, _DEELKAART) == {"TECHNIEK": None, "ECONOMIE": None}
+
+
+def test_match_verhouding_is_vacature_aandeel_gedeeld_door_diploma_aandeel():
+    # #949: de lengte van de staaf. TECHNIEK 0,2 / 0,76 = 0,26 (overaanbod, onder 1 / 1,2); ECONOMIE 0,8 / 0,19 = 4,2
+    # (schaarste, boven 1,2); ONDERWIJS heeft geen clusters en dus geen verhouding, net als geen label.
+    gps = {"TECHNIEK": 80, "ECONOMIE": 20, "ONDERWIJS": 5}
+    vacatures = {"TECHNIEK": 200, "ECONOMIE": 800}
+    scm = {**_DEELKAART, "ONDERWIJS": []}
+
+    verhouding = dashboard._match_verhoudingen(gps, vacatures, scm)
+    scores = dashboard._match_scores(gps, vacatures, scm)
+
+    assert verhouding == {"TECHNIEK": 0.26, "ECONOMIE": 4.2, "ONDERWIJS": None}
+    assert scores == {"TECHNIEK": "overaanbod", "ECONOMIE": "schaarste", "ONDERWIJS": None}
+    drempel = dashboard._MATCH_DREMPEL
+    assert (techniek := verhouding["TECHNIEK"]) is not None and techniek < 1 / drempel
+    assert (economie := verhouding["ECONOMIE"]) is not None and economie > drempel
+
+
+def test_match_verhouding_zonder_gediplomeerden_in_een_sector_is_none():
+    verhouding = dashboard._match_verhoudingen(
+        {"TECHNIEK": 0, "ECONOMIE": 20}, {"TECHNIEK": 5, "ECONOMIE": 5}, _DEELKAART
+    )
+
+    assert verhouding == {"TECHNIEK": None, "ECONOMIE": 0.5}
 
 
 def test_arbeidsmarktmatch_geeft_de_gewogen_telling_per_sector(gedeelde_clusters):

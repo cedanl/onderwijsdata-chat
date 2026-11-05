@@ -11,7 +11,7 @@ export { DemografieKpis, InstroomKpis, DiplomeringKpis, JaarNoot, eerstejaarsNoo
 export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, POPULATIE_NATIONAAL, ROA_AIS, ROA_SIS, bronnenVan, bronBadge, roaPeilmoment } from './shell'
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'
 export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendChart, InstroomRatioChart, buildMarktaandeelData, buildGroeiRankingData, MarktaandeelChart, GroeiRankingChart } from './charts-markt'
-export { RoaSection, PrognoseSection, UwvSection } from './charts-arbeidsmarkt'
+export { RoaSection, PrognoseSection, UwvSection, MatchVerhoudingChart, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF } from './charts-arbeidsmarkt'
 export { MomentopnameBanner, MatchDuiding, peildatumTekst, uwvBron, jarenTekst } from './momentopname'
 export { buildSectorTrendData, buildLeerwegenData, SectorTrendChart, HoofdgroepenChart, LeerwegenChart, LEERWEGEN_MBO } from './charts-sector'
 export { buildRendementVergelijkingData, RendementVergelijkingChart } from './charts-rendement'
