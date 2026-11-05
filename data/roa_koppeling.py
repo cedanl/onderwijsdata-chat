@@ -21,6 +21,12 @@ anders bij de sector erboven onder dezelfde voorwaarde; anders is het ongekoppel
 Een opleidingstype krijgt een onderdeel alleen onder dezelfde voorwaarde (alleen Recht). De gemeten uitloop staat in de
 toelichting en gaat mee in het toolresultaat. Opleidingsnamen koppelen we niet: daar is geen bron voor, en raden
 doen we niet.
+
+Waarom 20% (besluit 05-11, #745). De gemeten uitloop valt in twee groepen: gekoppeld 0-11% (het hoogst: Gedrag en
+maatschappij-master, Landbouw-bachelor en Recht op type), niet gekoppeld vanaf 23% (Natuur, en Economie-bachelor op
+subsector). Elke drempel tussen 12% en 22% geeft dus dezelfde tabel. Ruimer koppelt Natuur aan 'landbouw, wiskunde en
+natuurwetenschappen', terwijl de uitloop informatica en AI is, een andere arbeidsmarkt; en de uitloop is een
+ondergrens. Komt er bij een nieuwe meting een onderdeel tussen 12% en 22% uit, dan is dat een nieuw besluit.
 """
 
 from __future__ import annotations
