@@ -12,6 +12,13 @@ export function pctVrouwFromGeslacht(g) {
   return t > 0 ? Math.round((g.VROUW / t) * 1000) / 10 : null
 }
 
+// Het label van een genderbalk: het aandeel vrouw en zijn noemer, vrouw + man. Studenten met geslacht onbekend tellen
+// niet mee; zijn ze er, dan noemt het label ze, want "totaal" was hier vrouw + man zonder hen (#931).
+function genderBalkLabel(g) {
+  const onbekend = g.ONBEKEND > 0 ? ` (${fmt(g.ONBEKEND)} onbekend)` : ''
+  return `${pctVrouwFromGeslacht(g)}% vrouw — ${fmt(g.VROUW + g.MAN)} vrouw + man${onbekend}`
+}
+
 function buildTrendLineData(geslachtTrend) {
   if (!geslachtTrend || Object.keys(geslachtTrend).length < 2) return null
   const entries = Object.entries(geslachtTrend)
@@ -176,14 +183,13 @@ export function GenderSection({ data, instelling, dark }) {
             {Object.entries(geslachtPerSector)
               .sort((a, b) => (b[1].VROUW + b[1].MAN) - (a[1].VROUW + a[1].MAN))
               .map(([sector, g]) => {
-                const t = g.VROUW + g.MAN
-                if (t <= 0) return null
-                const pv = Math.round((g.VROUW / t) * 1000) / 10
+                const pv = pctVrouwFromGeslacht(g)
+                if (pv == null) return null
                 return (
                   <div key={sector}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--muted-text)', marginBottom: 3 }}>
                       <span>{sector}</span>
-                      <span>{pv}% vrouw — {fmt(t)} totaal</span>
+                      <span>{genderBalkLabel(g)}</span>
                     </div>
                     <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 14 }}>
                       <div style={{ width: `${pv}%`, background: 'var(--teal-600)' }} />
