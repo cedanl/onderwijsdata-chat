@@ -81,8 +81,10 @@ BESTANDEN: dict[tuple[str, int], tuple[str, set[str]] | None] = {
     ("instromende-mbo-studenten", 8): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 9): ("INSTELLINGSCODE", MBO_DASHBOARD),
     # Het opleidingsaanbod per onderwijslocatie (#744): alleen de locaties in Doetinchem en Lochem, de twee plaatsen van
-    # Graafschap College (24ZZ, Doetinchem) en Zone.college (31JC, Lochem, met 22 opleidingen in Doetinchem).
-    ("mbo_opleidingsaanbod", 0): ("PLAATSNAAM", {"Doetinchem", "Lochem"}),
+    # Graafschap College (24ZZ, Doetinchem) en Zone.college (31JC, Lochem, met 22 opleidingen in Doetinchem); Hardenberg
+    # (Overijssel: ROC van Twente, Alfa-college en Zone.college) voor de provincie, en Velp, een woonplaatsnaam in twee
+    # gemeenten (Rheden en Land van Cuijk).
+    ("mbo_opleidingsaanbod", 0): ("PLAATSNAAM", {"Doetinchem", "Lochem", "Hardenberg", "Velp"}),
 }
 
 

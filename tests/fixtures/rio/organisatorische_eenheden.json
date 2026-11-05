@@ -1,0 +1,323 @@
+{
+ "_bron": "RIO LOD API v3, /erkenningen/{brin}/organisatorische-eenheden?datumGeldigOp=2026-11-05, opgehaald 05-11-2026; per eenheid de velden code, type, naam, inbedrijfdatum en uitbedrijfdatum (#744).",
+ "24ZZ": [
+  {
+   "code": "100A352",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Graafschap College, Techniek & Informatica",
+   "inbedrijfdatum": "2019-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A354",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Graafschap College, Zorg, Welzijn & Sport",
+   "inbedrijfdatum": "2019-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A355",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Graafschap College, Educatie & Participatie",
+   "inbedrijfdatum": "2018-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A689",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Graafschap College, Economie & Dienstverlening",
+   "inbedrijfdatum": "2019-08-01",
+   "uitbedrijfdatum": null
+  }
+ ],
+ "31JC": [
+  {
+   "code": "100A932",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Zone.college mbo",
+   "inbedrijfdatum": "2019-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A933",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Zone.college vmbo",
+   "inbedrijfdatum": "2018-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "110A638",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Zone.college",
+   "inbedrijfdatum": "1900-01-01",
+   "uitbedrijfdatum": null
+  }
+ ],
+ "25LF": [
+  {
+   "code": "100A002",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Vakschool Wageningen",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A200",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "CIOS & Veiligheid",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A201",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Creatieve Industrie",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A202",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Economie & Uiterlijke Verzorging",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A203",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Techniek & ICT",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A204",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Entree & Maatwerk",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A205",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Zorg & Welzijn",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A332",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Team VAVO ISK",
+   "inbedrijfdatum": "2019-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "114A929",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Economie, Uiterlijke Verzorging, CIOS & Veiligheid",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "114A931",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Rijn IJssel Zorg & Welzijn",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "114A932",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Techniek, ICT & KansRIJk",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "114A933",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Creatieve Industrie & Vakschool Wageningen",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "114A934",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Educatie",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  }
+ ],
+ "27YU": [
+  {
+   "code": "100A045",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "College voor Zakelijke dienstverlening & Veiligheid",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A067",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Hospitality & Wellness",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A068",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Commercie & Ondernemen",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A069",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Creatieve industrie & ICT",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A070",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Mens & Gezondheid",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A071",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Onderwijs, Sport & Welzijn",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A073",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Bouw & Vervoer",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A074",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Technologie",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A076",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, College voor Loopbaanontwikkeling & Participatie",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "100A262",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC van Twente, VAVO Lyceum van Twente",
+   "inbedrijfdatum": "2004-08-01",
+   "uitbedrijfdatum": null
+  }
+ ],
+ "25LU": [
+  {
+   "code": "101A201",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Sport en Bewegen & Veiligheid Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A202",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Business, Design & IT Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A214",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Techniek, Bouw & Interieur Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A215",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Beroepsopleidingen Hoogeveen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A216",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Beroepsopleidingen Hardenberg",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A217",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college voor Zorg, Welzijn & Dienstverlening Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A218",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college VAVO Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A220",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college Inburgering Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A221",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college Participatie Hoogeveen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A222",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college Participatie Groningen",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "101A223",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Alfa-college Educatie Hardenberg",
+   "inbedrijfdatum": "1996-10-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "115A302",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Team Participatie VOLT",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  },
+  {
+   "code": "115A303",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "Team Inburgering VOLT",
+   "inbedrijfdatum": "2000-01-01",
+   "uitbedrijfdatum": null
+  }
+ ],
+ "25PM": [
+  {
+   "code": "100A663",
+   "type": "ONDERWIJSAANBIEDER",
+   "naam": "ROC A12",
+   "inbedrijfdatum": "2002-01-21",
+   "uitbedrijfdatum": null
+  }
+ ]
+}

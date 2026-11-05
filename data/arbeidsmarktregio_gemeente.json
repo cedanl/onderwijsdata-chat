@@ -3,7 +3,8 @@
     "tabel": "86247NED",
     "titel": "Gebieden in Nederland 2026",
     "url": "https://opendata.cbs.nl/statline/#/CBS/nl/dataset/86247NED",
-    "opgehaald": "2026-10-09"
+    "opgehaald": "2026-11-05",
+    "kolom": "Naam_5"
   },
   "gemeenten": {
     "0014": "Groningen",

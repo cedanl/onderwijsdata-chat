@@ -26,6 +26,7 @@ from . import (
     kleine_aantallen,
     optelbaar,
     periode,
+    regiolocaties,
     store,
 )
 from .canoniek import parse_filter_key
@@ -112,9 +113,15 @@ def _lezing(col: str, gelezen: dict[str, str]) -> str:
     )
 
 
-def _apply_filters(df, filters: dict, known=None):
-    """(gefilterd, fout, lezingen): de lezingen zeggen welke code zonder voorloopnul is gelezen (#542)."""
+def _apply_filters(df, filters: dict, known=None, per_instelling: bool = False):
+    """(gefilterd, fout, lezingen, verbreed): de lezingen zeggen welke code zonder voorloopnul is gelezen (#542);
+    verbreed per regiofilter (kolom, waarden, codes) de instellingen die er via een onderwijslocatie bij kwamen (#744).
+
+    Alleen als het resultaat per instelling blijft (`per_instelling`) komen die instellingen erbij: in een totaal over
+    instellingen heen zouden ze met al hun studenten meetellen. Daar blijft het filter op de hoofdvestiging, met een
+    lezing die zegt wie er niet in zit."""
     lezingen: list[str] = []
+    verbreed: list[tuple[str, list, frozenset[str]]] = []
     for key, val in filters.items():
         col, op = parse_filter_key(key)
 
@@ -123,23 +130,42 @@ def _apply_filters(df, filters: dict, known=None):
                 None,
                 f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}{_resource_hint(known, col)}",
                 [],
+                [],
             )
         if op not in _SUPPORTED_OPS:
-            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in.", []
+            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in.", [], []
 
         series = df[col]
 
         if op in ("eq", "in"):
-            masker, gelezen = _codemasker(series, val if isinstance(val, list) else [val])
+            waarden = val if isinstance(val, list) else [val]
+            masker, gelezen = _codemasker(series, waarden)
             if gelezen:
                 lezingen.append(_lezing(col, gelezen))
+            if (erbij := regiolocaties.erbij(df, col, waarden, masker, known)) and per_instelling:
+                masker = masker | df[regiolocaties.CODEKOLOM].astype(str).str.strip().isin(erbij)
+                verbreed.append((col, waarden, erbij))
+            elif erbij:
+                lezingen.append(regiolocaties.niet_in_totaal(col, waarden, len(erbij)))
             df = df[masker]
         elif op == "gte":
             df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] >= _coerce_pair(v, t)[1])]
         elif op == "lte":
             df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] <= _coerce_pair(v, t)[1])]
 
-    return df, None, lezingen
+    return df, None, lezingen, verbreed
+
+
+def _per_instelling(group_by: list[str] | None, aggregate: dict | None) -> bool:
+    """Blijft het resultaat per instelling: geen aggregatie, of een groepering op de instelling (#744)?"""
+    return not aggregate or bool(set(group_by or ()) & {"INSTELLINGSCODE", "INSTELLINGSNAAM"})
+
+
+def _nevenlocaties(df: pd.DataFrame, verbreed: list[tuple[str, list, frozenset[str]]]) -> tuple:
+    """Wie alleen via een onderwijslocatie in de selectie `df` kwam, per regiofilter (#744)."""
+    return tuple(
+        n for kolom, waarden, codes in verbreed for n in regiolocaties.nevenlocaties(df, kolom, waarden, codes)
+    )
 
 
 def _validate_aggregation(df, group_by, aggregate):
@@ -461,6 +487,7 @@ def query_data(
         return store.ONVOLLEDIG
 
     lezingen: list[str] = []
+    nevenlocaties: tuple = ()
     if filters:
         # Schooljaarspelling eerst naar de spelling van de data; buiten het vocabulaire weigeren (#342).
         # De tellogregels voeden de reparatie-/weigeringsgraad van #347; periodewaarden zijn
@@ -473,15 +500,22 @@ def query_data(
             anders = [naam for naam in filters if hersteld.get(naam) != filters[naam]]
             logger.info("PERIODE_HERSTEL key=%s kolommen=%s", data_key, anders)
         filters = hersteld
-        gefilterd, err, lezingen = _apply_filters(df, filters, known)
+        gefilterd, err, lezingen, verbreed = _apply_filters(
+            df, filters, known, per_instelling=_per_instelling(group_by, aggregate)
+        )
         if err:
             return err
         if len(gefilterd) == 0:
             return _leeg_resultaat(data_key, complete, df, filters)
         df = gefilterd
+        nevenlocaties = _nevenlocaties(df, verbreed)
 
     # Wat de selectie bevat, vóór kolomkeuze en aggregatie (#187, #143).
     gedekt = dekking.van(df, known)
+    if nevenlocaties:
+        # De vaste regel van #744: in de toolresponse voor het model, op de selectie voor het Telling-blok.
+        gedekt["nevenlocaties"] = tuple(dict.fromkeys((*gedekt["nevenlocaties"], *nevenlocaties)))
+        lezingen += regiolocaties.regels(nevenlocaties)
     labels = _instellingslabels(df, known, gedekt)
     if err := _kolomfout(data_key, df, columns, group_by, aggregate):
         return err

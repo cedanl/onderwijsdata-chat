@@ -7,6 +7,7 @@ from collections.abc import Callable, Generator, Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from core import actualiteit
 from core.config import STORE_MAX_MB
@@ -14,6 +15,9 @@ from core.sentinels import lege_cellen, mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
 from .catalog import bronetiketten
+
+if TYPE_CHECKING:
+    from .regiolocaties import Nevenlocatie
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +118,10 @@ class KeyMeta:
     # DUO telt de jaren vóór de fusie bij de huidige instelling. Vastgelegd bij het afleiden (dekking.van), en zo ook
     # geërfd door een som of grafiek op deze selectie. Herkomst, geen identiteit.
     fusies: tuple[str, ...] = field(default=(), compare=False)
+    # De instellingen die alleen via een onderwijslocatie in het gefilterde gebied in deze selectie kwamen (#744): de
+    # vaste regel onder het antwoord en de snippet lezen ze hier. Geërfd zolang de instelling in de selectie staat
+    # (dekking.van). Herkomst, geen identiteit.
+    nevenlocaties: "tuple[Nevenlocatie, ...]" = field(default=(), compare=False)
 
 
 def _bytes(value) -> int:

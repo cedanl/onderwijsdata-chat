@@ -286,8 +286,9 @@ RIO is een HATEOAS-API. De valkuil is duizenden records ophalen om een UUID te v
 alle = fetch("organisatorische-eenheden")
 uuid = next(i["id"] for i in alle if "ROC" in i.get("naam", ""))
 
-# GOED: direct filteren via BRIN-code
-aanbod = fetch("aangeboden-opleidingen", organisatorischeEenheidcode="25LH")
+# GOED: direct filteren via de code van de onderwijsaanbieder (7 tekens, geen BRIN: "25LH" geeft HTTP 400)
+aanbod = fetch("aangeboden-opleidingen", organisatorischeEenheidcode="100A932")
+# Van BRIN naar aanbieders: onderwijsaanbieders("31JC") → ['100A932', '100A933', '110A638']
 ```
 
 ### Regel 2 — Beschikbare filters per resource
@@ -295,7 +296,7 @@ aanbod = fetch("aangeboden-opleidingen", organisatorischeEenheidcode="25LH")
 | Resource | Nuttige filters |
 |---|---|
 | `organisatorische-eenheden` | `organisatorischeEenheidType` (`ONDERWIJSINSTELLING` / `ONDERWIJSBESTUUR` / `ONDERWIJSAANBIEDER`) |
-| `aangeboden-opleidingen` | `organisatorischeEenheidcode` (BRIN), `onderwijslocatieId`, `type`, `opleidingseenheidcode` |
+| `aangeboden-opleidingen` | `organisatorischeEenheidcode` (aanbieder, bijv. `100A932`), `onderwijslocatieId`, `type`, `opleidingseenheidcode` |
 | `onderwijslocatiegebruiken` | `onderwijslocatieId`, `onderwijsbestuurId` |
 | `onderwijslocaties` | `aangebodenOpleidingId` |
 | `erkenningen` | `volledigeNaam`, `plaatsnaam`, `erkenningtype` |

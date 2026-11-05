@@ -20,7 +20,7 @@ import json
 
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
-from data import arbeidsmarkt, roa_koppeling
+from data import arbeidsmarkt, arbeidsmarktregio, roa_koppeling
 
 from . import (
     cbs_selectie,
@@ -29,6 +29,7 @@ from . import (
     instellingsprovincie,
     kaartlocaties,
     maten,
+    regiolocaties,
     scopeprofiel,
     store,
 )
@@ -87,21 +88,43 @@ def _duo_laadregels(args: dict) -> list[str]:
         # De app voegt dit label toe (#115); analysecode mag het gebruiken.
         'if "STUDIEJAAR" in df.columns:',
         f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")',
-        *_provincieregels(args["dataset_id"]),
+        *_instellingsregioregels(args["dataset_id"]),
     ]
 
 
-def _provincieregels(dataset_id: str) -> list[str]:
-    """De provincie van de instelling, zoals de app hem bij deze mbo-bestanden toevoegt (#453)."""
+def _instellingsregioregels(dataset_id: str) -> list[str]:
+    """De provincie en de arbeidsmarktregio van de instelling, zoals de app ze bij deze mbo-bestanden toevoegt (#453,
+    #744): de provincie uit DUO's adressenbestand, de regio uit de gemeente en dezelfde CBS-indeling als de app."""
     if dataset_id not in instellingsprovincie.DATASETS:
         return []
-    kolom, (adressen, resource) = instellingsprovincie.KOLOM, instellingsprovincie.ADRESBESTAND
+    kolom, regiokolom = instellingsprovincie.KOLOM, instellingsprovincie.REGIOKOLOM
+    gemeentekolom, (adressen, resource) = instellingsprovincie.GEMEENTEKOLOM, instellingsprovincie.ADRESBESTAND
+    indeling = arbeidsmarktregio.bron()
     return [
-        f"# De app voegt {kolom} toe uit DUO's adressenbestand; een code zonder adres blijft leeg.",
-        f'if "INSTELLINGSCODE" in df.columns and "{kolom}" not in df.columns:',
-        f"    adressen = duo.load({_lit(adressen)}, {resource}).dropna(subset=['PROVINCIE'])",
-        "    provincie = dict(zip(adressen['INSTELLINGSCODE'].astype(str).str.strip(), adressen['PROVINCIE']))",
-        f'    df["{kolom}"] = df["INSTELLINGSCODE"].astype(str).str.strip().map(provincie)',
+        f"# De app voegt {kolom} en {regiokolom} toe uit DUO's adressenbestand; een code zonder adres blijft leeg.",
+        f"adressen = duo.load({_lit(adressen)}, {resource})",
+        "_code = dict(zip(adressen['INSTELLINGSCODE'].astype(str).str.strip(), adressen.index))",
+        'if "INSTELLINGSCODE" in df.columns:',
+        "    _rij = df['INSTELLINGSCODE'].astype(str).str.strip().map(_code)",
+        f'    if "{kolom}" not in df.columns:',
+        f"        df[\"{kolom}\"] = _rij.map(adressen['PROVINCIE'])",
+        f'    if "{regiokolom}" not in df.columns:',
+        f"        # De arbeidsmarktregio van de gemeente: CBS {indeling['tabel']} ({indeling['titel']}).",
+        "        from onderwijsdata import data",
+        "",
+        f"        _indeling = pd.DataFrame(data({_lit(indeling['tabel'])}))",
+        "        _regio = dict(zip(_indeling['RegioS'].str.strip().str.removeprefix('GM'), "
+        f"_indeling[{_lit(indeling['kolom'])}].str.strip()))",
+        "",
+        "        def _gemeentecode(waarde):",
+        "            try:",
+        "                return f'{int(str(waarde).strip()):04d}'",
+        "            except ValueError:",
+        "                return None",
+        "",
+        f'        _gemeente = df["{gemeentekolom}"] if "{gemeentekolom}" in df.columns '
+        "else _rij.map(adressen['GEMEENTENUMMER'])",
+        f'        df["{regiokolom}"] = _gemeente.map(lambda g: _regio.get(_gemeentecode(g)))',
     ]
 
 
@@ -265,7 +288,7 @@ def _afgeleide_regels(data_key: str) -> list[str]:
     return []
 
 
-def _stapregels(recept: object, recept_van: Receptbron | None, stappen: int) -> list[str] | None:
+def _stapregels(recept: object, recept_van: Receptbron | None, stappen: int, known=None) -> list[str] | None:
     """De stappen van de aanroep die deze key opleverde: eerst de ouder, dan deze stap (#624).
 
     Uit het recept dat de sessie bijhoudt (#472), niet uit de argumenten van de huidige
@@ -279,7 +302,7 @@ def _stapregels(recept: object, recept_van: Receptbron | None, stappen: int) -> 
         return None
     ouder = recept.get("afgeleid_van")
     if tool == TOOL_QUERY_DATA and isinstance(ouder, str):
-        return [*_laadregels(ouder, recept_van, stappen + 1), *_query_stappen(args)]
+        return [*_laadregels(ouder, recept_van, stappen + 1), *_query_stappen(_met_locatiecodes(args, known))]
     if tool == TOOL_RUN_ANALYSIS and isinstance(ouder, str) and isinstance(code := args.get("code"), str):
         # Het script staat alleen in het geheugen van de sessie (agent.recepten.van_session), nooit in de database.
         ouderregels = _laadregels(ouder, recept_van, stappen + 1)
@@ -331,9 +354,9 @@ def _rio_zonder_peildag(laad: tuple[str, dict], known) -> list[str]:
 def _laadregels(data_key: str, recept_van: Receptbron | None = None, stappen: int = 0) -> list[str]:
     """Regels die `df` zetten voor een key, zonder `store`."""
     recept = recept_van(data_key) if recept_van else None
-    if (stap := _stapregels(recept, recept_van, stappen)) is not None:
-        return stap
     known = store.meta(data_key)
+    if (stap := _stapregels(recept, recept_van, stappen, known)) is not None:
+        return stap
     if known and known.afgeleid_van:
         if inline := _afgeleide_regels(data_key):
             return inline
@@ -417,11 +440,33 @@ def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
     return lines
 
 
+def _met_locatiecodes(args: dict, known) -> dict:
+    """De argumenten met de instellingen die de app via een onderwijslocatie meenam (#744): die staan niet in de
+    aanroep van het model maar op de selectie die hij opleverde."""
+    codes = regiolocaties.locatiecodes(known.nevenlocaties) if known else {}
+    return {**args, "locatiecodes": codes} if codes else args
+
+
+def _regiofilterregels(key: str, val, codes: list[str]) -> list[str]:
+    """Een regiofilter zoals de app het toepast: de kolom, of een onderwijslocatie in het gebied (#744)."""
+    return [
+        "_voor = df",
+        _filterregel(key, val),
+        "# De app neemt ook de instellingen mee met een onderwijslocatie in het gebied (RIO en mbo_opleidingsaanbod).",
+        f"df = _voor[_voor.index.isin(df.index) | _voor['{regiolocaties.CODEKOLOM}'].astype(str).str.strip()"
+        f".isin({codes!r})]",
+    ]
+
+
 def _query_stappen(args: dict) -> list[str]:
     """De selectie van query_data op een bestaande `df`: filters, kolommen en aggregatie (#227, #624)."""
     lines: list[str] = []
+    locatiecodes = args.get("locatiecodes") or {}
     for key, val in (args.get("filters") or {}).items():
-        if parse_filter_key(key)[1] in ("eq", "in", *_VERGELIJKING):
+        kolom, op = parse_filter_key(key)
+        if op in ("eq", "in") and (codes := locatiecodes.get(kolom)):
+            lines += _regiofilterregels(key, val, codes)
+        elif op in ("eq", "in", *_VERGELIJKING):
             lines.append(_filterregel(key, val))
     if columns := args.get("columns"):
         lines.append(f"df = df[{columns!r}]")
@@ -749,13 +794,18 @@ def _bewerkingsregels(result: str | None) -> list[str]:
     return [f"# {r}" for r in regels]
 
 
-def _laadde_vo_rijen(result: str | None) -> bool:
-    """Laadde deze get_cbs_data-stap de vo-rijen van een tabel over meer onderwijssoorten (#879)?"""
+def _resultaatmeta(result: str | None):
+    """De metadata van de key die een toolresponse noemt; None zonder."""
     try:
         data = json.loads(result) if result else None
     except ValueError:
-        return False
-    known = store.meta(data["data_key"]) if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
+        return None
+    return store.meta(data["data_key"]) if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
+
+
+def _laadde_vo_rijen(result: str | None) -> bool:
+    """Laadde deze get_cbs_data-stap de vo-rijen van een tabel over meer onderwijssoorten (#879)?"""
+    known = _resultaatmeta(result)
     return bool(known and known.vo_context)
 
 
@@ -767,6 +817,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     if tool_name == TOOL_CREATE_CHOROPLETH_MAP and args.get("level", "auto") == "auto":
         # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
         args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
+    if tool_name == TOOL_QUERY_DATA:
+        # De instellingen die de app via een onderwijslocatie meenam (#744), van de selectie die de stap opleverde.
+        args = _met_locatiecodes(args, _resultaatmeta(result))
     if tool_name == TOOL_GET_CBS_DATA and _laadde_vo_rijen(result):
         # De poort van de beurt, niet het model, liet de vo-rijen toe (#879): dat staat in de lading, niet in de args.
         args = {**args, "vo_context": True}

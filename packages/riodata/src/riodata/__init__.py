@@ -10,6 +10,7 @@ from . import duo, roa, uwv, inspectie, sbb, crebo
 from . import _catalog
 from . import contract
 from .overgangen import Stap, opvolgers, voorgangers
+from .aanbieders import onderwijsaanbieders
 from ._resolutie import AmbigueResource, ResourceNietGevonden
 from ._filtercontract import filtercontract, typewaarden, valideer_filters
 
@@ -93,4 +94,4 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
     )
 
 
-__all__ = ["fetch", "get", "related", "catalog", "filtercontract", "typewaarden", "valideer_filters", "duo", "roa", "uwv", "inspectie", "sbb", "crebo", "contract", "opvolgers", "voorgangers", "Stap", "AmbigueResource", "ResourceNietGevonden", "__version__"]
+__all__ = ["fetch", "get", "related", "catalog", "filtercontract", "typewaarden", "valideer_filters", "duo", "roa", "uwv", "inspectie", "sbb", "crebo", "contract", "opvolgers", "voorgangers", "Stap", "onderwijsaanbieders", "AmbigueResource", "ResourceNietGevonden", "__version__"]

@@ -105,6 +105,21 @@ def geen_fusieopvraging(monkeypatch):
     fusies._voorgangers.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def geen_locatieopvraging(monkeypatch):
+    """Unittests laden het mbo-aanbod per locatie niet en vragen RIO niet om aanbieders (#744): geen locaties.
+
+    Elk filter op de plaats, gemeente of provincie van een mbo-instelling zoekt ze op (`tools/regiolocaties.py`);
+    `tests/test_regiolocaties.py` patcht zelf."""
+    from tools import regiolocaties
+
+    monkeypatch.setattr(
+        regiolocaties, "_laad_aanbod", lambda: pd.DataFrame(columns=["ONDERWIJSAANBIEDERID", "PLAATSNAAM"])
+    )
+    monkeypatch.setattr(regiolocaties, "onderwijsaanbieders", lambda brin, peildatum=None: [])
+    regiolocaties.wis_caches()
+
+
 @pytest.fixture
 def duo_fixtures(monkeypatch):
     """`duo.load` leest de bevroren DUO-bestanden van `scripts/duo_testfixtures.py`, niet onderwijsdata.duo.nl (#766).

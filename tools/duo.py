@@ -53,8 +53,8 @@ def column_definitions(columns: list[str], dataset_id: str) -> dict[str, str]:
         defs[periode.STUDIEJAAR_LABEL] = _STUDIEJAAR_LABEL_DEFINITIE
     if "OPLEIDINGSVORM" in columns and dataset_id in OPLEIDINGSVORM_DATASETS:
         defs.setdefault("OPLEIDINGSVORM", _OPLEIDINGSVORM_DEFINITIE)
-    if instellingsprovincie.KOLOM in columns and dataset_id in instellingsprovincie.DATASETS:
-        defs[instellingsprovincie.KOLOM] = instellingsprovincie.DEFINITIE
+    if dataset_id in instellingsprovincie.DATASETS:
+        defs |= {k: d for k, d in instellingsprovincie.DEFINITIES.items() if k in columns}
     return defs
 
 
@@ -390,7 +390,7 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
             )
         try:
             geladen = duo_laden.laad(dataset_id, resource)
-            df = instellingsprovincie.met_provincie(periode.met_studiejaarlabel(geladen), dataset_id)
+            df = instellingsprovincie.met_regio(periode.met_studiejaarlabel(geladen), dataset_id)
         except Exception as e:
             hint = _andere_bestanden(dataset_id, bestanden, resource)
             return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")

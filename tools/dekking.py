@@ -2,7 +2,8 @@
 
 query_data en run_analysis leggen dit vast vóór kolomkeuze of aggregatie: daarna
 kan de periode- of instellingskolom weg zijn terwijl de selectie er wel op staat.
-Dat geldt ook voor de fusies binnen de reeks: zonder instellingskolom zijn ze niet meer te zien.
+Dat geldt ook voor de fusies binnen de reeks: zonder instellingskolom zijn ze niet meer te zien, en voor de
+instellingen die alleen via een onderwijslocatie in de selectie kwamen (#744).
 """
 
 import pandas as pd
@@ -20,10 +21,20 @@ def _fusies(df: pd.DataFrame, known: KeyMeta, instellingen: tuple[str, ...] | No
     return fusies.in_reeks({code: namen.get(code, code) for code in instellingen}, jaren)
 
 
+def _nevenlocaties(known: KeyMeta, instellingen: tuple[str, ...] | None) -> tuple:
+    """De nevenlocaties van de ouder die nog in de selectie staan; zonder instellingskolom (een som) allemaal."""
+    return tuple(n for n in known.nevenlocaties if instellingen is None or n.code in instellingen)
+
+
 def van(df: pd.DataFrame, known: KeyMeta | None) -> dict:
-    """Overschrijvingen voor store.derive(): de schooljaren, instellingen en fusies in `df`."""
+    """Overschrijvingen voor store.derive(): de schooljaren, instellingen, fusies en nevenlocaties in `df`."""
     if known is None:
         return {}
     jaren = periode.dekking(df, known.bron, known.periodekolom)
     instellingen = instelling.dekking(df, known.instellingskolom)
-    return {"schooljaren": jaren, "instellingen": instellingen, "fusies": _fusies(df, known, instellingen, jaren)}
+    return {
+        "schooljaren": jaren,
+        "instellingen": instellingen,
+        "fusies": _fusies(df, known, instellingen, jaren),
+        "nevenlocaties": _nevenlocaties(known, instellingen),
+    }
