@@ -38,6 +38,12 @@ jobs:
 
   deploy:
     needs: build
+    # Eén Pages-deployment tegelijk. Zonder groep startte een tweede merge een nieuwe deployment terwijl de vorige
+    # nog liep; die bleef op `updating_pages` staan tot de time-out (run 41863914966, 04-11). Niet annuleren:
+    # de lopende deployment maakt af, de volgende wacht.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
