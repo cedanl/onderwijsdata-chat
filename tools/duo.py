@@ -307,6 +307,17 @@ class MeerdereResources(ValueError):
     """Een resourcenaam past op meer dan één bestand; kiezen is aan de aanroeper (#382)."""
 
 
+def cijferresource(resource: int | str) -> int | str:
+    """Een resource als tekst-getal ("4") is de index 4; al het andere blijft zoals gegeven.
+
+    riodata leest een tekst nooit als index (`_resolutie.kies`), dus wie "4" doorgeeft, zoekt een
+    bestandsnaam met "4" erin. De app en de snippet zetten het daarom allebei hier om (#944).
+    """
+    if isinstance(resource, str) and resource.strip().isdigit():
+        return int(resource)
+    return resource
+
+
 def _resource_index(dataset_id: str, resource: int | str) -> int | str:
     """The resource as its index, so one file has one store key however it is named (#21).
 
@@ -316,8 +327,8 @@ def _resource_index(dataset_id: str, resource: int | str) -> int | str:
     en geeft nu MeerdereResources. Onbekende namen blijven zoals gegeven, zodat de bron
     zelf de fout meldt.
     """
-    if isinstance(resource, int) or resource.strip().isdigit():
-        return int(resource)
+    if isinstance(resource := cijferresource(resource), int):
+        return resource
     try:
         bestanden = _duo.resources(dataset_id)
     except Exception:
