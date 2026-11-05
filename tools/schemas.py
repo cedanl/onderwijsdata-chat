@@ -30,6 +30,7 @@ TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 TOOL_GET_ACCREDITATIE = "get_accreditatie"
 TOOL_GET_COLLEGEGELD = "get_collegegeld"
 TOOL_GET_WO_PERSONEEL = "get_wo_personeel"
+TOOL_GET_BESTUURSFINANCIEN = "get_bestuursfinancien"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -309,6 +310,35 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["instelling"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_BESTUURSFINANCIEN,
+            "description": (
+                "De financiële positie van het bestuur (bevoegd gezag) van een mbo-, hbo- of wo-instelling, uit DUO's "
+                "financiële verantwoording (XBRL): solvabiliteit I en II, liquiditeit, rentabiliteit en het totaal "
+                "van de rijksbijdragen per verslagjaar, met de variant, het gewogen sectorcijfer van de Inspectie, de "
+                "signaleringswaarden van de Inspectie en vaste voorbehouden. Gebruik dit bij een vraag naar de "
+                "financiën, financiële positie, solvabiliteit, liquiditeit, reserves of rijksbijdrage van een "
+                "instelling of bestuur. Alle getallen, verschillen en signaleringen komen uit de code: reken niets "
+                "zelf. Het cijfer geldt voor het hele bestuur en zegt niets over de kwaliteit van het onderwijs. "
+                "Besturen in po of vo staan er niet in."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling_of_bestuur": {
+                        "type": "string",
+                        "description": (
+                            "Officiële naam, alias of instellingscode van de instelling uit het register, of het "
+                            "bestuursnummer (bijv. '40597')."
+                        ),
+                    },
+                },
+                "required": ["instelling_of_bestuur"],
             },
         },
     },

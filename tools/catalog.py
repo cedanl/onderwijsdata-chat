@@ -19,7 +19,7 @@ from core.logging_util import foutkenmerk, tekst_kenmerk
 from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
 from .bron_ids import bron_id
 from .definitie import met_voorbeeldstatus
-from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
+from .schemas import TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,11 @@ CHAT_BRONNEN = ("CBS", "DUO", "RIO")
 # is één bestand achter get_wo_personeel en een vlag. Zoeken, details en tellingen kennen het niet, net als
 # `onderwijsbronnen.catalog(source="all")`.
 _TOOLBRONNEN = ("unl",)
-_EIGEN_TOOL = {"uwv-open-match-data": TOOL_GET_UWV_VACATURES, "ais2030": TOOL_GET_ROA_BENCHMARK}
+_EIGEN_TOOL = {
+    "uwv-open-match-data": TOOL_GET_UWV_VACATURES,
+    "ais2030": TOOL_GET_ROA_BENCHMARK,
+    "financien": TOOL_GET_BESTUURSFINANCIEN,  # DUO's verantwoording uit XBRL, geen CKAN-dataset (#935)
+}
 
 # Vindbaar, package-leesbaar en chat-opvraagbaar zijn drie statussen (#356). Elke zoekhit en elk
 # detailrecord zegt welke; de chat beslist, de package meldt alleen wat ze kan lezen.
@@ -98,6 +102,11 @@ _ALLEEN_DOCUMENTATIE = {
         "geen cijfers uit op te halen. Zoek de dataset met de data zelf."
     ),
 }
+
+
+def eigen_tool(dataset_id: str) -> str | None:
+    """De tool die deze dataset ophaalt als het geen datatool is (UWV, ROA, DUO-financiën); None anders."""
+    return _EIGEN_TOOL.get(dataset_id)
 
 
 def _via_chat(entry: dict) -> bool:

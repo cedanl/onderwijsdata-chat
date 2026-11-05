@@ -501,6 +501,16 @@
       }
     },
     {
+      "label": "bestuursfinancien-mbo",
+      "message": "Hoe staat ROC Midden Nederland er financieel voor?",
+      "description": "#935: kengetallen per verslagjaar met variant, het gewogen sectorcijfer en de signaleringswaarden van de Inspectie, en de vaste voorbehouden (get_bestuursfinancien); alleen waar de licentie het toelaat (test)",
+      "expected": {
+        "must_contain_tools": ["get_bestuursfinancien"],
+        "max_search_catalog": 1,
+        "must_mention": ["solvabiliteit", "0,69", "sector", "signaleringswaarde", "bestuur", "kwaliteit", "verslagjaar|2025"]
+      }
+    },
+    {
       "label": "inspectie-oordeel-hbo",
       "message": "Wat is het inspectieoordeel van Hogeschool Utrecht?",
       "description": "#749: de Inspectie geeft het hoger onderwijs geen oordeel per bestuur; dat is de NVAO",

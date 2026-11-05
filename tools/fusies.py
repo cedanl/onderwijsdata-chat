@@ -10,6 +10,10 @@ Twee plekken waar een fusie stil een antwoord kleurde:
   vo of so (Morgen College, vmbo, in Landstede) telt niet mee in een mbo- of ho-reeks van DUO en staat er niet in
   (#937); was dat de enige voorganger binnen de reeks, dan komt er geen regel.
 
+- DUO's verantwoording uit XBRL rekent juist niet om: een voorgangend bestuur houdt eigen rijen tot zijn laatste
+  verslagjaar, en de reeks van het opvolgende bestuur maakt een sprong. `bestuur_in_reeks` geeft die regel bij
+  get_bestuursfinancien (#935), met dezelfde RIO-overgangen tussen besturen.
+
 De voorgangers per code komen uit RIO en staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in
 de cache; een storing geeft geen regel en een WARNING, en breekt het antwoord niet.
 """
@@ -17,6 +21,7 @@ de cache; een storing geeft geen regel en een WARNING, en breekt het antwoord ni
 import logging
 from datetime import date
 
+from onderwijsbronnen import Bestuurssleutel
 from onderwijsbronnen.rio import Stap, voorgangers
 
 from core import actualiteit
@@ -108,4 +113,41 @@ def in_reeks(namen: dict[str, str], schooljaren: tuple[int, ...] | None) -> tupl
             continue
         if binnen := [s for s in stappen if begin < s.datum <= eind and not wet_buiten_scope(s.wet)]:
             regels.append(_regel(code, namen[code], binnen))
+    return tuple(regels)
+
+
+def bestuur_in_reeks(
+    nummer: int, naam: str, verslagjaren: tuple[int, int], besturen: dict[int, tuple[str, int]]
+) -> tuple[str, ...]:
+    """De vaste regel bij een bestuursfusie binnen de verslagjaren van DUO's verantwoording uit XBRL (#935).
+
+    XBRL rekent niet om naar het huidige bestuur, anders dan DUO's studentbestanden: een voorganger houdt eigen rijen
+    tot zijn laatste verslagjaar, en de reeks van het bestuur maakt in het jaar van de fusie een sprong. `besturen` zijn
+    de besturen in de verantwoording (nummer → naam en laatste verslagjaar). Alleen een voorganger die daar zelf staat,
+    telt: dat is ook de typecontrole op de RIO-code (`00009` is in RIO de A&O groep, niet een bestuur; #725) en het
+    laat een voorganger uit po of vo weg (#937). Een storing bij RIO geeft geen regel en een WARNING.
+    """
+    eerste, laatste = verslagjaren
+    if eerste >= laatste:
+        return ()
+    begin, eind = f"{eerste}-01-01", f"{laatste}-12-31"
+    code = Bestuurssleutel(nummer).rio_code
+    try:
+        stappen = _voorgangers(code, begin)
+    except Exception as e:  # een storing bij RIO breekt het antwoord niet: geen regel
+        logger.warning("FUSIES_ONBEKEND bestuur=%s fout=%s", code, type(e).__name__)
+        return ()
+    regels = []
+    for stap in stappen:
+        voorganger = Bestuurssleutel.parse(stap.code)
+        if not (begin < stap.datum <= eind) or voorganger is None or voorganger.nummer not in besturen:
+            continue
+        voor_naam, tot = besturen[voorganger.nummer]
+        regels.append(
+            f"Fusie bij {naam} ({code}): {voor_naam} ({stap.code}) is per {nl_datum(stap.datum)} in dit bestuur "
+            f"opgegaan ({_OVERGANG.get(stap.overgang, stap.overgang)}). DUO's verantwoording rekent niet om: tot en "
+            f"met verslagjaar {tot} staat {voor_naam} apart in de bron, daarna zitten de cijfers in die van dit "
+            "bestuur. Een sprong rond de fusie is geen gewone groei of krimp; zeg dat. Koppel deze cijfers niet aan "
+            "DUO-studentaantallen van vóór de fusie: die rekenen wel om naar het huidige bestuur."
+        )
     return tuple(regels)

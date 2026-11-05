@@ -13,11 +13,12 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import collegegeld, inspectie, inspectie_vo, mbo_indicatoren, store, wo_personeel
+from tools import collegegeld, financien, inspectie, inspectie_vo, mbo_indicatoren, store, wo_personeel
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_COLLEGEGELD,
     TOOL_GET_INSPECTIEOORDEEL,
     TOOL_GET_INSPECTIEOORDEEL_VO,
@@ -106,7 +107,8 @@ def _registerbron(tool: str, result: str) -> list[Bronregel]:
 
 
 # Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749), de vo-oordelen met het etiket van de
-# vo-context (#881), de mbo-indicatoren van DUO (#727) en de tabel met het wettelijk collegegeld uit de wettekst (#729).
+# vo-context (#881), de mbo-indicatoren van DUO (#727), de tabel met het wettelijk collegegeld uit de wettekst (#729) en
+# de financiële verantwoording van DUO per bestuur (#935).
 _BESTANDSBRONNEN = {
     TOOL_GET_INSPECTIEOORDEEL: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie.BRONTITEL}",
     TOOL_GET_INSPECTIEOORDEEL_VO: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie_vo.BRONTITEL}, {VO_CONTEXT_DEEL}",
@@ -114,6 +116,7 @@ _BESTANDSBRONNEN = {
     TOOL_GET_COLLEGEGELD: f"{collegegeld.BRONNAAM}{SCHEIDING}{collegegeld.BRONTITEL}",
     # De vaste bronregel komt uit de tool zelf (`bron.regel`), met de GEZO-variant erin (#936).
     TOOL_GET_WO_PERSONEEL: f"{wo_personeel.BRONNAAM}{SCHEIDING}{wo_personeel.BRONTITEL}",
+    TOOL_GET_BESTUURSFINANCIEN: f"{financien.BRONNAAM}{SCHEIDING}{financien.BRONTITEL}",
 }
 # Welke velden van `bron` in de bronregel komen, en met welk woord ervoor.
 _BRONVELDEN = {"editie": "editie", "peildatum": "peildatum", "versie": "versie van", "opgehaald": "opgehaald op"}

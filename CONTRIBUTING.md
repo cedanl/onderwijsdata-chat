@@ -80,6 +80,9 @@ hebben gouden tests met verwachte getallen in `tests/test_gouden_*.py`, op bevro
 `tests/fixtures/gouden/` (fixture `gouden`; #870). `bronnen.json` noemt per bestand de
 bron en de ophaaldatum. Ververs ze met `uv run python scripts/gouden_testfixtures.py` en reken de verwachte waarden
 daarna opnieuw na met pandas op de nieuwe bestanden (de berekening staat bij elke test).
+`get_bestuursfinancien` rekent in het pakket (`onderwijsbronnen.duo.financien`); zijn tests draaien op synthetische
+xlsx-bestanden en eenheden (`packages/onderwijsbronnen/tests/test_financien.py`, `tests/test_financien.py`, #935), met de
+snippet als equivalentietest.
 
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de

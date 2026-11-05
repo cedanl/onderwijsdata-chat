@@ -5,7 +5,7 @@ Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit acht bronnen, 
 - **CBS** — StatLine-tabellen over onderwijs via de OData API (`onderwijsbronnen.cbs`, zie [CBS.md](CBS.md))
 
 - **RIO LOD API v3** — dagelijks bijgewerkt register van instellingen en opleidingen (14 resources, waarvan 3 alleen als sub-resource) (`onderwijsbronnen.rio`)
-- **DUO Open Data** — 56 datasets via [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) (CKAN API) (`onderwijsbronnen.duo`)
+- **DUO Open Data** — 57 datasets: 56 via [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) (CKAN API) en de financiële verantwoording uit XBRL per bestuur (`onderwijsbronnen.duo`, `duo.financien`)
 - **ROA** — arbeidsmarktprognoses (2 datasets) (`onderwijsbronnen.roa`)
 - **UWV** — Open Match Data (1 dataset) (`onderwijsbronnen.uwv`)
 - **Inspectie van het Onderwijs** — open data (2 datasets) (`onderwijsbronnen.inspectie`)
@@ -122,6 +122,23 @@ df.attrs["bron"]["etag"]           # ETag van de download
 duo.resource_schemas("p01hoinges")
 ```
 
+### Financiën per bestuur (verantwoording uit XBRL)
+
+DUO's financiële verantwoording staat niet in CKAN maar op een eigen pagina, met de jaren in de bestandsnaam.
+`duo.financien` leest de nieuwste editie (variant `standaard`, alleen mbo, hbo en wo) en rekent het gewogen
+sectorcijfer van de Inspectie en de toets aan haar signaleringswaarden (vereist `onderwijsbronnen[duo]`, #935):
+
+```python
+from onderwijsbronnen import Bestuurssleutel
+from onderwijsbronnen.duo import financien
+
+f = financien.laad()
+f.editie.jaren                         # '2021-2025'
+financien.overzicht(f, "40597")        # per verslagjaar: kengetallen, *_sector, signaleringen (onafgerond)
+f.sectorcijfer("MBO", 2025, "liquiditeit").waarde
+Bestuurssleutel.parse("40833-25PZ")    # bestuur 40833 heeft drie eenheden, één per BRIN: nooit optellen
+```
+
 ## Datasetcontract
 
 Modelonafhankelijk contract voor de zes bronnen naast CBS, afgestemd op `onderwijsbronnen.cbs.contract`:
@@ -193,8 +210,8 @@ alleen op verzoek: `RIODATA_LIVE=1 uv run pytest tests/test_rio_live.py` (de naa
 import onderwijsbronnen
 
 onderwijsbronnen.catalog(source="rio")   # 14 RIO-resources (offline, lokale JSON)
-onderwijsbronnen.catalog(source="duo")   # 56 DUO-datasets (offline, lokale JSON)
-onderwijsbronnen.catalog(source="all")   # 77 gecombineerd (RIO, DUO, ROA, UWV, Inspectie, SBB)
+onderwijsbronnen.catalog(source="duo")   # 57 DUO-datasets (offline, lokale JSON; met financien)
+onderwijsbronnen.catalog(source="all")   # 78 gecombineerd (RIO, DUO, ROA, UWV, Inspectie, SBB)
 
 # Live DUO-catalogus vernieuwen vanuit CKAN
 onderwijsbronnen.catalog(source="duo", live=True)

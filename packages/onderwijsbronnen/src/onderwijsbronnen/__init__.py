@@ -17,6 +17,7 @@ from functools import cache
 
 from . import cbs, duo, inspectie, rio, roa, sbb, unl, uwv
 from . import contract, scope
+from ._kern.bestuur import Bestuurssleutel
 from ._kern.bron_id import BRONNEN, AmbigueBronId, BronId, BronIdFout, OnbekendBronId, Register, bron_van_sleutel
 from ._kern.resolutie import AmbigueResource, ResourceNietGevonden
 from ._kern.versie import VERSIE as __version__
@@ -88,6 +89,6 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
     )
 
 
-__all__ = ["BRONNEN", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
+__all__ = ["BRONNEN", "Bestuurssleutel", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
            "BronId", "BronIdFout", "OnbekendBronId", "AmbigueBronId", "Register", "cbs", "duo", "rio", "roa", "uwv",
            "inspectie", "sbb", "unl", "contract", "scope", "AmbigueResource", "ResourceNietGevonden", "__version__"]

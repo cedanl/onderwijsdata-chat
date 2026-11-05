@@ -161,7 +161,7 @@ def test_onbekend_nooit_als_lege_lijst():
 
 def test_manifest_offline():
     m = c.catalog_manifest()
-    assert m["aantal"] == 77 and sum(m["aantal_per_provider"].values()) == 77
+    assert m["aantal"] == 78 and sum(m["aantal_per_provider"].values()) == 78
     assert m["package_versie"] == onderwijsbronnen.__version__
     assert m["duo_resource_schemas"]["schema_versie"] == 1
     with pytest.raises(c.OnbekendSchema):

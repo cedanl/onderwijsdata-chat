@@ -63,6 +63,7 @@ from tools.schemas import (
     TOOL_DATASET_DETAILS,
     TOOL_DATASET_PROFIEL,
     TOOL_GET_ACCREDITATIE,
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_COLLEGEGELD,
@@ -84,7 +85,11 @@ from tools.schemas import (
 
 # Tools die hun equivalentie in een eigen testbestand bewaken: tool → pad vanaf de repo-root. Voor een bron met een
 # eigen lader (bijvoorbeeld `onderwijsbronnen.unl`, #936); dat bestand voert de snippet uit en vergelijkt met de tool.
-_EIGEN_TEST: dict[str, str] = {TOOL_GET_WO_PERSONEEL: "tests/test_wo_personeel.py"}
+_EIGEN_TEST: dict[str, str] = {
+    TOOL_GET_WO_PERSONEEL: "tests/test_wo_personeel.py",
+    # DUO's verantwoording uit XBRL (#935): test_de_snippet_rekent_met_dezelfde_pakketfunctie_als_de_tool.
+    TOOL_GET_BESTUURSFINANCIEN: "tests/test_financien.py",
+}
 
 # Tools van de app zonder eigen laadstap in een snippet, met de reden. Een tool hier maakt geen snippet
 # (`snippet._GENERATORS`) en zet geen key met een laadaanroep (`KeyMeta.laad`) in de store; een snippet op zijn key zegt
