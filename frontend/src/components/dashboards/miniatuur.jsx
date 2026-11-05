@@ -62,7 +62,7 @@ function LandelijkBoven({ instelling, schaal }) {
   return (
     <Bovenkant instelling={instelling} data={data} error={error} schaal={schaal} leeg={!Object.keys(data?.eigen_positie || {}).length}>
       <SectionHeader title="Positie per sector" />
-      <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
+      <PositieKpis data={data} />
     </Bovenkant>
   )
 }

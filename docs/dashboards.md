@@ -140,6 +140,14 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   geven dashboard en `get_maat` hetzelfde aantal; per ho-instelling leest de chat het bestand met opleidingsvorm, dat
   andere cellen onderdrukt, dus daar kan het een paar studenten schelen in een jaar met onderdrukte cellen
   (`tests/test_dashboard_cijfers.py`).
+- **Ranking en positie per sector** op Landelijk lopen over de instellingen van het eigen type (#928): een
+  universiteit staat naast de universiteiten, een hogeschool naast de hogescholen, een mbo-instelling naast de
+  mbo-instellingen. Het type komt uit het register, zoals bij de vergelijkingsgroep hieronder; een hogeschool met een
+  paar wo-studenten (HvA, Hanze, BUas staan ook in de wo-resource van `p01hoinges`) blijft een hogeschool en telt
+  met al haar studenten. `populatie` noemt type en aantal in de ranking (`{"soort": "wo", "n": 18}`),
+  `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector; de pagina
+  toont "4e van 9 wo". De landelijke sectortotalen (`sectoren_landelijk`, het marktaandeel) blijven over alle
+  instellingen van het niveau.
 - **Groei** op Mijn instelling loopt voor elke instelling vanaf hetzelfde startjaar (het laatste van de eerste jaren
   met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
   de kop.
@@ -147,6 +155,34 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   dat er zijn, `n_instellingen` het aantal in het laatste jaar. Een peer met in elk jaar 0 of een lege cel telt niet
   mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
   concurrententabel met "geen gegevens" (#925). Een peer met één echt nuljaar telt wel mee.
+
+### De vergelijkingsgroep van Mijn instelling
+
+De peers zijn de andere instellingen van hetzelfde type (#926): een hogeschool vergelijkt met hogescholen, een
+universiteit met universiteiten, een mbo-instelling met mbo-instellingen. Het type komt uit het register
+(`data/instellingen.py`), de regio van instelling en peers uit hetzelfde DUO-adres (`get_adres_lookup`). De regio
+verbreedt in vaste treden tot er ten minste twee andere instellingen van het type in zitten (`_MIN_PEERS`; een
+gemiddelde over één andere instelling is die instelling):
+
+1. de arbeidsmarktregio van de instelling;
+2. haar provincie;
+3. landelijk: alle andere instellingen van het type, ook die zonder adres. Ook een instelling zonder adres bij DUO
+   vergelijkt landelijk.
+
+`benchmark` noemt de uitkomst: `soort`, `regio_type` (`arbeidsmarktregio`, `provincie` of `nationaal`), `regio_naam`,
+`terugval` (waarom niet een smallere trede, of `null`), `populatie` (de groep in een zin, voor ondertitels en
+legenda: "hogescholen in provincie Noord-Brabant") en `label`, de kop van de kerncijfers met regio, aantal en
+terugval:
+
+- "Arbeidsmarktregio Midden-Utrecht, 2 andere hogescholen"
+- "Provincie Noord-Brabant, 5 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
+- "Landelijk, 17 andere universiteiten — te weinig universiteiten in provincie Noord-Brabant (1 andere)"
+
+Het aantal in het label is `n_instellingen`, het aantal peers achter het gemiddelde in het laatste jaar. Tot #926
+stonden hogescholen en universiteiten samen in één regio (Breda: vijf hogescholen en twee universiteiten in
+Noord-Brabant) en vergeleek elke universiteit stil landelijk; een hogeschool zonder andere ho-instelling in haar
+provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio nu een paar kleine instellingen
+bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek.
 
 ### Regio, provincie en afdrukken
 

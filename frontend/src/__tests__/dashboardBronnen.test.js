@@ -163,27 +163,30 @@ describe('mijn instelling: de DUO-bronnen van regio en rendement (#904)', () => 
   })
 })
 
-describe('landelijk: populatie en bron per niveau (#919)', () => {
-  it('noemt de populatie van het ho hbo + wo, die van het mbo alle MBO-instellingen', () => {
-    expect(POPULATIE_NATIONAAL).toEqual({ ho: 'alle HO-instellingen (hbo + wo)', mbo: 'alle MBO-instellingen' })
+describe('landelijk: populatie en bron per type (#919, #928)', () => {
+  it('noemt per type van de instelling de populatie van de ranking', () => {
+    expect(POPULATIE_NATIONAAL).toEqual({ hbo: 'hogescholen (hbo)', wo: 'universiteiten (wo)', mbo: 'mbo-instellingen' })
   })
 
   const MBO_STUDENTEN = duo('mbo-studenten-per-instelling', 'Mbo-studenten per instelling')
-  const PAYLOAD = (type, bron) => ({
-    gevonden: true, type, alle_instellingen: [{ naam: 'X', ingeschrevenen: 10 }], eigen_positie: { zorg: 1 }, bronnen: [bron],
+  const PAYLOAD = (type, soort, n, bron) => ({
+    gevonden: true, type, alle_instellingen: [{ naam: 'X', ingeschrevenen: 10, type: soort }], eigen_positie: { zorg: 1 },
+    positie_populatie: { zorg: n - 1 }, populatie: { soort, n }, bronnen: [bron],
   })
 
-  for (const [type, populatie, bron] of [
-    ['ho', 'alle HO-instellingen (hbo + wo)', P01],
-    ['mbo', 'alle MBO-instellingen', MBO_STUDENTEN],
+  for (const [type, soort, n, populatie, bron] of [
+    ['ho', 'hbo', 36, 'alle 36 hogescholen (hbo)', P01],
+    ['ho', 'wo', 18, 'alle 18 universiteiten (wo)', P01],
+    ['mbo', 'mbo', 54, 'alle 54 mbo-instellingen', MBO_STUDENTEN],
   ]) {
-    it(`toont voor ${type} de populatie in beide ondertitels en de bron uit de payload`, async () => {
-      await render(createElement(InlineDashboardNationaal, { instelling: 'X' }), { '/api/dashboard/nationaal': PAYLOAD(type, bron) })
+    it(`toont voor ${soort} de populatie in beide ondertitels, de positie met populatie en de bron uit de payload`, async () => {
+      await render(createElement(InlineDashboardNationaal, { instelling: 'X' }), { '/api/dashboard/nationaal': PAYLOAD(type, soort, n, bron) })
 
       const tekst = container.textContent
       expect(tekst).toContain(`Totaal ingeschrevenen — ${populatie}`)
       expect(tekst).toContain(`Ranking binnen ${populatie} per sector/leerweg`)
-      expect(tekst).not.toContain('alle instellingen')
+      expect(tekst).toContain(`1e van ${n - 1} ${soort}`)
+      expect(tekst).not.toContain('hbo + wo')
       const links = footer()
       expect(links).toHaveLength(1)
       expect(links[0].href).toBe(bron.url)

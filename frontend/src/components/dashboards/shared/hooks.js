@@ -138,7 +138,11 @@ export function useRegioComputed(data, instelling) {
     // Het soort jaar per reeks uit de payload (#904): schooljaar of diplomajaar.
     const perioden = data?.perioden || {}
     const bm = data?.benchmark || {}
-    const bmLabel = bm.label || 'Benchmark'
+    // De vergelijkingsgroep in woorden (#926): `populatie` noemt type en regio ("hogescholen in provincie
+    // Noord-Brabant"). bmZin staat midden in een zin, bmLabel in een legenda; `label` (met aantal en terugval) is de kop.
+    const groep = bm.populatie || 'vergelijkingsgroep'
+    const bmZin = `gemiddelde ${groep}`
+    const bmLabel = `Gemiddelde ${groep}`
     const peers = bm.peers || {}
     const hasPeers = Object.keys(peers.ingeschrevenen || {}).length > 0
 
@@ -159,7 +163,7 @@ export function useRegioComputed(data, instelling) {
       : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor, perioden.ingeschrevenen)
 
     return {
-      dark, bmColor, bm, bmLabel, hasPeers, perioden,
+      dark, bmColor, bm, bmLabel, bmZin, hasPeers, perioden,
       indexOpts: buildIndexChartOpts(dark),
       peerOpts: buildPeerLinesOpts(dark, instelling),
       ingesEntries,

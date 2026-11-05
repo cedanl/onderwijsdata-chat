@@ -31,6 +31,8 @@ def regio(monkeypatch):
         provincie="Utrecht",
         self_code="EIGEN",
         peer_codes=frozenset({"PEER1", "PEER2", "PEER3"}),
+        soort="hbo",
+        terugval=None,
     )
 
 

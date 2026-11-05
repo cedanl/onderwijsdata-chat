@@ -189,9 +189,9 @@ export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
 // versie of editie, de peildatum, de voorlopige jaren en het moment van ophalen. Eerder stonden hier vaste lijsten per
 // dashboard: zonder editie, en niet per se wat de pagina gebruikte (#917, #919).
 
-// De populatie die de ranking telt, per niveau (#919): de ondertitels noemen dit, zodat "alle instellingen" niet als wo-
-// of sectorranking leest.
-export const POPULATIE_NATIONAAL = { ho: 'alle HO-instellingen (hbo + wo)', mbo: 'alle MBO-instellingen' }
+// De populatie die de ranking telt (#919): de ondertitels noemen dit. Sinds #928 rangschikt Landelijk per type van de
+// instelling (`populatie.soort` in de payload): een universiteit naast universiteiten, een hogeschool naast hogescholen.
+export const POPULATIE_NATIONAAL = { hbo: 'hogescholen (hbo)', wo: 'universiteiten (wo)', mbo: 'mbo-instellingen' }
 
 // De namen van de ROA-onderdelen (#917) in de teksten bij de ROA-grafieken. De editie staat er niet in: die komt uit
 // het bronblok (`roaPeilmoment`). De SIS-editie ligt vast in het filter van de backend (`_ROA_SIS` in

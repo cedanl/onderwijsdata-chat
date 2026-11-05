@@ -274,7 +274,13 @@ def test_het_ho_gemiddelde_sluit_een_peer_zonder_gegevens_uit():
             ]
         )
 
-    ctx = SimpleNamespace(peer_codes=frozenset({"P0", "P1", "P2"}), regio_type="provincie", regio_naam="Testland")
+    ctx = SimpleNamespace(
+        peer_codes=frozenset({"P0", "P1", "P2"}),
+        regio_type="provincie",
+        regio_naam="Testland",
+        soort="hbo",
+        terugval=None,
+    )
     bm = dashboard._ho_regio_benchmark(
         ctx,
         df("STUDIEJAAR", "AANTAL_INGESCHREVENEN"),
@@ -290,3 +296,5 @@ def test_het_ho_gemiddelde_sluit_een_peer_zonder_gegevens_uit():
         assert bm["geen_gegevens"][sleutel] == ["Leeg"], sleutel
     assert set(bm["peers"]["ingeschrevenen"]) == set(bm["peers"]["gediplomeerden"]) == {"Peer 1", "Peer 2"}
     assert bm["n_instellingen"] == 2
+    # Het label telt dezelfde peers als het gemiddelde (#926, #903): de peer zonder gegevens niet.
+    assert bm["label"] == "Provincie Testland, 2 andere hogescholen"
