@@ -55,6 +55,7 @@ from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
     TOOL_CREATE_PLOT,
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
@@ -835,6 +836,29 @@ def _get_wo_personeel_snippet(args: dict, recept_van: Receptbron | None = None) 
     return "\n".join([*regels, "print(df)"])
 
 
+def _get_bestuursfinancien_snippet(args: dict, recept_van: Receptbron | None = None) -> str | None:
+    """Het overzicht van DUO's verantwoording uit XBRL, met dezelfde pakketfunctie als de tool (#935).
+
+    De tool herleidt een instelling tot een bestuur of tot één eenheid van bestuur 40833; die sleutel (`bestuur`) komt
+    uit haar uitkomst. Zonder sleutel (een melding in plaats van cijfers) is er geen snippet.
+    """
+    if not isinstance(sleutel := args.get("bestuur"), str):
+        return None
+    return "\n".join(
+        [
+            "import pandas as pd",
+            "from onderwijsbronnen.duo import financien",
+            "",
+            "# De nieuwste editie van DUO's verantwoording uit XBRL: variant standaard, alleen mbo, hbo en wo.",
+            "f = financien.laad()",
+            f"df = pd.DataFrame(financien.overzicht(f, {_lit(sleutel)}))",
+            "# Kengetallen als fractie, zoals DUO ze geeft (rentabiliteit 0.02 = 2 %). De kolommen *_sector zijn het",
+            "# gewogen sectorcijfer van de Inspectie; de signaleringswaarden zijn die van de Inspectie (2024).",
+            "print(df)",
+        ]
+    )
+
+
 _GENERATORS = {
     TOOL_GET_WO_PERSONEEL: _get_wo_personeel_snippet,
     TOOL_GET_MAAT: _get_maat_snippet,
@@ -846,6 +870,7 @@ _GENERATORS = {
     TOOL_GET_CBS_DATA: _get_cbs_data_snippet,
     TOOL_CREATE_PLOT: _create_plot_snippet,
     TOOL_CREATE_CHOROPLETH_MAP: _create_choropleth_snippet,
+    TOOL_GET_BESTUURSFINANCIEN: _get_bestuursfinancien_snippet,
 }
 
 
@@ -875,6 +900,15 @@ def _resultaatkey(result: str | None) -> str | None:
     except ValueError:
         return None
     return data["data_key"] if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
+
+
+def _bestuurssleutel(result: str | None) -> str | None:
+    """Het bestuur of de eenheid waarvoor get_bestuursfinancien cijfers gaf (#935); None bij een melding."""
+    try:
+        data = json.loads(result) if result else None
+    except ValueError:
+        return None
+    return data.get("sleutel") if isinstance(data, dict) and isinstance(data.get("sleutel"), str) else None
 
 
 def _resultaatmeta(result: str | None):
@@ -908,6 +942,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
         if (keuze := _wo_personeel_keuze(result)) is None:
             return None
         args = keuze
+    if tool_name == TOOL_GET_BESTUURSFINANCIEN:
+        # De app herleidde de instelling tot een bestuur of eenheid: de snippet begint bij die sleutel (#935).
+        args = {**args, "bestuur": _bestuurssleutel(result)}
     if tool_name in _LAADREGELS and (key := _geladen_key(tool_name, result)):
         # Een laadstap laadt wat de app laadde, uit de laadaanroep in de store, niet uit de ruwe argumenten van het
         # model (#945): de index achter een bestandsnaam of het standaardbestand, de dataset-ID in de spelling van de

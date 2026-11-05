@@ -21,7 +21,15 @@ from . import (
     periode,
     store,
 )
-from .catalog import bron_id, bron_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
+from .catalog import (
+    bron_id,
+    bron_titel,
+    eigen_tool,
+    is_documentbestand,
+    resource_titel,
+    scope_blokkade,
+    tabelbestanden,
+)
 from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 3
@@ -362,6 +370,9 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
     dataset_id = bron_id(dataset_id)  # duo:p01hoinges en P01HOINGES zijn dezelfde dataset (#356)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    if tool := eigen_tool(dataset_id):
+        # Geen CKAN-dataset: de financiële verantwoording heeft een eigen lader en tool (#935).
+        return f"'{dataset_id}' is geen DUO-dataset om te laden: vraag hem op met {tool}."
     if resource is None:
         # Zonder keuze het leidende bestand, niet index 0: dat was bij p01 het geslacht-bestand (#325).
         resource = duo_bestandskeuze.standaard(dataset_id)

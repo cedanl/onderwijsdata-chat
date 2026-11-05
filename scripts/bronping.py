@@ -40,6 +40,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from onderwijsbronnen.duo import financien as xbrl
+
 from data import dashboard
 from scripts import bronsweep
 from tests.ijkwaarden import harnas
@@ -180,6 +182,24 @@ def _mbo_indicatoren_bewijs(uitkomst: dict) -> str | None:
     return None if n >= _MIN_MBO_INSTELLINGEN else f"{n} instellingen, minstens {_MIN_MBO_INSTELLINGEN} verwacht"
 
 
+# Zoveel eenheden per sector staan er minstens in het laatste verslagjaar van DUO's verantwoording uit XBRL; editie
+# 2021-2025: mbo 53, hbo 35, wo 18 (#935).
+_MIN_FINANCIEN = {"MBO": 45, "HBO": 30, "WO": 15}
+
+
+def _financien() -> dict:
+    # Dezelfde weg als get_bestuursfinancien: de pagina, de nieuwste editie en de vier bestanden, soft 404 herkend (#935).
+    gelezen = xbrl.laad()
+    laatste = gelezen.editie.laatste_jaar
+    per_sector = {s: sum(r.sector == s and r.verslagjaar == laatste for r in gelezen.rijen) for s in _MIN_FINANCIEN}
+    return {"editie": gelezen.editie.jaren, "eenheden": per_sector}
+
+
+def _financien_bewijs(uitkomst: dict) -> str | None:
+    te_weinig = [f"{s} {n}" for s, n in uitkomst.get("eenheden", {}).items() if n < _MIN_FINANCIEN[s]]
+    return f"te weinig eenheden in het laatste verslagjaar: {', '.join(te_weinig)}" if te_weinig else None
+
+
 def _instroom_mbo() -> dict:
     # De vaste bestanden van de mbo-eerstejaars en -hoofdgroepen in de dashboards tegen wat DUO nu publiceert (#924, #934).
     return {"afwijkingen": dashboard.instromende_mbo_afwijkingen()}
@@ -235,6 +255,13 @@ PINGS: tuple[Ping, ...] = (
         "nieuwste editie indicatoren per mbo-instelling (xlsx)",
         _mbo_indicatoren,
         _mbo_indicatoren_bewijs,
+    ),
+    Ping(
+        "duo-financien",
+        "duo",
+        "nieuwste editie van de financiële verantwoording uit XBRL, mbo/hbo/wo (get_bestuursfinancien)",
+        _financien,
+        _financien_bewijs,
     ),
     Ping(
         "duo-instroom-mbo",

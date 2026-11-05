@@ -10,6 +10,7 @@ from .catalog import catalogus_telling, dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .collegegeld import get_collegegeld
 from .duo import get_duo_data
+from .financien import get_bestuursfinancien
 from .inspectie import get_inspectieoordeel
 from .inspectie_vo import get_inspectieoordeel_vo
 from .kpi import compute_kpi
@@ -31,6 +32,7 @@ from .schemas import (
     TOOL_DATASET_DETAILS,
     TOOL_DATASET_PROFIEL,
     TOOL_GET_ACCREDITATIE,
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_COLLEGEGELD,
@@ -78,6 +80,7 @@ LABELS = {
     TOOL_GET_ACCREDITATIE: "Accreditatie opgezocht",
     TOOL_GET_COLLEGEGELD: "Collegegeld opgezocht",
     TOOL_GET_WO_PERSONEEL: "Personeel universiteiten opgehaald",
+    TOOL_GET_BESTUURSFINANCIEN: "Financiën van het bestuur opgehaald",
 }
 
 _HANDLERS = {
@@ -104,6 +107,7 @@ _HANDLERS = {
     TOOL_GET_MBO_INDICATOREN: get_mbo_indicatoren,
     TOOL_GET_ACCREDITATIE: get_accreditatie,
     TOOL_GET_COLLEGEGELD: get_collegegeld,
+    TOOL_GET_BESTUURSFINANCIEN: get_bestuursfinancien,
 }
 # Alleen met de vlag (#936): zonder vlag staat de tool niet in de toolset en is hij ook niet aan te roepen.
 if WO_PERSONEEL_ENABLED:
