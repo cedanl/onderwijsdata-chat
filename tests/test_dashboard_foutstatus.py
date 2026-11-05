@@ -20,7 +20,6 @@ from core.gelijktijdig import DRUK, Runplaatsen
 from data import arbeidsmarkt
 
 _LADERS = [
-    dashboard.load_dashboard,
     dashboard.load_dashboard_regio,
     dashboard.load_dashboard_nationaal,
     dashboard.load_dashboard_rendement,

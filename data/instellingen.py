@@ -265,72 +265,53 @@ def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:
     return result
 
 
+# De bestanden waar het register uit komt, in volgorde: een naam die al in een eerder bestand stond, houdt dat type.
+_REGISTERBRONNEN = (
+    ("p01hoinges", 0, "hbo", "INSTELLINGSCODE_ACTUEEL", "INSTELLINGSNAAM_ACTUEEL"),
+    ("p01hoinges", 1, "wo", "INSTELLINGSCODE_ACTUEEL", "INSTELLINGSNAAM_ACTUEEL"),
+    ("mbo-studenten-per-instelling", 0, "mbo", "INSTELLINGSCODE", "INSTELLINGSNAAM"),
+)
+
+
+def _voeg_toe(result: dict[str, dict], naam: str, code: str, soort: str, adres: dict[str, dict]) -> None:
+    """Een instelling in het register, of een volgende code bij een naam die er al staat.
+
+    DUO kent een instelling soms onder meer codes (Curio: 21CY en 25LX). `instellingscode` blijft de eerste, die van
+    het adres en de regio; `instellingscodes` heeft ze allemaal, zodat elke code de instelling vindt (#929).
+    """
+    if naam in result:
+        if code not in result[naam]["instellingscodes"]:
+            result[naam]["instellingscodes"].append(code)
+        return
+    loc = adres.get(code, {})
+    result[naam] = {
+        "naam": naam,
+        "type": soort,
+        "aliassen": ALIASSEN.get(naam, []),
+        "instellingscode": code,
+        "instellingscodes": [code],
+        "provincie": loc.get("provincie"),
+        "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+        "domeinen": [],
+    }
+
+
 def _build_registry() -> tuple[list[dict], dict[str, dict], list[str]]:
     """Het register, de adressen, en de DUO-bestanden die niet laadden (leeg als alles volledig is)."""
     adres, mislukt = _build_adres_lookup()
     result: dict[str, dict] = {}
 
-    try:
-        df_hbo = duo.load("p01hoinges", 0)
-        for _, grp in df_hbo.groupby("INSTELLINGSCODE_ACTUEEL"):
-            naam = grp["INSTELLINGSNAAM_ACTUEEL"].iloc[0]
-            code = str(grp["INSTELLINGSCODE_ACTUEEL"].iloc[0])
-            loc = adres.get(code, {})
-            result[naam] = {
-                "naam": naam,
-                "type": "hbo",
-                "aliassen": ALIASSEN.get(naam, []),
-                "instellingscode": code,
-                "provincie": loc.get("provincie"),
-                "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
-                "domeinen": [],
-            }
-    except Exception as e:
-        mislukt.append("p01hoinges/0")
-        logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar: %s", foutkenmerk(e))
-        logger.debug("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
-
-    try:
-        df_wo = duo.load("p01hoinges", 1)
-        for _, grp in df_wo.groupby("INSTELLINGSCODE_ACTUEEL"):
-            naam = grp["INSTELLINGSNAAM_ACTUEEL"].iloc[0]
-            code = str(grp["INSTELLINGSCODE_ACTUEEL"].iloc[0])
-            if naam not in result:
-                loc = adres.get(code, {})
-                result[naam] = {
-                    "naam": naam,
-                    "type": "wo",
-                    "aliassen": ALIASSEN.get(naam, []),
-                    "instellingscode": code,
-                    "provincie": loc.get("provincie"),
-                    "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
-                    "domeinen": [],
-                }
-    except Exception as e:
-        mislukt.append("p01hoinges/1")
-        logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar: %s", foutkenmerk(e))
-        logger.debug("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
-
-    try:
-        df_mbo = duo.load("mbo-studenten-per-instelling", 0)
-        for _, grp in df_mbo.groupby("INSTELLINGSCODE"):
-            naam = grp["INSTELLINGSNAAM"].iloc[0]
-            code = str(grp["INSTELLINGSCODE"].iloc[0])
-            if naam not in result:
-                loc = adres.get(code, {})
-                result[naam] = {
-                    "naam": naam,
-                    "type": "mbo",
-                    "aliassen": ALIASSEN.get(naam, []),
-                    "instellingscode": code,
-                    "provincie": loc.get("provincie"),
-                    "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
-                    "domeinen": [],
-                }
-    except Exception as e:
-        mislukt.append("mbo-studenten-per-instelling/0")
-        logger.warning("registry: MBO-instellingen niet beschikbaar: %s", foutkenmerk(e))
-        logger.debug("registry: MBO-instellingen niet beschikbaar", exc_info=True)
+    for dataset, resource, soort, code_col, naam_col in _REGISTERBRONNEN:
+        try:
+            df = duo.load(dataset, resource)
+            for _, grp in df.groupby(code_col):
+                _voeg_toe(result, grp[naam_col].iloc[0], str(grp[code_col].iloc[0]), soort, adres)
+        except Exception as e:
+            mislukt.append(f"{dataset}/{resource}")
+            logger.warning(
+                "registry: %s-instellingen (%s/%s) niet beschikbaar: %s", soort, dataset, resource, foutkenmerk(e)
+            )
+            logger.debug("registry: %s-instellingen (%s/%s) niet beschikbaar", soort, dataset, resource, exc_info=True)
 
     _apply_sram_mappings(result)
     return sorted(result.values(), key=lambda x: x["naam"].lower()), adres, mislukt
@@ -387,6 +368,10 @@ def _get_alias_lookup() -> dict[str, str]:
             lookup[inst["naam"].lower()] = inst["naam"]
             for alias in inst["aliassen"]:
                 lookup[alias.lower()] = inst["naam"]
+        # De instellingscodes (BRIN) ook, maar een naam of alias die zo heet gaat voor (#929).
+        for inst in instellingen:
+            for code in inst["instellingscodes"]:
+                lookup.setdefault(code.lower(), inst["naam"])
         _alias_lookup = lookup
     return _alias_lookup
 
@@ -397,7 +382,8 @@ _LIDWOORDEN = ("de ", "het ")
 
 
 def _canoniek(naam: str) -> str | None:
-    """De registernaam bij een naam of alias (hoofdletterongevoelig, lidwoord ervoor mag); None als onbekend."""
+    """De registernaam bij een naam, alias of instellingscode (hoofdletterongevoelig, lidwoord ervoor mag); None als
+    onbekend."""
     lookup = _get_alias_lookup()
     sleutel = " ".join(naam.split()).lower()
     if sleutel in lookup:
@@ -415,7 +401,7 @@ def resolve_alias(naam: str) -> str:
 def instellingsprofiel(naam: str) -> dict | None:
     """Sector, provincie, arbeidsmarktregio en instellingscode van een profielinstelling (#448).
 
-    Alleen een exacte naam of alias, hoofdletterongevoelig: een deel van een naam geeft
+    Alleen een exacte naam, alias of instellingscode, hoofdletterongevoelig: een deel van een naam geeft
     niets, want een gegokte regio is erger dan geen regio. Onbekend → None.
 
     De regio is die van het instellingsadres in DUO ("Adressen van instellingen": één adres

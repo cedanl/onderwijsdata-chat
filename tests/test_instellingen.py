@@ -56,6 +56,7 @@ def test_registry_has_required_fields():
         assert "arbeidsmarktregio" in inst
         assert inst["type"] in ("wo", "hbo", "mbo")
         assert isinstance(inst["aliassen"], list)
+        assert inst["instellingscodes"][0] == inst["instellingscode"]
 
 
 def test_registry_most_have_provincie():
@@ -152,28 +153,18 @@ def test_resolve_empty_string():
     assert resolve_alias("") == ""
 
 
-# ─── Dashboard HO ────────────────────────────────────────────────────────────
+# ─── Dashboard: de eigen instelling ──────────────────────────────────────────
+# Het regiodashboard levert ook de cijfers van de eigen instelling; /api/dashboard/instroom deed dat dubbel en is weg
+# (#930).
 
 
-def test_dashboard_ho_found():
-    from data.dashboard import load_dashboard_ho
-
-    result = load_dashboard_ho("Hogeschool Utrecht")
-    assert result is not None
-    assert "ingeschrevenen" in result
-    assert "laatste_jaar" in result
-    assert "sectoren" in result
-    assert isinstance(result["ingeschrevenen"], dict)
-    assert result["ingeschrevenen"]
-    assert all(isinstance(k, (int, str)) for k in result["ingeschrevenen"])
-
-
-def test_dashboard_ho_telt_zoals_de_fixture():
-    from data.dashboard import load_dashboard_ho
+def test_regio_dashboard_ho_telt_zoals_de_fixture():
+    from data.dashboard import load_dashboard_regio
 
     ins = _duo_ho("p01hoinges", "AANTAL_INGESCHREVENEN")
-    result = load_dashboard_ho(_HU)
-    assert result is not None
+    result = load_dashboard_regio(_HU)
+    assert result["gevonden"] is True
+    assert result["type"] == "ho"
 
     verwacht = _som_per_jaar(ins, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     assert verwacht[2025] == 35058  # ijkpunt: HU 2025 in de bevroren fixture
@@ -193,63 +184,22 @@ def test_dashboard_ho_telt_zoals_de_fixture():
     assert result["gediplomeerden"] == _som_per_jaar(dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN")
 
 
-def test_dashboard_ho_wo_found():
-    from data.dashboard import load_dashboard_ho
+def test_regio_dashboard_vindt_een_wo_instelling():
+    from data.dashboard import load_dashboard_regio
 
-    result = load_dashboard_ho("Vrije Universiteit Amsterdam")
-    assert result is not None
-    assert "ingeschrevenen" in result
-
-
-def test_dashboard_ho_not_found():
-    from data.dashboard import load_dashboard_ho
-
-    result = load_dashboard_ho("Niet Bestaande Instelling")
-    assert result is None
+    result = load_dashboard_regio("Vrije Universiteit Amsterdam")
+    assert result["gevonden"] is True
+    assert result["ingeschrevenen"]
 
 
-def test_dashboard_ho_has_geslacht():
-    from data.dashboard import load_dashboard_ho
+def test_regio_dashboard_mbo_heeft_leerwegen_en_gediplomeerden():
+    from data.dashboard import load_dashboard_regio
 
-    result = load_dashboard_ho("Hogeschool Utrecht")
-    assert result is not None
-    assert "geslacht" in result
-
-
-# ─── Dashboard MBO ───────────────────────────────────────────────────────────
-
-
-def test_dashboard_mbo_found():
-    from data.dashboard import load_dashboard_mbo
-
-    result = load_dashboard_mbo("ROC Mondriaan")
-    assert result is not None
-    assert "ingeschrevenen" in result
-    assert "laatste_jaar" in result
-    assert "sectoren" in result
-
-
-def test_dashboard_mbo_has_leerwegen():
-    from data.dashboard import load_dashboard_mbo
-
-    result = load_dashboard_mbo("ROC Mondriaan")
-    assert result is not None
+    result = load_dashboard_regio("ROC Mondriaan")
+    assert result["gevonden"] is True
+    assert result["type"] == "mbo"
     assert any(k in result["sectoren"] for k in ("BBL", "BOL voltijd", "BOL deeltijd"))
-
-
-def test_dashboard_mbo_not_found():
-    from data.dashboard import load_dashboard_mbo
-
-    result = load_dashboard_mbo("Niet Bestaande Instelling")
-    assert result is None
-
-
-def test_dashboard_mbo_has_gediplomeerden():
-    from data.dashboard import load_dashboard_mbo
-
-    result = load_dashboard_mbo("ROC Mondriaan")
-    assert result is not None
-    assert "gediplomeerden" in result
+    assert result["gediplomeerden"]
 
 
 # ─── Dashboard regio ─────────────────────────────────────────────────────────
@@ -311,30 +261,20 @@ def test_regio_dashboard_ho_provincie_still_present():
 # ─── Dashboard composite ─────────────────────────────────────────────────────
 
 
-def test_load_dashboard_resolves_alias():
-    from data.dashboard import load_dashboard
+def test_regio_dashboard_resolves_alias():
+    from data.dashboard import load_dashboard_regio
 
-    result = load_dashboard("VU")
+    result = load_dashboard_regio("VU")
     assert result["gevonden"] is True
     assert result["instelling"] == "Vrije Universiteit Amsterdam"
 
 
-def test_load_dashboard_mbo_via_alias():
-    from data.dashboard import load_dashboard
+def test_regio_dashboard_mbo_via_alias():
+    from data.dashboard import load_dashboard_regio
 
-    result = load_dashboard("Mondriaan")
+    result = load_dashboard_regio("Mondriaan")
     assert result["gevonden"] is True
     assert result["instelling"] == "ROC Mondriaan"
-
-
-def test_load_dashboard_not_found_has_suggestions():
-    from data.dashboard import load_dashboard
-
-    # De dichtstbijzijnde namen, niet de eerste van het alfabet (#901); wat er niet op lijkt, krijgt er geen.
-    result = load_dashboard("Hogeschool Utrect")
-    assert result["gevonden"] is False
-    assert result["beschikbare_instellingen"][0] == "Hogeschool Utrecht"
-    assert load_dashboard("Niet Bestaande Instelling XYZ")["beschikbare_instellingen"] == []
 
 
 # ─── API endpoint ────────────────────────────────────────────────────────────
@@ -381,14 +321,14 @@ def test_api_instellingen_filter_multiple_types(client):
 
 
 def test_api_dashboard_ho(client):
-    resp = client.get("/api/dashboard/instroom?instelling=Hogeschool+Utrecht")
+    resp = client.get("/api/dashboard/regio?instelling=Hogeschool+Utrecht")
     assert resp.status_code == 200
     data = resp.json()
     assert data["gevonden"] is True
 
 
 def test_api_dashboard_alias(client):
-    resp = client.get("/api/dashboard/instroom?instelling=VU")
+    resp = client.get("/api/dashboard/regio?instelling=VU")
     assert resp.status_code == 200
     data = resp.json()
     assert data["gevonden"] is True
@@ -396,7 +336,7 @@ def test_api_dashboard_alias(client):
 
 
 def test_api_dashboard_mbo(client):
-    resp = client.get("/api/dashboard/instroom?instelling=ROC+Mondriaan")
+    resp = client.get("/api/dashboard/regio?instelling=ROC+Mondriaan")
     assert resp.status_code == 200
     data = resp.json()
     assert data["gevonden"] is True
@@ -529,7 +469,7 @@ def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
 
     laatste = ins[ins["STUDIEJAAR"] == 2025]
     per_inst = laatste.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
-    assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan load_dashboard_ho
+    assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan het regiodashboard
     alle = result["alle_instellingen"]
     assert {i["naam"]: i["ingeschrevenen"] for i in alle} == {k: int(v) for k, v in per_inst.items()}
     aantallen = [i["ingeschrevenen"] for i in alle]
@@ -717,3 +657,45 @@ def test_een_onbekende_naam_blijft_onbekend_ook_met_lidwoord():
 
     assert resolve_alias("de Hogeschool van Narnia") == "de Hogeschool van Narnia"
     assert instellingsprofiel("de Hogeschool van Narnia") is None
+
+
+# ─── Zoeken op instellingscode (#929) ────────────────────────────────────────
+
+
+# Curio staat in de fixtures onder twee codes (21CY en 25LX, #923): beide vinden dezelfde instelling.
+@pytest.mark.parametrize(
+    ("code", "naam"),
+    [("25DW", _HU), ("25dw", _HU), ("27gz", "ROC Mondriaan"), ("21cy", "Curio"), ("25LX", "Curio")],
+)
+def test_regio_dashboard_vindt_de_instelling_op_haar_code(code, naam):
+    from data.dashboard import load_dashboard_regio
+
+    op_code = load_dashboard_regio(code)
+    assert op_code["gevonden"] is True
+    assert op_code == load_dashboard_regio(naam)
+
+
+def test_regio_dashboard_zonder_suggesties_zegt_waarom():
+    from data.dashboard import load_dashboard_regio
+
+    result = load_dashboard_regio("Niet Bestaande Instelling XYZ")
+    assert result["gevonden"] is False
+    assert result["beschikbare_instellingen"] == []
+    assert "instellingscode" in result["geen_suggesties"]
+
+
+def test_regio_dashboard_met_suggesties_geeft_geen_reden():
+    from data.dashboard import load_dashboard_regio
+
+    # De dichtstbijzijnde namen, niet de eerste van het alfabet (#901).
+    result = load_dashboard_regio("Hogeschool Utrect")
+    assert result["gevonden"] is False
+    assert result["beschikbare_instellingen"][0] == _HU
+    assert "geen_suggesties" not in result
+
+
+def test_api_dashboard_regio_op_code(client):
+    resp = client.get("/api/dashboard/regio?instelling=25dw")
+    assert resp.status_code == 200
+    assert resp.json()["gevonden"] is True
+    assert resp.json()["instelling"] == _HU

@@ -136,3 +136,31 @@ def test_zonder_adres_geen_regio_wel_sector(monkeypatch):
     assert "sector **wo**" in blok
     assert "provincie" not in blok
     assert "'mijn regio'" not in blok
+
+
+# ─── De instellingscode als zoeksleutel (#929) ───────────────────────────────
+
+
+@pytest.mark.parametrize("invoer", ["25DW", "25dw", " 25DW "])
+def test_de_instellingscode_geeft_de_instelling(invoer):
+    assert instellingen.resolve_alias(invoer) == "Hogeschool Utrecht"
+    profiel = instellingsprofiel(invoer)
+    assert profiel is not None and profiel["naam"] == "Hogeschool Utrecht"
+
+
+def test_een_instelling_met_twee_codes_is_onder_beide_te_vinden(monkeypatch):
+    # Curio staat in mbo-studenten-per-instelling onder 21CY en 25LX (DUO, 05-11-2026); het register hield alleen de
+    # eerste code, dus 25LX gaf "niet gevonden".
+    curio = pd.DataFrame({"INSTELLINGSCODE": ["21CY", "25LX", "25LX"], "INSTELLINGSNAAM": ["Curio"] * 3})
+    monkeypatch.setitem(_DUO, ("mbo-studenten-per-instelling", 0), curio)
+
+    (inst,) = [i for i in instellingen.get_all() if i["naam"] == "Curio"]
+    assert inst["instellingscode"] == "21CY"
+    assert inst["instellingscodes"] == ["21CY", "25LX"]
+    assert instellingen.resolve_alias("21cy") == instellingen.resolve_alias("25LX") == "Curio"
+
+
+def test_een_naam_of_alias_gaat_voor_een_code_en_een_onbekende_code_blijft_onbekend():
+    assert instellingen.resolve_alias("HU") == "Hogeschool Utrecht"
+    assert instellingen.resolve_alias("99XX") == "99XX"
+    assert instellingsprofiel("99XX") is None

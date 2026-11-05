@@ -7,24 +7,38 @@ De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arb
 
 ## Vaste dashboards
 
-Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit):
+Vier vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit):
 
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
-| **Instroom** | `/api/dashboard/instroom` | Ingeschrevenen per jaar, verdeling over sectoren, gediplomeerden; bij HO ook geslacht en eerstejaars |
-| **Regio** | `/api/dashboard/regio` | Regionale vergelijking; mbo: leerwegen en ingeschrevenen per hoofdgroep |
+| **Regio** | `/api/dashboard/regio` | Mijn instelling: ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, en de regionale vergelijking; mbo: leerwegen en ingeschrevenen per hoofdgroep |
 | **Nationaal** | `/api/dashboard/nationaal` | Nationale onderwijsstatistieken, KPI's |
 | **Rendement** | `/api/dashboard/rendement` | Diplomering, doorstroom, uitval |
 | **Arbeidsmarktmatch** | `/api/dashboard/arbeidsmarktmatch` | UWV vacaturedata per sector, match scores |
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
 De data komt uit `data/dashboard.py`.
+`/api/dashboard/instroom` is weg (#930): geen dashboard gebruikte het, en wat het gaf, staat ook in `regio`.
+
+### Waarop `instelling` zoekt
+
+De parameter is een van deze sleutels, exact en hoofdletterongevoelig (`resolve_alias` in `data/instellingen.py`):
+
+- de naam uit het register (`/api/instellingen`), ook met "de" of "het" ervoor;
+- een afkorting uit `ALIASSEN` of een SRAM-naam ("HU", "VU", "ROC MN");
+- een instellingscode (BRIN) uit DUO, zoals `25DW` of `21cy`. Heeft een instelling er meer (Curio: 21CY en 25LX), dan
+  staan ze alle in `instellingscodes` van het register en vindt elke code de instelling (#929). Een naam of afkorting
+  die zo heet als een code, gaat voor.
+
+Het antwoord noemt in `instelling` de registernaam. Is de instelling onbekend, dan is `gevonden` `false`. Bij
+`/api/dashboard/regio` staan dan in `beschikbare_instellingen` de vijf namen die erop lijken; lijkt er geen op, dan is
+die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron die niet laadde, geeft 503, geen
+`gevonden: false`.
 
 ### Wat de getallen tellen
 
 - **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit
-  `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen, in het regio- en het instroomdashboard
-  (#899).
+  `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen (#899).
 - **Mbo per hoofdgroep** (`ingeschrevenen_per_hoofdgroep`): `TOTAAL MBO` uit `instromende-mbo-studenten`, het laatste
   jaar. Dat zijn ingeschrevenen, nieuw of niet, geen eerstejaars (domeinregel `mbo-instroom-totaal-mbo` in
   `data/domeinregels.toml`). Het is een ander DUO-bestand dan dat van het totaal, dus de som wijkt daarvan af.

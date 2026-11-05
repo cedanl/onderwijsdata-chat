@@ -59,22 +59,12 @@ def test_de_arbeidsmarktmatch_mbo_telt_gediplomeerden_per_hoofdgroep():
     assert sum(verwacht.values()) < ingeschreven.sum() / 2, "het aanbod is niet meer het aantal ingeschrevenen"
 
 
-@pytest.mark.parametrize("laden", [dashboard.load_dashboard_regio, dashboard.load_dashboard])
-def test_de_leerwegen_tellen_op_tot_het_totaal_ingeschrevenen(laden):
-    result = laden(_MONDRIAAN)
-
-    laatste = result["laatste_jaar"]
-    assert "Extraneus" in result["sectoren"]
-    assert sum(result["sectoren"].values()) == result["ingeschrevenen"][laatste]
-
-
-def test_regio_en_instellingsdashboard_geven_dezelfde_mbo_verdeling():
+def test_de_leerwegen_tellen_op_tot_het_totaal_ingeschrevenen():
     regio = dashboard.load_dashboard_regio(_MONDRIAAN)
-    instelling = dashboard.load_dashboard(_MONDRIAAN)
 
-    assert regio["sectoren"] == instelling["sectoren"]
-    assert regio["ingeschrevenen"] == instelling["ingeschrevenen"]
-    assert regio["gediplomeerden"] == instelling["gediplomeerden"]
+    laatste = regio["laatste_jaar"]
+    assert "Extraneus" in regio["sectoren"]
+    assert sum(regio["sectoren"].values()) == regio["ingeschrevenen"][laatste]
     for jaar, per_leerweg in regio["leerwegen"].items():
         assert set(per_leerweg) == {"BBL", "BOL voltijd", "BOL deeltijd", "Extraneus"}
         assert sum(per_leerweg.values()) == regio["ingeschrevenen"][jaar]
@@ -131,9 +121,9 @@ def test_het_mbo_dashboard_meldt_onderdrukte_cellen_en_laat_een_leeg_jaar_weg(mb
         _mbo_rij(2025, "Grafisch Lyceum", "1", 310, 0, 2100, 5),
     ]
 
-    result = dashboard.load_dashboard_mbo("Grafisch Lyceum")
+    result = dashboard.load_dashboard_regio("Grafisch Lyceum")
 
-    assert result is not None
+    assert result["gevonden"] is True
     assert result["ingeschrevenen"] == {2023: 2300, 2025: 2415}
     assert result["onderdrukt"]["ingeschrevenen"] == {2023: 2, 2024: 4}
     assert result["leerwegen"][2023] == {"BBL": 300, "BOL voltijd": 2000}  # geen 0 voor de onderdrukte leerwegen

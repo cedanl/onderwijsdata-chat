@@ -11,19 +11,6 @@ const VITE_URL = process.env.VITE_URL || 'http://[::1]:5180';
 
 // ─── Mock data ──────────────────────────────────────────────────────────────
 
-const DASHBOARD_DATA = {
-  gevonden: true,
-  laatste_jaar: '2023',
-  ingeschrevenen: { '2019': 34500, '2020': 35100, '2021': 35891, '2022': 36234, '2023': 37012 },
-  eerstejaars: { '2019': 7800, '2020': 8012, '2021': 8234, '2022': 8567, '2023': 8891 },
-  gediplomeerden: { '2019': 6200, '2020': 6450, '2021': 6700, '2022': 6890, '2023': 7100 },
-  sectoren: {
-    ECONOMIE: 8500, GEZONDHEIDSZORG: 7200, TECHNIEK: 6100,
-    ONDERWIJS: 5400, GEDRAG_EN_MAATSCHAPPIJ: 4800, TAAL_EN_CULTUUR: 2100, SECTOROVERSTIJGEND: 2912,
-  },
-  geslacht: { VROUW: 21500, MAN: 15512 },
-};
-
 const MODELS_CONFIG = {
   models: [
     { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', description: 'Snel en nauwkeurig' },
@@ -100,9 +87,6 @@ async function setupMocks(page) {
   );
   await page.route('**/api/settings/config', route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MODELS_CONFIG) })
-  );
-  await page.route('**/api/dashboard/instroom**', route =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DASHBOARD_DATA) })
   );
   await page.route('**/api/starters', route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
