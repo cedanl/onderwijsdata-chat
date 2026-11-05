@@ -3,7 +3,7 @@ import TabelScroll from '../../TabelScroll'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
   SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren, buildSectorTrendData,
-  DashboardSources, BRONNEN_NATIONAAL, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
+  DashboardSources, bronnenVan, bronBadge, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
 
 const sectorNaam = s => SECTOR_LABELS[s] || s
@@ -189,6 +189,7 @@ export function InlineDashboardNationaal({ instelling }) {
   const { data, loading, error, opnieuw } = useNationaalDashboardData(instelling)
   const dark = useDarkMode()
   const populatie = POPULATIE_NATIONAAL[data?.type] || 'alle instellingen'
+  const bronnen = bronnenVan([data])
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -196,7 +197,7 @@ export function InlineDashboardNationaal({ instelling }) {
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           <span className="meta-badge instelling">{instelling}</span>
           <span className="meta-badge date">Landelijk overzicht</span>
-          <span className="meta-badge date">Bron: DUO Open Onderwijsdata, som per instelling</span>
+          {bronnen.length > 0 && <span className="meta-badge date">Bron: {bronBadge(bronnen)}, som per instelling</span>}
         </div>
         <LandelijkDefinitie landelijk={data?.landelijk} />
 
@@ -216,7 +217,7 @@ export function InlineDashboardNationaal({ instelling }) {
         <SectionHeader title="Ranking" subtitle="Top instellingen naar totaal ingeschrevenen" />
         <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} populatie={populatie} dark={dark} />
 
-        <DashboardSources sources={BRONNEN_NATIONAAL[data?.type] || []} />
+        <DashboardSources sources={bronnen} />
       </div>
     </DashboardShell>
   )

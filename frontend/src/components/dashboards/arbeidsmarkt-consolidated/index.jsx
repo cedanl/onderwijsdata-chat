@@ -5,11 +5,12 @@ import {
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
-  DashboardSources, bronnenArbeidsmarkt, bronBadge, buildSupplyDemandData, WeggelatenNoot,
+  DashboardSources, bronnenVan, bronBadge, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
 
-// Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen; de DUO-gaten horen bij mijn instelling.
+// Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
+// -bronnen daarvan horen bij mijn instelling.
 const REGIO_BRONNEN = ['UWV', 'ROA']
 
 // Tekst, dus 4,5:1 in beide thema's (#905): evenwicht #16A34A haalde op wit 3,3:1. Het woord staat er ook.
@@ -104,7 +105,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
   const dark = useDarkMode()
   const gaten = gatenVan([matchData, { niet_beschikbaar: gatenVan([regioData], REGIO_BRONNEN) }])
   const allesOpnieuw = () => { opnieuw(); regio.opnieuw() }
-  const bronnen = bronnenArbeidsmarkt(matchData?.type)
+  const bronnen = bronnenVan([matchData, { bronnen: bronnenVan([regioData], REGIO_BRONNEN) }])
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error} onOpnieuw={opnieuw}>

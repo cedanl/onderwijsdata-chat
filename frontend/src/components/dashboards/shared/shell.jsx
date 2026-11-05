@@ -1,4 +1,5 @@
 import { COLOR_EIGEN } from '../../../constants'
+import { korteDatum } from '../../../relatieveDatum'
 import { GrafiekTitel } from './grafiek'
 
 // ─── Shell ──────────────────────────────────────────────────────────────────
@@ -76,17 +77,24 @@ export function NietGeladen({ onderdelen, onOpnieuw }) {
   )
 }
 
-// De gaten van meer payloads samen, elk onderdeel één keer; `bronnen` beperkt ze tot wat dit dashboard toont.
-export function gatenVan(payloads, bronnen = null) {
+// De regels van één veld uit meer payloads samen, elke sleutel één keer; `bronnen` beperkt ze tot de bronnen (DUO, UWV,
+// ROA) die dit dashboard toont. `/api/dashboard/regio` dient twee dashboards, dus elk neemt er zijn eigen deel uit.
+function uitPayloads(payloads, veld, sleutel, bronnen) {
   const gezien = new Map()
   for (const payload of payloads) {
-    for (const gat of payload?.niet_beschikbaar || []) {
-      if (bronnen && !bronnen.includes(gat.bron)) continue
-      if (!gezien.has(gat.onderdeel)) gezien.set(gat.onderdeel, gat)
+    for (const regel of payload?.[veld] || []) {
+      if (bronnen && !bronnen.includes(regel.bron)) continue
+      if (!gezien.has(sleutel(regel))) gezien.set(sleutel(regel), regel)
     }
   }
   return [...gezien.values()]
 }
+
+// De gaten van meer payloads samen, elk onderdeel één keer.
+export const gatenVan = (payloads, bronnen = null) => uitPayloads(payloads, 'niet_beschikbaar', g => g.onderdeel, bronnen)
+
+// Het bronblok van meer payloads samen (#904), elke dataset één keer.
+export const bronnenVan = (payloads, bronnen = null) => uitPayloads(payloads, 'bronnen', b => `${b.bron}:${b.dataset}`, bronnen)
 
 // Een tweede lading binnen een dashboard (#901), zoals `regio` bij de arbeidsmarkt en `rendement` bij mijn instelling.
 // Tijdens het laden een vlak van vaste hoogte, zodat de pagina niet verschuift als de data binnenkomt (#808); na een
@@ -161,64 +169,40 @@ export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
 }
 
 // ─── Bronvermeldingen ────────────────────────────────────────────────────────
-
-export const BRONNEN_HO = [
-  { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
-  { label: 'DUO Open Onderwijsdata — Eerstejaars HO per instelling (p02ho1ejrs)', url: 'https://onderwijsdata.duo.nl/datasets/p02ho1ejrs' },
-  { label: 'DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)', url: 'https://onderwijsdata.duo.nl/datasets/p04hogdipl' },
-]
-
-export const BRONNEN_MBO = [
-  { label: 'DUO Open Onderwijsdata — Ingeschrevenen MBO per instelling', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
-  { label: 'DUO Open Onderwijsdata — Instromende MBO-studenten', url: 'https://onderwijsdata.duo.nl/datasets/instromende-mbo-studenten' },
-  { label: 'DUO Open Onderwijsdata — Gediplomeerde MBO-studenten', url: 'https://onderwijsdata.duo.nl/datasets/gediplomeerde-mbo-studenten' },
-]
-
-// Landelijk (#919): per niveau de ene bron waar de ranking en de sectorpositie uit komen, met dataset-ID. De ranking
-// voor "ho" is de gemengde top van hbo en wo samen (p01hoinges kent geen aparte wo-ranking).
-export const BRONNEN_NATIONAAL = {
-  ho: [
-    { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
-  ],
-  mbo: [
-    { label: 'DUO Open Onderwijsdata — MBO studenten per instelling (mbo-studenten-per-instelling)', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
-  ],
-}
+// Het bronblok komt uit de payload (`bronnen`, data/bronblok.py, #904): per bron wat de lading echt laadde, met de
+// versie of editie, de peildatum, de voorlopige jaren en het moment van ophalen. Eerder stonden hier vaste lijsten per
+// dashboard: zonder editie, en niet per se wat de pagina gebruikte (#917, #919).
 
 // De populatie die de ranking telt, per niveau (#919): de ondertitels noemen dit, zodat "alle instellingen" niet als wo-
 // of sectorranking leest.
 export const POPULATIE_NATIONAAL = { ho: 'alle HO-instellingen (hbo + wo)', mbo: 'alle MBO-instellingen' }
 
-// De namen van de ROA-bronnen (#917): AIS tot 2030 en de schoolverlatersinformatie. De footer en de teksten bij de
-// ROA-grafieken gebruiken dezelfde twee, zodat één bron niet twee namen krijgt. Er staat bewust geen editie bij: de
-// editie komt uit de data (`/version`, catalogus roa), en een vast label loopt achter zodra er een nieuwe uitkomt;
-// het structurele bronblok met editie is #904.
+// De namen van de ROA-onderdelen (#917) in de teksten bij de ROA-grafieken. De editie staat er niet in: die komt uit
+// het bronblok (`roaPeilmoment`). De SIS-editie ligt vast in het filter van de backend (`_ROA_SIS` in
+// data/arbeidsmarkt.py): een ander SIS-thema geeft daar geen cijfers, dus deze naam loopt er niet bij achter.
 export const ROA_AIS = 'AIS tot 2030'
 export const ROA_SIS = 'SIS 2024'
 
-// Arbeidsmarkt (#917): de aanbodkant is de DUO-gediplomeerden van het niveau van de instelling (zie
-// `_arbeidsmarktmatch_ho` en `_arbeidsmarktmatch_mbo` in data/dashboard.py), de vraagkant UWV, de context ROA.
-// `kort` is de naam in de badge; de badge is afgeleid van deze lijst, zodat badge en footer niet uiteenlopen.
-const BRONNEN_ARBEIDSMARKT_AANBOD = {
-  ho: [
-    { kort: 'DUO', label: 'DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)', url: 'https://onderwijsdata.duo.nl/datasets/p04hogdipl' },
-  ],
-  mbo: [
-    { kort: 'DUO', label: 'DUO Open Onderwijsdata — Gediplomeerde MBO-studenten (gediplomeerde-mbo-studenten)', url: 'https://onderwijsdata.duo.nl/datasets/gediplomeerde-mbo-studenten' },
-  ],
+// "DUO — Gediplomeerde mbo-studenten (gediplomeerde-mbo-studenten)": de titel uit de catalogus, zoals de chat de bron
+// noemt, met het dataset-ID.
+export const bronLabel = ({ bron, titel, dataset }) => (titel && titel !== dataset ? `${bron} — ${titel} (${dataset})` : `${bron} — ${dataset}`)
+
+// Wat er onder de link staat: versie of editie, peildatum, voorlopige jaren en wanneer de app de bron ophaalde.
+export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren: jaren, opgehaald_op: opgehaald }) {
+  return [
+    peilmoment,
+    peildatum && !peilmoment?.includes(peildatum) ? `peildatum ${peildatum}` : null,
+    voorlopig && jaren?.length ? `cijfers ${jaren.join(', ')} voorlopig` : null,
+    opgehaald ? `opgehaald ${korteDatum(opgehaald)}` : null,
+  ].filter(Boolean)
 }
 
-const BRONNEN_ARBEIDSMARKT_VRAAG_EN_CONTEXT = [
-  { kort: 'UWV', label: 'UWV Open Match — Vacaturedata per provincie en beroepscluster', url: 'https://data.overheid.nl/dataset/uwv-open-match-data' },
-  { kort: 'ROA', label: `ROA — ${ROA_AIS}, incl. ${ROA_SIS}`, url: 'https://doi.org/10.34894/DVQTOG' },
-]
+// "editie 2025, versie v20251218": de editie van ROA uit het bronblok, voor de teksten bij de ROA-grafieken.
+export const roaPeilmoment = bronnen => (bronnen || []).find(b => b.bron === 'ROA')?.peilmoment || null
 
-// Zonder bekend niveau (de instelling is niet gevonden) is er geen aanbodkant en dus geen DUO-bron.
-export const bronnenArbeidsmarkt = type => [...(BRONNEN_ARBEIDSMARKT_AANBOD[type] || []), ...BRONNEN_ARBEIDSMARKT_VRAAG_EN_CONTEXT]
-
-// "DUO, UWV & ROA": de korte namen van de bronnen in de lijst, ieder één keer.
+// "DUO, UWV & ROA": de bronnen in het bronblok, ieder één keer.
 export function bronBadge(bronnen) {
-  const namen = [...new Set(bronnen.map(b => b.kort))]
+  const namen = [...new Set(bronnen.map(b => b.bron))]
   return namen.length > 1 ? `${namen.slice(0, -1).join(', ')} & ${namen[namen.length - 1]}` : namen.join('')
 }
 
@@ -228,13 +212,24 @@ export function DashboardSources({ sources }) {
     <div className="dashboard-sources">
       <div className="dashboard-sources-title">Bronnen</div>
       <ul className="dashboard-sources-list">
-        {sources.map(({ label, url }) => (
-          <li key={url}>
-            <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opent in een nieuw tabblad)`}>
-              <span>{label}</span>
-            </a>
-          </li>
-        ))}
+        {sources.map(bron => {
+          const label = bronLabel(bron)
+          const details = bronDetails(bron)
+          return (
+            <li key={`${bron.bron}:${bron.dataset}`}>
+              <div>
+                {bron.url
+                  ? (
+                    <a href={bron.url} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opent in een nieuw tabblad)`}>
+                      <span>{label}</span>
+                    </a>
+                  )
+                  : <span className="dashboard-sources-naam">{label}</span>}
+                {details.length > 0 && <div className="dashboard-sources-meta">{details.join(' · ')}</div>}
+              </div>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -246,7 +241,7 @@ export function RegioBadges({ instelling, provincie, arbeidsmarktregio, bron }) 
       <span className="meta-badge instelling">{instelling}</span>
       {arbeidsmarktregio && <span className="meta-badge date">Regio {arbeidsmarktregio}</span>}
       {provincie && <span className="meta-badge date">Provincie {provincie}</span>}
-      <span className="meta-badge date">Bron: {bron}</span>
+      {bron && <span className="meta-badge date">Bron: {bron}</span>}
     </div>
   )
 }

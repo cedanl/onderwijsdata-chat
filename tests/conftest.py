@@ -152,7 +152,13 @@ def arbeidsmarkt_fixtures(monkeypatch):
     ROA is de bevroren snapshot van de gouden tests (`tests/fixtures/gouden/`). De gouden UWV-snapshot kent alleen
     Flevoland; hier krijgt elke provincie tien vacatures per beroepencluster uit de sectorindeling, zodat elke
     instelling clusters heeft. Die aantallen zijn niet echt: wie UWV-waarden toetst, gebruikt de fixture `gouden`.
+
+    De fixture vervangt de laders van riodata, niet `_uwv` en `_roa`: zo melden die hun bestand voor het bronblok van
+    de dashboards (#904), zoals buiten de tests.
     """
+    from riodata import roa as riodata_roa
+    from riodata import uwv as riodata_uwv
+
     from data import arbeidsmarkt
     from scripts import gouden_testfixtures as g
 
@@ -165,8 +171,15 @@ def arbeidsmarkt_fixtures(monkeypatch):
         ]
     )
     roa = pd.read_csv(g.MAP / g.ROA, dtype={"versie": str})
-    monkeypatch.setattr(arbeidsmarkt, "_uwv", lambda: uwv.copy())
-    monkeypatch.setattr(arbeidsmarkt, "_roa", lambda: roa.copy())
+    monkeypatch.setattr(riodata_uwv, "load", lambda *a, **k: uwv.copy())
+    monkeypatch.setattr(riodata_roa, "load", lambda *a, **k: roa.copy())
+    # Alleen de caches van de echte laders: de fixture `gouden` of een test vervangt ze soms door een lambda.
+    laders = [lader for lader in (arbeidsmarkt._uwv, arbeidsmarkt._roa) if hasattr(lader, "cache_clear")]
+    for lader in laders:
+        lader.cache_clear()
+    yield
+    for lader in laders:
+        lader.cache_clear()
 
 
 @pytest.fixture

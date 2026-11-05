@@ -12,11 +12,11 @@ import httpx
 import pandas as pd
 from riodata import duo
 
-from core import actualiteit
+from core import actualiteit, brongebruik
 from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
 
-from . import arbeidsmarkt
+from . import arbeidsmarkt, bronblok
 from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
@@ -117,6 +117,7 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
 
     - Niet gevonden terwijl een hoofdbron uitviel: BronNietBeschikbaar, geen `gevonden: False` met "pas de naam aan".
     - Gevonden met gaten: `niet_beschikbaar` = [{onderdeel, bron, reden}], in de volgorde waarin ze uitvielen.
+    - Gevonden: `bronnen`, het bronblok van wat de lading gebruikte (#904, data/bronblok.py).
     """
 
     @functools.wraps(laad)
@@ -124,11 +125,14 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
         gaten = _Gaten()
         token = _gaten.set(gaten)
         try:
-            result = laad(instelling)
+            with brongebruik.verzamel() as gebruikt:
+                result = laad(instelling)
         finally:
             _gaten.reset(token)
         if not result.get("gevonden") and gaten.hoofdbron_mislukt:
             raise BronNietBeschikbaar
+        if result.get("gevonden"):
+            result["bronnen"] = bronblok.blok(gebruikt)
         if gaten.onderdelen:
             result["niet_beschikbaar"] = [
                 {"onderdeel": o.naam, "bron": o.bron, "reden": r} for o, r in gaten.onderdelen.items()
@@ -136,6 +140,16 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
         return result
 
     return binnen
+
+
+def _poging(laad: Callable[..., dict | None], *args) -> dict | None:
+    """Zoek de instelling in één sector. Vindt de poging haar niet, dan tellen de bestanden die ze daarvoor laadde
+    niet als gebruikt: een mbo-dashboard rust niet op p01hoinges omdat de ho-poging daar de naam zocht (#904)."""
+    with brongebruik.verzamel() as gebruikt:
+        uit = laad(*args)
+    if uit:
+        brongebruik.meld(*gebruikt)
+    return uit
 
 
 _MAX_VACATURE_CLUSTERS = 8
@@ -640,8 +654,21 @@ def _duo_load(dataset_id: str, resource: int) -> pd.DataFrame:
 
     Elke DUO-lading van de dashboards loopt hierlangs: anders tellen onderdrukte
     cellen als -1 mee (BBO de Schalm: -1 studenten; Grafisch Lyceum 2377 i.p.v. 2379).
+    Het bestand meldt zich met zijn versie van riodata voor het bronblok (#904, #717).
     """
-    return mask_sentinels(duo.load(dataset_id, resource))[0]
+    df = duo.load(dataset_id, resource)
+    versie = df.attrs.get("bron") or {}
+    brongebruik.meld(
+        {
+            "bron": "DUO",
+            "dataset": dataset_id,
+            "resource": resource,
+            "resource_id": versie.get("resource_id"),
+            "last_modified": versie.get("last_modified"),
+            "opgehaald_op": actualiteit.nu().isoformat(),
+        }
+    )
+    return mask_sentinels(df)[0]
 
 
 @actualiteit.Lading
@@ -775,11 +802,22 @@ def _gemiddeld_per_sector(df: pd.DataFrame, jaar_col: str, sector_col: str, waar
 
 
 @actualiteit.Lading
+def _load_ho_dataset(dataset_id: str) -> pd.DataFrame:
+    """hbo (resource 0) en wo (resource 1) van één ho-dataset samen. Per dataset een eigen lading: een dashboard dat
+    alleen de ingeschrevenen gebruikt, laadt en noemt in zijn bronblok de andere twee niet (#904)."""
+    return pd.concat([_duo_load(dataset_id, 0), _duo_load(dataset_id, 1)], ignore_index=True)
+
+
+def _load_ho_ingeschrevenen() -> pd.DataFrame:
+    return _load_ho_dataset("p01hoinges")
+
+
+def _load_ho_gediplomeerden() -> pd.DataFrame:
+    return _load_ho_dataset("p04hogdipl")
+
+
 def _load_ho_full() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    inges = pd.concat([_duo_load("p01hoinges", 0), _duo_load("p01hoinges", 1)], ignore_index=True)
-    eerstejaars = pd.concat([_duo_load("p02ho1ejrs", 0), _duo_load("p02ho1ejrs", 1)], ignore_index=True)
-    dipl = pd.concat([_duo_load("p04hogdipl", 0), _duo_load("p04hogdipl", 1)], ignore_index=True)
-    return inges, eerstejaars, dipl
+    return _load_ho_ingeschrevenen(), _load_ho_dataset("p02ho1ejrs"), _load_ho_gediplomeerden()
 
 
 def _mode_str(series: pd.Series) -> str | None:
@@ -1089,7 +1127,7 @@ def load_dashboard_regio(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
 
-    ho = _load_dashboard_regio_ho(instelling)
+    ho = _poging(_load_dashboard_regio_ho, instelling)
     if ho:
         result["gevonden"] = True
         result.update(ho)
@@ -1102,7 +1140,7 @@ def load_dashboard_regio(instelling: str) -> dict:
         return result
 
     try:
-        df_ho, _, _ = _load_ho_full()
+        df_ho = _load_ho_ingeschrevenen()
         result["beschikbare_instellingen"] = _beschikbare_instellingen(instelling, df_ho, _load_mbo_studenten())
         if not result["beschikbare_instellingen"]:
             result["geen_suggesties"] = _GEEN_SUGGESTIES
@@ -1194,7 +1232,7 @@ def _nationaal_cijfers(
 
 def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     try:
-        df_inges, _, _ = _load_ho_full()
+        df_inges = _load_ho_ingeschrevenen()
     except Exception as e:
         _hoofdbron_niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar", instelling)
         return None
@@ -1254,7 +1292,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
 def load_dashboard_nationaal(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
-    return _nationaal_ho(instelling, result) or _nationaal_mbo(instelling, result) or result
+    return _poging(_nationaal_ho, instelling, result) or _nationaal_mbo(instelling, result) or result
 
 
 # ─── Rendementsmonitor ────────────────────────────────────────────────────────
@@ -1313,7 +1351,7 @@ def load_dashboard_rendement(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
 
-    ho_result = _rendement_ho(instelling)
+    ho_result = _poging(_rendement_ho, instelling)
     if ho_result:
         return ho_result
 
@@ -1472,7 +1510,7 @@ def _rendement_mbo(instelling: str) -> dict | None:
 
 def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     try:
-        df_inges, _, df_dipl = _load_ho_full()
+        df_inges, df_dipl = _load_ho_ingeschrevenen(), _load_ho_gediplomeerden()
     except Exception as e:
         _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar", instelling)
         return None
@@ -1544,7 +1582,7 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
 
-    detect = _arbeidsmarktmatch_ho(instelling) or _arbeidsmarktmatch_mbo(instelling)
+    detect = _poging(_arbeidsmarktmatch_ho, instelling) or _arbeidsmarktmatch_mbo(instelling)
     if not detect:
         return result
 

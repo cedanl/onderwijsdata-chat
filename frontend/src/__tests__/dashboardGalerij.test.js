@@ -11,7 +11,7 @@ vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null }
 vi.mock('../api', async importOriginal => ({ ...(await importOriginal()), fetchDashboardData: () => new Promise(() => {}) }))
 
 import DashboardGallery from '../components/DashboardGallery'
-import { DashboardSources, BRONNEN_NATIONAAL } from '../components/dashboards/shared/shell'
+import { DashboardSources, bronLabel } from '../components/dashboards/shared/shell'
 import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -70,16 +70,21 @@ describe('galerijtitel (#921)', () => {
 
 describe('bronlinks van een dashboard (#921)', () => {
   it('melden dat ze in een nieuw tabblad openen, in naam en met een zichtbare cue', async () => {
-    const bronnen = [...BRONNEN_NATIONAAL.ho, ...BRONNEN_NATIONAAL.mbo]
+    // Regels van het bronblok uit de payload (#904).
+    const bronnen = [
+      { bron: 'DUO', dataset: 'p01hoinges', titel: 'Ingeschrevenen hoger onderwijs', url: 'https://onderwijsdata.duo.nl/dataset/p01hoinges' },
+      { bron: 'DUO', dataset: 'mbo-studenten-per-instelling', titel: 'Mbo-studenten per instelling', url: 'https://onderwijsdata.duo.nl/dataset/mbo-studenten-per-instelling' },
+    ]
     await toon(createElement(DashboardSources, { sources: bronnen }))
     const links = [...container.querySelectorAll('.dashboard-sources-list a')]
     expect(links).toHaveLength(bronnen.length)
     links.forEach((a, i) => {
+      const label = bronLabel(bronnen[i])
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
-      expect(a.getAttribute('aria-label')).toBe(`${bronnen[i].label} (opent in een nieuw tabblad)`)
+      expect(a.getAttribute('aria-label')).toBe(`${label} (opent in een nieuw tabblad)`)
       // De cue staat in de linktekst (CSS tekent het pictogram erachter), niet los naast de link.
-      expect(a.querySelector('span').textContent).toBe(bronnen[i].label)
+      expect(a.querySelector('span').textContent).toBe(label)
     })
   })
 

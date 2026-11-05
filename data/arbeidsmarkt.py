@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from core import actualiteit
+from core import actualiteit, brongebruik
 from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
@@ -100,12 +100,22 @@ class UwvStand:
 
 
 # UWV en ROA na actualiteit.TTL opnieuw van de bron, zoals de rest van de app (#901); tot dan één download, ook als
-# chat en dashboards tegelijk vragen. Met functools.cache bleef de eerste download tot de pod herstartte.
+# chat en dashboards tegelijk vragen. Met functools.cache bleef de eerste download tot de pod herstartte. Elke lading
+# meldt haar bestand met peildatum of editie voor het bronblok van de dashboards (#904, data/bronblok.py).
 @actualiteit.Lading
 def _uwv() -> pd.DataFrame:
     from riodata import uwv
 
-    return uwv.load("latest", rec_type="Vacature")
+    df = uwv.load("latest", rec_type="Vacature")
+    brongebruik.meld(
+        {
+            "bron": "UWV",
+            "dataset": uwv.DATASET_ID,
+            "peildatum": _peildatum(df),
+            "opgehaald_op": actualiteit.nu().isoformat(),
+        }
+    )
+    return df
 
 
 def _peildatum(df: pd.DataFrame) -> str:
@@ -219,15 +229,33 @@ def vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str,
     return {s: sector_vacatures(stand.clusters, s).totaal for s in sectoren} if stand else {}
 
 
+_ROA_ID = "ais2030"
+
+
 @actualiteit.Lading
 def _roa() -> pd.DataFrame:
     from riodata import roa
 
-    return roa.load("ais2030", "arbeidsmarkt")
+    df = roa.load(_ROA_ID, "arbeidsmarkt")
+    brongebruik.meld(
+        {
+            "bron": "ROA",
+            "dataset": _ROA_ID,
+            "editie": (df.attrs.get("schema") or {}).get("editie"),  # de editie van het bestand, uit riodata
+            "versie": _versie(df),
+            "opgehaald_op": actualiteit.nu().isoformat(),
+        }
+    )
+    return df
+
+
+def _versie(df: pd.DataFrame) -> str:
+    """De versie in de kolom `versie` van het ROA-bestand ("v20251218"); meer versies met komma's."""
+    return ", ".join(sorted(df["versie"].dropna().astype(str).unique())) or "onbekend"
 
 
 def roa_versie() -> str:
-    return ", ".join(sorted(_roa()["versie"].dropna().astype(str).unique())) or "onbekend"
+    return _versie(_roa())
 
 
 def _getal(waarde) -> float | int | None:
