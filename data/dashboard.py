@@ -8,16 +8,12 @@ import numbers
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-_INSTROOM_MBO = "INSTROOM MBO"
-_BOL_VOLTIJD = "BOL voltijd"
-_BOL_DEELTIJD = "BOL deeltijd"
-
 import httpx
 import pandas as pd
 from riodata import duo
 
 from core import actualiteit
-from core.logging_util import foutkenmerk
+from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
 
 from . import arbeidsmarkt
@@ -25,6 +21,10 @@ from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
 logger = logging.getLogger(__name__)
+
+_INSTROOM_MBO = "INSTROOM MBO"
+_BOL_VOLTIJD = "BOL voltijd"
+_BOL_DEELTIJD = "BOL deeltijd"
 
 
 # ─── Wat er niet laadde (#901) ───────────────────────────────────────────────
@@ -83,23 +83,30 @@ def _reden(e: Exception) -> str:
     return "de data van de bron kon niet worden verwerkt"
 
 
-def _niet_beschikbaar(e: Exception, bericht: str, *args, onderdeel: _Onderdeel | None = None) -> None:
+def _niet_beschikbaar(
+    e: Exception, bericht: str, *args, onderdeel: _Onderdeel | None = None, instelling: str | None = None
+) -> None:
     """Een onderdeel dat niet laadt: op WARNING het type en een kenmerk, de traceback op DEBUG (#819).
 
     Met `onderdeel` komt het gat ook in de payload (`niet_beschikbaar`), zodat het dashboard het noemt in plaats van
     het onderdeel stil weg te laten (#901). De fouttekst van httpx citeert de request-URL, een traceback de waarden
-    in de aanroep (#502): die gaan niet mee.
+    in de aanroep (#502): die gaan niet mee. De gevraagde `instelling` is een ongevalideerde queryparameter, dus
+    gebruikerstekst: op WARNING alleen haar lengte en hash, de naam zelf op DEBUG (#907).
     """
-    logger.warning(bericht + ": %s", *args, foutkenmerk(e))
-    logger.debug(bericht, *args, exc_info=e)
+    if instelling is None:
+        logger.warning(bericht + ": %s", *args, foutkenmerk(e))
+        logger.debug(bericht, *args, exc_info=e)
+    else:
+        logger.warning(bericht + " (%s): %s", *args, tekst_kenmerk(instelling, "instelling_"), foutkenmerk(e))
+        logger.debug(bericht + " voor %s", *args, instelling, exc_info=e)
     gaten = _gaten.get()
     if gaten is not None and onderdeel is not None:
         gaten.onderdelen.setdefault(onderdeel, _reden(e))
 
 
-def _hoofdbron_niet_beschikbaar(e: Exception, bericht: str, *args) -> None:
+def _hoofdbron_niet_beschikbaar(e: Exception, bericht: str, instelling: str) -> None:
     """De lading die zegt of de instelling bestaat, mislukte: wordt ze nergens gevonden, dan is dat een storing."""
-    _niet_beschikbaar(e, bericht, *args)
+    _niet_beschikbaar(e, bericht, instelling=instelling)
     gaten = _gaten.get()
     if gaten is not None:
         gaten.hoofdbron_mislukt = True
@@ -885,7 +892,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "regio-ho: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "regio-ho: data laden mislukt", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -986,7 +993,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "regio-mbo: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "regio-mbo: data laden mislukt", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -1159,7 +1166,7 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     try:
         df_inges, _, _ = _load_ho_full()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1192,7 +1199,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "nationaal-mbo: ranking niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "nationaal-mbo: ranking niet beschikbaar", instelling)
         return None
 
     inst_col_mbo = "INSTELLINGSNAAM"
@@ -1325,7 +1332,7 @@ def _rendement_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "rendement-ho: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "rendement-ho: niet beschikbaar", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1395,7 +1402,7 @@ def _rendement_mbo(instelling: str) -> dict | None:
         df_mbo = _load_mbo_studenten()
         df_dipl_mbo = _load_mbo_gediplomeerden()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "rendement-mbo: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "rendement-mbo: niet beschikbaar", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -1437,7 +1444,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     try:
         df_inges, _, df_dipl = _load_ho_full()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1467,7 +1474,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-mbo: niet beschikbaar", instelling)
         return None
 
     rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]

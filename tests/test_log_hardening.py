@@ -418,6 +418,40 @@ def test_een_dashboardonderdeel_dat_niet_laadt_logt_type_en_kenmerk(caplog, monk
     assert debug.exc_info is not None and MARKER in _volledig(debug)
 
 
+@pytest.mark.parametrize(
+    "lader",
+    [
+        "load_dashboard_regio",
+        "load_dashboard_nationaal",
+        "load_dashboard_rendement",
+        "load_dashboard_arbeidsmarktmatch",
+    ],
+)
+def test_een_dashboard_dat_niet_laadt_logt_de_instelling_alleen_als_kenmerk(caplog, monkeypatch, duo_fixtures, lader):
+    # `instelling` is een ongevalideerde queryparameter, dus gebruikerstekst: op WARNING lengte en hash, de naam op
+    # DEBUG (#907).
+    from riodata import duo
+
+    from data import dashboard as data_dashboard
+
+    def faal(*_args, **_kwargs):
+        raise ConnectionError("DUO onbereikbaar")
+
+    monkeypatch.setattr(duo, "load", faal)
+    caplog.set_level(logging.DEBUG, logger="data.dashboard")
+    with pytest.raises(data_dashboard.BronNietBeschikbaar):
+        getattr(data_dashboard, lader)(f"Hogeschool {MARKER}")
+    assert not _lekt_op_warning(caplog)
+    warnings = [r.getMessage() for r in caplog.records if r.name == "data.dashboard" and r.levelno == logging.WARNING]
+    met_instelling = [w for w in warnings if "instelling_" in w]
+    assert met_instelling
+    assert all(
+        re.search(r"\(instelling_len=\d+ instelling_hash=[0-9a-f]{8}\): ConnectionError " + _KENMERK, w)
+        for w in met_instelling
+    )
+    assert any(MARKER in r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG)
+
+
 def test_een_onleesbare_sectormapping_logt_type_en_kenmerk(caplog, tmp_path):
     from data import arbeidsmarkt
 
