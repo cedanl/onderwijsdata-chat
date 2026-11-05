@@ -11,6 +11,11 @@ onder een `data_key`, met de laadaanroep en de peildatum of versie in haar KeyMe
 het rapport (`build_dataset_context`), het recept na een herstart (#472), de bronnenlijst,
 de citaties, de snippet en de CSV-export vanzelf mee; tot #577 bestonden UWV en ROA voor het
 rapport niet en schreef het model dat er geen vacaturegegevens waren.
+
+Een vraag over ho-opleidingen geeft een DUO-onderdeel mee (#745). De vaste koppeltabel (`data/roa_koppeling.py`) zet
+dat om naar een ROA-subsector of -sector, met cijfers voor de regio, en de opleidingstypen eronder, die ROA alleen
+landelijk heeft. Wat niet te koppelen is en wat de bronnen niet kunnen (hbo/wo, type per regio, UWV per niveau),
+meldt de tool zelf.
 """
 
 import json
@@ -18,7 +23,7 @@ import re
 
 import pandas as pd
 
-from data import arbeidsmarkt
+from data import arbeidsmarkt, roa_koppeling
 
 from . import fouten, store
 from .catalog import catalogus_titel, scope_blokkade
@@ -173,11 +178,12 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str |
     return _json(result)
 
 
-def _roa_onderdelen(niveaus: tuple[str, ...], per_sector: bool, regio: str) -> dict:
+def _roa_onderdelen(categorieen: dict[str, str], regio: str) -> dict:
     """Schoolverlaters en prognose voor de regio; een onderdeel zonder regionale cijfers is landelijk.
 
-    Regionaal heeft ROA alleen de prognose (#450). Welke regio elk onderdeel draagt staat in
-    `herkomst`, zodat een landelijk cijfer niet als regionaal wordt gelezen.
+    `categorieen` noemt per ROA-naam de laag (niveau, sector, subsector of type). Regionaal heeft ROA alleen de
+    prognose (#450), en die niet per opleidingstype (#745). Welke regio elk onderdeel draagt staat in `herkomst`,
+    zodat een landelijk cijfer niet als regionaal wordt gelezen.
     """
     ophalen = {
         "schoolverlaters_sis_2024": arbeidsmarkt.roa_schoolverlaters,
@@ -185,38 +191,112 @@ def _roa_onderdelen(niveaus: tuple[str, ...], per_sector: bool, regio: str) -> d
     }
     landelijk = arbeidsmarkt.ROA_LANDELIJK
     if regio == landelijk:
-        return {"regio": landelijk} | {k: f(niveaus, per_sector) for k, f in ophalen.items()}
+        return {"regio": landelijk} | {k: f(categorieen) for k, f in ophalen.items()}
 
     uit: dict = {"regio": regio, "regiotype": arbeidsmarkt.roa_regiotype(regio), "herkomst": {}}
     for onderdeel, f in ophalen.items():
-        waarden = f(niveaus, per_sector, regio)
-        uit[onderdeel] = waarden or f(niveaus, per_sector, landelijk)
+        waarden = f(categorieen, regio)
+        uit[onderdeel] = waarden or f(categorieen, landelijk)
         uit["herkomst"][onderdeel] = regio if waarden else landelijk
     if terugval := [k for k, r in uit["herkomst"].items() if r == landelijk]:
         uit["terugval"] = f"ROA heeft voor {regio} geen {' en '.join(terugval)}; daar staan de landelijke cijfers."
     return uit
 
 
-def get_roa_benchmark(sector: str | None = None, regio: str | None = None) -> str:
+# Wat de bronnen voor een ho-vraag niet kunnen, in de woorden van de tool, niet van het model (#745).
+_HBO_WO = (
+    "ROA deelt in naar Bachelor en 'Master, doctor', niet naar hbo en wo: een hbo- en een wo-opleiding van hetzelfde "
+    "niveau en vakgebied vallen in dezelfde categorie."
+)
+_KOPPELTABEL = (
+    "De koppeling van DUO-onderdeel naar ROA-categorie is een vaste tabel van deze app (data/roa_koppeling.py), "
+    "gemeten op de ISCED-rubrieken van de erkende opleidingen in DUO; geen indeling van DUO of ROA. Een onderdeel en een "
+    "ROA-categorie vallen niet precies samen: de kanttekening per niveau zegt hoeveel opleidingen elders vallen."
+)
+_ONDERVERDELING = (
+    "De opleidingstypen zijn de onderverdeling van de gekoppelde subsector door ROA; welk type bij welke opleiding van "
+    "het onderdeel hoort, staat niet in de bron."
+)
+_TYPE_LANDELIJK = (
+    "Opleidingstype alleen landelijk: ROA publiceert opleidingstypen niet per regio. De cijfers per opleidingstype "
+    "gelden voor Nederland, niet voor {regio}."
+)
+_UWV_NIVEAU = (
+    "UWV legt bij vacatures geen opleidingsniveau vast: vacatures (get_uwv_vacatures) zijn niet naar hbo- of "
+    "wo-niveau uit te splitsen."
+)
+
+
+def _opleidingstypen(koppeling: roa_koppeling.Koppeling) -> list[str]:
+    """Het gekoppelde type, of anders alle typen onder de gekoppelde subsector; geen bij een sector of zonder koppeling."""
+    if koppeling.opleidingstype:
+        return [koppeling.opleidingstype]
+    if koppeling.laag != "subsector" or koppeling.categorie is None:
+        return []
+    return arbeidsmarkt.roa_opleidingstypen(koppeling.categorie)
+
+
+def _ho_opleiding(onderdeel: str, regio: str) -> dict:
+    """De ROA-categorieën bij een DUO-onderdeel: subsector of sector voor de regio, opleidingstypen landelijk (#745)."""
+    koppelingen = roa_koppeling.KOPPELING[onderdeel]
+    uit: dict = {"onderdeel": onderdeel, "koppeling": {n: k.uitvoer() for n, k in koppelingen.items()}}
+    categorieen = {k.categorie: str(k.laag) for k in koppelingen.values() if k.categorie}
+    typen = dict.fromkeys((t for k in koppelingen.values() for t in _opleidingstypen(k)), "type")
+    meldingen = [
+        f"{onderdeel} is voor {niveau} niet aan een ROA-categorie te koppelen; daar gelden alleen de cijfers per niveau."
+        for niveau, k in koppelingen.items()
+        if not k.categorie
+    ]
+    if categorieen:
+        uit["categorie"] = _roa_onderdelen(categorieen, regio)
+    if typen:
+        uit["opleidingstype"] = _roa_onderdelen(typen, regio)
+        if any(k.laag == "subsector" and not k.opleidingstype for k in koppelingen.values()):
+            meldingen.append(_ONDERVERDELING)
+        if regio != arbeidsmarkt.ROA_LANDELIJK and regio not in uit["opleidingstype"]["herkomst"].values():
+            meldingen.append(_TYPE_LANDELIJK.format(regio=regio))
+    return uit | {"meldingen": [*meldingen, _HBO_WO, _KOPPELTABEL, _UWV_NIVEAU]}
+
+
+def roa_blokken(resultaat: dict) -> list[dict]:
+    """De delen van een ROA-resultaat met cijfers: het niveau of de sector, en bij een ho-onderdeel de gekoppelde
+    categorieën en de opleidingstypen. Elk deel heeft schoolverlaters en prognose met hun eigen `herkomst`."""
+    ho = resultaat.get("ho_opleiding")
+    extra = [ho[k] for k in ("categorie", "opleidingstype") if isinstance(ho, dict) and isinstance(ho.get(k), dict)]
+    return [resultaat, *extra]
+
+
+def get_roa_benchmark(sector: str | None = None, regio: str | None = None, onderdeel: str | None = None) -> str:
     if blokkade := scope_blokkade(ROA_ID):
         return blokkade
+    if sector and onderdeel:
+        return "Kies een ROA-opleidingssector of een DUO-onderdeel, niet beide."
+    ho = roa_koppeling.onderdeel(onderdeel) if onderdeel else None
+    if onderdeel and ho is None:
+        return f"DUO-onderdeel '{onderdeel}' is geen hbo/wo-onderdeel. Kies een van: {roa_koppeling.ONDERDELEN}."
     try:
         if sector:
             if sector not in (sectoren := arbeidsmarkt.roa_sectoren()):
                 return f"ROA-opleidingssector '{sector}' is onbekend. Kies een van: {sectoren}."
-            niveaus, per_sector = (sector,), True
+            categorieen = {sector: "sector"}
         else:
-            niveaus, per_sector = tuple(n for ns in arbeidsmarkt.ROA_NIVEAUS.values() for n in ns), False
+            niveaus = (
+                arbeidsmarkt.ROA_NIVEAUS["ho"] if ho else (n for ns in arbeidsmarkt.ROA_NIVEAUS.values() for n in ns)
+            )
+            categorieen = dict.fromkeys(niveaus, "niveau")
         regionaam = arbeidsmarkt.roa_regio(regio) if regio else arbeidsmarkt.ROA_LANDELIJK
         if regionaam is None:
             return f"ROA-regio '{regio}' is onbekend. Kies een arbeidsmarktregio of provincie: {arbeidsmarkt.roa_regios()}."
-        onderdelen = _roa_onderdelen(niveaus, per_sector, regionaam)
+        resultaat = _roa_onderdelen(categorieen, regionaam)
+        if ho:
+            resultaat["ho_opleiding"] = _ho_opleiding(ho, regionaam)
         versie = arbeidsmarkt.roa_versie()
     except Exception as e:
         return fouten.bronfout("ROA", e)
-    args = {k: v for k, v in (("sector", sector), ("regio", regio)) if v}
-    key = ":".join(["roa", _slug(regionaam), *([_slug(sector)] if sector else [])])
-    _bewaar(key, _roa_tabel(onderdelen), TOOL_GET_ROA_BENCHMARK, args, f"versie {versie}")
+    args = {k: v for k, v in (("sector", sector), ("regio", regio), ("onderdeel", ho)) if v}
+    key = ":".join(["roa", _slug(regionaam), *(_slug(v) for v in (sector, ho) if v)])
+    tabel = pd.concat([_roa_tabel(blok) for blok in roa_blokken(resultaat)], ignore_index=True)
+    _bewaar(key, tabel, TOOL_GET_ROA_BENCHMARK, args, f"versie {versie}")
     return _json(
-        {"bron": f"ROA, {catalogus_titel(ROA_ID)}", "dataset": ROA_ID, "data_key": key, "versie": versie, **onderdelen}
+        {"bron": f"ROA, {catalogus_titel(ROA_ID)}", "dataset": ROA_ID, "data_key": key, "versie": versie, **resultaat}
     )

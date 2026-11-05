@@ -51,8 +51,11 @@ INSPECTIE_VO_GEMEENTE = "UTRECHT"
 INSPECTIE_PO_SO_RIJEN = 3
 UWV_PROVINCIE = "Flevoland"  # de kleinste provincie in rijen, zodat het bestand klein blijft
 UWV_KOLOMMEN = ["PEILDATUM", "PROVINCIE", "GEMEENTE", "BEROEPENCLUSTER", "AANTAL"]
-ROA_KOLOMMEN = ["regionaam", "thema", "aggregatieniveau", "detailniveau", "onderwerp", "perc", "aantal", "typering",
-                "versie"]  # fmt: skip
+ROA_KOLOMMEN = ["regionaam", "thema", "aggregatieniveau", "waarde", "detailniveau", "onderwerp", "perc", "aantal",
+                "typering", "versie"]  # fmt: skip
+# De ho-verfijning van get_roa_benchmark (#745): de RUG-vraag, wo in de regio Groningen. ROA kent Groningen als
+# arbeidsmarktregio en als provincie; `waarde` is de ONR2019-code waaruit de opleidingstypen per subsector volgen.
+ROA_HO_REGIOS = ("Groningen", "provincie Groningen")
 
 # DUO: (dataset, resource) → (kolom met de instellingscode, de codes die blijven). Het register van de app leest zijn
 # mbo-instellingen uit mbo-studenten-per-instelling: dat bestand houdt de mbo-instellingen van de DUO-fixtures, anders
@@ -267,17 +270,28 @@ def _roa(bronnen: dict) -> None:
 
     df = roa.load("ais2030", "arbeidsmarkt")
     niveaus = [n for ns in a.ROA_NIVEAUS.values() for n in ns]
-    df = df.loc[
+    landelijk = (
         (df["regionaam"] == a.ROA_LANDELIJK)
         & (df["aggregatieniveau"] == a._ROA_NIVEAU)
         & df["detailniveau"].isin(niveaus)
+    )
+    # Elke ho-categorie (niveau, sector, subsector, type), landelijk en in de regio's van de RUG-vraag (#745).
+    ho = (
+        df["regionaam"].isin([a.ROA_LANDELIJK, *ROA_HO_REGIOS])
+        & df["aggregatieniveau"].isin(list(a.ROA_AGGREGATIE.values()))
+        & df["detailniveau"].astype(str).str.startswith(("Bachelor", "Master"))
+    )
+    df = df.loc[
+        (landelijk | ho)
         & df["thema"].isin([a._ROA_SIS, a._ROA_PROGNOSE])
         & df["onderwerp"].isin([*a.ROA_SIS_INDICATOREN, *a.ROA_PROGNOSE_INDICATOREN]),
         ROA_KOLOMMEN,
     ]
     _csv(df, ROA)
     bronnen[ROA] = {"url": "riodata roa.load('ais2030', 'arbeidsmarkt') (ROA AIS 2030)",
-                    "filter": "Nederland, opleidingsniveau, de indicatoren van get_roa_benchmark", "rijen": len(df)}  # fmt: skip
+                    "filter": "de indicatoren van get_roa_benchmark: Nederland per opleidingsniveau, en elke "
+                              "ho-categorie (niveau, sector, subsector, type) in Nederland, Groningen en provincie "
+                              "Groningen", "rijen": len(df)}  # fmt: skip
 
 
 def main() -> None:

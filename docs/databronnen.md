@@ -171,11 +171,17 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 
 **ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. In de chat via `get_roa_benchmark`: schoolverlatersinformatie (SIS 2024, alleen landelijk) en de prognose tot 2030 per opleidingsniveau (mbo2-4, bachelor, master) of opleidingssector, landelijk of per arbeidsmarktregio of provincie. Het resultaat noemt per onderdeel de regio waar de cijfers vandaan komen. Ook gebruikt in het regiodashboard.
 
+**Hbo- en wo-opleidingen (#745).** ROA deelt de opleidingen in naar ONR2019: niveau (Bachelor, "Master, doctor"), sector, subsector en opleidingstype. In AIS 2030 (editie 2025, versie v20251218) staan voor het ho 8 bachelor- en 7 master-subsectoren, ook per arbeidsmarktregio en provincie (de prognose, als typering), en 26 bachelor- en 21 master-opleidingstypen, alleen landelijk. De code in de kolom `waarde` geeft de hiërarchie: subsector 32120, haar typen 32121-32123. Met het argument `onderdeel` (het DUO-onderdeel, zoals `GEDRAG_EN_MAATSCHAPPIJ`) geeft de tool naast de ho-niveaus de gekoppelde subsector (of sector) voor de regio en de opleidingstypen eronder, landelijk.
+
+- **De koppeling is een tabel van de app**, geen indeling van DUO of ROA: `data/roa_koppeling.py`. Ze is gemeten op de ISCED-rubrieken van de erkende opleidingen in DUO (`overzicht-erkenningen-ho`, 05-11-2026): een onderdeel hoort bij een subsector als ten hoogste 20% van zijn opleidingen aantoonbaar elders valt, anders bij de sector erboven, anders nergens. Op beide niveaus gekoppeld: Gezondheidszorg, Landbouw en natuurlijke omgeving, Onderwijs, Recht (ook op type: recht), Taal en cultuur en Techniek. Economie koppelt bij de master aan een subsector, bij de bachelor alleen aan de sector (logistiek, horeca en toerisme vallen bij ROA onder dienstverlening). Gedrag en maatschappij koppelt alleen bij de master. Natuur (informatica en kunstmatige intelligentie vallen bij ROA onder techniek en ict) en Sectoroverstijgend koppelen niet. Per niveau staat in het resultaat hoeveel opleidingen elders vallen.
+- **Wat de bron niet kan, zegt de tool zelf:** het opleidingstype is alleen landelijk ("opleidingstype alleen landelijk"), ROA splitst niet naar hbo en wo, een ongekoppeld onderdeel houdt alleen de cijfers per niveau, en UWV-vacatures hebben geen opleidingsniveau.
+- **Opleidingsnamen koppelen we niet:** er is geen bron die een CROHO-opleiding aan een ROA-opleidingstype hangt.
+
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | Via CBS Open Data |
-| Inhoud | Doorstroompercentages, match scores per opleidingssector |
-| Formaat | Landelijke referentiewaarden; de prognose ook per arbeidsmarktregio (35) en provincie (12) |
+| Toegang | Via DataverseNL (`riodata.roa`, AIS 2030) |
+| Inhoud | Schoolverlatersinformatie en arbeidsmarktprognoses per opleidingsniveau, -sector, -subsector en -type (ONR2019) |
+| Formaat | Landelijke referentiewaarden; de prognose per niveau, sector en subsector ook per arbeidsmarktregio (35) en provincie (12); het opleidingstype alleen landelijk |
 
 ---
 

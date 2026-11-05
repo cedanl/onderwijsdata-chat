@@ -15,7 +15,7 @@ from dataclasses import dataclass, replace
 
 from tools import TOOL_RUN_ANALYSIS
 from tools.analysis import SCRIPTCONSTANTEN
-from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID
+from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
 
 from . import kpi_bron
@@ -161,19 +161,22 @@ def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
 
 def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
     """ROA per onderdeel, opleiding en indicator (CH-39); de regio per onderdeel uit `herkomst`,
-    zodat een landelijke terugval landelijk heet."""
+    zodat een landelijke terugval landelijk heet. Bij een ho-onderdeel ook de gekoppelde categorieën en de
+    opleidingstypen (#745), elk met hun eigen herkomst."""
     data_key, bron = _arbeidsmarktbron(parsed, f"{parsed.get('bron')} ({parsed.get('versie')})")  # "ROA, AIS tot 2030"
-    gegeven = parsed.get("herkomst")
-    herkomst: dict = gegeven if isinstance(gegeven, dict) else {}
-    for onderdeel, naam in ROA_ONDERDELEN.items():
-        regio = herkomst.get(onderdeel) or parsed.get("regio")
-        opleidingen = parsed.get(onderdeel)
-        for opleiding, indicatoren in opleidingen.items() if isinstance(opleidingen, dict) else ():
-            for indicator, waarden in indicatoren.items() if isinstance(indicatoren, dict) else ():
-                for soort, waarde in waarden.items() if isinstance(waarden, dict) else ():
-                    if (cijfers := _getal(waarde)) is not None:
-                        selectie = (f"Opleiding: {opleiding}", f"Regio: {regio}", naam)
-                        yield Meetwaarde(cijfers, indicator, selectie, data_key, "%" if soort == "perc" else None, bron)
+    for blok in roa_blokken(parsed):
+        gegeven = blok.get("herkomst")
+        herkomst: dict = gegeven if isinstance(gegeven, dict) else {}
+        for onderdeel, naam in ROA_ONDERDELEN.items():
+            regio = herkomst.get(onderdeel) or blok.get("regio")
+            opleidingen = blok.get(onderdeel)
+            for opleiding, indicatoren in opleidingen.items() if isinstance(opleidingen, dict) else ():
+                for indicator, waarden in indicatoren.items() if isinstance(indicatoren, dict) else ():
+                    for soort, waarde in waarden.items() if isinstance(waarden, dict) else ():
+                        if (cijfers := _getal(waarde)) is not None:
+                            selectie = (f"Opleiding: {opleiding}", f"Regio: {regio}", naam)
+                            eenheid = "%" if soort == "perc" else None
+                            yield Meetwaarde(cijfers, indicator, selectie, data_key, eenheid, bron)
 
 
 _ARBEIDSMARKT = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa}

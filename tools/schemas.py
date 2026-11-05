@@ -2,6 +2,7 @@ from typing import Any
 
 from core.config import RIO_PAGE_SIZE
 from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
+from data.roa_koppeling import ONDERDELEN as ROA_ONDERDELEN
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
@@ -767,6 +768,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "ROA (AIS 2030): schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, buiten de "
                 "vakrichting; alleen landelijk) en de prognose tot 2030 (landelijk, of per arbeidsmarktregio "
                 "of provincie), per opleidingsniveau mbo2-4, bachelor en master, of voor één opleidingssector. "
+                "Voor hbo/wo-opleidingen: geef het DUO-onderdeel mee; dan ook de ROA-subsector (per regio) en de "
+                "opleidingstypen (alleen landelijk), en wat niet te koppelen is. "
                 "Niet per instelling. Het resultaat heeft een data_key: de tabel met elk cijfer als rij "
                 "(ONDERDEEL, REGIO, OPLEIDING, INDICATOR, PERCENTAGE, AANTAL, TYPERING) voor query_data en create_plot."
             ),
@@ -785,6 +788,14 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "description": (
                             "Optioneel: een arbeidsmarktregio (bijv. 'Midden-Utrecht') of provincie (bijv. "
                             "'Utrecht'). Zonder regio: landelijk."
+                        ),
+                    },
+                    "onderdeel": {
+                        "type": "string",
+                        "enum": ROA_ONDERDELEN,
+                        "description": (
+                            "Optioneel, bij een vraag over hbo/wo-opleidingen: het DUO-onderdeel (kolom ONDERDEEL "
+                            "in de DUO-ho-data). Niet samen met sector."
                         ),
                     },
                 },

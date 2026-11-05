@@ -10,7 +10,8 @@ omgevingen uit staan.
 - ROA: AIS 2030, landelijk (regionaam 'Nederland') tenzij een regio gevraagd is; zonder dat filter
   won de typering van de laatst gelezen regio. De prognose staat er ook per arbeidsmarktregio (35)
   en provincie (12, als 'provincie Utrecht'), alleen als typering; de schoolverlatersinformatie
-  alleen landelijk (#450).
+  alleen landelijk (#450). Onder het niveau deelt ROA in naar sector en subsector (ook regionaal) en
+  opleidingstype (alleen landelijk); de code in de kolom `waarde` geeft die hiërarchie (#745).
 """
 
 from __future__ import annotations
@@ -41,6 +42,14 @@ ROA_LANDELIJK = "Nederland"
 _ROA_PROVINCIE = "provincie "
 _ROA_NIVEAU = "opleidingsniveau (ONR2019)"
 _ROA_SECTOR = "  opleidingssector (ONR2019)"
+# De opleidingsindeling van ROA (ONR2019) in vier lagen, met de inspringing zoals in de kolom `aggregatieniveau`.
+# Sector en subsector staan er per arbeidsmarktregio en provincie, het opleidingstype alleen landelijk (#745).
+ROA_AGGREGATIE = {
+    "niveau": _ROA_NIVEAU,
+    "sector": _ROA_SECTOR,
+    "subsector": "    opleidingssubsector (ONR2019)",
+    "type": "      opleidingstype (ONR2019)",
+}
 _ROA_SIS = "Schoolverlatersinformatie (SIS 2024)"
 _ROA_PROGNOSE = "Risicoindicatoren en arbeidsmarktprognoses tot 2030"
 ROA_SIS_INDICATOREN = ("werkloosheid", "vast dienstverband", "buiten de vakrichting")
@@ -290,20 +299,27 @@ def roa_regiotype(regionaam: str) -> str:
     return "provincie" if regionaam.startswith(_ROA_PROVINCIE) else "arbeidsmarktregio"
 
 
+def _categorieen(categorieen: tuple[str, ...] | dict[str, str]) -> dict[str, str]:
+    """Detailniveau → laag uit ROA_AGGREGATIE; losse namen zijn opleidingsniveaus."""
+    return categorieen if isinstance(categorieen, dict) else dict.fromkeys(categorieen, "niveau")
+
+
 def roa_waarden(
-    detailniveaus: tuple[str, ...],
+    categorieen: tuple[str, ...] | dict[str, str],
     onderwerpen: tuple[str, ...],
     thema: str,
-    aggregatieniveau: str = _ROA_NIVEAU,
     regio: str = ROA_LANDELIJK,
 ) -> dict[str, dict[str, dict[str, float | int | str]]]:
-    """ROA-waarden van één regio: detailniveau → onderwerp → {perc, aantal, typering}, alleen wat er staat."""
+    """ROA-waarden van één regio: detailniveau → onderwerp → {perc, aantal, typering}, alleen wat er staat.
+
+    Elke categorie wordt in haar eigen laag gezocht: 'Master - techniek en ict' is zowel sector als subsector.
+    """
     df = _roa()
+    lagen = {naam: ROA_AGGREGATIE[laag] for naam, laag in _categorieen(categorieen).items()}
     rijen = df[
         (df["regionaam"] == regio)
         & (df["thema"] == thema)
-        & (df["aggregatieniveau"] == aggregatieniveau)
-        & df["detailniveau"].isin(detailniveaus)
+        & (df["detailniveau"].map(lagen) == df["aggregatieniveau"])
         & df["onderwerp"].isin(onderwerpen)
     ]
     uit: dict[str, dict[str, dict[str, float | int | str]]] = {}
@@ -330,11 +346,35 @@ def roa_sectoren() -> list[str]:
     return sorted(s for s in sectoren if s.startswith(prefixen))
 
 
-def roa_schoolverlaters(detailniveaus: tuple[str, ...], sector: bool = False, regio: str = ROA_LANDELIJK) -> dict:
-    niveau = _ROA_SECTOR if sector else _ROA_NIVEAU
-    return roa_waarden(detailniveaus, ROA_SIS_INDICATOREN, _ROA_SIS, niveau, regio)
+def roa_categorieen(laag: str) -> list[str]:
+    """Alle namen in één laag van ROA_AGGREGATIE ('subsector', 'type', ...), zoals de bron ze spelt."""
+    df = _roa()
+    return sorted(df.loc[df["aggregatieniveau"] == ROA_AGGREGATIE[laag], "detailniveau"].dropna().astype(str).unique())
 
 
-def roa_prognose(detailniveaus: tuple[str, ...], sector: bool = False, regio: str = ROA_LANDELIJK) -> dict:
-    niveau = _ROA_SECTOR if sector else _ROA_NIVEAU
-    return roa_waarden(detailniveaus, ROA_PROGNOSE_INDICATOREN, _ROA_PROGNOSE, niveau, regio)
+def roa_opleidingstypen(subsector: str) -> list[str]:
+    """De opleidingstypen onder een ROA-subsector, in de volgorde van hun code.
+
+    De hiërarchie komt uit de bron: de ONR2019-code in `waarde` van een subsector eindigt op 0 (32120, 'Master -
+    journalistiek, gedrag en maatschappij'), die van haar typen op 1-9 (32121-32123). Leeg als ROA de subsector niet
+    kent of niet verder indeelt.
+    """
+    df = _roa()
+    lagen = df["aggregatieniveau"]
+    codes = pd.to_numeric(df["waarde"], errors="coerce")
+    sub = codes[(lagen == ROA_AGGREGATIE["subsector"]) & (df["detailniveau"] == subsector)].dropna().unique()
+    if len(sub) != 1 or sub[0] % 10:
+        return []
+    typen = df[(lagen == ROA_AGGREGATIE["type"]) & (codes // 10 == sub[0] // 10) & (codes != sub[0])]
+    volgorde = typen.assign(code=codes).drop_duplicates("detailniveau").sort_values("code")
+    return volgorde["detailniveau"].astype(str).tolist()
+
+
+def roa_schoolverlaters(categorieen: tuple[str, ...] | dict[str, str], regio: str = ROA_LANDELIJK) -> dict:
+    """Schoolverlatersinformatie per categorie; losse namen zijn opleidingsniveaus, een dict noemt de laag."""
+    return roa_waarden(categorieen, ROA_SIS_INDICATOREN, _ROA_SIS, regio)
+
+
+def roa_prognose(categorieen: tuple[str, ...] | dict[str, str], regio: str = ROA_LANDELIJK) -> dict:
+    """De prognose tot 2030 per categorie; losse namen zijn opleidingsniveaus, een dict noemt de laag."""
+    return roa_waarden(categorieen, ROA_PROGNOSE_INDICATOREN, _ROA_PROGNOSE, regio)

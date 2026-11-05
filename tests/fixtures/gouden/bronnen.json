@@ -79,9 +79,9 @@
   "url": "https://duo.nl/open_onderwijsdata/images/2026-indicatoren-per-instelling.xlsx"
  },
  "roa-ais2030.csv.gz": {
-  "filter": "Nederland, opleidingsniveau, de indicatoren van get_roa_benchmark",
-  "opgehaald": "2026-11-02",
-  "rijen": 30,
+  "filter": "de indicatoren van get_roa_benchmark: Nederland per opleidingsniveau, en elke ho-categorie (niveau, sector, subsector, type) in Nederland, Groningen en provincie Groningen",
+  "opgehaald": "2026-11-05",
+  "rijen": 541,
   "url": "riodata roa.load('ais2030', 'arbeidsmarkt') (ROA AIS 2030)"
  },
  "uwv-vacatures.csv.gz": {
