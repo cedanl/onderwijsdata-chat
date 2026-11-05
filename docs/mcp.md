@@ -70,10 +70,10 @@ Wat stabiel is en wat niet, staat in [API-referentie → Wat is stabiel](api.md#
 
 ## Starten
 
-De server zit in de optionele extra `mcp`; de MCP-SDK staat niet in het chat-image.
+De MCP-SDK (`mcp`) is een gewone dependency en zit ook in het chat-image (#938); `uv sync` installeert hem.
 
 ```bash
-uv sync --extra mcp
+uv sync
 uv run python mcp_server.py     # stdio: wacht op een MCP-client
 ```
 
@@ -87,7 +87,7 @@ playground.
 Zonder client testen kan met de MCP Inspector:
 
 ```bash
-npx @modelcontextprotocol/inspector uv run --extra mcp python mcp_server.py
+npx @modelcontextprotocol/inspector uv run python mcp_server.py
 ```
 
 ## Clientconfiguratie
@@ -100,7 +100,7 @@ gebruiken hetzelfde formaat; vul het pad naar deze repository in:
   "mcpServers": {
     "onderwijscatalogus": {
       "command": "uv",
-      "args": ["run", "--directory", "/pad/naar/onderwijsdata-chat", "--extra", "mcp", "python", "mcp_server.py"]
+      "args": ["run", "--directory", "/pad/naar/onderwijsdata-chat", "python", "mcp_server.py"]
     }
   }
 }

@@ -126,7 +126,7 @@ make url   # print de juiste URL, bijv. http://172.17.0.2:5173
 De catalogus is ook te doorzoeken vanuit een MCP-client (Claude Desktop, Cursor, VS Code), zonder de chat-app te draaien:
 
 ```bash
-uv sync --extra mcp
+uv sync
 uv run python mcp_server.py
 ```
 

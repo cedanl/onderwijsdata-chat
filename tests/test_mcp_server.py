@@ -1,7 +1,7 @@
 """MCP-server voor de catalogus (#41, stap 1): dezelfde schema's en dezelfde uitvoering als de chat.
 
 De definities en de uitvoering zijn zonder de mcp-package te toetsen; het protocol zelf (initialize,
-list_tools, call_tool over een in-memory verbinding) alleen met de extra `mcp` geïnstalleerd.
+list_tools, call_tool) over een in-memory verbinding. `mcp` is sinds #938 een gewone dependency.
 """
 
 import json
@@ -202,7 +202,6 @@ def test_een_fout_krijgt_geen_bewijs():
 
 
 def _via_protocol(actie):
-    pytest.importorskip("mcp", reason="extra `mcp` niet geïnstalleerd")
     import anyio
     from mcp.client.session import ClientSession
     from mcp.shared.memory import create_client_server_memory_streams

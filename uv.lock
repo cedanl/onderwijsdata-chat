@@ -1884,7 +1884,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.105.5"
+version = "1.108.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1906,16 +1906,17 @@ dependencies = [
     { name = "pyyaml" },
     { name = "tiktoken" },
     { name = "tokenizers" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a3/ea/2dbe0c3ba9aa483c558230e826e7ef7bb4147a1f9905ad41e9125f46fc56/litellm-1.105.5.tar.gz", hash = "sha256:08d51e9b7b65507a6b76666484916fcc89fd40a4357b551cf9906fb1a57bdcd8", size = 20197531, upload-time = "2026-10-25T08:56:41.051Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/8f/44671cdf62fa1cf70a1bde9ffb672cc5a26e3e1853177ef7dd3d307e3699/litellm-1.108.0.tar.gz", hash = "sha256:531b2088cd9b0e95518b450ed8fd7fac4cdd81529af7930a0b5180e67d2b0c04", size = 21426989, upload-time = "2026-11-04T03:31:51.078Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/7c/6ce317da6bd9396ffef4bc1740d0ab895e599488caba68c5227ccba5c7e9/litellm-1.105.5-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:1b54815373dc4f424bd293d3979332a485194d76b34b8fefa7e174615c481a2f", size = 38009719, upload-time = "2026-10-25T08:56:17.043Z" },
-    { url = "https://files.pythonhosted.org/packages/ad/3e/f5e6bacf06d08e9f7b46e54dd30ed22ba3badd3b6577add7be80742f4eca/litellm-1.105.5-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:97f6d246484240bf4c4751cfeaa614c67932d4e169bb6829734fe8dff660929c", size = 36349616, upload-time = "2026-10-25T08:56:20.735Z" },
-    { url = "https://files.pythonhosted.org/packages/5e/c7/4fa882bcd48e08d90eb5acfb3236fd8c9aea2e9f124bf2f352d6ae5b0287/litellm-1.105.5-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:fb8ebffce9dc9e0b1194b03a2b4b401c98fba78bb3130f644df4442528a88916", size = 37705733, upload-time = "2026-10-25T08:56:25.123Z" },
-    { url = "https://files.pythonhosted.org/packages/e1/89/c22ec08c6a8b9799ca3369442b8d1a905a6e94fccacadf2d88da8b192994/litellm-1.105.5-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:d1e7f99ebe6e994f24147cd604eedd9f62f02b47d3273de38980cd79d6ac2449", size = 38638297, upload-time = "2026-10-25T08:56:28.374Z" },
-    { url = "https://files.pythonhosted.org/packages/c2/c9/63e4274142d20eb37252d2267dbc00f3bfc765897f84ea82080fad9bdb4d/litellm-1.105.5-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:5901bf883fb5af5a2f91185db330310dab16622310b9a754ee55a692d2b1c9d4", size = 37779528, upload-time = "2026-10-25T08:56:31.571Z" },
-    { url = "https://files.pythonhosted.org/packages/2f/b5/657e20be93e7096c3935ff74bf5eb57e924d3fa20cb2169d832c81303679/litellm-1.105.5-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:76a57ab37292674fff3c51146fecdcc9e79c3cd6a86b64f8126b8cea44b04de4", size = 38820029, upload-time = "2026-10-25T08:56:34.553Z" },
-    { url = "https://files.pythonhosted.org/packages/2f/17/d5ddf12c44c9c3c22fa9c0fe7c5ef1f1e4ba2519a0d21b2ad6bee0ee1030/litellm-1.105.5-cp310-abi3-win_amd64.whl", hash = "sha256:87d7b23b84d28cdfa4f50f317ef316147b21c3596e1dae0024bc11f0b20a9532", size = 39708985, upload-time = "2026-10-25T08:56:37.797Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/62/05f2d9c3a03473f1ac00651b87ee8c81e00660986f8a898c774495b7b0c3/litellm-1.108.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:63602ea1243b22775af8484b8ef2a7da73b6b275491ac943377cb2bee9d5af1c", size = 35831637, upload-time = "2026-11-04T03:31:18.256Z" },
+    { url = "https://files.pythonhosted.org/packages/00/86/3e258edcf62c1c77aac31d0b650f84b98c84e3f7c1da2daf9e8b031487ad/litellm-1.108.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:3af9eccea1486a89c4f5c2216f728024114d6ae76b2efe9071f740b007e18706", size = 34944457, upload-time = "2026-11-04T03:31:23.442Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/3c/bc319834a1cee721d4efe9f3412a3cb99777eb994e3a098fe2868c2f5476/litellm-1.108.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:d26bffd9c5562589873431e0dbcbb2f64b84d7d3f3a2cba049b6a3a186379fbf", size = 35448091, upload-time = "2026-11-04T03:31:28.026Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/7a/83ef54a21531c4707791ad2438ea0b71fc11b52f1a6e56b36e3992be9e07/litellm-1.108.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:1ca5da602631ca4e149e2aba01a5d87e59fda8ce6c66bb5622c06f7ba34f6fb6", size = 36315040, upload-time = "2026-11-04T03:31:32.392Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/81/d3f431c948d1c2e37a5d9ed492802f5b856c78e30fc6540867889259987b/litellm-1.108.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:960c78e6fe047d90f105d687475831d9b93726129c9411a8eced77757a488733", size = 35577114, upload-time = "2026-11-04T03:31:36.885Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/25/2f2847c102ebe1376534b651f17b9f34b8b2071bfdefbd1f9f79f2aa455e/litellm-1.108.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:9a101e628c14f277eee1f1083415c6578214d7944275e185e12173bcf01a32d2", size = 36379711, upload-time = "2026-11-04T03:31:41.441Z" },
+    { url = "https://files.pythonhosted.org/packages/84/ab/c17c81740f101a4224487307204f58814e9025a980444f484d3be2ab60b2/litellm-1.108.0-cp310-abi3-win_amd64.whl", hash = "sha256:49ecd810e6ab7d149f3174e0d45e333ae3765acbd12862b49a034b4e6ea533ba", size = 36986423, upload-time = "2026-11-04T03:31:45.72Z" },
 ]
 
 [[package]]
@@ -2620,6 +2621,7 @@ dependencies = [
     { name = "httpx" },
     { name = "litellm" },
     { name = "markdown" },
+    { name = "mcp" },
     { name = "onderwijsdata" },
     { name = "openpyxl" },
     { name = "plotly" },
@@ -2630,9 +2632,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-mcp = [
-    { name = "mcp" },
-]
 postgres = [
     { name = "psycopg2-binary" },
 ]
@@ -2661,9 +2660,9 @@ requires-dist = [
     { name = "authlib", specifier = ">=1.3" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "litellm", specifier = ">=1.40,<1.106" },
+    { name = "litellm", specifier = ">=1.108,<1.109" },
     { name = "markdown", specifier = ">=3.10.2" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.3" },
+    { name = "mcp", specifier = ">=2.3" },
     { name = "onderwijsdata", editable = "packages/onderwijsdata" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "plotly", specifier = ">=5.0" },
@@ -2673,7 +2672,7 @@ requires-dist = [
     { name = "riodata", extras = ["analyse"], editable = "packages/riodata" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
-provides-extras = ["postgres", "mcp"]
+provides-extras = ["postgres"]
 
 [package.metadata.requires-dev]
 demo = [
