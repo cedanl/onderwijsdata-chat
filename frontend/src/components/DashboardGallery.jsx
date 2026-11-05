@@ -1,4 +1,4 @@
-import WorkbookPreview from './WorkbookPreviews'
+import { DashboardMiniatuur } from './dashboards/miniatuur'
 import { korteDatum } from '../relatieveDatum'
 
 // Opgeslagen dashboards uit de dashboardbouwer (#765): de bouwer is weg en ze openen niet meer, maar ze staan nog op
@@ -54,7 +54,7 @@ export default function DashboardGallery({ workbooks, opgeslagen = [], instellin
             onClick={e => { e.preventDefault(); onSelect(wb) }}
           >
             <div className="wb-card-thumb">
-              <WorkbookPreview wb={wb} />
+              <DashboardMiniatuur wb={wb} instelling={instelling} />
               <span className="wb-builtin-badge">Vast dashboard</span>
               <div className="wb-builtin-instelling">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

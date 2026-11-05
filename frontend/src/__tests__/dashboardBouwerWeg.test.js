@@ -13,6 +13,8 @@ vi.mock('../api', () => ({
   ]),
   putWorkbook: vi.fn().mockResolvedValue({}),
   deleteWorkbookApi: vi.fn().mockResolvedValue({}),
+  // De miniaturen van de vaste dashboards (#933) blijven hier laden.
+  fetchDashboardData: vi.fn(() => new Promise(() => {})),
 }))
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 

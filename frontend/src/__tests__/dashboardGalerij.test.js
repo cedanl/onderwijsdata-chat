@@ -7,6 +7,8 @@ import { createRoot } from 'react-dom/client'
 
 // De previews en dashboards trekken Plotly binnen, dat jsdom niet kan laden.
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
+// De miniaturen laden de cijfers van hun dashboard (#933); hier blijven ze laden, zonder netwerk.
+vi.mock('../api', async importOriginal => ({ ...(await importOriginal()), fetchDashboardData: () => new Promise(() => {}) }))
 
 import DashboardGallery from '../components/DashboardGallery'
 import { DashboardSources, BRONNEN_NATIONAAL } from '../components/dashboards/shared/shell'
