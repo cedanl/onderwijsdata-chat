@@ -113,12 +113,15 @@ class TestGecommitteerdeData:
     def test_bestaande_enriched_waarden_blijven_identiek(self, source, bestand):
         enriched = self._enriched(bestand)
         for rec in onderwijsbronnen.catalog(source=source):
+            if rec.get("_buiten_ckan"):  # financien (#935): een eigen record, niet uit CKAN en niet verrijkt
+                continue
             for k, v in enriched[_catalog.record_id(rec)].items():
                 if k in (STAMP, STATUS):
                     continue
                 assert rec.get(k) == v, f"{_catalog.record_id(rec)}.{k} is veranderd"
 
-    @pytest.mark.parametrize("source,aantal", [("duo", 56), ("rio", 14)])
+    # DUO: 56 datasets uit CKAN plus de financiële verantwoording uit XBRL (financien, #935).
+    @pytest.mark.parametrize("source,aantal", [("duo", 57), ("rio", 14)])
     def test_aantallen_blijven_gelijk(self, source, aantal):
         assert len(onderwijsbronnen.catalog(source=source)) == aantal
 

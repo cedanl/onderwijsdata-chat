@@ -18,6 +18,10 @@ Gebruik:
     df = duo.load("p01hoinges", 1)     # tweede resource
     df = duo.load("p01hoinges", "c454d7e1-b9b1-4460-b9ff-55938c85788e")  # op UUID (stabiel)
     duo.resource_schemas("p01hoinges")  # officiële kolomtypes per resource, offline
+
+    # Financiële kengetallen en rijksbijdragen per bestuur (verantwoording uit XBRL, geen CKAN; #935)
+    from onderwijsbronnen.duo import financien
+    financien.overzicht(financien.laad(), "40597")
 """
 from __future__ import annotations
 import hashlib
@@ -28,6 +32,7 @@ from functools import lru_cache
 import httpx
 
 from .._kern import broncontract, verrijking
+from . import financien
 from .notes import details_from_pkg, zoekkaart_tijd
 
 # Algemene definities: alleen wat in elke dataset met deze kolom klopt. Controle tegen de
@@ -207,15 +212,23 @@ _DATA = "onderwijsbronnen.duo.data"
 
 
 def catalogusrecords(live: bool = False) -> list[dict]:
-    """De DUO-datasets als catalogusrecords: de gepinde snapshot met verrijking, of met `live` van CKAN."""
+    """De DUO-datasets als catalogusrecords: de gepinde snapshot met verrijking, of met `live` van CKAN.
+
+    Beide met het record van de financiële verantwoording uit XBRL (`financien`, #935): die staat niet in CKAN.
+    """
     if live:
-        return catalog()
+        return catalog() + _buiten_ckan()
     records = verrijking.met_verrijking(_DATA, "duo_resources.json", "duo_resources_enriched.json",
                                         verrijking.VERRIJKT_DUO)
     for r in records:
         if r.get("_tijd"):
             r["_zoekkaart"] = {**(r.get("_zoekkaart") or {}), "tijd": zoekkaart_tijd(r["_tijd"])}
-    return records
+    return records + _buiten_ckan()
+
+
+def _buiten_ckan() -> list[dict]:
+    """De DUO-bronnen met een eigen lader buiten CKAN: nu alleen `financien`."""
+    return verrijking.lees_json(_DATA, "duo_financien.json")
 
 
 def metadata(record: dict) -> dict:

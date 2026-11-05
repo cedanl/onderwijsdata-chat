@@ -6,7 +6,8 @@ tests/test_importgrens.py. Dit bestand gaat over RIO en DUO (tot november 2026 h
 `CLAUDE-cbs.md`. De twee belangrijkste bronnen hier:
 
 1. **RIO LOD API v3** — dagelijks bijgewerkt register van instellingen en opleidingen (typefilters heten `type`; cohorten, contactadressen en onderwijslocatiegebruiken alleen als sub-resource)
-2. **DUO Open Data** — 56 datasets via onderwijsdata.duo.nl (CKAN API)
+2. **DUO Open Data** — 56 datasets via onderwijsdata.duo.nl (CKAN API), plus de financiële verantwoording uit XBRL
+   per bestuur (`duo.financien`, geen CKAN; #935)
 
 Hieronder staat hoe je als AI-assistent een nieuwe analyse maakt van A tot Z.
 
@@ -45,7 +46,7 @@ import onderwijsbronnen
 # RIO: 14 live API-resources
 rio = onderwijsbronnen.catalog(source="rio")
 
-# DUO: 56 downloadbare datasets (offline, lokale JSON)
+# DUO: 57 datasets (offline, lokale JSON): 56 uit CKAN en financien (#935)
 duo = onderwijsbronnen.catalog(source="duo")
 
 # Alles gecombineerd
@@ -272,8 +273,8 @@ contract.catalog_records(sector="mbo"); contract.get_dataset("duo:p01hoinges")
 import onderwijsbronnen
 
 onderwijsbronnen.catalog(source="rio")              # 14 RIO-resources
-onderwijsbronnen.catalog(source="duo")              # 56 DUO-datasets (lokale snapshot)
-onderwijsbronnen.catalog(source="all")              # 77 gecombineerd
+onderwijsbronnen.catalog(source="duo")              # 57 DUO-datasets (lokale snapshot, met financien)
+onderwijsbronnen.catalog(source="all")              # 78 gecombineerd
 onderwijsbronnen.catalog(source="duo", live=True)   # live van CKAN
 onderwijsbronnen.catalog(source="rio", ai=False)    # zonder AI-verrijking
 ```

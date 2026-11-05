@@ -1,0 +1,39 @@
+[
+  {
+    "leverancier": "DUO",
+    "bron": "Financiële verantwoording uit XBRL: kengetallen en rijksbijdragen per bestuur",
+    "beschrijving": "Financiële kengetallen (solvabiliteit I en II, liquiditeit, rentabiliteit) en het totaal van de rijksbijdragen per bestuur (bevoegd gezag) in het mbo, hbo en wo, per verslagjaar, uit de jaarrekeningen die de besturen in XBRL aanleveren. Variant standaard: geconsolideerd waar aangeleverd, anders enkelvoudig.",
+    "periode": "De laatste vijf verslagjaren; de lader leest de nieuwste editie (november 2026: 2021-2025)",
+    "onderwijstype": ["MBO", "HBO", "WO"],
+    "doel": "De financiële positie van een bestuur naast het gewogen sectorcijfer en de signaleringswaarden van de Inspectie. Het cijfer geldt voor het hele bestuur en zegt niets over de kwaliteit van het onderwijs.",
+    "frequentie": "Jaarlijks (september/oktober)",
+    "categorie": "Financiën",
+    "sectie": "DUO Open Onderwijsdata (financiële overzichten)",
+    "documentatie": {
+      "tekst": "Financiële verantwoording uit XBRL",
+      "url": "https://duo.nl/open_onderwijsdata/onderwijs-algemeen/financiele-overzichten/financiele-verantwoording-uit-xbrl.jsp"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Hoe staat ROC Midden Nederland er financieel voor?",
+      "Hoe verhoudt de solvabiliteit van ROC Midden Nederland zich tot de mbo-sector?",
+      "Zit de liquiditeit van een bestuur onder de signaleringswaarde van de Inspectie?"
+    ],
+    "tags": ["financien", "jaarrekening", "xbrl", "kengetallen", "solvabiliteit", "liquiditeit", "rentabiliteit", "rijksbijdragen", "bestuur", "bevoegd gezag", "duo"],
+    "combineerbaar_met": ["DUO adressen van instellingen (via BEVOEGD GEZAG NUMMER)", "RIO erkenningen van besturen (via bestuursnummer)"],
+    "niet_geschikt_voor": [
+      "Financiën per instelling, vestiging, opleiding of sector-deel van een bestuur",
+      "Bedragen per student (XBRL rekent niet om bij een fusie; DUO-studentaantallen wel)",
+      "Weerstandsvermogen, kapitalisatiefactor en netto werkkapitaal (leeg voor mbo, hbo en wo)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": "financien",
+    "_buiten_ckan": true,
+    "_resources": [],
+    "_teldefinitie": {
+      "peildatum": "31 december van het verslagjaar (boekjaar)"
+    },
+    "_thema": "Financiën"
+  }
+]

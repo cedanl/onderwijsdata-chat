@@ -24,7 +24,8 @@ def _alle():
 
 
 def test_alle_datasets_en_resources_hebben_inspectiestatus():
-    assert {r["_ckan_id"] for r in onderwijsbronnen.catalog(source="duo")} <= set(SNAP["datasets"])
+    ckan = {r["_ckan_id"] for r in onderwijsbronnen.catalog(source="duo") if not r.get("_buiten_ckan")}
+    assert ckan <= set(SNAP["datasets"])
     for ds, r in _alle():
         assert r["inspectie"]["status"] in {"ok", "mislukt", "geen_tabel", "alleen_kop", "schema_conflict"}, (ds, r["naam"])
         assert r["resource_id"]
