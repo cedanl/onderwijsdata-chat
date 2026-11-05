@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from riodata import duo as _duo
+from onderwijsbronnen import duo as _duo
 
 from tools import periode
 from tools.duo import column_definitions, get_duo_data

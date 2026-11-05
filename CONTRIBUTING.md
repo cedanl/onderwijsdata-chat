@@ -12,7 +12,7 @@ cp .env.example .env          # MODEL en de bijbehorende API-key invullen
 make dev                      # backend en frontend samen
 ```
 
-De bronpakketten `onderwijsdata` (CBS) en `riodata` (RIO, DUO, UWV, ROA, Inspectie, SBB) staan in deze repo, onder
+Het bronpakket `onderwijsbronnen` (CBS, DUO, RIO, UWV, ROA, Inspectie, SBB; tot #910 `onderwijsdata` en `riodata`) staat in deze repo, onder
 `packages/`, als leden van een uv-workspace (#883, #885). Het zijn aparte pakketten met een eigen `pyproject.toml` en
 eigen tests, maar ze delen met de chat één `uv.lock` en één `.venv`: `uv sync` installeert ze *editable*, dus een
 wijziging in `packages/` is direct zichtbaar in de chat. Draai na een pull die `pyproject.toml`, `uv.lock` of
@@ -22,18 +22,20 @@ De tests van een pakket draai je in de map van dat pakket, elk pakket apart (bei
 dus in één run botsen de modulenamen):
 
 ```bash
-uv run --directory packages/onderwijsdata pytest -q -rs
-uv run --directory packages/riodata pytest -q -rs
+uv run --directory packages/onderwijsbronnen pytest -q -rs
 ```
 
 Dezelfde twee regels staan in de CI-job `pytest`, vóór de chattests (#886). Tests die het netwerk raken staan achter
 `RIODATA_LIVE=1` en slaan over, zoals in de pakketrepo's; zet die variabele alleen lokaal, bijvoorbeeld voor
-`RIODATA_LIVE=1 uv run --directory packages/riodata pytest tests/test_rio_live.py`.
+`RIODATA_LIVE=1 uv run --directory packages/onderwijsbronnen pytest tests/test_rio_live.py`.
 
 **De grens tussen pakket en chat** bewaakt `tests/test_importgrens.py` (draait mee met `pytest tests/`): een pakket
 importeert de chat (`tools`, `agent`, `core`, `routes`, `persistence`, …) en het andere pakket niet, en de chat
-importeert alleen de publieke API van een pakket, dus niets met een underscore in het pad (`riodata.duo` wel,
-`riodata._catalog` niet). Ophalen en bronlogica horen in `packages/`, beleid (scope, poorten, etiketten) in `tools/`.
+importeert alleen de publieke API van het pakket, dus niets met een underscore in het pad (`onderwijsbronnen.duo` wel,
+`onderwijsbronnen._kern` niet), en niet de oude namen `riodata`/`onderwijsdata` (shims tot #914). Binnen het pakket
+importeert een bron (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`) alleen zichzelf en `_kern`, nooit een andere
+bron; samenvoegen gebeurt in de bovenlaag (`onderwijsbronnen/__init__.py`, `contract.py`). Elke bron levert dezelfde
+interface (`BRON`, `catalogusrecords()`, `laad`, `metadata()`, `tests/test_broncontract.py` in het pakket). Ophalen en bronlogica horen in `packages/`, beleid (scope, poorten, etiketten) in `tools/`.
 
 **Ruff en ty slaan `packages/` over, bewust.** De pakketten hadden als losse repo's geen lint of typecontrole: ruff
 geeft er 248 bevindingen en wil 93 bestanden anders opmaken, ty geeft 93 diagnostics. Opnemen zou `ty-baseline.txt`

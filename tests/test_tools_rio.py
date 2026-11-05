@@ -246,7 +246,7 @@ def test_filters_komen_uit_het_riodata_contract():
 
 def test_een_register_zonder_lijstendpoint_is_alleen_catalogus():
     """RIO v3 (#627): cohorten bestaan alleen als sub-resource; de catalogus zegt dat, de telling laat ze weg."""
-    from riodata.client import zonder_lijstendpoint
+    from onderwijsbronnen.rio.client import zonder_lijstendpoint
 
     from tools import catalog
 

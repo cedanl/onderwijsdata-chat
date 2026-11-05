@@ -18,7 +18,7 @@ _HOOFDGROEP_2025 = 8  # het hoofdgroep-bestand van instromende-mbo-studenten van
 
 
 def _duo(dataset_id: str, resource: int = 0) -> pd.DataFrame:
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     return mask_sentinels(duo.load(dataset_id, resource))[0]
 
@@ -98,7 +98,7 @@ def _mbo_rij(jaar, naam, code, bbl, boldt, bolvt, ex):
 @pytest.fixture
 def mbo_studenten(monkeypatch):
     """Vervangt alleen mbo-studenten-per-instelling; de rest komt uit de fixtures van duo_fixtures."""
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     fixtures = duo.load
     rijen: list[dict] = []

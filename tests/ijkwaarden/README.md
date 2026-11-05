@@ -2,7 +2,7 @@
 
 De evals in `tests/e2e/evaluations.json` toetsen antwoorden op natuurlijke, ongehulpte vragen tegen
 waarden die **rechtstreeks bij de bron** zijn opgehaald: CBS via de OData-feed (httpx), DUO en RIO
-via het `riodata`-package. Niet via `tools/`: een fout in de tools mag de ijkwaarde niet mee
+via het `onderwijsbronnen`-package. Niet via `tools/`: een fout in de tools mag de ijkwaarde niet mee
 veranderen.
 
 ## Bestanden

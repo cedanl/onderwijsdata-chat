@@ -159,12 +159,12 @@ melding van de mislukte pipeline binnen. Daarna volgt de sweep over elke dataset
 
 - *CBS*: per tabel één `TableInfos`. `Modified … catalogus …: CBS werkte de tabel bij` betekent dat de cijfers na de
   catalogusbuild zijn herzien of aangevuld; de chat meldt die datum al per aanroep, maar de catalogus (en
-  `_laatste_update` in zoekresultaten) loopt achter tot `onderwijsdata` een nieuwe versie uitbrengt. Een HTTP-status
+  `_laatste_update` in zoekresultaten) loopt achter tot `cbs:laatste-update` de CBS-catalogus in `onderwijsbronnen` bijwerkt. Een HTTP-status
   betekent dat de tabel weg of verhuisd is.
-- *DUO*: per dataset de bestandenlijst en per CSV alleen de kopregel, naast de schema-snapshot van `riodata`.
+- *DUO*: per dataset de bestandenlijst en per CSV alleen de kopregel, naast de schema-snapshot van `onderwijsbronnen.duo`.
   `kolomdrift` noemt de ontbrekende en nieuwe kolommen; `nieuw bestand` en `staat niet meer bij DUO` betekenen dat DUO
-  een bestand verving. Dan leest `riodata` de codekolommen van dat bestand niet meer als tekst: een nieuwe snapshot in
-  `riodata` is nodig.
+  een bestand verving. Dan leest `onderwijsbronnen.duo` de codekolommen van dat bestand niet meer als tekst: een nieuwe snapshot in
+  `onderwijsbronnen.duo` is nodig.
 - *RIO*: per register één record.
 
 Een afwijking in de sweep is informatie, geen fout van de code: de job blijft groen, de afwijkingen staan met `!` in
@@ -187,14 +187,14 @@ In het log van de app wijzen deze regels op een bron die hapert of verandert:
 
 **Bronpakketten bijhouden**
 
-De geplande taken van de bronpakketten `onderwijsdata` en `riodata` (`packages/`) waren GitHub Actions in de oude
+De geplande taken van het bronpakket `onderwijsbronnen` (`packages/`; tot #910 `onderwijsdata` en `riodata`) waren GitHub Actions in de oude
 pakketrepo's. Sinds #887 zijn het GitLab-jobs op `main`, elk met een eigen schema (CI/CD → Schedules, branch `main`,
 plus `SAST_DISABLED=1` en `SECRET_DETECTION_DISABLED=1`, zoals bij `bron:ping`). Tijden in UTC, zoals de oude Actions.
 
 | Job | Schema | Variabele | Wat | Uitkomst |
 |---|---|---|---|---|
 | `cbs:laatste-update` | wekelijks, zondag 06:00 (`0 6 * * 0`) | `LAATSTE_UPDATE=1` | `_laatste_update` per CBS-tabel uit TableInfos, dan afleiding, TableInfos/perioden, `bouw_artefact.py` en de pakkettests | MR `bot/cbs-laatste-update` met auto-merge; geen MR zonder wijziging |
-| `catalogus:site` | dagelijks, 05:30 (`30 5 * * *`) | `CATALOGUS_SITE=1` | de catalogussites in `packages/*/docs` opnieuw uit de catalogus en de voorbeelden (`scripts/catalogussite.py`) | MR `bot/catalogus-site` met auto-merge |
+| `catalogus:site` | dagelijks, 05:30 (`30 5 * * *`) | `CATALOGUS_SITE=1` | de catalogussites in `packages/onderwijsbronnen/docs/{cbs,rio}` opnieuw uit de catalogus en de voorbeelden (`scripts/catalogussite.py`) | MR `bot/catalogus-site` met auto-merge |
 | `cbs:discovery` en `rio:broncontrole` | wekelijks, maandag 05:17 (`17 5 * * 1`) | `BRONCONTROLE=1` | nieuwe CBS-tabellen onder onderwijsthema's; DUO CKAN en de RIO-spec tegen de catalogus | één open issue per controle; rood als een bron niet antwoordt |
 
 *Bot-MR's.* De Actions pushten zelf op `main`. Hier maakt `scripts/pakketbot.py mr` een commit op een vaste
@@ -211,8 +211,8 @@ manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel
 "gewijzigd sinds vorige keer" pas vanaf de volgende run. De log zegt het als dat zo is.
 
 *Catalogussites.* De Pages-workflow van de GitHub-mirror (`.github/workflows/docs.yml`) kopieert na de MkDocs-build
-`packages/onderwijsdata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
-`packages/riodata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/>. De oude sites
+`packages/onderwijsbronnen/docs/cbs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
+`packages/onderwijsbronnen/docs/rio` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/>. De oude sites
 (cedanl.github.io/cbs-onderwijsdata en /rio-onderwijsdata) worden niet meer onderhouden: die repo's zijn
 sinds 2026-11-05 gearchiveerd (#889) en hun README verwijst naar de nieuwe plek. De sites zelf hebben geen banner en geen
 doorverwijzing.

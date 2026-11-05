@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from riodata import duo as _duo
+from onderwijsbronnen import duo as _duo
 
 from tests.zoekuitkomst import treffers
 from tools import duo_correcties, duo_meta

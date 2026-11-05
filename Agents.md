@@ -47,10 +47,11 @@ Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update)
    ```
 
    **Waar broncode hoort:** ophalen en de bronlogica (clients, kolommen, catalogus, bronversies) horen in `packages/`
-   (`onderwijsdata`, `riodata`), het beleid (scope, poorten, etiketten, wat de gebruiker te zien krijgt) in `tools/`.
-   Een pakket importeert de chat en het andere pakket nooit, en de chat gebruikt alleen de publieke API van een pakket
-   (geen pad met underscore); `tests/test_importgrens.py` bewaakt dat en maakt de pipeline rood. De tests van een
-   pakket staan in `packages/<naam>/tests` en draaien mee in de CI-job `pytest`.
+   (`onderwijsbronnen`, per bron een subpakket), het beleid (scope, poorten, etiketten, wat de gebruiker te zien krijgt) in `tools/`.
+   Het pakket importeert de chat nooit, een bron importeert alleen zichzelf en `_kern` (nooit een andere bron), en de
+   chat gebruikt alleen de publieke API (geen pad met underscore, niet de shims `riodata`/`onderwijsdata`);
+   `tests/test_importgrens.py` bewaakt dat en maakt de pipeline rood. De tests van het pakket staan in
+   `packages/onderwijsbronnen/tests` en draaien mee in de CI-job `pytest`.
 
    **Geen netwerk in tests:** uitgaand netwerk is dicht voor elke test zonder marker `live` (`tests/netwerkblok.py`,
    #915); een test die toch naar buiten gaat, faalt met de host erbij. Gebruik een bevroren fixture of mock
@@ -114,8 +115,8 @@ curl https://onderwijsdata-chat.playground.sdp.surf.nl/version
 ```
 
 Let op:
-- `/version` noemt `commit` kort (8 tekens) en per pakket onder `catalogus` de volledige commit waaruit `onderwijsdata` en
-  `riodata` komen (de chat-commit, want ze staan in `packages/`; #888). De docker-build krijgt daarvoor de volledige
+- `/version` noemt `commit` kort (8 tekens) en onder `catalogus` de volledige commit waaruit `onderwijsbronnen` komt
+  (de chat-commit, want het staat in `packages/`; #888). De docker-build krijgt daarvoor de volledige
   `CI_COMMIT_SHA` als `GIT_COMMIT`. Snippets installeren de pakketten met `git+<GitHub-spiegel>@<die commit>#subdirectory=packages/<pakket>`;
   alleen een commit op `main` bestaat op de spiegel, dus een snippet uit een MR-build is niet installeerbaar.
 - Playground nooit terug op een range zetten en nooit pinnen op `2.0.0` (die tag heeft geen chart).

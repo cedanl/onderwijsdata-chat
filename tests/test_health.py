@@ -83,7 +83,7 @@ def test_version_zonder_build_arg_zegt_onbekend(client, monkeypatch):
 def test_version_noemt_de_meegebouwde_catalogusrevisies(client):
     # #361: playground liep een CBS-catalogus-commit achter, en /version liet dat niet zien.
     catalogus = client.get("/version").json()["catalogus"]
-    assert [p["pakket"] for p in catalogus] == ["onderwijsdata", "riodata"]
+    assert [p["pakket"] for p in catalogus] == ["onderwijsbronnen"]
     assert all(p["versie"] for p in catalogus)
     assert catalogus[0]["manifest"]["catalogusrevisie"] and catalogus[0]["manifest"]["aantal"] > 0
 
@@ -96,7 +96,7 @@ def test_version_noemt_per_pakket_de_commit_waaruit_het_pakket_komt(client, monk
     commit = "7d3488aa0da386a087f6363b3f2ffa40049f604b"
     monkeypatch.setattr(Config, "GIT_COMMIT", commit)
     data = client.get("/version").json()
-    assert [p["commit"] for p in data["catalogus"]] == [commit, commit]
+    assert [p["commit"] for p in data["catalogus"]] == [commit]
     assert data["commit"] == "7d3488aa"
 
 
@@ -104,7 +104,7 @@ def test_version_zonder_build_arg_noemt_geen_commit_per_pakket(client, monkeypat
     from config import Config
 
     monkeypatch.setattr(Config, "GIT_COMMIT", None)
-    assert [p["commit"] for p in client.get("/version").json()["catalogus"]] == [None, None]
+    assert [p["commit"] for p in client.get("/version").json()["catalogus"]] == [None]
 
 
 def test_catalogusversie_zonder_package_geeft_geen_fout():
@@ -120,7 +120,7 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
     assert [(b["bron"], b["dataset"]) for b in arbeidsmarkt] == [("UWV", "uwv-open-match-data"), ("ROA", "ais2030")]
     uwv, roa = arbeidsmarkt
     assert "2023-05-16" in uwv["periode"]  # einde van de bevroren snapshotreeks
-    # Letterlijk uit het ROA-record van de gepinde riodata (0.5.0).
+    # Letterlijk uit het ROA-record van de gepinde catalogus (riodata 0.5.0, nu onderwijsbronnen).
     assert roa["periode"] == (
         "Edities 2025 en 2026 (2026 is de nieuwste; DataverseNL-release 2026-09-18). Prognoses tot 2030."
     )
@@ -130,7 +130,7 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
 def test_version_laat_versie_commit_en_catalogus_ongemoeid(client):
     data = client.get("/version").json()
     assert set(data) == {"version", "commit", "catalogus", "arbeidsmarkt"}
-    assert [p["pakket"] for p in data["catalogus"]] == ["onderwijsdata", "riodata"]
+    assert [p["pakket"] for p in data["catalogus"]] == ["onderwijsbronnen"]
 
 
 def test_version_downloadt_geen_arbeidsmarktdata(client, monkeypatch):
@@ -176,7 +176,7 @@ def test_arbeidsmarktbron_neemt_de_periode_letterlijk_over():
 
 
 def test_version_zonder_arbeidsmarktrecord_geeft_200(client, monkeypatch):
-    from riodata import roa
+    from onderwijsbronnen import roa
 
     from core.catalogusversie import arbeidsmarktversie
 

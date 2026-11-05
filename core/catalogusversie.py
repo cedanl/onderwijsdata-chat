@@ -1,14 +1,15 @@
 """Welke catalogusdata een omgeving draait (#361).
 
-De CBS- en RIO/DUO-catalogus komen uit de packages `onderwijsdata` en `riodata`. Die waren git-dependencies, met
-de commit uit uv.lock; sinds #885 zijn het workspace-leden (packages/), die uit dezelfde commit komen als de app.
+De CBS- en RIO/DUO-catalogus komen uit het pakket `onderwijsbronnen` (tot #910 de packages `onderwijsdata` en
+`riodata`). Die waren git-dependencies, met de commit uit uv.lock; sinds #885 is het een workspace-lid (packages/), dat
+uit dezelfde commit komt als de app.
 Hun metadata heeft geen vcs-commit meer, dus noemt /version per pakket de commit van de chat-repo waaruit het image is
 gebouwd (#888, `core/pakketherkomst.py`). /version noemde alleen de app-commit (#231), zodat niet te zien was dat
 playground een catalogus-commit achter liep. Dit leest de gebouwde revisie uit de geïnstalleerde
 package-metadata: geen netwerk, geen GitHub-HEAD.
 
 UWV en ROA zitten niet als eigen package in de catalogus; hun dataversie staat in de statische
-catalogusrecords van riodata (CH-46). Ook dat zonder download: de app laadt die data pas bij het
+catalogusrecords van onderwijsbronnen (CH-46). Ook dat zonder download: de app laadt die data pas bij het
 eerste gebruik.
 """
 
@@ -17,7 +18,7 @@ from functools import cache
 from core.pakketherkomst import pakketversie
 
 # Importnaam van de package, zoals in packages/<naam>/pyproject.toml.
-PAKKETTEN = ("onderwijsdata", "riodata")
+PAKKETTEN = ("onderwijsbronnen",)
 
 
 def _pakket(naam: str, commit: str | None) -> dict:
@@ -32,7 +33,7 @@ def _cbs_manifest() -> dict | None:
     manifest of een artefact dat niet te lezen is: /version blijft dan werken.
     """
     try:
-        from onderwijsdata import catalog_manifest  # hier en niet bovenaan: zie arbeidsmarktversie
+        from onderwijsbronnen.cbs import catalog_manifest  # hier en niet bovenaan: zie arbeidsmarktversie
 
         manifest = catalog_manifest()
     except Exception:
@@ -52,7 +53,7 @@ def catalogusversie(commit: str | None = None) -> list[dict]:
     """Per pakket de versie en `commit`: de chat-commit waaruit het pakket komt (None als de build hem niet kent)."""
     pakketten = [_pakket(naam, commit) for naam in PAKKETTEN]
     for pakket in pakketten:
-        if pakket["pakket"] == "onderwijsdata":
+        if pakket["pakket"] == "onderwijsbronnen":
             pakket["manifest"] = _cbs_manifest()
     return pakketten
 
@@ -66,7 +67,7 @@ def _arbeidsmarktbron(bron: str, dataset: str, records: list[dict], sleutel: str
 @cache
 def arbeidsmarktversie() -> list[dict]:
     # Hier en niet bovenaan: server.py importeert deze module vóór de logging-setup, en tools trekt pandas mee.
-    from riodata import roa, uwv
+    from onderwijsbronnen import roa, uwv
 
     from tools.arbeidsmarkt import ROA_ID, UWV_ID
 

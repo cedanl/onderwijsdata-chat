@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
-from riodata import duo
+from onderwijsbronnen import duo
 
 MAP = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "duo"
 

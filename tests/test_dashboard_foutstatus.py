@@ -12,7 +12,7 @@ import threading
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-from riodata import duo
+from onderwijsbronnen import duo
 
 import data.dashboard as dashboard
 import routes.instellingen

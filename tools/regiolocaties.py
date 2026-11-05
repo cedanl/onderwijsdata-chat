@@ -15,7 +15,7 @@ Telling-blok onder het antwoord, zoals de fusieregel van #728.
 De bronnen:
 - het aanbod per onderwijslocatie, met de plaats en de aanbieder: DUO's dagelijkse export van RIO,
   `mbo_opleidingsaanbod`. RIO zelf kan niet op plaats filteren (13.655 locaties, alleen per pagina van 100).
-- de aanbieders per instelling uit RIO (`riodata.onderwijsaanbieders`): zo komt een locatie bij het BRIN.
+- de aanbieders per instelling uit RIO (`onderwijsbronnen.rio.onderwijsaanbieders`): zo komt een locatie bij het BRIN.
 - de gemeente en provincie van een woonplaats uit CBS (`data/woonplaatsen.py`), de arbeidsmarktregio van die gemeente
   uit de CBS-indeling van `data/arbeidsmarktregio.py`. Een woonplaatsnaam in meer gemeenten
   (Velp) krijgt geen gemeente: de locatie telt dan alleen op plaatsniveau, de code raadt niet.
@@ -33,7 +33,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import pandas as pd
-from riodata import duo, onderwijsaanbieders
+from onderwijsbronnen import duo
+from onderwijsbronnen.rio import onderwijsaanbieders
 
 from core import actualiteit
 from data import arbeidsmarktregio, woonplaatsen

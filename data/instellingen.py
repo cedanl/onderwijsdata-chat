@@ -4,7 +4,7 @@ import logging
 import threading
 from datetime import datetime, timedelta
 
-from riodata import duo
+from onderwijsbronnen import duo
 
 from core import actualiteit
 from core.logging_util import foutkenmerk

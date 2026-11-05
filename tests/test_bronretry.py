@@ -13,7 +13,7 @@ from unittest.mock import patch
 from urllib.parse import unquote_plus
 
 import httpx
-import onderwijsdata.client
+import onderwijsbronnen.cbs.client
 import pandas as pd
 import pytest
 
@@ -156,7 +156,7 @@ def test_de_wachttijd_heeft_jitter_binnen_de_grenzen():
 
 
 class _CbsBron:
-    """`tools.cbs._haal` met de echte `onderwijsdata.data` tegen een nepserver, zonder echte wachttijd."""
+    """`tools.cbs._haal` met de echte `onderwijsbronnen.cbs.data` tegen een nepserver, zonder echte wachttijd."""
 
     def __init__(self, monkeypatch, servers: ExitStack):
         self.klok = _Klok()
@@ -166,7 +166,7 @@ class _CbsBron:
 
     def __call__(self, antwoord) -> Nepserver:
         bron = self._servers.enter_context(nepserver(antwoord))
-        self._monkeypatch.setattr(onderwijsdata.client, "BASE_FEED", bron.url)
+        self._monkeypatch.setattr(onderwijsbronnen.cbs.client, "BASE_FEED", bron.url)
         return bron
 
 

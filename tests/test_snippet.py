@@ -1,7 +1,5 @@
 import asyncio
 import json
-import sys
-import types
 from typing import Any
 from unittest.mock import patch
 
@@ -220,7 +218,11 @@ _ROWS = [{"JAAR": 2021, "AANTAL": 10}, {"JAAR": 2022, "AANTAL": 20}]
 
 @pytest.fixture
 def clean_packages(monkeypatch):
-    """Vervang het publieke pakket door een dubbelganger; `store` blijft onbereikbaar."""
+    """Vervang de laders van het publieke pakket door dubbelgangers; `store` blijft onbereikbaar.
+
+    Op de echte modules (monkeypatch zet ze na de test terug): `from onderwijsbronnen import duo` in een snippet pakt het
+    attribuut van het geïmporteerde pakket, een vervangen `sys.modules`-regel zou het niet zien.
+    """
     calls: list = []
 
     def fake_cbs(dataset_id, **params):
@@ -235,15 +237,9 @@ def clean_packages(monkeypatch):
         calls.append(("duo", dataset_id, resource))
         return pd.DataFrame(_ROWS)
 
-    duo_module = types.ModuleType("riodata.duo")
-    duo_module.load = fake_duo
-    riodata = types.ModuleType("riodata")
-    riodata.fetch, riodata.duo = fake_fetch, duo_module
-    onderwijsdata = types.ModuleType("onderwijsdata")
-    onderwijsdata.data = fake_cbs
-    monkeypatch.setitem(sys.modules, "riodata", riodata)
-    monkeypatch.setitem(sys.modules, "riodata.duo", duo_module)
-    monkeypatch.setitem(sys.modules, "onderwijsdata", onderwijsdata)
+    monkeypatch.setattr("onderwijsbronnen.duo.load", fake_duo)
+    monkeypatch.setattr("onderwijsbronnen.rio.fetch", fake_fetch)
+    monkeypatch.setattr("onderwijsbronnen.cbs.data", fake_cbs)
     # De app leest de eenheid van een CBS-kolom uit het contract in de echte package (#871); hier is die package
     # vervangen, en dataset "x" staat er toch niet in.
     monkeypatch.setattr(cbs_meta, "eenheden", lambda dataset_id: {})
@@ -367,7 +363,7 @@ def test_snippet_in_een_schone_namespace_volgt_de_dubbelganger_van_het_pakket(cl
     assert snippet is not None
     assert _run(snippet)["kpi"] == 20.0
 
-    monkeypatch.setattr("riodata.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
+    monkeypatch.setattr("onderwijsbronnen.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
     assert _run(snippet)["kpi"] == 7.0  # dezelfde code, andere data uit het pakket
 
 
@@ -461,7 +457,7 @@ def test_grafiek_op_een_eigen_berekening_volgt_de_dubbelganger_van_het_pakket(cl
     assert snippet is not None
     assert "pd.DataFrame([" not in snippet
     assert _run(snippet)["df"]["DUBBEL"].tolist() == [40.0]
-    monkeypatch.setattr("riodata.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
+    monkeypatch.setattr("onderwijsbronnen.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
     assert _run(snippet)["df"]["DUBBEL"].tolist() == [14.0]
 
 
@@ -633,9 +629,9 @@ def test_duo_snippet_adds_the_studiejaar_label_the_app_adds(clean_packages):
     exec(snippet, namespace)
     assert "STUDIEJAAR_LABEL" not in namespace["df"].columns
 
-    import riodata.duo
+    import onderwijsbronnen.duo
 
-    riodata.duo.load = lambda *a, **k: pd.DataFrame({"STUDIEJAAR": [2021, 2025]})
+    onderwijsbronnen.duo.load = lambda *a, **k: pd.DataFrame({"STUDIEJAAR": [2021, 2025]})
     namespace = {}
     exec(snippet, namespace)
     assert namespace["df"]["STUDIEJAAR_LABEL"].tolist() == ["2021/2022", "2025/2026"]
@@ -661,9 +657,9 @@ _DUO_KEY = "duo:p02ho1ejrs:0"
 @pytest.fixture
 def duo_in_app_en_snippet(clean_packages):
     """Dezelfde ruwe data in de store (via put, dus gemaskeerd) en achter duo.load in de snippet."""
-    import riodata.duo
+    import onderwijsbronnen.duo
 
-    riodata.duo.load = lambda *a, **k: _RUW.copy()
+    onderwijsbronnen.duo.load = lambda *a, **k: _RUW.copy()
     store.put(
         _DUO_KEY,
         _RUW.copy(),
@@ -680,9 +676,9 @@ _REEKS_RUW = pd.DataFrame({"JAAR": [2023, 2024, 2025], "INSTELLING": ["VU Amster
 @pytest.fixture
 def duo_reeks_in_app_en_snippet(clean_packages, monkeypatch):
     """Als duo_in_app_en_snippet, met een reeks van één rij per jaar."""
-    import riodata.duo
+    import onderwijsbronnen.duo
 
-    monkeypatch.setattr(riodata.duo, "load", lambda *a, **k: _REEKS_RUW.copy())
+    monkeypatch.setattr(onderwijsbronnen.duo, "load", lambda *a, **k: _REEKS_RUW.copy())
     store.put(
         _DUO_KEY,
         _REEKS_RUW.copy(),
@@ -739,9 +735,9 @@ _CODE_KEY = "duo:adressen_ho:0"
     ],
 )
 def test_code_zonder_voorloopnul_geeft_in_de_snippet_wat_de_app_geeft(clean_packages, monkeypatch, args):
-    import riodata.duo
+    import onderwijsbronnen.duo
 
-    monkeypatch.setattr(riodata.duo, "load", lambda *a, **k: _CODES.copy())
+    monkeypatch.setattr(onderwijsbronnen.duo, "load", lambda *a, **k: _CODES.copy())
     store.put(
         _CODE_KEY,
         _CODES.copy(),

@@ -10,9 +10,9 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cache
 
-from onderwijsdata import catalog as _cbs_catalog
-from riodata import catalog as _rio_catalog
-from riodata.client import zonder_lijstendpoint
+from onderwijsbronnen import catalog as _rio_catalog
+from onderwijsbronnen.cbs import catalog as _cbs_catalog
+from onderwijsbronnen.rio.client import zonder_lijstendpoint
 
 from core.config import TOOL_RESULT_MAX_CHARS
 from core.logging_util import foutkenmerk, tekst_kenmerk
@@ -85,7 +85,7 @@ _ALLEEN_SUBRESOURCE = {
 }
 
 
-# Formaten die riodata.duo.load als tabel leest. Een DUO-changelog is alleen een PDF (#408).
+# Formaten die onderwijsbronnen.duo.load als tabel leest. Een DUO-changelog is alleen een PDF (#408).
 _TABELFORMATEN = frozenset({"CSV", "XLSX", "XLS"})
 _ALLEEN_DOCUMENTATIE = {
     "opvraagbaar": False,

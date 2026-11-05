@@ -7,7 +7,7 @@ Gebruik (in CI, zie .gitlab-ci.yml en docs/operatie.md "Bronpakketten bijhouden"
         # het token bestaat en werkt; exit 2 zonder token, 1 bij een geweigerd token
     python scripts/pakketbot.py mr --branch bot/<naam> --titel "chore(...): ..." PAD [PAD ...]
         # wijzigingen onder de paden → commit op bot/<naam> (force) → MR naar main met auto-merge
-    python scripts/pakketbot.py meld-discovery --rapport packages/onderwijsdata/data/03-output/cbs_discovery.json
+    python scripts/pakketbot.py meld-discovery --rapport packages/onderwijsbronnen/data/03-output/cbs_discovery.json
     python scripts/pakketbot.py meld-broncontrole --meldingen meldingen.txt --code <exitcode van broncontrole.py>
 
 In de oude pakketrepo's pushten de GitHub Actions zelf op main en maakte de broncontrole elke week een nieuw issue.
@@ -160,7 +160,7 @@ def discovery_tekst(rapport: dict) -> str | None:
 def broncontrole_tekst(meldingen: str) -> str:
     regels = [r for r in meldingen.splitlines() if r.strip()]
     kop = (
-        "De wekelijkse broncontrole van riodata (`packages/riodata/catalogus/broncontrole.py`) vergelijkt DUO CKAN en "
+        "De wekelijkse broncontrole van onderwijsbronnen (`packages/onderwijsbronnen/catalogus/rio/broncontrole.py`) vergelijkt DUO CKAN en "
         "de RIO-spec met de catalogus. De catalogus is niet aangepast; beoordeel per melding."
     )
     return "\n".join([kop, "", *(f"- {r}" for r in regels)])
@@ -324,7 +324,7 @@ def parser() -> argparse.ArgumentParser:
     mr.add_argument("paden", nargs="+")
     d = sub.add_parser("meld-discovery", help="nieuwe CBS-tabellen als issue")
     d.add_argument("--rapport", required=True)
-    b = sub.add_parser("meld-broncontrole", help="meldingen van de riodata-broncontrole als issue")
+    b = sub.add_parser("meld-broncontrole", help="meldingen van de broncontrole (DUO, RIO) als issue")
     b.add_argument("--meldingen", required=True)
     b.add_argument("--code", type=int, required=True)
     return p

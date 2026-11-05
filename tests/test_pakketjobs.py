@@ -66,39 +66,39 @@ def test_de_wekelijkse_laatste_update_doorloopt_de_hele_keten_voor_de_mr(ci):
     script = _script(ci["cbs:laatste-update"])
     stappen = [
         "scripts/update_laatste_update.py",
-        "catalogus/verrijk_catalogus.py",
-        "catalogus/verrijk_tableinfo.py",
-        "catalogus/bouw_artefact.py",
+        "catalogus/cbs/verrijk_catalogus.py",
+        "catalogus/cbs/verrijk_tableinfo.py",
+        "catalogus/cbs/bouw_artefact.py",
         "pytest",
         "scripts/pakketbot.py mr",
     ]
     posities = [script.index(s) for s in stappen]
     assert posities == sorted(posities)
     for pad in (
-        "packages/onderwijsdata/data/02-prepared",
-        "packages/onderwijsdata/src/onderwijsdata/data",
-        "packages/onderwijsdata/docs/catalogus_manifest.json",
+        "packages/onderwijsbronnen/data/02-prepared",
+        "packages/onderwijsbronnen/src/onderwijsbronnen/cbs/data",
+        "packages/onderwijsbronnen/docs/cbs/catalogus_manifest.json",
     ):
         assert pad in script
 
 
 def test_de_site_job_publiceert_via_bouwartefact_en_kopieert_niet_zelf(ci):
     script = _script(ci["catalogus:site"])
-    assert "catalogus/bouw_artefact.py" in script and "catalogus/exporteer_site.py" in script
+    assert "catalogus/cbs/bouw_artefact.py" in script and "catalogus/rio/exporteer_site.py" in script
     assert "scripts/catalogussite.py" in script
     assert "cp " not in script
-    assert "packages/onderwijsdata/docs" in script and "packages/riodata/docs" in script
+    assert "packages/onderwijsbronnen/docs/cbs" in script and "packages/onderwijsbronnen/docs/rio" in script
 
 
 def test_discovery_bewaart_het_rapport_en_meldt_via_een_issue(ci):
     job = ci["cbs:discovery"]
-    assert "catalogus/discovery_diff.py" in _script(job) and "meld-discovery" in _script(job)
-    assert job["artifacts"]["paths"] == ["packages/onderwijsdata/data/03-output/cbs_discovery.json"]
+    assert "catalogus/cbs/discovery_diff.py" in _script(job) and "meld-discovery" in _script(job)
+    assert job["artifacts"]["paths"] == ["packages/onderwijsbronnen/data/03-output/cbs_discovery.json"]
 
 
 def test_de_broncontrole_houdt_het_manifest_van_de_vorige_controle_in_de_cache(ci):
     job = ci["rio:broncontrole"]
-    manifest = "packages/riodata/catalogus/bronmanifest.json"
+    manifest = "packages/onderwijsbronnen/catalogus/rio/bronmanifest.json"
     assert any(manifest in c["paths"] for c in job["cache"])
     assert all(c.get("when", "on_success") == "on_success" for c in job["cache"])
     script = _script(job)

@@ -8,7 +8,7 @@ het citeert en kiest in plaats van zelf een som te verklaren of een periode te r
 de bron niet vermeldt, blijft weg.
 """
 
-from onderwijsdata import contract as _contract
+from onderwijsbronnen.cbs import contract as _contract
 
 _GEVONDEN = "gevonden"
 _SUPPORTED = "supported"

@@ -625,7 +625,7 @@ def test_een_rio_register_dat_niet_per_sector_te_selecteren_is_verwijst_naar_de_
 
 def test_elk_sectorfilter_bestaat_in_het_filtercontract():
     """Een sectorfilter op een filter of waarde die RIO niet kent, laat niets meer door."""
-    from riodata import filtercontract
+    from onderwijsbronnen.rio import filtercontract
 
     contract = filtercontract()["resources"]
     for resource, (naam, waarden) in scopeprofiel.SECTORFILTER.items():
@@ -643,8 +643,8 @@ def test_elk_besluit_in_de_tabel_heeft_een_reden():
 
 
 def _echt():
-    from onderwijsdata import catalog as cbs_catalog
-    from riodata import catalog
+    from onderwijsbronnen import catalog
+    from onderwijsbronnen.cbs import catalog as cbs_catalog
 
     return {scopeprofiel.dataset_id(e): e for e in [*cbs_catalog(), *catalog(source="all")]}
 
@@ -1218,7 +1218,7 @@ def test_geen_startervraag_komt_uit_een_vo_contextbron(aantal):
 def test_sectorfilters_bestaan_in_het_riodata_contract():
     """De filternaam en de waarden per RIO-register komen uit het contract van riodata (v3: `type`, #627);
     een hernoeming in de RIO-API valt zo hier op in plaats van live met HTTP 400."""
-    from riodata import filtercontract
+    from onderwijsbronnen.rio import filtercontract
 
     from tools.scopeprofiel import SECTORFILTER
 
@@ -1508,7 +1508,7 @@ def test_het_model_opent_een_vo_type_niet_zelf(catalogus):
 
 def test_de_vo_typen_bestaan_in_het_riodata_contract_naast_het_sectorfilter():
     """De namen per register uit het contract (#880); geen mbo/ho-waarde dubbel, en geen po of (v)so."""
-    from riodata import filtercontract
+    from onderwijsbronnen.rio import filtercontract
 
     assert set(scopeprofiel.SECTORFILTER_VO_CONTEXT) == set(scopeprofiel.SECTORFILTER)
     for resource, vo_waarden in scopeprofiel.SECTORFILTER_VO_CONTEXT.items():

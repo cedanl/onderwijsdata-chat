@@ -24,7 +24,7 @@ DOETINCHEM = "Doetinchem"
 
 @pytest.fixture
 def aanbod(duo_fixtures):
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     return duo.load("mbo_opleidingsaanbod", 0)
 

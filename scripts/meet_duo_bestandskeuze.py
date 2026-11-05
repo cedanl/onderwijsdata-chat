@@ -25,7 +25,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from riodata import duo
+from onderwijsbronnen import duo
 
 from tools import duo_bestandskeuze, duo_meta
 

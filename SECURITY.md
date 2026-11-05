@@ -174,7 +174,7 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 **Was beschreven als:** een GitHub Actions-workflow met `pip-audit` en `npm audit` (beide met `|| true`). Die workflow verdween met de Azure-infrastructuur (`19f1af6`) en had geen opvolger in GitLab.  
 **Nagegaan (#506):** de CI-component `surf-internal/sdp/components/base/security@0.10.10` neemt alleen GitLab's Secret-Detection- en SAST-templates op (semgrep, kubesec), geen dependency-scan. Die jobs draaien op branchpipelines, niet in MR-pipelines, en blokkeren niets.  
 **Nu:** twee eigen jobs in `.gitlab-ci.yml`, op `main` en in elke MR:
-- `audit:python` — `pip-audit` op de gelockte versies uit `uv.lock` (`uv export`), zonder installatie. De workspace-leden `riodata` en `onderwijsdata` (`packages/`, #885) staan niet in de PyPI-advisorydatabase en vallen erbuiten (`--no-emit-workspace`); hun afhankelijkheden worden wel gecontroleerd.
+- `audit:python` — `pip-audit` op de gelockte versies uit `uv.lock` (`uv export`), zonder installatie. Het workspace-lid `onderwijsbronnen` (`packages/`, #885, #910) staat niet in de PyPI-advisorydatabase en valt erbuiten (`--no-emit-workspace`); zijn afhankelijkheden worden wel gecontroleerd.
 - `audit:npm` — `npm audit --audit-level=high` op `frontend/package-lock.json`.
 
 Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blokkeert geen MR die er niets mee te maken heeft. Renovate (`renovate.json`) stelt de update voor. Bij het invoeren (13-10-2026) vonden beide niets.

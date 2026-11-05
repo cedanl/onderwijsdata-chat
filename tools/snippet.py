@@ -1,7 +1,7 @@
 """Genereer reproduceerbare Python-snippets uit tool calls.
 
 Een snippet moet buiten de app draaien met alleen de gedocumenteerde pakketten
-(pandas, plotly, onderwijsdata, riodata): `store` bestaat daar niet (#131). Elke
+(pandas, plotly, onderwijsbronnen): `store` bestaat daar niet (#131). Elke
 snippet begint daarom met de laadstap van zijn bron, uit de laadaanroep die de
 store bij de key bewaart.
 
@@ -80,7 +80,7 @@ def _lit(value) -> str:
 def _duo_laadregels(args: dict) -> list[str]:
     return [
         "import pandas as pd",
-        "from riodata import duo",
+        "from onderwijsbronnen import duo",
         "",
         # De resource zoals de app hem laadde: "4" is index 4, niet een naamdeel (#944).
         f"df = duo.load({_lit(args['dataset_id'])}, {_lit(cijferresource(args.get('resource', 0)))})",
@@ -110,7 +110,7 @@ def _instellingsregioregels(dataset_id: str) -> list[str]:
         f"        df[\"{kolom}\"] = _rij.map(adressen['PROVINCIE'])",
         f'    if "{regiokolom}" not in df.columns:',
         f"        # De arbeidsmarktregio van de gemeente: CBS {indeling['tabel']} ({indeling['titel']}).",
-        "        from onderwijsdata import data",
+        "        from onderwijsbronnen.cbs import data",
         "",
         f"        _indeling = pd.DataFrame(data({_lit(indeling['tabel'])}))",
         "        _regio = dict(zip(_indeling['RegioS'].str.strip().str.removeprefix('GM'), "
@@ -162,7 +162,7 @@ def _cbs_laadregels(args: dict) -> list[str]:
     extra = f", **{filters!r}" if filters else ""
     regels = [
         "import pandas as pd",
-        "from onderwijsdata import data",
+        "from onderwijsbronnen.cbs import data",
         "",
         f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))",
     ]
@@ -176,7 +176,7 @@ def _rio_laadregels(args: dict) -> list[str]:
     params = {**(args.get("filters") or {}), "page": 0, "pageSize": RIO_PAGE_SIZE}
     return [
         "import pandas as pd",
-        "from riodata import fetch",
+        "from onderwijsbronnen.rio import fetch",
         "",
         f"df = pd.DataFrame(fetch({_lit(args['resource'])}, **{params!r}))",
     ]
@@ -186,7 +186,7 @@ def _uwv_laadregels(args: dict) -> list[str]:
     """Dezelfde tabel als get_uwv_vacatures in de store zet (#577): alle beroepenclusters van de plaats, aflopend."""
     regels = [
         "import pandas as pd",
-        "from riodata import uwv",
+        "from onderwijsbronnen import uwv",
         "",
         'df = uwv.load("latest", rec_type="Vacature")',
         f'df = df[df["PROVINCIE"].str.lower() == {_lit(args["provincie"].lower())}]',
@@ -234,7 +234,7 @@ def _roa_laadregels(args: dict) -> list[str]:
     niveau = "opleidingssector (ONR2019)" if args.get("sector") else "opleidingsniveau (ONR2019)"
     regels = [
         "import pandas as pd",
-        "from riodata import roa",
+        "from onderwijsbronnen import roa",
         "",
         'df = roa.load("ais2030", "arbeidsmarkt")',
         f'df = df[df["regionaam"].str.lower().isin([{_lit(regio.lower())}, "nederland", "provincie " + {_lit(regio.lower())}])]',

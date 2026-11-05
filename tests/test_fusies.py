@@ -10,7 +10,7 @@ import logging
 import httpx
 import pandas as pd
 import pytest
-from riodata import Stap
+from onderwijsbronnen.rio import Stap
 
 from agent.telling import telling_blok
 from core import actualiteit

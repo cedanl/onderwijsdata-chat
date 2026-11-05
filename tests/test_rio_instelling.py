@@ -11,7 +11,7 @@ from datetime import date
 
 import httpx
 import pytest
-from riodata import overgangen
+from onderwijsbronnen.rio import overgangen
 
 from agent.telling import telling_blok
 from tools import fouten, rio_instelling
@@ -136,7 +136,7 @@ def rio(monkeypatch):
         monkeypatch.setattr(rio_instelling, "fetch", nep.fetch)
         monkeypatch.setattr(rio_instelling, "get", nep.get)
         monkeypatch.setattr(rio_instelling, "related", nep.related)
-        # De overgangen (riodata.opvolgers) lezen hetzelfde nagebootste RIO.
+        # De overgangen (onderwijsbronnen.rio.opvolgers) lezen hetzelfde nagebootste RIO.
         monkeypatch.setattr(overgangen, "get", nep.get)
         monkeypatch.setattr(overgangen, "related", nep.related)
         return nep

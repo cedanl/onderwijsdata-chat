@@ -238,11 +238,11 @@ def test_snippet_laadt_de_tabel_zonder_store(bronnen):
     regels_uwv = snippet._laadregels(uwv)
     regels_roa = snippet._laadregels(roa)
 
-    assert "from riodata import uwv" in regels_uwv
+    assert "from onderwijsbronnen import uwv" in regels_uwv
     assert 'df = df[df["PROVINCIE"].str.lower() == "utrecht"]' in regels_uwv
     assert 'df = df[df["GEMEENTE"].str.lower() == "amersfoort"]' in regels_uwv
     assert 'df = df.rename(columns={"AANTAL": "VACATURES"})' in regels_uwv
-    assert "from riodata import roa" in regels_roa
+    assert "from onderwijsbronnen import roa" in regels_roa
     assert 'df = df[df["detailniveau"] == "Mbo4 - techniek en ict"]' in regels_roa
     assert any("midden-utrecht" in r for r in regels_roa)
 
