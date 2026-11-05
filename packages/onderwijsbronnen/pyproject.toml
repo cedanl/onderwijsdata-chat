@@ -1,13 +1,16 @@
 [project]
 name = "onderwijsbronnen"
 # Gaat verder waar riodata (0.7.0) en onderwijsdata (0.2.2) ophielden: een versievergelijking loopt nooit terug.
-version = "0.9.0"
+version = "0.10.0"
 description = "Python client voor open Nederlandse onderwijs- en arbeidsmarktdata: CBS, DUO, RIO, ROA, UWV, Inspectie en SBB"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "cedanl", email = "info@cedanl.nl" }]
 requires-python = ">=3.11"
-dependencies = ["httpx"]
+dependencies = [
+    "defusedxml>=0.7.1",
+    "httpx",
+]
 
 [project.optional-dependencies]
 analyse = [

@@ -60,6 +60,9 @@ def test_heen_en_terug_geeft_hetzelfde_id():
         ("uwv-open-match-data", "uwv:uwv-open-match-data"),
         ("oordelen", "inspectie:oordelen"),
         ("sbb:crebolijst", "sbb:crebolijst"),
+        ("unl:wopi", "unl:wopi"),
+        ("unl/WOPI", "unl:wopi"),
+        ("wopi", "unl:wopi"),
     ],
 )
 def test_elke_vorm_normaliseert_naar_bron_en_catalogusspelling(invoer, verwacht):
