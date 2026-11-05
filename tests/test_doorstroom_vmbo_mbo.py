@@ -232,7 +232,8 @@ def test_de_key_komt_na_een_herstart_terug_door_het_recept(bron):
     assert store.get(key)["InstromersTotaal_1"].tolist() == [83020]
 
 
-def test_de_snippet_laadt_beide_codes_en_telt_ze_per_periode_op():
+def test_de_snippet_laadt_beide_codes_en_telt_ze_per_periode_op(gouden):
+    # De snippet vraagt de kolommen zoals de app, met de dimensies uit de bevroren definities (#945).
     script = snippet.generate(TOOL_GET_MAAT, {"maat": DOORSTROOM_VMBO_MBO})
 
     assert script is not None and _DS in script and _BK in script and _GT in script and _INCL in script
