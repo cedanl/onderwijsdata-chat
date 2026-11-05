@@ -165,7 +165,9 @@ _MBO_LEERWEG_COLS = list(_MBO_LEERWEGEN.values())
 _MBO_INGESCHREVEN_KOLOM = "TOTAAL MBO"
 _HOOFDGROEP = "HOOFDGROEP NAAM"
 _SECTOR_GEMIDDELD_JAREN = 3  # de aanbodzijde van de arbeidsmarktmatch: gediplomeerden, gemiddeld over 3 jaar
-_MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
+# Schaarste: het vacature-aandeel van een sector is meer dan _MATCH_DREMPEL keer zijn diploma-aandeel; overaanbod:
+# omgekeerd; daartussen evenwicht (_match_label). Het dashboard toont de waarde bij de score (#900).
+_MATCH_DREMPEL = 1.2
 
 # Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
 REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
@@ -793,12 +795,17 @@ def _mbo_dipl_lang(df_dipl: pd.DataFrame) -> pd.DataFrame:
     return lang.drop(columns="_KOLOM")
 
 
-def _gemiddeld_per_sector(df: pd.DataFrame, jaar_col: str, sector_col: str, waarde_col: str) -> dict[str, int]:
-    """Gediplomeerden per sector, gemiddeld over de laatste _SECTOR_GEMIDDELD_JAREN jaren; sectoren zonder weg."""
+def _gemiddeld_per_sector(
+    df: pd.DataFrame, jaar_col: str, sector_col: str, waarde_col: str
+) -> tuple[dict[str, int], list[int]]:
+    """Gediplomeerden per sector, gemiddeld over de laatste _SECTOR_GEMIDDELD_JAREN jaren; sectoren zonder weg.
+
+    Met de jaren waarover gemiddeld is: de arbeidsmarktmatch noemt ze bij de score (#900)."""
     jaren = sorted(df[jaar_col].dropna().unique())[-_SECTOR_GEMIDDELD_JAREN:]
     recent = df[df[jaar_col].isin(jaren)]
     gem = recent.groupby([jaar_col, sector_col])[waarde_col].sum().groupby(sector_col).mean()
-    return {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64) is geen int
+    per_sector = {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64)
+    return per_sector, [int(j) for j in jaren]
 
 
 @actualiteit.Lading
@@ -1525,9 +1532,10 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     provincie = ctx.provincie if ctx else _mode_str(hu["PROVINCIENAAM"])
 
     gps: dict[str, int] = {}
+    diplomajaren: list[int] = []
     hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
     if not hu_dipl.empty and "ONDERDEEL" in hu_dipl.columns:
-        gps = _gemiddeld_per_sector(hu_dipl, "DIPLOMAJAAR", "ONDERDEEL", "AANTAL_GEDIPLOMEERDEN")
+        gps, diplomajaren = _gemiddeld_per_sector(hu_dipl, "DIPLOMAJAAR", "ONDERDEEL", "AANTAL_GEDIPLOMEERDEN")
 
     return {
         "type": "ho",
@@ -1535,6 +1543,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
         "laatste_jaar": int(hu["STUDIEJAAR"].max()),
         "gediplomeerden_per_sector": gps,
+        "diplomajaren": diplomajaren,
     }
 
 
@@ -1556,11 +1565,12 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     # De aanbodzijde: gediplomeerden per hoofdgroep, gemiddeld over 3 jaar zoals bij het ho. Eerder stond hier TOTAAL
     # MBO uit instromende-mbo-studenten: ingeschrevenen, geen gediplomeerden (#899).
     gps: dict[str, int] = {}
+    diplomajaren: list[int] = []
     try:
         df_dipl = _load_mbo_gediplomeerden()
         dipl = df_dipl[df_dipl["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
         if not dipl.empty:
-            gps = _gemiddeld_per_sector(_mbo_dipl_lang(dipl), "JAAR", _HOOFDGROEP, "AANTAL")
+            gps, diplomajaren = _gemiddeld_per_sector(_mbo_dipl_lang(dipl), "JAAR", _HOOFDGROEP, "AANTAL")
     except Exception as e:
         _niet_beschikbaar(
             e,
@@ -1574,6 +1584,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
         "laatste_jaar": int(rows["JAAR"].max()),
         "gediplomeerden_per_sector": gps,
+        "diplomajaren": diplomajaren,
     }
 
 
@@ -1586,6 +1597,7 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     if not detect:
         return result
 
+    diplomajaren = detect.pop("diplomajaren", [])
     result["gevonden"] = True
     result.update(detect)
     onderwijs_type = detect["type"]
@@ -1613,7 +1625,49 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
 
     result["match_score"] = _match_scores(gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    result["match_duiding"] = _match_duiding(
+        provincie, diplomajaren, vacatures_geladen=bool(result["vacatures_per_sector"]), roa_geladen=bool(roa_raw)
+    )
     return result
+
+
+def _match_duiding(provincie: str, diplomajaren: list[int], *, vacatures_geladen: bool, roa_geladen: bool) -> dict:
+    """Waar de match_score op rust, voor wie hem leest (#900): zoals de chat de peildatum noemt (#577) en de
+    sectorindeling een LLM-classificatie noemt en niet van UWV (#460).
+
+    - `drempel`: _MATCH_DREMPEL, de factor tussen vacature-aandeel en diploma-aandeel (_match_label).
+    - `vacatures_peildatum`: de peildatum van de UWV-momentopname in de provincie; None als UWV niet laadde.
+    - `diplomajaren`: de jaren waarover de gediplomeerden gemiddeld zijn (DUO).
+    - `roa_versie`: de versie van het ROA-bestand achter `roa_per_niveau`; None als ROA niet laadde.
+    - `sectormapping`: herkomst, versie en model van de indeling van beroepenclusters bij sectoren.
+
+    Peildatum en versie komen uit de lading die de score al deed (een cachetreffer): wat niet laadde, staat al in
+    `niet_beschikbaar` en wordt hier niet opnieuw opgehaald.
+    """
+    return {
+        "drempel": _MATCH_DREMPEL,
+        "vacatures_peildatum": _uwv_peildatum(provincie) if vacatures_geladen else None,
+        "diplomajaren": diplomajaren,
+        "roa_versie": _roa_versie() if roa_geladen else None,
+        "sectormapping": dict(arbeidsmarkt.SECTOR_MANIFEST),
+    }
+
+
+def _uwv_peildatum(provincie: str) -> str | None:
+    try:
+        stand = arbeidsmarkt.uwv_stand(provincie)
+    except Exception as e:
+        _niet_beschikbaar(e, "uwv: peildatum voor %s niet beschikbaar", provincie)
+        return None
+    return stand.peildatum if stand else None
+
+
+def _roa_versie() -> str | None:
+    try:
+        return arbeidsmarkt.roa_versie()
+    except Exception as e:
+        _niet_beschikbaar(e, "roa: versie niet beschikbaar")
+        return None
 
 
 def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:

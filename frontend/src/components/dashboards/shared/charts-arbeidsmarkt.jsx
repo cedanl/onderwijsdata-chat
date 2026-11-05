@@ -4,6 +4,7 @@ import { fmt, useDarkMode } from './hooks'
 import { SectionHeader, ChartCard, ROA_AIS, ROA_SIS, roaPeilmoment } from './shell'
 import { Grafiek } from './grafiek'
 import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks } from './chart-opts'
+import { MomentopnameBanner, uwvBron } from './momentopname'
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
 
@@ -160,12 +161,10 @@ export function UwvSection({ data, provincie, dark }) {
       <SectionHeader
         title="Vacatureaanbod in de regio"
         subtitle={gefilterdOp.length > 0
-          ? `Clusters passend bij opleidingssectoren — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`
-          : `Openstaande vacatures per beroepscluster — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`}
+          ? `Clusters passend bij opleidingssectoren — ${uwvBron(vac.peildatum)} (momentopname)`
+          : `Openstaande vacatures per beroepscluster — ${uwvBron(vac.peildatum)} (momentopname)`}
       />
-      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: '12.5px', color: '#92400E', marginBottom: 12 }}>
-        Momentopname mei 2023 — geen historische reeks beschikbaar. Gebruik als indicatie, niet als actueel cijfer.
-      </div>
+      <MomentopnameBanner peildatum={vac.peildatum} />
       <div className="kpi-grid" style={{ marginBottom: 12 }}>
         <div className="kpi-card">
           <div className="kpi-card-header">

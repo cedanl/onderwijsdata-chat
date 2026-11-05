@@ -1296,6 +1296,21 @@ html.dark .kpi-trend.down { color: #F87171; }
 /* Dashboards (#905): de ondergrens voor kleine tekst is 12,5 px (#613), de basismaat is 15 px. */
 .db-sectie-sub { font-size: 12.5px; color: var(--muted-text); margin-top: 2px; }
 .db-noot { font-size: 12.5px; color: var(--muted-text); margin-top: 6px; font-style: italic; }
+/* De UWV-momentopname (#900): de kleuren van .context-limit-banner--warn, ook donker. */
+.db-momentopname {
+  font-size: 12.5px; padding: 8px 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid;
+  background: #FFFBEB; border-color: #FDE68A; color: #92400E;
+}
+html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .db-momentopname {
+    background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
+  }
+}
+/* Wat de match-tegels zeggen en niet zeggen (#900). */
+.db-match-duiding { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 16px; }
+.db-match-duiding p { margin: 0 0 6px; }
+.db-match-duiding ul { margin: 0 0 6px; padding-left: 18px; }
 /* Aantallen of % (#905): een knop die je raakt, 24 px (WCAG 2.5.8) en 44 px op een aanraakscherm. */
 .db-schakel {
   margin-left: auto; flex-shrink: 0; min-height: var(--tap-min-aa); padding: 2px 10px;

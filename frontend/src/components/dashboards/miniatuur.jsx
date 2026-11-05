@@ -52,7 +52,7 @@ function ArbeidsmarktBoven({ instelling, schaal }) {
   const leeg = !Object.values(data?.match_score || {}).some(v => v != null)
   return (
     <Bovenkant instelling={instelling} data={data} error={error} schaal={schaal} leeg={leeg}>
-      <MatchScoreSection matchScore={data?.match_score} dark={dark} />
+      <MatchScoreSection matchScore={data?.match_score} duiding={data?.match_duiding} dark={dark} />
     </Bovenkant>
   )
 }
