@@ -11,6 +11,7 @@ export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHe
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'
 export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendChart, InstroomRatioChart, buildMarktaandeelData, buildGroeiRankingData, MarktaandeelChart, GroeiRankingChart } from './charts-markt'
 export { RoaSection, PrognoseSection, UwvSection } from './charts-arbeidsmarkt'
+export { MomentopnameBanner, MatchDuiding, peildatumTekst, uwvBron, jarenTekst } from './momentopname'
 export { buildSectorTrendData, buildLeerwegenData, SectorTrendChart, HoofdgroepenChart, LeerwegenChart, LEERWEGEN_MBO } from './charts-sector'
 export { buildRendementVergelijkingData, RendementVergelijkingChart } from './charts-rendement'
 export { diplomaRatio } from './diploma-ratio'

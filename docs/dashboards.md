@@ -92,6 +92,15 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
 - **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
   laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
   Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
+- **Matchscore** (`match_score`): per sector het aandeel in de gewogen vacatures (`vacatures_per_sector`) tegenover het
+  aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. Schaarste als het vacature-aandeel meer dan
+  `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht; `None` voor een sector
+  zonder beroepenclusters in de indeling. `match_duiding` zegt waar de score op rust (#900): `drempel`,
+  `vacatures_peildatum` (de UWV-momentopname in de provincie), `diplomajaren` (de jaren van het gemiddelde),
+  `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet van UWV). De
+  tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
+  tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
+  tegen een meerjarig gemiddelde).
 
 ### Onderdrukte en ontbrekende cellen
 
