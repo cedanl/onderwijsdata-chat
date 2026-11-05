@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { Suspense, lazy, useState, useCallback, useEffect, useRef } from 'react'
 import { fetchFeedbackGiven } from '../api'
 import { useReportFrame } from '../hooks/useReportFrame'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
-import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './dashboards'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
@@ -12,10 +11,22 @@ import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 
+// De vaste dashboards (Chart.js en alle dashboardcode) laden pas als er een opent: de rapportenroute gebruikt deze
+// viewer ook en had ze anders altijd mee (#907).
+const dashboard = naam => lazy(() => import('./dashboards').then(m => ({ default: m[naam] })))
 const BUILTIN_COMPONENTS = {
-  [BUILTIN_MIJN_INSTELLING.id]: InlineDashboardMijnInstelling,
-  [BUILTIN_ARBEIDSMARKT.id]: InlineDashboardArbeidsmarkt,
-  [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
+  [BUILTIN_MIJN_INSTELLING.id]: dashboard('InlineDashboardMijnInstelling'),
+  [BUILTIN_ARBEIDSMARKT.id]: dashboard('InlineDashboardArbeidsmarkt'),
+  [BUILTIN_NATIONAAL.id]: dashboard('InlineDashboardNationaal'),
+}
+
+function DashboardLaadt() {
+  return (
+    <div className="wb-viewer-loading" role="status" aria-busy="true">
+      <span className="spinner" aria-hidden="true" />
+      Dashboard wordt geladen…
+    </div>
+  )
 }
 
 // save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
@@ -173,7 +184,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label={rapportWoord(workbook) === 'dashboard' ? 'Dashboardinhoud' : 'Rapportinhoud'}
         aria-busy={reportFrame.loading || undefined}>
         {(() => {
-          if (BuiltinDash) return <BuiltinDash instelling={instelling} />
+          if (BuiltinDash) return <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} /></Suspense>
           if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>

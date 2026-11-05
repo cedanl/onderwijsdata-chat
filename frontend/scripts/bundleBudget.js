@@ -12,9 +12,11 @@ import { join } from 'node:path'
 export const BUDGET_BYTES = 125_000
 
 // Measured on 23-10-2026 (gzip, on top of the first load): chat 102 kB, rapporten 148 kB, dashboards 151 kB.
+// On 05-11-2026 the dashboards (Chart.js included) became a lazy import of the viewer (#907): rapporten went from
+// 106.3 kB to 22.9 kB, so its budget follows; a report must not pull the dashboards back in.
 export const ROUTE_BUDGETS = {
   'src/pages/ChatPage.jsx': 130_000,
-  'src/pages/RapportenPage.jsx': 185_000,
+  'src/pages/RapportenPage.jsx': 40_000,
   'src/pages/DashboardPage.jsx': 185_000,
 }
 
