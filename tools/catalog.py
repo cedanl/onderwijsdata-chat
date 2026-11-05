@@ -58,6 +58,10 @@ SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 # voor geven, en ook niet concluderen dat ze niet bestaan (#200). Twee ervan hebben
 # een eigen tool (#441).
 CHAT_BRONNEN = ("CBS", "DUO", "RIO")
+# Bronnen van het pakket die de chat alleen via een eigen tool leest, niet via de catalogus: UNL (WOPI-personeel, #936)
+# is één bestand achter get_wo_personeel en een vlag. Zoeken, details en tellingen kennen het niet, net als
+# `onderwijsbronnen.catalog(source="all")`.
+_TOOLBRONNEN = ("unl",)
 _EIGEN_TOOL = {"uwv-open-match-data": TOOL_GET_UWV_VACATURES, "ais2030": TOOL_GET_ROA_BENCHMARK}
 
 # Vindbaar, package-leesbaar en chat-opvraagbaar zijn drie statussen (#356). Elke zoekhit en elk
@@ -310,7 +314,7 @@ def _cbs() -> list:
 @cache
 def _rio_duo_alles() -> list:
     """De andere bronnen in de volgorde van `onderwijsbronnen.catalog(source="all")`: RIO, DUO, ROA, UWV, …."""
-    return [record for bron, records in _alles().items() if bron != "cbs" for record in records]
+    return [record for bron, records in _alles().items() if bron not in ("cbs", *_TOOLBRONNEN) for record in records]
 
 
 @cache

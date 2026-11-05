@@ -119,6 +119,10 @@ env:
   # Dashboards staan op test en playground aan (vlag uit 47e7727f); production houdt ze uit.
   - name: ENABLE_DASHBOARDS
     value: "true"
+  # WOPI-personeel van UNL (get_wo_personeel, #936): alleen op test, tot UNL schriftelijk bevestigt dat hergebruik
+  # mag (besluit 05-11 op #731). Niet op playground of production zetten zonder die bevestiging.
+  - name: ENABLE_WO_PERSONEEL
+    value: "true"
   # Azure AI Foundry — optioneel naast Willma.
   # AZURE_AI_API_KEY + AZURE_AI_API_BASE moeten in onderwijsdata-chat-secrets staan.
   - name: AZURE_AI_API_KEY

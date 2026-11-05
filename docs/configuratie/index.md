@@ -51,6 +51,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `DATABASE_PATH` | `onderwijsdata.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `false` | Zet op `true` om de drie vaste dashboards (pagina `/dashboards` en `GET /api/dashboard/*`) aan te zetten. Standaard uit; de dashboardbouwer is verwijderd (#765). `manifests/test/values.yaml` en `manifests/playground/values.yaml` zetten hem aan, productie houdt hem uit |
+| `ENABLE_WO_PERSONEEL` | `false` | Zet op `true` om `get_wo_personeel` (personeel van de universiteiten uit het WOPI-bestand van UNL, #936) in de toolset te zetten. Alleen `manifests/test/values.yaml` zet hem aan: playground en productie wachten tot UNL schriftelijk bevestigt dat hergebruik mag (#731) |
 | `MAX_DASHBOARD_LOADS` | `4` | Gelijktijdige dashboardladingen op de pod; een koude lading haalt tot zes DUO-bestanden in het geheugen (#901) |
 | `DASHBOARD_QUEUE_TIMEOUT_S` | `30` | Seconden dat een dashboardlading op een plaats wacht; daarna HTTP 503 met de melding dat het druk is |
 | `DASHBOARD_TIMEOUT_S` | `90` | Seconden tot de gebruiker een melding met een nieuwe poging krijgt (HTTP 504); de lading loopt door en vult de cache |

@@ -80,6 +80,10 @@ DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
 MAX_DASHBOARD_LOADS = int(os.getenv("MAX_DASHBOARD_LOADS", "4"))
 DASHBOARD_QUEUE_TIMEOUT_S = float(os.getenv("DASHBOARD_QUEUE_TIMEOUT_S", "30"))
 DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
+# Personeel van de universiteiten uit het WOPI-bestand van UNL (#936, tools/wo_personeel.py): de tool
+# get_wo_personeel staat alleen in de toolset als deze vlag aan staat. Standaard uit; alleen manifests/test zet hem aan,
+# tot UNL schriftelijk bevestigt dat hergebruik mag (besluit 05-11 op #731). Playground en production niet.
+WO_PERSONEEL_ENABLED = os.getenv("ENABLE_WO_PERSONEEL", "false").lower() == "true"
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

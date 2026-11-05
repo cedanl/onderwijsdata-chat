@@ -1,7 +1,7 @@
 """De grenzen rond het bronpakket (`packages/onderwijsbronnen`) en tussen de bronnen erin (#886, #910, #911).
 
 Het pakket haalt de bronnen op, de chat beslist over scope, poorten en etiketten. Sinds #910 staan alle bronnen in één
-pakket, met per bron een subpakket (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`) en de gedeelde code in
+pakket, met per bron een subpakket (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`, `unl`) en de gedeelde code in
 `_kern`. Dat de bronnen elkaar niet raken, hield als losse pakketten vanzelf stand; in één pakket breekt één regel
 `from ..duo import load` het zonder dat iets rood wordt. Vijf regels, statisch gecontroleerd op de broncode (AST, dus
 ook een import binnen een functie of achter `try`, en relatieve imports omgerekend naar hun volledige pad):
@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAKKETTEN_MAP = ROOT / "packages"
 PAKKET = "onderwijsbronnen"
 BRON_SRC = PAKKETTEN_MAP / PAKKET / "src"
-BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb")
+BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "unl")
 KERN = "_kern"
 OUDE_NAMEN = ("riodata", "onderwijsdata")
 

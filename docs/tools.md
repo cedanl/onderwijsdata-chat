@@ -538,6 +538,36 @@ Het wettelijk collegegeld van één studiejaar, uit artikel 9 van de Regeling fi
 
 ---
 
+## get_wo_personeel
+
+Personeel in dienst van een universiteit of van de 14 universiteiten samen, uit het WOPI-bestand van UNL (#936,
+`tools/wo_personeel.py`). Alleen met de vlag `ENABLE_WO_PERSONEEL` (alleen op test); zonder vlag staat de tool niet in
+de toolset en geeft de dispatch "Onbekende tool".
+- **Route:** `onderwijsbronnen.unl` haalt de nieuwste editie op en leest de records van de draaitabellen; één lading
+  per 24 uur (`core/actualiteit.py`). De instelling wordt een BRIN-code via het register; een BRIN of de naam uit WOPI
+  werkt ook zonder register.
+- **Resultaat:** `cijfers` per jaar met `peildatum` en `totaal`, en per uitsplitsing de groepen (`wetenschappelijk_personeel`
+  en `obp`; de functiecodes; `vast`, `tijdelijk` en `aandeel_tijdelijk_procent`; `vrouwen` en
+  `aandeel_vrouwen_procent`; de leeftijdsklassen). Elk getal is een som over de records, uitgerekend in code. Verder
+  `voorbehouden` (peildatum, fte is geen personen, wat niet meetelt, de GEZO-variant, jaarverslagen), `noot` bij een
+  breuk in de reeks en `bron` met de vaste bronregel.
+- **Geen cijfer:** voor een hogeschool of mbo-instelling (vaste melding: geen open bron), voor de vier wo-instellingen
+  buiten UNL, voor een onbekende instelling, voor GEZO vóór 2006, voor vast/tijdelijk vóór 2003, en voor een
+  combinatie die het bestand niet heeft (personen per functie, fte per leeftijd, HOOP-gebied, salarisgroep).
+- **Snippet:** `unl.load(...)` met de keuze van de app (BRIN, jaren) en dezelfde rekenstappen;
+  `tests/test_wo_personeel.py` voert hem uit en vergelijkt de uitkomst met de tool.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string, optioneel | Naam, afkorting of BRIN-code, of `landelijk` (standaard) |
+| `jaar` | integer, optioneel | Peiljaar (31 december); standaard het nieuwste |
+| `reeks` | boolean, optioneel | Alle beschikbare jaren |
+| `uitsplitsing` | enum, optioneel | `geen`, `wp_obp`, `functie`, `vast_tijdelijk`, `geslacht`, `leeftijd` (alleen personen) |
+| `eenheid` | enum, optioneel | `fte` (standaard) of `personen` |
+| `gezo` | enum, optioneel | `excl` (standaard) of `incl`, nooit gemengd |
+
+---
+
 ## get_uwv_vacatures
 
 Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een

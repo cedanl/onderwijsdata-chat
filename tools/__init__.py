@@ -1,5 +1,7 @@
 from typing import Any
 
+from core.config import WO_PERSONEEL_ENABLED
+
 from . import argumenten, fouten, store
 from .accreditatie import get_accreditatie
 from .analysis import run_analysis
@@ -41,12 +43,14 @@ from .schemas import (
     TOOL_GET_RIO_INSTELLING,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RELATIE,
     TOOL_RUN_ANALYSIS,
     TOOL_SEARCH_CATALOG,
 )
 from .schemas import TOOL_SCHEMAS as SCHEMAS  # noqa: F401
+from .wo_personeel import get_wo_personeel
 
 LABELS = {
     TOOL_SEARCH_CATALOG: "Catalogus doorzocht",
@@ -73,6 +77,7 @@ LABELS = {
     TOOL_GET_MBO_INDICATOREN: "Mbo-indicatoren opgehaald",
     TOOL_GET_ACCREDITATIE: "Accreditatie opgezocht",
     TOOL_GET_COLLEGEGELD: "Collegegeld opgezocht",
+    TOOL_GET_WO_PERSONEEL: "Personeel universiteiten opgehaald",
 }
 
 _HANDLERS = {
@@ -100,6 +105,9 @@ _HANDLERS = {
     TOOL_GET_ACCREDITATIE: get_accreditatie,
     TOOL_GET_COLLEGEGELD: get_collegegeld,
 }
+# Alleen met de vlag (#936): zonder vlag staat de tool niet in de toolset en is hij ook niet aan te roepen.
+if WO_PERSONEEL_ENABLED:
+    _HANDLERS[TOOL_GET_WO_PERSONEEL] = get_wo_personeel
 
 
 def dispatch(name: str, tool_input: dict) -> tuple[str, Any]:
