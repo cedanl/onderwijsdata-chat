@@ -297,7 +297,7 @@ function AppShell() {
           <ErrorBoundary key={location.pathname}>
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
               <Routes>
-                <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
+                <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} functie={profiel.functie} />} />
                 <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={profiel} sector={instellingType(profiel.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
                 <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={profiel} instellingen={instellingen} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={profiel} feedbackEnabled={feedbackEnabled} />} />

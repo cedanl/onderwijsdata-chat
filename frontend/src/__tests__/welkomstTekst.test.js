@@ -36,20 +36,21 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
 window.matchMedia ??= q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
 
-const ROLLEN = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Docent']
+const ROLLEN = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'IR-specialist', 'Onderzoeker', 'Docent']
 const ALGEMEEN = 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data ' +
   'van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
 const ZONDER_ROL = ['Anders', '', undefined, null, 'Rector', 'anders']
 
 describe('FUNCTIES (#591)', () => {
-  it('heeft Docent, vóór Anders', () => {
-    expect(FUNCTIES).toEqual(['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Docent', 'Anders'])
+  it('heeft IR-specialist (#103) en Docent, vóór Anders', () => {
+    expect(FUNCTIES).toEqual(['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'IR-specialist', 'Onderzoeker', 'Docent', 'Anders'])
   })
 })
 
 describe('welkomstSub (#591)', () => {
   it.each(ROLLEN)('noemt %s met een kleine letter midden in de zin', rol => {
-    expect(welkomstSub(rol)).toBe(`Als ${rol.toLowerCase()} krijg je onderbouwde antwoorden over instroom, voortgang, ` +
+    const inZin = rol === 'IR-specialist' ? rol : rol.toLowerCase()
+    expect(welkomstSub(rol)).toBe(`Als ${inZin} krijg je onderbouwde antwoorden over instroom, voortgang, ` +
       'arbeidsmarkt en diplomering — direct uit open onderwijsdata.')
   })
 

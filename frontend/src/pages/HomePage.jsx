@@ -7,8 +7,16 @@ import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
+import { HOME_TEKST, doelgroepVan } from '../homeTekst'
 
-export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = false }) {
+const VOORDEEL_ICONEN = {
+  tijd: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+  schild: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  tabel: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>,
+  regelaar: <><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></>,
+}
+
+export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = false, functie = '' }) {
   useDocumentTitle(APP_NAME)
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
@@ -17,14 +25,15 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
     fetchCatalogCounts().then(setCounts).catch(() => {})
   }, [])
   const { bronnen, datasets } = heroStats(counts)
+  const tekst = HOME_TEKST[doelgroepVan(functie)]
   return (
     <div>
       {/* Hero */}
       <section className="hero">
         <div className="container">
           <div className="hero-content">
-            <h1>Van open onderwijsdata naar <em>reproduceerbare inzichten</em></h1>
-            <p>openEDUdata+ koppelt en harmoniseert open onderwijsdata van CBS, DUO en RIO alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg een onderbouwd, herleidbaar antwoord.</p>
+            <h1>{tekst.kop[0]}<em>{tekst.kop[1]}</em></h1>
+            <p>{tekst.intro}</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               {dashboardsEnabled && (
@@ -89,18 +98,13 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div className="section-label">Voordelen</div>
-            <h2 className="section-title">Waarom IR-dataprofessionals openEDUdata+ gebruiken</h2>
+            <h2 className="section-title">{tekst.voordelenTitel}</h2>
           </div>
           <div className="grid grid-2 gap-4">
-            {[
-              { icon: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>, title: 'Tijd terug', desc: 'Geen weken kwijt aan koppelen en opschonen. De cijfers staan klaar, direct inzetbaar voor jouw analyse.' },
-              { icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />, title: 'Verdedigbare cijfers', desc: 'Reproduceerbare methodiek met volledige bronvermelding. Bestand tegen vragen van auditors, accountants en bestuur.' },
-              { icon: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>, title: 'Eén brontabel voor iedereen', desc: "Instelling, management en collega-IR'ers werken met exact dezelfde geharmoniseerde cijfers. Geen discussie over wiens versie klopt." },
-              { icon: <><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></>, title: 'Zelf aan het stuur', desc: 'Ruwe, gekoppelde data beschikbaar voor eigen modellen en analyses. Geen afhankelijkheid van een vaste rapportagevorm.' },
-            ].map(({ icon, title, desc }) => (
+            {tekst.voordelen.map(({ icon, title, desc }) => (
               <div key={title} className="benefit-card">
                 <div className="benefit-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{VOORDEEL_ICONEN[icon]}</svg>
                 </div>
                 <div><h3>{title}</h3><p>{desc}</p></div>
               </div>
@@ -113,7 +117,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
       <section className="cta-section">
         <div className="container">
           <h2>Klaar om te beginnen?</h2>
-          <p>Stel je eerste vraag aan openEDUdata+ en ontdek wat gekoppelde open onderwijsdata voor jouw analyses betekent.</p>
+          <p>{tekst.cta}</p>
           <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Start de chat →</button>
         </div>
       </section>
