@@ -1,10 +1,10 @@
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
-import { SectionHeader, fmt, Sparkline, JaarNoot, eerstejaarsNoot, sortedEntries, perJaar, isOndergrens, TenMinste } from '../shared/index'
+import { SectionHeader, fmt, Sparkline, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot, sortedEntries, perJaar, isOndergrens, TenMinste } from '../shared/index'
 
 // De kerncijfers bovenaan "Mijn instelling": de eigen instelling tegenover het gemiddelde van het benchmark. Een eigen
 // component, omdat de galerijkaart dezelfde rij toont als miniatuur van het dashboard (#933).
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot }) {
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot, nootId }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
@@ -17,7 +17,7 @@ function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkVa
           {regioLabel}: {regioOndergrens ? 'ten minste ' : ''}{fmt(regioWaarde)}
         </div>
       )}
-      <JaarNoot noot={noot} />
+      <JaarNoot noot={noot} testid={nootId} />
       {sparkValues && <Sparkline values={sparkValues} color={color} />}
     </div>
   )
@@ -95,6 +95,8 @@ export function Kerncijfers({ data, instelling, c }) {
             icon={iconDiploma(COLOR_DIPLOM)}
             ondergrens={isOndergrens(od.gediplomeerden, c.lastDipl[0])}
             regioOndergrens={isOndergrens(bmOd.gediplomeerden, bmDiplJaar)}
+            noot={gediplomeerdenNoot({ diplJaar: c.lastDipl[0], ingesJaar: c.lastInges?.[0] })}
+            nootId="diplomanoot"
           />
         )}
         {c.pctVrouw != null && (

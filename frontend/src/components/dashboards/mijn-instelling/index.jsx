@@ -7,7 +7,7 @@ import {
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
   buildSectorTrendData, buildLeerwegenData, buildRendementVergelijkingData,
-  DemografieKpis, InstroomKpis, DiplomeringKpis,
+  DemografieKpis, InstroomKpis, DiplomeringKpis, gediplomeerdenNoot, diplomaRatio,
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
@@ -32,7 +32,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   const dark = useDarkMode()
 
   const {
-    marktData, marktTrendData, groeiData, ratioData, sectorTrendData, leerwegenData, rendVergData,
+    marktData, marktTrendData, groeiData, ratioData, sectorTrendData, leerwegenData, rendVergData, ratio,
   } = useMemo(() => ({
     marktData: buildMarktaandeelData(data, instelling, c.dark),
     marktTrendData: buildMarktaandeelTrendData(data),
@@ -41,6 +41,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
     sectorTrendData: buildSectorTrendData(data?.sectoren_trend),
     leerwegenData: buildLeerwegenData(data?.leerwegen),
     rendVergData: buildRendementVergelijkingData(data, instelling, c.dark),
+    ratio: diplomaRatio(data),
   }), [data, instelling, c.dark])
 
   const bmLabel = c.bmLabel || 'Regio'
@@ -48,6 +49,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   // Onderdrukte cellen per reeks en jaar (#902): een getal daarover is "ten minste".
   const od = data?.onderdrukt || {}
   const bmOd = bm.onderdrukt || {}
+  // Loopt de diplomareeks achter op de ingeschrevenen (hbo/wo), dan zegt de pagina tot wanneer DUO publiceert (#927).
+  const diplNoot = gediplomeerdenNoot({ diplJaar: c.lastDipl?.[0], ingesJaar: c.lastInges?.[0] })
   const vanaf = startjaar => (startjaar != null ? `% verandering t.o.v. ${startjaar}` : '% verandering')
   const noot = (sleutel, label) => [
     { label, onderdrukt: od[sleutel] },
@@ -87,9 +90,9 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
         {/* ── Diplomering & rendement ── */}
         <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />
-        <DiplomeringKpis {...c} rendement={c.rendement} />
+        <DiplomeringKpis {...c} ratio={ratio} noot={diplNoot} />
         <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
-        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.diplLineData} indexOpts={c.indexOpts} />
+        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
         <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>

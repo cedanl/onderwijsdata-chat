@@ -16,9 +16,16 @@ export function eerstejaarsNoot({ ejJaar, ingesJaar, type }) {
   return `${schooljaarLabel(ejJaar)} is het laatst beschikbare jaar in de bron (${bron}); de ingeschrevenen lopen door tot ${schooljaarLabel(ingesJaar)}.`
 }
 
-export function JaarNoot({ noot }) {
+// DUO publiceert de gediplomeerden bij hbo/wo een jaar later dan de ingeschrevenen (#927): staat de diplomareeks een
+// jaar achter, dan zegt de pagina tot wanneer. De jaren staan zoals de diplomagrafiek ze op de as heeft.
+export function gediplomeerdenNoot({ diplJaar, ingesJaar }) {
+  if (diplJaar == null || ingesJaar == null || Number(diplJaar) >= Number(ingesJaar)) return null
+  return `DUO publiceert de gediplomeerden tot en met ${diplJaar}; de ingeschrevenen lopen door tot ${ingesJaar}.`
+}
+
+export function JaarNoot({ noot, testid }) {
   if (!noot) return null
-  return <div className="kpi-trend" data-testid="jaarnoot" style={{ color: 'var(--muted-text)' }}>{noot}</div>
+  return <div className="kpi-trend" data-testid={testid ?? 'jaarnoot'} style={{ color: 'var(--muted-text)' }}>{noot}</div>
 }
 
 // Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918).
@@ -96,7 +103,8 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type }) {
   )
 }
 
-export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement }) {
+// `ratio` is { jaar, procent } van diploma-ratio.js: de teller en de noemer komen uit hetzelfde jaar.
+export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot }) {
   if (!lastDipl) return null
   return (
     <div className="kpi-grid">
@@ -109,18 +117,19 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement })
         </div>
         <div className="kpi-value">{fmt(lastDipl[1])}</div>
         {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+        <JaarNoot noot={noot} testid="diplomanoot" />
         <Sparkline values={diplEntries.map(([,v]) => v)} color={COLOR_DIPLOM} />
       </div>
-      {rendement != null && (
+      {ratio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Ratio diploma/inschrijving</span>
+            <span className="kpi-label">Ratio diploma/inschrijving {ratio.jaar}</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
-          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{rendement}%</div>
-          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>proxy — geen cohortmeting, zie Rendementsmonitor</div>
+          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{ratio.procent}%</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden en ingeschrevenen {ratio.jaar} — proxy, geen cohortmeting, zie Rendementsmonitor</div>
         </div>
       )}
     </div>

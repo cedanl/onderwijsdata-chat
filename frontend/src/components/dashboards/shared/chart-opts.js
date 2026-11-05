@@ -97,9 +97,8 @@ const BENCHMARK_COLOR_LIGHT = '#64748B'
 const BENCHMARK_COLOR_DARK = '#9CA3AF'
 export function benchmarkColor(dark) { return dark ? BENCHMARK_COLOR_DARK : BENCHMARK_COLOR_LIGHT }
 
-// Staafkleuren die iets zeggen, uit het palet (3:1 in beide thema's): een daling (rood) en een goede waarde (groen).
+// Een staafkleur die iets zegt, uit het palet (3:1 in beide thema's): een daling (rood).
 export const DAAL_KLEUR = CHART_COLORS[3]
-export const GOED_KLEUR = CHART_COLORS[5]
 
 // Tekstkleuren met 4,5:1 tegen de kaart, voor een oordeel (goed, gemiddeld, slecht) of een trend.
 const OORDEEL_LICHT = { goed: '#047857', gemiddeld: '#B45309', matig: '#C2410C', slecht: '#B91C1C', neutraal: '#475569' }
