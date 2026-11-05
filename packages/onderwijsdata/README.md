@@ -4,15 +4,19 @@ Python client voor publieke Nederlandse onderwijsdata via de [CBS OData API](htt
 
 ## Installatie
 
-`onderwijsdata` staat **nog niet op PyPI**. Installeer vanuit Git met een vaste ref
-(een release-tag of commit-hash; gebruik niet `main` voor reproduceerbare omgevingen):
+`onderwijsdata` staat **nog niet op PyPI**. Het pakket woont in de repo van de chat
+([`packages/onderwijsdata`](https://github.com/cedanl/onderwijsdata-chat/tree/main/packages/onderwijsdata)).
+Installeer vanuit Git met een vaste commit van die repo (gebruik niet `main` voor reproduceerbare omgevingen):
 
 ```bash
-pip install "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata@v0.2.2"
-pip install "onderwijsdata[analyse] @ git+https://github.com/cedanl/cbs-onderwijsdata@v0.2.2"  # + pandas, matplotlib
+pip install "onderwijsdata @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/onderwijsdata"
+pip install "onderwijsdata[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/onderwijsdata"  # + pandas, matplotlib
 ```
 
-Met uv: `uv add "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata@v0.2.2"`.
+Met uv: `uv add "onderwijsdata @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/onderwijsdata"`.
+
+De oude repo `cedanl/cbs-onderwijsdata` is gearchiveerd en blijft bestaan: een bestaande regel met de tag `v0.2.2`
+werkt nog.
 
 De installatie bevat de catalogus en `cbs_manifest.json`. Controle na installatie:
 

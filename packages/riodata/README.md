@@ -11,18 +11,22 @@ Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit zes bronnen:
 
 ## Installatie
 
-Niet op PyPI: installeer vanaf GitHub op een vaste release-tag (gebruik niet `main` voor
-reproduceerbare omgevingen):
+Niet op PyPI. Het pakket woont in de repo van de chat
+([`packages/riodata`](https://github.com/cedanl/onderwijsdata-chat/tree/main/packages/riodata)). Installeer vanaf GitHub op een
+vaste commit van die repo (gebruik niet `main` voor reproduceerbare omgevingen):
 
 ```bash
-pip install "riodata @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"             # alleen clients (httpx)
-pip install "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"    # + pandas, matplotlib, openpyxl
-pip install "riodata[duo] @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"        # + openpyxl (DUO Excel)
-pip install "riodata[sbb] @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"        # + openpyxl (riodata.crebo)
-pip install "riodata[catalogus] @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"  # + anthropic, pyyaml
+pip install "riodata @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"             # alleen clients (httpx)
+pip install "riodata[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"    # + pandas, matplotlib, openpyxl
+pip install "riodata[duo] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"        # + openpyxl (DUO Excel)
+pip install "riodata[sbb] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"        # + openpyxl (riodata.crebo)
+pip install "riodata[catalogus] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"  # + anthropic, pyyaml
 ```
 
-Met uv: `uv add "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata@v0.6.0"`.
+Met uv: `uv add "riodata[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"`.
+
+De oude repo `cedanl/rio-onderwijsdata` is gearchiveerd en blijft bestaan: een bestaande regel met een tag of commit
+van die repo werkt nog.
 Controle na installatie: `python -c "import riodata; print(riodata.__version__, riodata.contract.catalog_manifest()['inhoudshash'])"`.
 
 ## RIO LOD API

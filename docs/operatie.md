@@ -212,7 +212,9 @@ manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel
 *Catalogussites.* De Pages-workflow van de GitHub-mirror (`.github/workflows/docs.yml`) kopieert na de MkDocs-build
 `packages/onderwijsdata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
 `packages/riodata/docs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/>. De oude sites
-(cedanl.github.io/cbs-onderwijsdata en /rio-onderwijsdata) verwijzen pas door na #889.
+(cedanl.github.io/cbs-onderwijsdata en /rio-onderwijsdata) worden niet meer onderhouden: die repo's zijn
+sinds 2026-11-05 gearchiveerd (#889) en hun README verwijst naar de nieuwe plek. De sites zelf hebben geen banner en geen
+doorverwijzing.
 
 *Eenmalig instellen* (Maintainer; nooit in de repo, nooit in een sessie):
 
