@@ -48,9 +48,9 @@ export function DashboardShell({ instelling, children, loading, data, error, onO
         <div className="chart-card" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
           <div style={{ fontSize: '.85rem', color: '#92400E', lineHeight: 1.6 }}>
             <strong>&ldquo;{instelling}&rdquo;</strong> niet gevonden in DUO-data.
-            {suggesties.length > 0 && (
+            {suggesties.length > 0 ? (
               <> Bedoel je misschien: {suggesties.slice(0,5).join(', ')}?</>
-            )}
+            ) : data.geen_suggesties && <> {data.geen_suggesties}</>}
             <br />Pas de naam aan via <strong>Instellingen</strong>.
           </div>
         </div>

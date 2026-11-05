@@ -133,6 +133,8 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
 
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 5  # zoveel toont het dashboard
+# Waarom een onbekende instelling geen suggesties heeft, en waar ze wel op te vinden is (#929).
+_GEEN_SUGGESTIES = "Geen instellingsnaam lijkt hierop. Zoek op de naam, een afkorting of de instellingscode (BRIN)."
 # De leerwegkolommen van mbo-studenten-per-instelling met hun naam in het dashboard. Samen zijn ze het totaal
 # ingeschrevenen; een verdeling die er één weglaat, telt niet op tot dat totaal (Extraneus, #899).
 _MBO_LEERWEGEN = {"BBL": "BBL", _BOL_VOLTIJD: "BOLVT", _BOL_DEELTIJD: "BOLDT", "Extraneus": "EX"}
@@ -1065,6 +1067,8 @@ def load_dashboard_regio(instelling: str) -> dict:
     try:
         df_ho, _, _ = _load_ho_full()
         result["beschikbare_instellingen"] = _beschikbare_instellingen(instelling, df_ho, _load_mbo_studenten())
+        if not result["beschikbare_instellingen"]:
+            result["geen_suggesties"] = _GEEN_SUGGESTIES
     except Exception as e:
         _niet_beschikbaar(e, "load_dashboard_regio: beschikbare instellingen niet laden")
 

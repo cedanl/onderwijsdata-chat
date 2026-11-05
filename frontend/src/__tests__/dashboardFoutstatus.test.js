@@ -118,6 +118,18 @@ describe('DashboardShell', () => {
     expect(onOpnieuw).toHaveBeenCalledOnce()
   })
 
+  it('names the suggestions for an unknown name, or why there are none (#929)', async () => {
+    const met = { gevonden: false, beschikbare_instellingen: ['Hogeschool Utrecht'] }
+    await render(createElement(DashboardShell, { instelling: 'Hogeschool Utrect', data: met }))
+    expect(container.textContent).toContain('Bedoel je misschien: Hogeschool Utrecht?')
+
+    const reden = 'Geen instellingsnaam lijkt hierop. Zoek op de naam, een afkorting of de instellingscode (BRIN).'
+    const zonder = { gevonden: false, beschikbare_instellingen: [], geen_suggesties: reden }
+    await render(createElement(DashboardShell, { instelling: 'XYZ', data: zonder }))
+    expect(container.textContent).toContain(reden)
+    expect(container.textContent).not.toContain('Bedoel je')
+  })
+
   it('has no retry button for an error that retrying does not solve', async () => {
     const error = { melding: 'Dashboards zijn niet beschikbaar', herstelbaar: false }
     await render(createElement(DashboardShell, { instelling: 'HU', data: null, error, onOpnieuw: () => {} }))

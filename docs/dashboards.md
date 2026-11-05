@@ -20,6 +20,21 @@ Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `E
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
 De data komt uit `data/dashboard.py`.
 
+### Waarop `instelling` zoekt
+
+De parameter is een van deze sleutels, exact en hoofdletterongevoelig (`resolve_alias` in `data/instellingen.py`):
+
+- de naam uit het register (`/api/instellingen`), ook met "de" of "het" ervoor;
+- een afkorting uit `ALIASSEN` of een SRAM-naam ("HU", "VU", "ROC MN");
+- een instellingscode (BRIN) uit DUO, zoals `25DW` of `21cy`. Heeft een instelling er meer (Curio: 21CY en 25LX), dan
+  staan ze alle in `instellingscodes` van het register en vindt elke code de instelling (#929). Een naam of afkorting
+  die zo heet als een code, gaat voor.
+
+Het antwoord noemt in `instelling` de registernaam. Is de instelling onbekend, dan is `gevonden` `false`. Bij
+`/api/dashboard/regio` staan dan in `beschikbare_instellingen` de vijf namen die erop lijken; lijkt er geen op, dan is
+die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron die niet laadde, geeft 503, geen
+`gevonden: false`.
+
 ### Wat de getallen tellen
 
 - **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit

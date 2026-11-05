@@ -56,6 +56,7 @@ def test_registry_has_required_fields():
         assert "arbeidsmarktregio" in inst
         assert inst["type"] in ("wo", "hbo", "mbo")
         assert isinstance(inst["aliassen"], list)
+        assert inst["instellingscodes"][0] == inst["instellingscode"]
 
 
 def test_registry_most_have_provincie():
@@ -717,3 +718,39 @@ def test_een_onbekende_naam_blijft_onbekend_ook_met_lidwoord():
 
     assert resolve_alias("de Hogeschool van Narnia") == "de Hogeschool van Narnia"
     assert instellingsprofiel("de Hogeschool van Narnia") is None
+
+
+# ─── Zoeken op instellingscode (#929) ────────────────────────────────────────
+
+
+@pytest.mark.parametrize(("code", "naam"), [("25DW", _HU), ("25dw", _HU), ("27gz", "ROC Mondriaan")])
+def test_regio_dashboard_vindt_de_instelling_op_haar_code(code, naam):
+    from data.dashboard import load_dashboard_regio
+
+    op_code = load_dashboard_regio(code)
+    assert op_code["gevonden"] is True
+    assert op_code == load_dashboard_regio(naam)
+
+
+def test_regio_dashboard_zonder_suggesties_zegt_waarom():
+    from data.dashboard import load_dashboard_regio
+
+    result = load_dashboard_regio("Niet Bestaande Instelling XYZ")
+    assert result["gevonden"] is False
+    assert result["beschikbare_instellingen"] == []
+    assert "instellingscode" in result["geen_suggesties"]
+
+
+def test_regio_dashboard_met_suggesties_geeft_geen_reden():
+    from data.dashboard import load_dashboard_regio
+
+    result = load_dashboard_regio("Hogeschool Utrect")
+    assert result["beschikbare_instellingen"][0] == _HU
+    assert "geen_suggesties" not in result
+
+
+def test_api_dashboard_regio_op_code(client):
+    resp = client.get("/api/dashboard/regio?instelling=25dw")
+    assert resp.status_code == 200
+    assert resp.json()["gevonden"] is True
+    assert resp.json()["instelling"] == _HU
