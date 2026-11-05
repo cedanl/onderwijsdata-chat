@@ -1,10 +1,10 @@
 {
-  "catalogus_digest": "e4b886252be0",
+  "catalogus_digest": "fe2dd2ab67d2",
   "catalogusversie": [
     {
-      "pakket": "onderwijsdata",
-      "versie": "0.2.2",
-      "commit": "6ada0b0813f051440c9674c1eae7160e1651e11a",
+      "pakket": "onderwijsbronnen",
+      "versie": "0.9.0",
+      "commit": null,
       "manifest": {
         "catalogusrevisie": "076d42ee7c5ec9b8",
         "consistent": true,
@@ -19,11 +19,6 @@
           "afleiding_verouderd": 0
         }
       }
-    },
-    {
-      "pakket": "riodata",
-      "versie": "0.7.0",
-      "commit": "21c37577fccb8bf2586eeb069b5925fbb2257d40"
     }
   ],
   "dataset_counts": {
@@ -169,6 +164,7 @@
     "ais2028",
     "ais2030",
     "examenlicenties",
+    "financien",
     "gediplomeerde-mbo-studenten",
     "ho_opleidingsoverzicht",
     "instromende-mbo-studenten",
@@ -190,7 +186,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-11-03",
+  "gemeten_op": "2026-11-05",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 22,
