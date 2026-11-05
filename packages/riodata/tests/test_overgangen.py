@@ -239,6 +239,32 @@ def test_een_bronfout_gaat_naar_de_aanroeper(monkeypatch):
         voorgangers("08PG", "2021-10-01")
 
 
+def test_een_bestuursnummer_volgt_dezelfde_overgangen(rio):
+    """Besturen fuseren ook (#725): RIO geeft hun overgangen in dezelfde instellingsrelaties, met het bestuursnummer.
+
+    Op 05-11-2026: Stichting Regio College (40864) volledig in Stichting Talland College (40877) per 2024-01-01, en het
+    bestuur van Friesland College (40295) in dat van Firda (30932) per 2023-01-01.
+    """
+    bestuur = {"vanErkenningType": "BEVOEGD_GEZAG", "naarErkenningType": "BEVOEGD_GEZAG"}
+    regio = {**_volledig("40864", "40877", "2024-01-01"), **bestuur}
+    friesland = {**_volledig("40295", "30932", "2023-01-01"), **bestuur}
+    rio(
+        relaties={"40864": [regio], "40877": [regio], "40295": [friesland], "30932": [friesland]},
+        namen={
+            "40864": "Stichting Regio College voor Beroepsonderwijs en Educatie Zaanstreek Waterland",
+            "40877": "Stichting Talland College",
+            "40295": "Stg. Alg. Voortgez. Onderwijs, Beroepsonderwijs en Volw.educ",
+            "30932": "Stg. Beroepsonderw./ Volw.educ en AVO in Friesland en Flevoland",
+        },
+    )
+
+    assert opvolgers("40864", "2026-11-05") == [
+        Stap("40877", "Stichting Talland College", "volledig", "2024-01-01", via="40864")
+    ]
+    assert [s.code for s in voorgangers("40877", "2020-01-01", peildatum="2026-11-05")] == ["40864"]
+    assert [s.code for s in opvolgers("40295", "2026-11-05")] == ["30932"]
+
+
 def test_publieke_api():
     assert riodata.opvolgers is opvolgers
     assert riodata.voorgangers is voorgangers

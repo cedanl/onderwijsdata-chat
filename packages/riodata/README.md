@@ -50,7 +50,8 @@ cohorten = related("aangeboden-opleidingen", uuid, "aangeboden-opleiding-cohorte
 
 RIO legt elke overgang vast als instellingsrelatie `OVERGANG_VOLLEDIG` of `OVERGANG_GEDEELTELIJK`. `opvolgers` en
 `voorgangers` volgen die, ook door een keten (A → B → C) en veilig bij een cyclus, en geven altijd `datumGeldigOp` mee.
-Per stap: `code`, `naam`, `overgang` (`"volledig"`/`"gedeeltelijk"`), `datum` en `via` (de erkenning aan de andere kant).
+Per stap: `code`, `naam`, `overgang` (`"volledig"`/`"gedeeltelijk"`), `datum` en `via` (de erkenning aan de andere kant). Een bestuursnummer
+werkt net zo: besturen fuseren langs dezelfde relaties (`opvolgers("40864")` → Stichting Talland College, 40877).
 
 ```python
 from riodata import opvolgers, voorgangers

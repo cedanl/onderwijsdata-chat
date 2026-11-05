@@ -14,3 +14,5 @@
 - `riodata` heeft `opvolgers(brin, peildatum)` en `voorgangers(brin, sinds)` langs `OVERGANG_VOLLEDIG` en
   `OVERGANG_GEDEELTELIJK`. Het DUO-register "Basisgegevens instellingen" komt er niet bij: RIO heeft bij mbo, hbo en wo
   dezelfde fusiehistorie.
+  Ze werken ook met een bestuursnummer: besturen fuseren langs dezelfde relaties (Stichting Regio College, 40864, in
+  Stichting Talland College, 40877, per 1 januari 2024).
