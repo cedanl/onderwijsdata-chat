@@ -189,9 +189,11 @@ export const BRONNEN_NATIONAAL = {
 // of sectorranking leest.
 export const POPULATIE_NATIONAAL = { ho: 'alle HO-instellingen (hbo + wo)', mbo: 'alle MBO-instellingen' }
 
-// De editie-aanduidingen van de ROA-bronnen (#917): de titel van de DOI-pagina en de schoolverlatersinformatie. De
-// footer en de teksten bij de ROA-grafieken gebruiken dezelfde twee, zodat één bron niet twee edities krijgt.
-export const ROA_AIS = 'AIS tot 2030 (editie 2025)'
+// De namen van de ROA-bronnen (#917): AIS tot 2030 en de schoolverlatersinformatie. De footer en de teksten bij de
+// ROA-grafieken gebruiken dezelfde twee, zodat één bron niet twee namen krijgt. Er staat bewust geen editie bij: de
+// editie komt uit de data (`/version`, catalogus roa), en een vast label loopt achter zodra er een nieuwe uitkomt;
+// het structurele bronblok met editie is #904.
+export const ROA_AIS = 'AIS tot 2030'
 export const ROA_SIS = 'SIS 2024'
 
 // Arbeidsmarkt (#917): de aanbodkant is de DUO-gediplomeerden van het niveau van de instelling (zie

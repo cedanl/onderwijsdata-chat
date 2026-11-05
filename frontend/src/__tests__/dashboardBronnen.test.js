@@ -40,7 +40,7 @@ async function render(element, payloads = {}) {
 const footer = () => [...container.querySelectorAll('.dashboard-sources-list a')].map(a => ({ tekst: a.textContent, href: a.href }))
 const badge = () => [...container.querySelectorAll('.meta-badge')].map(b => b.textContent).find(t => t.startsWith('Bron:'))
 
-const ROA_LABEL = 'ROA — AIS tot 2030 (editie 2025), incl. SIS 2024'
+const ROA_LABEL = 'ROA — AIS tot 2030, incl. SIS 2024'
 
 describe('arbeidsmarkt: bronnen (#917)', () => {
   it('noemt voor een ho-instelling de DUO-gediplomeerden p04hogdipl, UWV en ROA, en dezelfde namen in de badge', () => {
@@ -90,7 +90,7 @@ describe('arbeidsmarkt: bronnen (#917)', () => {
     })
   }
 
-  it('noemt ROA in de grafiekteksten met dezelfde edities als de footer', () => {
+  it('noemt ROA in de grafiekteksten met dezelfde namen als de footer', () => {
     const roa = { 'mbo 4': { werkloosheid: 2, 'vast dienstverband': 70, 'buiten de vakrichting': 10 } }
     const prognose = { 'mbo 4': { totaal: 'goed' } }
     act(() => root.render(createElement('div', null,
@@ -98,11 +98,14 @@ describe('arbeidsmarkt: bronnen (#917)', () => {
       createElement(PrognoseSection, { data: { arbeidsmarkt_prognose: prognose } }),
     )))
 
-    expect(container.textContent).toContain('AIS tot 2030 (editie 2025)')
+    expect(container.textContent).toContain('ROA, AIS tot 2030')
     expect(container.textContent).toContain('SIS 2024')
     expect(container.textContent).not.toContain('AIS2030')
-    expect(ROA_LABEL).toContain('AIS tot 2030 (editie 2025)')
+    expect(ROA_LABEL).toContain('AIS tot 2030')
     expect(ROA_LABEL).toContain('SIS 2024')
+    // Geen vaste editie: die komt uit de data (/version) en een vast label loopt dan achter.
+    expect(container.textContent).not.toContain('editie')
+    expect(ROA_LABEL).not.toContain('editie')
   })
 })
 
