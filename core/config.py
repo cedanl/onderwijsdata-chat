@@ -39,7 +39,8 @@ HISTORY_MAX_CHARS = max(1, int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * 
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))
 RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
 # Tijdsgrens aan de serverkant voor een rapport (#759), ruim onder de 10 minuten waarna de frontend zelf stopt
-# (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats tot 20 min per aanroep bezet.
+# (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats bezet tot de
+# time-out per leesoperatie (LITELLM_REQUEST_TIMEOUT) afging, per poging.
 GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
 # Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen en rapporten per
 # gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de

@@ -47,7 +47,7 @@ async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | N
     """`aanroep`, tenzij er eerst een stop komt: (gestopt, uitkomst) (#759).
 
     Het stopsignaal werd pas gezien tussen rondes en per ontvangen chunk. Tot de eerste byte van het model (tot
-    `request_timeout`, 1200 s) deed Annuleer niets, en hield het rapport zijn runplaats en de verbinding bezet. Wint
+    `LITELLM_REQUEST_TIMEOUT`, een grens per leesoperatie) deed Annuleer niets, en hield het rapport zijn runplaats en de verbinding bezet. Wint
     de stop, dan wordt de aanroep geannuleerd; dat loopt door tot de HTTP-aanroep van litellm, die zijn verbinding
     sluit. Een afbreken van buitenaf (reset, ander gesprek) neemt de aanroep mee.
     """

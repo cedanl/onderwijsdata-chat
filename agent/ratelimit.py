@@ -15,7 +15,12 @@ _MAX_RETRIES = 4
 _BASE_DELAY = 2.0
 # Een Retry-After van de provider volgen, maar niet langer dan dit: de run heeft een tijdsgrens (#90).
 _MAX_DELAY = 30.0
-# LiteLLM request timeout (seconden). Azure AI kan traag zijn; standaard 600s → 1200s (#431).
+# LiteLLM request timeout (seconden), in #431 van 600 naar 1200 omdat Azure AI traag kon zijn. Voor `azure_ai/` is dit
+# een grens per leesoperatie (litellm 1.105, httpx.Timeout(read)), geen totale duur: de wachttijd tot de headers en
+# daarna de langste stilte tussen twee stukken van de stream. Een lang maar doorlopend antwoord raakt hem nooit.
+# Gemeten 04-11 (#800): langste stilte 19,7 s. De waarde blijft tot de hermeting van #800 staan; daarna moeten twee
+# pogingen binnen RUN_TIMEOUT_S passen. Herprobeerd wordt alleen een time-out vóór de headers: een time-out midden in
+# de stream komt uit accumulate_stream, buiten deze lus.
 _REQUEST_TIMEOUT = float(os.getenv("LITELLM_REQUEST_TIMEOUT", "1200"))
 
 
@@ -53,7 +58,7 @@ def _log(exc: litellm.RateLimitError, attempt: int, delay: float | None) -> None
 async def acompletion_with_backoff(emit: Emit, **kwargs):
     """litellm.acompletion met backoff bij rate limit en timeout retry (#431).
 
-    Timeout configuratie: stel LITELLM_REQUEST_TIMEOUT in (seconden, default 1200 voor Azure AI).
+    Timeout: LITELLM_REQUEST_TIMEOUT (seconden), een grens per leesoperatie, geen totale duur; zie `_REQUEST_TIMEOUT`.
     """
     # Voeg request_timeout toe tenzij al meegegeven
     if "request_timeout" not in kwargs:
