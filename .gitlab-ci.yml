@@ -143,8 +143,7 @@ pytest:
     - tar -xzf /tmp/helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
     - helm version --short
   script:
-    # mcp: zonder de extra slaan de protocoltests van tests/test_mcp_server.py over (#41).
-    - uv sync --frozen --extra postgres --extra mcp
+    - uv sync --frozen --extra postgres
     # Lint vóór de tests: een dubbele dict-key verborg de NHL Stenden-bug (#202, #203).
     - uv run ruff check .
     - uv run ruff format --check .
@@ -449,7 +448,7 @@ audit:python:
     # de PyPI-advisorydatabase en gaan er daarom uit (--no-emit-workspace; anders staan er `-e ./packages/…`-regels in
     # die pip-audit niet leest). Hun eigen afhankelijkheden (httpx, pandas, …) zitten wel in de export: dezelfde 92 als vóór #885.
     - uv export --frozen --no-dev --no-emit-project --no-emit-workspace --no-hashes --extra postgres -o requirements-pypi.txt
-    # Bewust genegeerd (SECURITY.md, S12): filelock 3.32.7, fix in 4.2.1, maar litellm (ook 1.106.4) eist filelock<4.0.
+    # Bewust genegeerd (SECURITY.md, S12): filelock 3.32.7, fix in 4.2.1, maar litellm (ook 1.108.0) eist filelock<4.0.
     # 112913 en 112907 gelden alleen op Windows; 112940 zit in ReadWriteLock, dat geen pakket hier gebruikt
     # (huggingface_hub gebruikt FileLock/SoftFileLock, litellm alleen in zijn proxy-CLI). Weg zodra filelock>=4.2.1 kan.
     - >-

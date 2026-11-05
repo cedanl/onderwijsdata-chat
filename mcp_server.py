@@ -15,7 +15,7 @@ Bij MCP schrijft het model van de client het antwoord en draaien de controles va
 resultaat draagt daarom zelf een `bewijs`-blok en een `vervolg` met een link naar de volledige app (#709), en tekst
 van de bronnen komt ontsmet mee: geen link, afbeelding of tag die in de client actief wordt.
 
-Starten:  uv sync --extra mcp && uv run python mcp_server.py
+Starten:  uv sync && uv run python mcp_server.py
 """
 
 import json
@@ -193,7 +193,7 @@ def voer_uit(naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
 
 
 def maak_server():
-    """De MCP-server met de catalogustools; de mcp-package laadt pas hier (extra `mcp`)."""
+    """De MCP-server met de catalogustools; de mcp-package laadt pas hier, niet bij elke import van deze module."""
     from mcp import types
     from mcp.server.lowlevel import Server
 

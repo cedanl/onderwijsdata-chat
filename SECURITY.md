@@ -183,7 +183,7 @@ Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blo
 
 | CVE | Pakket | Waarom niet van toepassing | Weg wanneer |
 |---|---|---|---|
-| CVE-2026-112913, CVE-2026-112907 | filelock 3.32.7 (fix 4.2.1) | Alleen op Windows (SQLite-zijbestanden van `ReadWriteLock`; oplocks bij soft locks); het image draait Linux | filelock ≥ 4.2.1 mag: litellm eist tot en met 1.106.4 `filelock<4.0` |
+| CVE-2026-112913, CVE-2026-112907 | filelock 3.32.7 (fix 4.2.1) | Alleen op Windows (SQLite-zijbestanden van `ReadWriteLock`; oplocks bij soft locks); het image draait Linux | filelock ≥ 4.2.1 mag: litellm eist tot en met 1.108.0 `filelock<4.0` (1.109.0rc1 laat `<5` toe, #767) |
 | CVE-2026-112940 | filelock 3.32.7 (fix 4.2.1) | Zit in `ReadWriteLock`/`AsyncReadWriteLock`; geen pakket in de image gebruikt die. huggingface_hub gebruikt `FileLock`/`SoftFileLock` (alleen bij downloads naar de HF-cache, die de app niet doet), litellm alleen in zijn proxy-CLI | idem |
 
 Gezien op 27-10-2026: de job was op `main` rood op deze drie (allow_failure, dus onopgemerkt).
