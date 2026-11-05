@@ -59,4 +59,14 @@ describe('DataSourcesModal', () => {
       expect(link.getAttribute('rel')).toContain('noreferrer')
     }
   })
+
+  // #956: a source with a tool of its own gets a row only where /api/catalog/counts names it.
+  it('lists UNL only where WOPI answers here', async () => {
+    await render({ CBS: 130, DUO: 16, RIO: 8, UWV: 1, ROA: 1, UNL: 1 })
+    expect(rows().map(r => r.bron)).toEqual(['CBS', 'RIO', 'DUO', 'UWV', 'ROA', 'UNL'])
+    act(() => root.unmount())
+    host.remove()
+    await render({ CBS: 130, DUO: 15, RIO: 8, UWV: 1, ROA: 1 })
+    expect(rows().map(r => r.bron)).not.toContain('UNL')
+  })
 })

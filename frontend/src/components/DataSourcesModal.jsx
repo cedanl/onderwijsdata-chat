@@ -6,6 +6,14 @@ import { useDialog } from '../hooks/useDialog'
 // Counts come from the catalog the app searches, so they cannot drift from it.
 const withCount = (n, text) => (n ? `${n} ${text}` : text)
 
+// Sources the chat reads through a tool of their own (#956). /api/catalog/counts only names them where that tool
+// answers here (WOPI behind its flag), so a row only shows when the counts name the source.
+const EIGEN_TOOL = [
+  ['UWV', 'Vacatures per provincie of gemeente (momentopname mei 2023)', 'data.overheid.nl', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
+  ['ROA', 'Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'doi.org', 'https://doi.org/10.34894/DVQTOG'],
+  ['UNL', 'Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'universiteitenvannederland.nl', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
+]
+
 export default function DataSourcesModal({ onClose }) {
   const [counts, setCounts] = useState({})
   const dialogRef = useDialog(onClose)
@@ -37,6 +45,7 @@ export default function DataSourcesModal({ onClose }) {
                 ['CBS', withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'catalogus/cbs', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/'],
                 ['RIO', `Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} resources)` : ''}`, 'catalogus/rio', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/'],
                 ['DUO', withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
+                ...EIGEN_TOOL.filter(([bron]) => counts[bron]),
               ].map(([bron, inhoud, catalogus, href]) => (
                 <tr key={bron}>
                   <td><span className="source-name">{bron}</span></td>

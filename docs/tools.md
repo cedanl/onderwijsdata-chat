@@ -511,7 +511,7 @@ verantwoording uit XBRL (#935, besluit op #725; `tools/financien.py`, bron en re
     en bij een bestuursfusie binnen de reeks (RIO-overgangen, `fusies.bestuur_in_reeks`).
 - **Geen cijfers:** een bestuur dat DUO niet aan mbo, hbo of wo toerekent (po, vo), een onbekende instelling, een
   instelling zonder bestuur in het adressenbestand (27YA). Op playground en productie geeft de tool een melding tot DUO
-  de licentie bevestigt (`LICENTIE_BEVESTIGD`).
+  de licentie bevestigt (`LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py`, #956).
 - **Bronregel:** "DUO · Financiële verantwoording uit XBRL (variant standaard), editie verslagjaren …, peildatum …,
   versie van …", met een link naar de pagina van DUO.
 - **Snippet:** `financien.overzicht(financien.laad(), "<bestuur>")`, dezelfde pakketfunctie als de tool, onafgerond.
