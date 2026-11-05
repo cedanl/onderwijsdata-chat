@@ -1319,6 +1319,22 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 }
 .db-schakel[aria-pressed="true"] { background: var(--blue-100); border-color: var(--accent-text); color: var(--gray-900); }
 @media (pointer: coarse) { .db-schakel { min-height: var(--tap-min); } }
+/* Afdrukken (#904): de knop rechts boven het dashboard; de noot onder de regio- en provinciebadges. */
+.db-afdrukbalk { display: flex; justify-content: flex-end; padding: 12px 24px 0; }
+.db-afdrukbalk + .dashboard-content { padding-top: 12px !important; }
+.db-regionoot { font-size: 12.5px; color: var(--muted-text); margin: 6px 0 0; }
+/* Een dashboard afgedrukt of als pdf (#904, besluit B): alleen de inhoud, over de volle lengte, zonder knoppen, met
+   het bronblok onderaan en de links ervan uitgeschreven. Een kaart breekt niet over twee pagina's. */
+@media print {
+  body:has(.dashboard-content) * { visibility: hidden; }
+  body:has(.dashboard-content) .dashboard-content,
+  body:has(.dashboard-content) .dashboard-content * { visibility: visible; }
+  body:has(.dashboard-content) .dashboard-content { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; overflow: visible; }
+  body:has(.dashboard-content) .wb-viewer-content { overflow: visible !important; }
+  .dashboard-content button, .db-afdrukbalk { display: none !important; }
+  .dashboard-content .chart-card, .dashboard-content .kpi-card, .dashboard-sources { break-inside: avoid; }
+  .dashboard-sources a[href]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; }
+}
 .kaart-zonder-locatie { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 0; }
 
 /* Dashboard skeleton loader */

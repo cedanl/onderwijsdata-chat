@@ -848,6 +848,23 @@ def _mode_str(series: pd.Series) -> str | None:
     return str(vals.mode().iloc[0])
 
 
+def _provincie(ctx: RegioContext | None, self_code: str, in_bestand: pd.Series) -> tuple[str | None, str | None]:
+    """De provincie van de instelling en waar ze vandaan komt (#904): (provincie, herkomst).
+
+    - "adres": het adres van de hoofdvestiging in het DUO-adressenbestand (adressen_ho, adressen_mbo), via de
+      regiocontext of de instellingscode. Vestigingen elders tellen niet mee (#744).
+    - "inschrijvingen": zonder adres de provincie die in het DUO-bestand het vaakst bij de instelling staat; die kan per
+      lading anders uitvallen, dus het dashboard zegt het erbij.
+    - None: geen van beide; het dashboard toont dan geen provincie.
+    """
+    adres = ctx.provincie if ctx else get_adres_lookup().get(self_code, {}).get("provincie")
+    if adres:
+        return adres, "adres"
+    if uit_bestand := _mode_str(in_bestand):
+        return uit_bestand, "inschrijvingen"
+    return None, None
+
+
 def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:
     """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
 
@@ -991,13 +1008,13 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
         return None
 
     ctx = _build_regio_context(instelling, "ho")
-    provincie = ctx.provincie if ctx else _mode_str(hu_inges["PROVINCIENAAM"])
-
     _self_code_ho = str(hu_inges[code_col].iloc[0])
+    provincie, herkomst = _provincie(ctx, _self_code_ho, hu_inges["PROVINCIENAAM"])
     _self_amr = get_adres_lookup().get(_self_code_ho, {}).get("arbeidsmarktregio")
 
     result: dict = {"type": "ho"}
     result["provincie"] = provincie or "Onbekend"
+    result["provincie_herkomst"] = herkomst
     result["arbeidsmarktregio"] = _self_amr
 
     hu_ej = df_ej[df_ej[inst_col].str.lower() == instelling.lower()]
@@ -1091,13 +1108,14 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         return None
 
     ctx = _build_regio_context(instelling, "mbo")
-    provincie = ctx.provincie if ctx else _mode_str(rows["PROVINCIE INSTELLING"])
     self_code = str(rows[code_col].iloc[0])
+    provincie, herkomst = _provincie(ctx, self_code, rows["PROVINCIE INSTELLING"])
     self_amr = get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio")
 
     result: dict = {
         "type": "mbo",
         "provincie": provincie or "Onbekend",
+        "provincie_herkomst": herkomst,
         "arbeidsmarktregio": self_amr,
     }
 
@@ -1543,7 +1561,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
 
     ctx = _build_regio_context(instelling, "ho")
     self_code = str(hu["INSTELLINGSCODE_ACTUEEL"].iloc[0])
-    provincie = ctx.provincie if ctx else _mode_str(hu["PROVINCIENAAM"])
+    provincie, herkomst = _provincie(ctx, self_code, hu["PROVINCIENAAM"])
 
     gps: dict[str, int] = {}
     diplomajaren: list[int] = []
@@ -1554,6 +1572,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     return {
         "type": "ho",
         "provincie": provincie or "Onbekend",
+        "provincie_herkomst": herkomst,
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
         "laatste_jaar": int(hu["STUDIEJAAR"].max()),
         "gediplomeerden_per_sector": gps,
@@ -1574,7 +1593,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
 
     ctx = _build_regio_context(instelling, "mbo")
     self_code = str(rows["INSTELLINGSCODE"].iloc[0])
-    provincie = ctx.provincie if ctx else _mode_str(rows["PROVINCIE INSTELLING"])
+    provincie, herkomst = _provincie(ctx, self_code, rows["PROVINCIE INSTELLING"])
 
     # De aanbodzijde: gediplomeerden per hoofdgroep, gemiddeld over 3 jaar zoals bij het ho. Eerder stond hier TOTAAL
     # MBO uit instromende-mbo-studenten: ingeschrevenen, geen gediplomeerden (#899).
@@ -1595,6 +1614,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     return {
         "type": "mbo",
         "provincie": provincie or "Onbekend",
+        "provincie_herkomst": herkomst,
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
         "laatste_jaar": int(rows["JAAR"].max()),
         "gediplomeerden_per_sector": gps,
