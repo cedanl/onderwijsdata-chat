@@ -27,7 +27,7 @@ _TERMIJN = 3
 
 
 def _duo(dataset_id: str, resource: int = 0) -> pd.DataFrame:
-    from riodata import duo
+    from onderwijsbronnen import duo
 
     return mask_sentinels(duo.load(dataset_id, resource))[0]
 
