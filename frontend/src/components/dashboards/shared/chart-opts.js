@@ -148,8 +148,34 @@ export function labelRegels(label, breedte = LABEL_BREEDTE) {
 }
 
 // Ticks voor de categorie-as van een liggende staaf: het label, afgebroken in regels.
-export function categorieTicks(kleur) {
-  return { color: kleur, padding: 4, callback(waarde) { return labelRegels(this.getLabelForValue(waarde)) } }
+export function categorieTicks(kleur, breedte = LABEL_BREEDTE) {
+  return { color: kleur, padding: 4, callback(waarde) { return labelRegels(this.getLabelForValue(waarde), breedte) } }
+}
+
+// Stippellijnen dwars over de waardeas van een liggende staaf, op de waarden in `options.plugins.drempellijnen.waarden`
+// (#949: de drempels van de arbeidsmarktmatch). Chart.js heeft geen annotatie zonder extra pakket; dit is een
+// inline-plugin voor <Grafiek plugins={[DREMPELLIJNEN]}>. De lijn is een extra: de grafiek noemt de drempel ook in tekst.
+export const DREMPELLIJNEN = {
+  id: 'drempellijnen',
+  afterDatasetsDraw(chart, _args, opties) {
+    const { waarden = [], kleur = '#475569' } = opties || {}
+    const { ctx, chartArea, scales } = chart
+    const as = scales?.x
+    if (!as || !chartArea) return
+    ctx.save()
+    ctx.strokeStyle = kleur
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([5, 4])
+    for (const waarde of waarden) {
+      const x = as.getPixelForValue(waarde)
+      if (!(x >= chartArea.left && x <= chartArea.right)) continue
+      ctx.beginPath()
+      ctx.moveTo(x, chartArea.top)
+      ctx.lineTo(x, chartArea.bottom)
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
 }
 
 export function horizontalBarOpts(dark, tooltipSuffix = '') {

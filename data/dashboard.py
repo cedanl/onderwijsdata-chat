@@ -1658,7 +1658,9 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     gps_final = result.get("gediplomeerden_per_sector", {})
     result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
 
-    result["match_score"] = _match_scores(gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    match = (gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    result["match_score"] = _match_scores(*match)
+    result["match_verhouding"] = _match_verhoudingen(*match)
     result["match_duiding"] = _match_duiding(
         provincie, diplomajaren, vacatures_geladen=bool(result["vacatures_per_sector"]), roa_geladen=bool(roa_raw)
     )
@@ -1712,10 +1714,10 @@ def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:
     return "evenwicht"
 
 
-def _match_scores(
+def _match_aandelen(
     gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
-) -> dict[str, str | None]:
-    """Per sector het diploma-aandeel tegenover het vacature-aandeel.
+) -> dict[str, tuple[float, float] | None]:
+    """Per sector (diploma-aandeel, vacature-aandeel).
 
     De vacatures per sector zijn gewogen (#455), dus hun som is het totaal en tellen beide aandelen
     op tot 1. Een sector zonder clusters in de mapping krijgt None, net als elke sector zonder vacatures.
@@ -1725,8 +1727,24 @@ def _match_scores(
     if not totaal_dipl or not totaal_vac:
         return dict.fromkeys(gps)
     return {
-        sector: _match_label(n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac)
-        if scm.get(sector)
-        else None
+        sector: (n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac) if scm.get(sector) else None
         for sector, n in gps.items()
     }
+
+
+def _match_scores(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, str | None]:
+    """Per sector het label van _match_label; None waar _match_aandelen geen aandelen heeft."""
+    aandelen = _match_aandelen(gps, vacatures_per_sector, scm)
+    return {sector: _match_label(*a) if a else None for sector, a in aandelen.items()}
+
+
+def _match_verhoudingen(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, float | None]:
+    """Per sector het vacature-aandeel gedeeld door het diploma-aandeel, op twee decimalen: de lengte van de staaf in
+    de staafgrafiek van de match (#949). Boven _MATCH_DREMPEL is het schaarste, onder 1 / _MATCH_DREMPEL overaanbod.
+    None waar er geen aandelen zijn, of geen gediplomeerden (een deling door 0)."""
+    aandelen = _match_aandelen(gps, vacatures_per_sector, scm)
+    return {sector: round(a[1] / a[0], 2) if a and a[0] else None for sector, a in aandelen.items()}

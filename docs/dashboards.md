@@ -122,6 +122,14 @@ decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callback
   tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
+- **Match als staafgrafiek** (#949): vanaf acht sectoren met een score (`MATCH_GRAFIEK_VANAF` in
+  `shared/charts-arbeidsmarkt.jsx`) staat de match niet als tegels maar als liggende staafgrafiek "Match per sector";
+  onder de acht blijven het tegels. De staaf is `match_verhouding`: per sector het vacature-aandeel gedeeld door het
+  diploma-aandeel, op twee decimalen (`_match_verhoudingen`; `null` zonder label of zonder gediplomeerden). Stippellijnen
+  staan op `drempel` (daarboven schaarste) en 1 / `drempel` (daaronder overaanbod), getekend door de inline-plugin
+  `DREMPELLIJNEN` (`shared/chart-opts.js`); een noot onder de grafiek noemt beide drempels in tekst. Er is één reeks per
+  label, zodat legenda en waardentabel het label in woorden geven en de kleur niet de enige drager is. Een payload
+  zonder `match_verhouding` krijgt de tegels.
 
 ### Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
 

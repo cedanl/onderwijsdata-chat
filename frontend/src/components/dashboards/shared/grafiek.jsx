@@ -13,8 +13,9 @@ const SOORTEN = { line: Line, bar: Bar }
 // Een grafiek van een dashboard (#905), zoals een figuur in de chat (PlotlyFigure.jsx): het canvas heeft al
 // role="img" (react-chartjs-2) en krijgt hier zijn naam, een zin met de cijfers (#588); daaronder de waarden als
 // ingeklapte tabel (#664), voor wie geen tooltip kan of wil gebruiken. `titel` gaat voor de titel van de kaart;
-// `categorie` noemt de labelkolom van de tabel (anders 'Jaar' of 'Categorie').
-export function Grafiek({ soort, data, options, hoogte, titel, categorie }) {
+// `categorie` noemt de labelkolom van de tabel (anders 'Jaar' of 'Categorie'); `plugins` zijn inline-plugins van
+// Chart.js (DREMPELLIJNEN).
+export function Grafiek({ soort, data, options, hoogte, titel, categorie, plugins }) {
   const kaartTitel = useContext(GrafiekTitel)
   const naam = titel ?? kaartTitel
   const waardeAs = waardeAsTitel(options)
@@ -25,7 +26,7 @@ export function Grafiek({ soort, data, options, hoogte, titel, categorie }) {
   return (
     <>
       <div style={{ height: hoogte }}>
-        <Soort data={data} options={options} aria-label={beschrijving ?? naam ?? 'Grafiek'} />
+        <Soort data={data} options={options} plugins={plugins} aria-label={beschrijving ?? naam ?? 'Grafiek'} />
       </div>
       {tabel && <WaardenTabel tabel={tabel} />}
     </>

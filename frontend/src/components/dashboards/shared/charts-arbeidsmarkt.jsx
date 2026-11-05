@@ -4,8 +4,103 @@ import { useDarkMode } from './hooks'
 import { fmt } from './getal'
 import { SectionHeader, ChartCard, ROA_AIS, ROA_SIS, roaPeilmoment } from './shell'
 import { Grafiek } from './grafiek'
-import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks } from './chart-opts'
+import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks, labelRegels, SECTOR_LABELS, DREMPELLIJNEN } from './chart-opts'
 import { MomentopnameBanner, uwvBron } from './momentopname'
+import { WeggelatenNoot } from './ondergrens'
+
+// ─── Arbeidsmarktmatch ───────────────────────────────────────────────────────
+// Tekst, dus 4,5:1 in beide thema's (#905): evenwicht #16A34A haalde op wit 3,3:1. Het woord staat er ook.
+export const MATCH_OORDEEL = { schaarste: 'slecht', overaanbod: 'neutraal', evenwicht: 'goed' }
+export const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
+// Vanaf zoveel sectoren met een score staat de match als staafgrafiek, daaronder als tegels (#949): Curio kreeg 17
+// gekleurde tegels als eerste onderdeel van het dashboard.
+export const MATCH_GRAFIEK_VANAF = 8
+
+const sectorNaam = s => SECTOR_LABELS[s] || s
+
+// De staven van de match (#949): per sector `match_verhouding` (vacature-aandeel gedeeld door diploma-aandeel, uit
+// data/dashboard.py), aflopend. Eén reeks per label, zodat legenda en waardentabel het label in woorden geven en de
+// kleur niet de enige drager is; een sector staat alleen in de reeks van zijn eigen label. Een sector met een label
+// maar zonder verhouding (geen gediplomeerden) staat in `zonderVerhouding`.
+export function buildMatchVerhoudingData(matchScore, verhouding, dark) {
+  const sectoren = Object.keys(matchScore || {}).filter(s => matchScore[s] != null)
+  const met = sectoren.filter(s => typeof verhouding?.[s] === 'number').sort((a, b) => verhouding[b] - verhouding[a])
+  if (!met.length) return null
+  return {
+    labels: met.map(sectorNaam),
+    datasets: ['schaarste', 'evenwicht', 'overaanbod'].map(score => ({
+      label: MATCH_LABELS[score],
+      data: met.map(s => (matchScore[s] === score ? verhouding[s] : null)),
+      backgroundColor: oordeelKleur(MATCH_OORDEEL[score], dark),
+      borderWidth: 0,
+      borderRadius: 4,
+    })),
+    zonderVerhouding: sectoren.filter(s => !met.includes(s)).map(sectorNaam),
+  }
+}
+
+// De drempels als waarden op de as: schaarste boven `drempel`, overaanbod onder 1 / `drempel` (_match_label).
+export function matchDrempels(drempel) {
+  return drempel > 0 ? [1 / drempel, drempel] : []
+}
+
+// Op 390 px is de as met sectornamen smal: een naam breekt af op MATCH_LABEL_BREEDTE tekens ("Ondernemerschap" past
+// nog) en elke sector krijgt een eigen naam op de as (geen autoSkip, anders valt de helft van de namen weg). Chart.js
+// geeft elke categorie even veel ruimte, dus de hoogte volgt de naam met de meeste regels.
+const MATCH_LABEL_BREEDTE = 15
+const REGEL_PX = 17
+const KADER_PX = 110 // legenda en waardeas
+
+export function matchGrafiekHoogte(labels) {
+  const regels = Math.max(1, ...labels.map(l => [labelRegels(l, MATCH_LABEL_BREEDTE)].flat().length))
+  return KADER_PX + labels.length * Math.max(30, regels * REGEL_PX + 8)
+}
+
+export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) {
+  const uitkomst = buildMatchVerhoudingData(matchScore, verhouding, dark)
+  if (!uitkomst) return null
+  const { zonderVerhouding, ...data } = uitkomst
+  const { tick, label } = darkColors(dark)
+  const baseOpts = horizontalBarOpts(dark)
+  const drempels = matchDrempels(drempel)
+  const grootste = Math.max(...data.datasets.flatMap(d => d.data).filter(v => v != null), ...drempels)
+  return (
+    <ChartCard
+      title="Match per sector"
+      subtitle="Vacature-aandeel gedeeld door diploma-aandeel: 1 is gelijk, hoger is meer vraag dan aanbod"
+    >
+      <Grafiek soort="bar" data={data} categorie="Sector" hoogte={matchGrafiekHoogte(data.labels)} plugins={[DREMPELLIJNEN]} options={{
+          ...baseOpts,
+          plugins: {
+            ...baseOpts.plugins,
+            legend: { display: true, position: 'top', labels: { color: label, boxWidth: 14 } },
+            tooltip: {
+              filter: item => item.raw != null,
+              callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)} keer` },
+            },
+            drempellijnen: { waarden: drempels, kleur: tick },
+          },
+          scales: {
+            x: {
+              ...baseOpts.scales.x,
+              stacked: true,
+              beginAtZero: true,
+              suggestedMax: Math.ceil(grootste * 1.1 * 10) / 10,
+              title: { display: true, text: 'vacature-aandeel ÷ diploma-aandeel', color: tick },
+            },
+            y: { ...baseOpts.scales.y, stacked: true, ticks: { ...categorieTicks(tick, MATCH_LABEL_BREEDTE), autoSkip: false } },
+          },
+        }} />
+      {drempels.length > 0 && (
+        <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '8px 0 0' }}>
+          Stippellijnen: de drempels. Boven {fmt(drempel)} is het schaarste, onder {fmt(Math.round(drempels[0] * 100) / 100)} overaanbod
+          (het diploma-aandeel is dan meer dan {fmt(drempel)} keer het vacature-aandeel), daartussen evenwicht.
+        </p>
+      )}
+      <WeggelatenNoot namen={zonderVerhouding} reden="geen gediplomeerden om het vacature-aandeel tegen af te zetten" />
+    </ChartCard>
+  )
+}
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
 
