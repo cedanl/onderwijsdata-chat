@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, mijnInstellingBeschrijving } from '../workbooks'
+import { instellingType } from '../instellingenMatch'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
@@ -8,6 +10,7 @@ import VerwijderFout from '../components/VerwijderFout'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
+const GEEN_INSTELLINGEN = []
 const BUILTINS = [BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL]
 
 // Een link naar een dashboard uit de dashboardbouwer (#765): die is uit de app gehaald, het dashboard zelf niet.
@@ -17,7 +20,7 @@ export const BOUWER_WEG =
 
 // De drie vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
 // onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
-export default function DashboardPage({ settings, feedbackEnabled = false }) {
+export default function DashboardPage({ settings, instellingen = GEEN_INSTELLINGEN, feedbackEnabled = false }) {
   useDocumentTitle(pageTitle('Dashboards'))
   const [searchParams, setSearchParams] = useSearchParams()
   const id = searchParams.get('id')
@@ -29,6 +32,11 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
   })
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
+  // De kaart van Mijn instelling belooft alleen wat het dashboard van dit niveau toont (#918).
+  const dashboards = useMemo(() => {
+    const sector = instellingType(instelling, instellingen)
+    return BUILTINS.map(b => (b.id === BUILTIN_MIJN_INSTELLING.id ? { ...b, description: mijnInstellingBeschrijving(sector) } : b))
+  }, [instelling, instellingen])
 
   if (selected) {
     return (
@@ -56,7 +64,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
       {id && <div className="wb-gallery-notice" role="alert">{BOUWER_WEG}</div>}
       <VerwijderFout fout={verwijderFout} />
       <DashboardGallery
-        workbooks={BUILTINS}
+        workbooks={dashboards}
         opgeslagen={opgeslagen}
         instelling={instelling}
         onSelect={wb => setSearchParams({ id: wb.id }, { replace: true })}
