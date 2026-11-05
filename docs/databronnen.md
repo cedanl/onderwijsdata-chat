@@ -401,6 +401,21 @@ de dag waarop ze zijn nagelezen. In de chat via `get_collegegeld`, één studiej
 
 ---
 
+## ID's: één contract `bron:id`
+
+Elke dataset heeft één getypeerde sleutel `bron:id`, bijvoorbeeld `cbs:85423NED`, `duo:p01hoinges`,
+`rio:aangeboden-opleidingen` of `roa:ais2030` (#912, [ADR-010](architecture-decisions.md)). Het pakket
+`onderwijsbronnen` normaliseert elke vorm naar die sleutel (`parse_bron_id`, `normaliseer_bron_id`): met of zonder
+voorvoegsel (`cbs:`, `cbs_`, `rio/`, `duo:`), in elke hoofdletterspelling, en in de spelling van de catalogus (CBS
+schrijft `85423NED` naast `80040ned`). Een kale ID die bij twee bronnen past, is een fout met de opties, nooit een
+stille keuze; een test bewaakt dat geen ID in twee bronnen voorkomt. Alle vormen die in opgeslagen recepten en
+gesprekken staan (de nulmeting van #909, `tests/fixtures/bron_id_vormen.json`), blijven geldig.
+
+De chat gebruikt het contract via `tools/bron_ids.py`, achter de vlag `BRON_ID_CONTRACT`: `uit` (de oude
+herleiding), `schaduw` (op test: de oude herleiding beslist, elk verschil met het contract staat in het log als
+`BRON_ID_VERSCHIL`) of `aan`. Het model ziet de ID's zoals voorheen: zonder voorvoegsel, en `search_catalog` kent nog
+`source="riodata"`.
+
 ## Bronnen onder een antwoord
 
 Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.

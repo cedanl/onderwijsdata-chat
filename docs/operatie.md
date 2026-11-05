@@ -110,6 +110,8 @@ Het pseudoniem staat er alleen met `LOG_HASH_SECRET`.
 
 ```bash
 kubectl --context testing logs -n services-onderwijsdata-chat deploy/fn-onderwijsdata-chat --since=24h | grep TOKENS
+# ID-contract in schaduw (#912): elk verschil tussen oude en nieuwe herleiding; `aantal` telt per soort sinds de start
+kubectl --context testing logs -n services-onderwijsdata-chat deploy/fn-onderwijsdata-chat --since=24h | grep BRON_ID_VERSCHIL
 ```
 
 **Herstarten**
