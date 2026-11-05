@@ -39,7 +39,7 @@ export default function DashboardGallery({ workbooks, opgeslagen = [], instellin
     <div className="wb-gallery-page">
       <div className="wb-gallery-header">
         <div>
-          <div className="wb-gallery-title" tabIndex={-1}>Dashboards</div>
+          <h1 className="wb-gallery-title" tabIndex={-1}>Dashboards</h1>
           <div className="wb-gallery-sub">{workbooks.length} dashboard{workbooks.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function DashboardGallery({ workbooks, opgeslagen = [], instellin
           >
             <div className="wb-card-thumb">
               <WorkbookPreview wb={wb} />
-              <span className="wb-builtin-badge">Voorbeeld</span>
+              <span className="wb-builtin-badge">Vast dashboard</span>
               <div className="wb-builtin-instelling">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v4M12 10v4M16 10v4"/>
