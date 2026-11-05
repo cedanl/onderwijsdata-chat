@@ -12,8 +12,11 @@ import math
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
-from tools import TOOL_RUN_ANALYSIS
+from onderwijsbronnen.duo.financien import KENGETALLEN
+
+from tools import TOOL_RUN_ANALYSIS, financien, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
@@ -40,8 +43,13 @@ class Meetwaarde:
     selectie: tuple[str, ...] = ()  # de andere cellen van haar rij, in woorden
     data_key: str | None = None
     eenheid: str | None = None
-    bron: str | None = None  # zonder data_key: de bron in woorden (een UWV- of ROA-resultaat van vóór #577)
+    # De bron in woorden: zonder data_key (een UWV- of ROA-resultaat van vóór #577), of een voorgeschreven bronregel
+    # (WOPI) en een vaste waarde van een andere bron dan de tabel (de signaleringswaarden van de Inspectie, #956).
+    bron: str | None = None
     rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
+    # De waarde zonder teken, voor een getal met decimale komma in de tekst (0,69; 2,0 %; `schrijft`): alleen van een
+    # bron die afgeronde decimalen geeft (financien, WOPI; #956). Een getal met komma krijgt alleen zo een citatie.
+    decimaal: Decimal | None = None
 
 
 def _getal(waarde) -> frozenset[str] | None:
@@ -179,11 +187,137 @@ def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
                             yield Meetwaarde(cijfers, indicator, selectie, data_key, eenheid, bron)
 
 
-_ARBEIDSMARKT = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa}
+_AFRONDINGEN = (ROUND_HALF_UP, ROUND_HALF_EVEN)
+
+
+def schrijft(waarde: Meetwaarde, geschreven: Decimal) -> bool:
+    """Schrijft een tekst deze waarde als `geschreven` (zonder teken): dezelfde waarde op de decimalen van de tekst,
+    half naar boven of half naar even afgerond. 0,50 is 0,5 maar niet 0,57; 3,2 is 3,17 en 3,24."""
+    if waarde.decimaal is None:
+        return False
+    exponent = geschreven.as_tuple().exponent
+    if not isinstance(exponent, int):  # oneindig of NaN: geen getal uit een tekst
+        return False
+    stap = Decimal(1).scaleb(exponent)
+    return any(waarde.decimaal.quantize(stap, wijze) == geschreven for wijze in _AFRONDINGEN)
+
+
+def _afgerond(waarde, maat: str, selectie: tuple[str, ...], data_key, eenheid=None, bron=None) -> Iterator[Meetwaarde]:
+    """Eén waarde zoals een tool met een eigen resultaatvorm haar afgerond geeft, met haar decimale waarde (#956)."""
+    if (cijfers := _getal(waarde)) is not None:
+        decimaal = abs(Decimal(repr(waarde)))
+        yield Meetwaarde(cijfers, maat, selectie, data_key, eenheid, bron, decimaal=decimaal)
+
+
+def _sleutel(parsed: dict) -> str | None:
+    return parsed.get("data_key") if isinstance(parsed.get("data_key"), str) else None
+
+
+# De kengetallen onder hun naam in de uitkomst van get_bestuursfinancien (rentabiliteit in procent), met de naam zoals
+# een zin hem noemt: "liquiditeit", niet "Liquiditeit (current ratio)".
+_KENGETALLEN = {
+    ("rentabiliteit_procent" if k.sleutel == "rentabiliteit" else k.sleutel): k.naam.split(" (")[0] for k in KENGETALLEN
+}
+
+
+def _uit_jaar(jaar: dict, eenheid: dict, sector: str, data_key, inspectie: str) -> Iterator[Meetwaarde]:
+    """De getallen van één verslagjaar van één eenheid: per kengetal bestuur, sectorcijfer en verschil; rijksbijdragen
+    en de signaleringswaarden van de Inspectie (met die bron, niet die van DUO).
+
+    De maat is het kengetal; wat het getal ervan is (het sectorcijfer, het verschil, de signaleringswaarde) staat als
+    cel in de selectie, zodat een zin die "sector" of "signaleringswaarde" zegt de juiste kandidaat aanwijst (CH-08)."""
+    verslagjaar = f"Verslagjaar: {jaar.get('verslagjaar')}"
+    bestuur = (f"Bestuur: {eenheid.get('naam')}", verslagjaar, f"Variant: {jaar.get('variant')}")
+    rollen = {
+        "bestuur": bestuur,
+        "sector": (f"Sectorcijfer: {sector}", verslagjaar),
+        "verschil": (*bestuur, f"Verschil met de sector: {sector}"),
+    }
+    for sleutel, naam in _KENGETALLEN.items():
+        waarden = _blok(jaar, sleutel)
+        procent = "%" if sleutel == "rentabiliteit_procent" else None
+        for rol, selectie in rollen.items():
+            yield from _afgerond(waarden.get(rol), naam, selectie, data_key, procent)
+    yield from _afgerond(jaar.get("rijksbijdragen_eur"), "Rijksbijdragen", bestuur, data_key, "€")
+    yield from _afgerond(jaar.get("rijksbijdragen_mln_eur"), "Rijksbijdragen", bestuur, data_key, "€ mln")
+    yield from _afgerond(jaar.get("werkplaatsfunctie_eur"), "Rijksbijdrage werkplaatsfunctie", bestuur, data_key, "€")
+    grenzen = {"liquiditeit": jaar.get("liquiditeit_signaleringswaarde")}
+    for signaal in jaar.get("signaleringen") or ():
+        if isinstance(signaal, dict) and signaal.get("kengetal") in _KENGETALLEN:
+            grenzen.setdefault(signaal["kengetal"], signaal.get("signaleringswaarde"))
+    for kengetal, grens in grenzen.items():
+        selectie = (*bestuur, "Grens: signaleringswaarde")
+        yield from _afgerond(grens, _KENGETALLEN[kengetal], selectie, data_key, bron=inspectie)
+
+
+def _uit_financien(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_bestuursfinancien (#935, #956): per eenheid en verslagjaar de kengetallen van het bestuur, het sectorcijfer
+    en het verschil, de rijksbijdragen en de signaleringswaarden; en het aantal eenheden in het sectorcijfer."""
+    data_key = _sleutel(parsed)
+    sectorcijfer = _blok(parsed, "sectorcijfer")
+    sector = str(sectorcijfer.get("sector"))
+    waarden = _blok(parsed, "signaleringswaarden")
+    inspectie = f"{waarden.get('bron')} ({waarden.get('jaar')})"
+    for eenheid in parsed.get("eenheden") or ():
+        reeks = eenheid.get("reeks") if isinstance(eenheid, dict) else None
+        for jaar in reeks if isinstance(reeks, list) else ():
+            if isinstance(jaar, dict):
+                yield from _uit_jaar(jaar, eenheid, sector, data_key, inspectie)
+    for jaar, aantal in _blok(sectorcijfer, "eenheden_per_jaar").items():
+        per_kengetal = aantal.items() if isinstance(aantal, dict) else [(None, aantal)]
+        for kengetal, n in per_kengetal:
+            selectie = (
+                f"Sectorcijfer: {sector}",
+                f"Verslagjaar: {jaar}",
+                *([f"Kengetal: {kengetal}"] if kengetal else []),
+            )
+            yield from _afgerond(n, "Eenheden", selectie, data_key)
+
+
+# De kolommen van get_wo_personeel die geen functie, aanstelling of leeftijdsklasse zijn, in woorden.
+_WOPI_MATEN = {
+    "totaal": "Personeel",
+    "wetenschappelijk_personeel": "Wetenschappelijk personeel",
+    "obp": "Ondersteunend en beheerspersoneel (OBP)",
+    "vrouwen": "Vrouwen",
+    "aandeel_vrouwen_procent": "Aandeel vrouwen",
+    "aandeel_tijdelijk_procent": "Aandeel tijdelijk",
+}
+_WOPI_GROEP = {"vast_tijdelijk": "Aanstelling", "leeftijd": "Leeftijd"}
+
+
+def _wopi_maat(kolom: str, uitsplitsing: str) -> str:
+    if maat := _WOPI_MATEN.get(kolom) or wo_personeel.FUNCTIES.get(kolom):
+        return maat
+    return f"{_WOPI_GROEP[uitsplitsing]} {kolom}" if uitsplitsing in _WOPI_GROEP else kolom
+
+
+def _uit_wopi(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_wo_personeel (#936, #956): elk getal van elk jaar, in fte of personen; een aandeel in procent. De citatie
+    noemt de voorgeschreven bronregel, met de GEZO-variant."""
+    data_key = _sleutel(parsed)
+    instelling = parsed.get("instelling")
+    naam = instelling.get("naam") if isinstance(instelling, dict) else "landelijk"
+    regel = _blok(parsed, "bron").get("regel")
+    gezo = wo_personeel.GEZO_KORT.get(str(parsed.get("gezo")), str(parsed.get("gezo")))
+    for rij in parsed.get("cijfers") or ():
+        if not isinstance(rij, dict):
+            continue
+        selectie = (f"Instelling: {naam}", f"Peildatum: {rij.get('peildatum')}", f"Variant: {gezo}")
+        for kolom, waarde in rij.items():
+            if kolom in ("jaar", "peildatum"):
+                continue
+            eenheid = "%" if kolom.endswith("_procent") else parsed.get("eenheid")
+            maat = _wopi_maat(kolom, str(parsed.get("uitsplitsing")))
+            yield from _afgerond(waarde, maat, selectie, data_key, eenheid, regel if isinstance(regel, str) else None)
+
+
+# Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956).
+_EIGEN_VORM = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa, financien.DATASET: _uit_financien, wo_personeel.DATASET: _uit_wopi}
 
 
 def _uit(parsed, analyse: bool) -> Iterator[Meetwaarde]:
-    if isinstance(parsed, dict) and (vertaler := _ARBEIDSMARKT.get(parsed.get("dataset"))):
+    if isinstance(parsed, dict) and (vertaler := _EIGEN_VORM.get(parsed.get("dataset"))):
         yield from vertaler(parsed)
         return
     if not isinstance(parsed, dict):

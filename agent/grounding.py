@@ -96,6 +96,17 @@ def getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
     ]
 
 
+def decimalen_met_positie(text: str) -> list[tuple[str, Decimal, int]]:
+    """Elk getal met een decimale komma: (zoals geschreven, waarde zonder teken, positie in de tekst).
+
+    Buiten de getalcontrole hierboven; de citaties gebruiken ze voor een bron die afgeronde decimalen geeft (#956)."""
+    return [
+        (m.group(0), Decimal(_digits(m.group(0)).replace(",", ".")), m.start())
+        for m in _TEXT_NUMBER.finditer(text)
+        if "," in m.group(0)
+    ]
+
+
 def checked_numbers(text: str) -> list[tuple[str, str]]:
     """Gehele getallen die de controle meeneemt: (zoals geschreven, cijfers)."""
     return [(geschreven, cijfers) for geschreven, cijfers, _ in getallen_met_positie(text)]

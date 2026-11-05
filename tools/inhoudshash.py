@@ -15,7 +15,10 @@ import pandas as pd
 from . import store
 
 # De bronnen waarvan de app zelf de hash maakt. DUO: KeyMeta.bronhash (#717); UWV en ROA zijn momentopnamen met een peilmoment.
-HASH_BRONNEN = frozenset({"cbs", "rio"})
+# WOPI (UNL) is één bestand per editie, maar de tabel is een som over zijn records: de hash is die van de tabel (#956).
+HASH_BRONNEN = frozenset({"cbs", "rio", "unl"})
+# DUO-tabellen zonder md5 van één bestand: de financien komen uit vier bestanden van één editie (#935, #956).
+HASH_DATASETS = frozenset({"duo:financien"})
 
 
 def inhoudshash(df: pd.DataFrame) -> str:
@@ -38,6 +41,7 @@ def hash_van(key: str) -> str | None:
     bron = bronkey(key)
     known = store.meta(bron)
     frame = store.get(bron)
-    if known is None or known.bron not in HASH_BRONNEN or not isinstance(frame, pd.DataFrame):
+    eigen = known is not None and (known.bron in HASH_BRONNEN or known.dataset in HASH_DATASETS)
+    if not eigen or not isinstance(frame, pd.DataFrame):
         return None
     return inhoudshash(frame)

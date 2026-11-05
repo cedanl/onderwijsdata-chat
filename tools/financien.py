@@ -10,7 +10,7 @@ Bestuur 40833 heeft drie verantwoordingen, één per BRIN; die blijven aparte ee
 Amsterdam (25PZ) krijgt alleen die eenheid, een vraag over bestuur 40833 alle drie, nooit een som.
 
 Licentie: de pagina van DUO noemt er geen; DUO wordt gevraagd (besluit 6 op #725). Tot DUO bevestigt, geeft de tool op
-playground en productie alleen een melding (`beschikbaar`).
+playground en productie alleen een melding (`tools.beschikbaarheid.financien`).
 """
 
 from __future__ import annotations
@@ -18,22 +18,22 @@ from __future__ import annotations
 import json
 from decimal import ROUND_HALF_UP, Decimal
 
+import pandas as pd
 from onderwijsbronnen import Bestuurssleutel
 from onderwijsbronnen.duo import financien
 
-from config import Config
 from core import actualiteit
 from data import instellingen
 
-from . import fouten, fusies
+from . import beschikbaarheid, fouten, fusies, store
 from .inspectie import bestuur_van
+from .schemas import TOOL_GET_BESTUURSFINANCIEN
 
 BRONNAAM = "DUO"
+# Het ID in het bron:id-contract (#912); de tabel achter een uitkomst staat onder dit ID in de store (#956).
+DATASET = "duo:financien"
 BRONTITEL = "Financiële verantwoording uit XBRL (variant standaard)"
 LICENTIE = "Niet vermeld op de bronpagina van DUO; de vraag ligt bij DUO (#725)."
-# Tot DUO de licentie bevestigt, niet op playground of productie (besluit 6 op #725). Na de bevestiging: True.
-LICENTIE_BEVESTIGD = False
-_OMGEVINGEN_ZONDER_LICENTIE = ("local", "development", "test")
 _HEADERS = {"User-Agent": "openEDUdata+ (onderwijsdata-chat)"}
 _SECTOREN = {"MBO": "mbo", "HBO": "hbo", "WO": "wo"}
 # De velden van een jaar waarvan een lege waarde een noot krijgt: leeg is geen nul.
@@ -74,11 +74,6 @@ NIET_BESCHIKBAAR = (
     "De financiële verantwoording van DUO is in deze omgeving nog niet beschikbaar: DUO moet de licentie nog "
     "bevestigen. Er zijn hier geen financiële cijfers per bestuur; noem er geen en schat er geen."
 )
-
-
-def beschikbaar() -> bool:
-    """Mag de tool cijfers geven? Overal na de bevestiging van de licentie, tot dan alleen lokaal en op test."""
-    return LICENTIE_BEVESTIGD or Config.APP_ENV in _OMGEVINGEN_ZONDER_LICENTIE
 
 
 _haler = actualiteit.Voorwaardelijk(headers=_HEADERS)
@@ -251,6 +246,39 @@ def _sectornoot(profiel: dict | None, sector: str) -> str | None:
     )
 
 
+def _telregel(sectorcijfer: dict) -> str:
+    """Wat het sectorcijfer telt, voor het Telling-blok (#956): over hoeveel eenheden van de sector, per verslagjaar."""
+    delen = []
+    for jaar, n in sorted(sectorcijfer["eenheden_per_jaar"].items(), reverse=True):
+        aantal = n if isinstance(n, int) else f"{min(n.values())} tot {max(n.values())} (per kengetal)"
+        delen.append(f"{aantal} in {jaar}")
+    return (
+        f"Sectorcijfer {sectorcijfer['sector']} (DUO-verantwoording uit XBRL): het gewogen cijfer van de Inspectie over "
+        f"alle eenheden van de sector ({', '.join(delen)}); een eenheid is een bestuur, bij bestuur 40833 elk van de "
+        "drie verantwoordingen."
+    )
+
+
+def _bewaar(
+    sleutel: Bestuurssleutel, regels: list[dict], editie: financien.Editie, telregel: str, fusieregels: tuple[str, ...]
+) -> str:
+    """De tabel achter de uitkomst in de store (#956), zoals de snippet haar maakt: de platte rijen van
+    `financien.overzicht`, onafgerond. Met de laadaanroep (herladen, snippet), de editie als peilmoment en de vaste
+    regels voor het Telling-blok (sectorcijfer, fusies). De key begint niet met `duo:`: de rijen zijn geen DUO-telling
+    met -1 als onderdrukte cel (store.put)."""
+    key = f"financien:{str(sleutel).lower()}"
+    meta = store.KeyMeta(
+        bron="duo",
+        dataset=DATASET,
+        laad=(TOOL_GET_BESTUURSFINANCIEN, {"instelling_of_bestuur": str(sleutel)}),
+        peilmoment=f"editie verslagjaren {editie.jaren}, peildatum {editie.peildatum}, versie van {editie.publicatiedatum}",
+        fusies=fusieregels,
+        telregels=(telregel,),
+    )
+    store.put(key, pd.DataFrame(regels), meta)
+    return key
+
+
 def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Financien) -> dict:
     regels = financien.overzicht(data, sleutel)
     per_eenheid: dict[str, list[dict]] = {}
@@ -262,6 +290,7 @@ def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Fi
         besturen[r.sleutel.nummer] = (r.naam, max(r.verslagjaar, besturen.get(r.sleutel.nummer, ("", 0))[1]))
     uit: dict = {
         "sleutel": str(sleutel),
+        "dataset": DATASET,
         "bestuur": _bestuurskop(sleutel, regels),
         "eenheden": [_eenheid(rs, editie) for rs in per_eenheid.values()],
         "sectorcijfer": _sectorcijfer(regels),
@@ -287,16 +316,17 @@ def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Fi
         noten.append(sectornoot)
     if any(r[k] is None for r in regels for k in _GECONTROLEERD):
         noten.append("Een waarde null ontbreekt in de bron: dat is geen 0. Noem geen getal en schat er geen.")
-    noten += fusies.bestuur_in_reeks(
+    fusieregels = fusies.bestuur_in_reeks(
         sleutel.nummer, uit["bestuur"]["naam"], (editie.eerste_jaar, editie.laatste_jaar), besturen
     )
-    uit["noot"] = " ".join(noten)
+    uit["noot"] = " ".join([*noten, *fusieregels])
+    uit["data_key"] = _bewaar(sleutel, regels, editie, _telregel(uit["sectorcijfer"]), fusieregels)
     return uit
 
 
 def get_bestuursfinancien(instelling_of_bestuur: str) -> str:
     """Kengetallen en rijksbijdragen van een bestuur, met sectorcijfer, signaleringen en voorbehouden (#935)."""
-    if not beschikbaar():
+    if not beschikbaarheid.financien():
         return NIET_BESCHIKBAAR
     tekst = str(instelling_of_bestuur or "").strip()
     try:

@@ -6,6 +6,10 @@ naar die stap: bron, maat, eenheid en de rij waarin het staat, in woorden. Staat
 meer selecties, dan wijst de zin er een aan (CH-08, agent/claimbinding.py). Staat
 het alleen als code, rijtelling of stuk van een key in de uitvoer, of nergens, dan zegt de
 citatie dat de herkomst niet is vastgesteld. Het model schrijft zelf geen markering.
+
+Een getal met een decimale komma valt buiten de getalcontrole. Geeft een bron afgeronde decimalen als meetwaarde
+(de financien en WOPI, #956: solvabiliteit 0,69, 6.184,36 fte), dan krijgt zo'n getal een citatie als het als
+waarde van een meetwaarde in een stap staat; een ander getal met komma blijft zonder citatie, zoals tot nu toe.
 """
 
 from tools import LABELS, store
@@ -13,8 +17,8 @@ from tools.kolomlabel import kolomlabel
 
 from .binding import zin_op
 from .claimbinding import betekenis, kenmerken, kies
-from .grounding import getallen_met_positie
-from .meetwaarden import Meetwaarde, eenheden, meetwaarden
+from .grounding import decimalen_met_positie, getallen_met_positie
+from .meetwaarden import Meetwaarde, eenheden, meetwaarden, schrijft
 from .selectie import SCHEIDING as _SCHEIDING
 from .selectie import bron_in_woorden, data_keys, keten, laadkey
 
@@ -65,16 +69,24 @@ def citaties(tekst: str, steps: list[tuple[str, str]]) -> list[dict]:
     if not data_keys(results) and not any(w for _, _, w in waarden):
         return []
     eenheid = {k: v for result in results for k, v in eenheden(result).items()}
-    gevonden: list[dict] = []
+    gevonden: list[tuple[int, dict]] = []
     for geschreven, cijfers, positie in getallen_met_positie(tekst):
         # Niet de eerste stap met dit getal: de zin wijst de selectie aan (CH-08).
         kandidaten = [(s, t, w) for s, t, ws in waarden for w in ws if cijfers in w.cijfers]
-        bron = kies(
-            kandidaten,
-            lambda k: betekenis(k[2]),
-            lambda k: kenmerken(k[2]),
-            zin_op(tekst, positie),
-            voorkeur=_dichtst_bij_de_bron,
-        )
-        gevonden.append(_citatie(geschreven, *bron, eenheid) if bron else _onbepaald(geschreven, kandidaten))
-    return gevonden
+        gevonden.append((positie, _gebonden(geschreven, kandidaten, tekst, positie, eenheid)))
+    for geschreven, decimaal, positie in decimalen_met_positie(tekst):
+        if kandidaten := [(s, t, w) for s, t, ws in waarden for w in ws if schrijft(w, decimaal)]:
+            gevonden.append((positie, _gebonden(geschreven, kandidaten, tekst, positie, eenheid)))
+    return [citatie for _, citatie in sorted(gevonden, key=lambda g: g[0])]
+
+
+def _gebonden(geschreven: str, kandidaten: list, tekst: str, positie: int, eenheid: dict[str, str]) -> dict:
+    """De citatie van één voorkomen: de kandidaat die de zin aanwijst, of de herkomst is niet vastgesteld."""
+    bron = kies(
+        kandidaten,
+        lambda k: betekenis(k[2]),
+        lambda k: kenmerken(k[2]),
+        zin_op(tekst, positie),
+        voorkeur=_dichtst_bij_de_bron,
+    )
+    return _citatie(geschreven, *bron, eenheid) if bron else _onbepaald(geschreven, kandidaten)

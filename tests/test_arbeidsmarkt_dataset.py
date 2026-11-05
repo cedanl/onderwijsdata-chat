@@ -160,7 +160,10 @@ def test_query_en_plot_werken_op_de_tabel(bronnen):
     assert selectie["rijen"] == [{"PROVINCIE": "Utrecht", "BEROEPENCLUSTER": "ICT", "VACATURES": 300}]
     tekst, figuur = create_plot(data_key=key, chart_type="bar", x="BEROEPENCLUSTER", y="VACATURES", title="Vacatures")
     assert figuur is not None and "aangemaakt" in tekst
-    assert figuur.layout.meta["herkomst"] == [f"bron: UWV, dataset {UWV_ID}"]
+    # De herkomst noemt de peildatum van de momentopname (#956).
+    known = store.meta(key)
+    assert known is not None
+    assert figuur.layout.meta["herkomst"] == [f"bron: UWV, dataset {UWV_ID}, {known.peilmoment}"]
 
 
 # ── Wat op een data_key werkt, loopt mee ─────────────────────────────────────

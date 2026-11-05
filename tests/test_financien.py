@@ -19,7 +19,7 @@ import tools
 from agent.bronvermelding import bronlinks_van, bronnen_van
 from core import actualiteit
 from scripts import bronping
-from tools import catalog, fouten, fusies, snippet
+from tools import beschikbaarheid, catalog, fouten, fusies, snippet
 from tools import financien as tool
 from tools.duo import get_duo_data
 from tools.schemas import TOOL_GET_BESTUURSFINANCIEN
@@ -92,7 +92,7 @@ def bron(monkeypatch):
     monkeypatch.setattr(tool, "bestuur_van", lambda code: _BESTUUR.get(code))
     monkeypatch.setattr(tool, "_bron", lambda: _DATA)
     monkeypatch.setattr(fusies, "_voorgangers", lambda code, sinds: ())
-    monkeypatch.setattr(tool.Config, "APP_ENV", "test")
+    monkeypatch.setattr(beschikbaarheid.Config, "APP_ENV", "test")
 
 
 def _uit(vraag: str) -> dict:
@@ -251,9 +251,9 @@ def test_een_bestuursnaam_uit_de_verantwoording_werkt_ook():
 
 @pytest.mark.parametrize("omgeving", ["playground", "production"])
 def test_zonder_bevestigde_licentie_geen_cijfers_op_playground_en_productie(monkeypatch, omgeving):
-    monkeypatch.setattr(tool.Config, "APP_ENV", omgeving)
+    monkeypatch.setattr(beschikbaarheid.Config, "APP_ENV", omgeving)
     assert tool.get_bestuursfinancien("ROC Midden Nederland") == tool.NIET_BESCHIKBAAR
-    monkeypatch.setattr(tool, "LICENTIE_BEVESTIGD", True)
+    monkeypatch.setattr(beschikbaarheid, "LICENTIE_BEVESTIGD", True)
     assert tool.get_bestuursfinancien("ROC Midden Nederland").startswith("{")
 
 

@@ -1,7 +1,8 @@
 """CSV van de tabel achter een antwoord, voor Excel (#269).
 
 De export is de tabel die query_data, run_analysis of get_maat in de store legde,
-of de selectie van een lader als het toolresultaat haar helemaal toonde (#605);
+of de selectie van een lader als het toolresultaat haar helemaal toonde (#605), of de tabel achter
+get_bestuursfinancien of get_wo_personeel (#956);
 niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
@@ -20,10 +21,12 @@ import pandas as pd
 from . import catalog, duo, herlaad, store
 from .exportnoten import herkomstregels
 from .schemas import (
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
@@ -37,6 +40,9 @@ _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}
 # grotere selectie blijft erbuiten: de export zou het hele bronbestand zijn, niet de tabel in het antwoord; de
 # geciteerde getallen zijn dan de export (frontend/src/citatieCsv.js, #544).
 _LADERS = {TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA}
+# Een bron met een eigen resultaatvorm toont haar hele tabel, in haar eigen vorm (#956): elke eenheid en elk verslagjaar
+# van een bestuur, elk jaar en elke groep van een WOPI-selectie. Haar tabel in de store is de tabel achter het antwoord.
+_EIGEN_VORM = {TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_WO_PERSONEEL}
 
 
 def _resultaat(result: str) -> dict | None:
@@ -68,6 +74,8 @@ def export_key(name: str, result: str) -> str | None:
         tabel = bool(parsed.get("rijen"))
     elif name in _LADERS:
         tabel = _alle_rijen_getoond(parsed)
+    elif name in _EIGEN_VORM:
+        tabel = True
     else:
         return None
     key = parsed.get("data_key")

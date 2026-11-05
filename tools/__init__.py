@@ -1,8 +1,6 @@
 from typing import Any
 
-from core.config import WO_PERSONEEL_ENABLED
-
-from . import argumenten, fouten, store
+from . import argumenten, beschikbaarheid, fouten, store
 from .accreditatie import get_accreditatie
 from .analysis import run_analysis
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
@@ -110,7 +108,7 @@ _HANDLERS = {
     TOOL_GET_BESTUURSFINANCIEN: get_bestuursfinancien,
 }
 # Alleen met de vlag (#936): zonder vlag staat de tool niet in de toolset en is hij ook niet aan te roepen.
-if WO_PERSONEEL_ENABLED:
+if beschikbaarheid.wo_personeel():
     _HANDLERS[TOOL_GET_WO_PERSONEEL] = get_wo_personeel
 
 
