@@ -7,14 +7,26 @@ De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arb
 
 ## Vaste dashboards
 
-Vier vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit):
+De frontend toont drie dashboards; ze halen hun cijfers uit vier eindpunten. Beide zijn er zolang `ENABLE_DASHBOARDS`
+op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit).
 
-| Dashboard | Endpoint | Inhoud |
-|-----------|----------|--------|
-| **Regio** | `/api/dashboard/regio` | Mijn instelling: ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, en de regionale vergelijking; mbo: leerwegen en ingeschrevenen per hoofdgroep |
-| **Nationaal** | `/api/dashboard/nationaal` | Nationale onderwijsstatistieken, KPI's |
-| **Rendement** | `/api/dashboard/rendement` | Diplomering, doorstroom, uitval |
-| **Arbeidsmarktmatch** | `/api/dashboard/arbeidsmarktmatch` | UWV vacaturedata per sector, match scores |
+| Dashboard in de UI | Eindpunten | Inhoud |
+|--------------------|------------|--------|
+| **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep. Daarnaast diplomarendement per cohort en sector |
+| **Arbeidsmarkt** | `/api/dashboard/arbeidsmarktmatch`, `/api/dashboard/regio` | Gediplomeerden tegen vacatures per sector, de matchscore, ROA (schoolverlaters en prognoses per opleidingsniveau) en de vacatures in de provincie |
+| **Landelijk** | `/api/dashboard/nationaal` | Positie per sector, marktaandeel, trend van de eigen sectoren en de ranking van alle instellingen van hetzelfde type |
+
+**Bronnen.** De dashboards rekenen met DUO (open onderwijsdata per instelling), UWV (vacatures per provincie, een
+momentopname van mei 2023) en ROA (schoolverlaters en prognoses, landelijk per opleidingsniveau). CBS-data gebruiken
+ze niet; alleen de indeling in arbeidsmarktregio's (per gemeente) komt van CBS. Over de landelijke CBS-maat van de chat:
+zie "Landelijk, groei en het regiogemiddelde" hieronder.
+
+**Frontend.** De dashboards staan in `frontend/src/components/dashboards/` (een map per dashboard, gedeelde delen in
+`shared/`) en tekenen met Chart.js (`react-chartjs-2`); alleen de kaart is een Plotly-figuur die de backend bouwt.
+`WorkbookViewer` laadt ze lazy, zodat de rapportenroute Chart.js niet meelaadt (#907). Een klik op de legenda volgt
+de standaard van Chart.js. De tests staan in `frontend/src/__tests__/dashboard*.test.js` (bouwfuncties, legenda,
+laden, lege en mislukte lading, cijfers, toegankelijkheid) en voor de backend in `tests/test_dashboard_*.py` en
+`tests/test_instellingen.py`.
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
 De data komt uit `data/dashboard.py`.
