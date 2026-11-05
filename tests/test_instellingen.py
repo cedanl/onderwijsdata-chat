@@ -662,7 +662,11 @@ def test_een_onbekende_naam_blijft_onbekend_ook_met_lidwoord():
 # ─── Zoeken op instellingscode (#929) ────────────────────────────────────────
 
 
-@pytest.mark.parametrize(("code", "naam"), [("25DW", _HU), ("25dw", _HU), ("27gz", "ROC Mondriaan")])
+# Curio staat in de fixtures onder twee codes (21CY en 25LX, #923): beide vinden dezelfde instelling.
+@pytest.mark.parametrize(
+    ("code", "naam"),
+    [("25DW", _HU), ("25dw", _HU), ("27gz", "ROC Mondriaan"), ("21cy", "Curio"), ("25LX", "Curio")],
+)
 def test_regio_dashboard_vindt_de_instelling_op_haar_code(code, naam):
     from data.dashboard import load_dashboard_regio
 
