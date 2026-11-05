@@ -46,6 +46,7 @@ export function MatchDuiding({ duiding }) {
   const jaren = jarenTekst(duiding.diplomajaren)
   const mapping = duiding.sectormapping || {}
   const mappingVersie = mapping.mapping_versie && mapping.mapping_versie !== 'onbekend' ? `, versie ${mapping.mapping_versie}` : ''
+  const minimum = duiding.min_gediplomeerden != null ? fmt(duiding.min_gediplomeerden) : null
   return (
     <div className="db-match-duiding dashboard-noot" role="note">
       <p>
@@ -62,9 +63,12 @@ export function MatchDuiding({ duiding }) {
       )}
       <p>
         Wat de score niet zegt: de vacatures zijn een bevroren stand van één dag, de gediplomeerden een gemiddelde over
-        meer jaren. UWV legt bij vacatures geen opleidingsniveau vast, dus een sector telt ook banen op een ander niveau
-        mee. Welke beroepenclusters bij een sector horen, is een indeling van deze app
+        meer jaren. Teller en noemer zijn dus verschillende grootheden: een voorraad vacatures in de hele provincie
+        tegenover een jaarlijkse stroom diploma&apos;s van deze ene instelling; de verhouding zegt niet hoeveel vacatures er
+        per gediplomeerde zijn. UWV legt bij vacatures geen opleidingsniveau vast, dus een sector telt ook banen op een
+        ander niveau mee. Welke beroepenclusters bij een sector horen, is een indeling van deze app
         ({mapping.herkomst || 'LLM-classificatie, niet van UWV'}{mappingVersie}).
+        {minimum && ` Een sector met minder dan ${minimum} gediplomeerden per jaar krijgt geen label: daar verschuift één diploma de verhouding te sterk.`}
       </p>
     </div>
   )

@@ -134,6 +134,30 @@ def test_het_regiogemiddelde_is_het_gemiddelde_van_de_peers_met_hun_aantal_en_la
     assert "BBO de Schalm" in result["peers_weggelaten"]  # een peer zonder eerstejaars valt niet stil weg
 
 
+def test_het_label_telt_de_peers_in_het_gemiddelde_niet_de_gevonden():
+    # F1 (#951): Curio heeft 7 andere mbo-instellingen in Noord-Brabant; live heeft BBO de Schalm geen eerstejaars en
+    # valt af. De kerncijfers zeiden "6 andere", de rendementgrafiek "7 andere" met 6 in de legenda. In de bevroren
+    # fixtures hebben minder peers een verhouding; het label telt er net zoveel als het gemiddelde.
+    result = dashboard.load_dashboard_rendement(_CURIO)
+    vergeleken = result["peers_rendement"]
+
+    assert "BBO de Schalm" in result["peers_weggelaten"] and "BBO de Schalm" not in vergeleken
+    assert len(vergeleken) == max(result["benchmark_n_per_jaar"].values())
+    soort = "mbo-instelling" if len(vergeleken) == 1 else "mbo-instellingen"
+    assert result["benchmark_label"].startswith(f"Provincie Noord-Brabant, {len(vergeleken)} andere {soort}")
+    # De legenda noemt de groep, zonder aantal en terugvalreden.
+    assert result["benchmark_populatie"] == "mbo-instellingen in provincie Noord-Brabant"
+
+
+def test_de_definitie_zegt_dat_teller_en_noemer_ondergrenzen_zijn():
+    # F4 (#951): DUO laat cellen met 1 tot en met 4 studenten leeg, in de teller en in de noemer.
+    definitie = str(dashboard._RENDEMENT_MBO["definitie"])
+
+    assert "Teller en noemer zijn ondergrenzen" in definitie
+    assert "1 tot en met 4" in definitie
+    assert "eerder te laag dan te hoog" in definitie
+
+
 def test_meer_diplomas_dan_eerstejaars_is_geen_verhouding_maar_een_reden():
     rendement, weggelaten = dashboard._rendement(
         [2020, 2021, 2022, 2023],

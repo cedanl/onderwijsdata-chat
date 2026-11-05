@@ -9,17 +9,18 @@ import { benchmarkColor } from '../components/dashboards/shared/chart-opts'
 import { COLOR_EIGEN, COLOR_DIPLOM } from '../constants'
 
 describe('buildMarktaandeelTrendData', () => {
+  // totaal_regio telt de eigen instelling mee (#951): e / totaal_regio = e / (e + peers).
   it('geeft per jaar het eigen aandeel in eigen plus regio, alleen voor jaren met een regiototaal', () => {
     const data = buildMarktaandeelTrendData({
       ingeschrevenen: { 2023: 100, 2024: 120, 2025: 130 },
-      benchmark: { totaal_ingeschrevenen: { 2023: 300, 2024: 280 } },
+      benchmark: { totaal_regio: { 2023: 400, 2024: 400 } },
     })
     expect(data.labels).toEqual(['2023', '2024'])
     expect(data.datasets[0].data).toEqual([25, 30])
   })
 
   it('tekent niets met minder dan twee jaren of zonder regiototaal', () => {
-    expect(buildMarktaandeelTrendData({ ingeschrevenen: { 2025: 1 }, benchmark: { totaal_ingeschrevenen: { 2025: 9 } } })).toBeNull()
+    expect(buildMarktaandeelTrendData({ ingeschrevenen: { 2025: 1 }, benchmark: { totaal_regio: { 2025: 10 } } })).toBeNull()
     expect(buildMarktaandeelTrendData({ ingeschrevenen: { 2024: 1, 2025: 1 } })).toBeNull()
   })
 })

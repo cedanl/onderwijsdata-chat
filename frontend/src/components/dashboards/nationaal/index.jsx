@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import TabelScroll from '../../TabelScroll'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
-  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren, buildSectorTrendData,
+  SECTOR_LABELS, darkColors, horizontalBarOpts, staafHoogte, tellingAs, ChartCard, Grafiek, sectorKleuren, buildSectorTrendData,
   DashboardSources, bronnenVan, bronBadge, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
 import { jaarLabel } from '../../../schooljaar'
@@ -197,9 +197,9 @@ function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, populati
   const studenten = studentenTekst(populatie)
   return (
     <ChartCard title="Marktaandeel per sector" subtitle={`Aandeel van ${studenten} per sector, ${jaar}`}>
-      {/* Elke sector zijn naam op de as: op 390 px sloeg Chart.js anders de helft over (een naam als "Gedrag &
-          Maatschappij" breekt in twee regels), dus geen autoSkip en 44 px per sector. */}
-      <Grafiek soort="bar" categorie="Sector" hoogte={Math.max(160, chartData.labels.length * 44)} options={{
+      {/* Elke sector zijn naam op de as (categorieTicks, zonder autoSkip) en 44 px per sector: op 390 px sloeg
+          Chart.js anders de helft over, en "Gedrag & Maatschappij" breekt in twee regels. */}
+      <Grafiek soort="bar" categorie="Sector" hoogte={staafHoogte(chartData.labels, { perRij: 44, kader: 0 })} options={{
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
@@ -208,7 +208,6 @@ function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, populati
           scales: {
             ...baseOpts.scales,
             x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${fmt(v)}%` } },
-            y: { ...baseOpts.scales.y, ticks: { ...baseOpts.scales.y.ticks, autoSkip: false } },
           },
         }} data={chartData} />
       <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${jaar}`} />

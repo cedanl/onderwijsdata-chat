@@ -19,7 +19,8 @@ export function waardeAsTitel(options) {
 
 const getal = v => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
-// Een reeks zonder één waarde (een lege concurrent) blijft weg: de tabel weigert anders de hele grafiek.
+// Een reeks zonder één waarde (een lege concurrent) blijft weg: de tabel weigert anders de hele grafiek. Een reeks met
+// `waarden` tekent een afgekapte staaf (`data`, #952): beschrijving en tabel noemen dan de echte waarde.
 export function alsFiguur(soort, data, { titel, categorie, waardeAs } = {}) {
   const labels = (data?.labels ?? []).map(String)
   const traces = (data?.datasets ?? [])
@@ -28,7 +29,7 @@ export function alsFiguur(soort, data, { titel, categorie, waardeAs } = {}) {
       ...(soort !== 'bar' && { mode: 'lines' }),
       name: ds.label,
       x: labels,
-      y: labels.map((_, i) => getal(ds.data?.[i])),
+      y: labels.map((_, i) => getal((ds.waarden ?? ds.data)?.[i])),
     }))
     .filter(t => t.y.some(v => v != null))
   return {

@@ -181,13 +181,24 @@ _SECTOR_GEMIDDELD_JAREN = 3  # de aanbodzijde van de arbeidsmarktmatch: gediplom
 # Schaarste: het vacature-aandeel van een sector is meer dan _MATCH_DREMPEL keer zijn diploma-aandeel; overaanbod:
 # omgekeerd; daartussen evenwicht (_match_label). Het dashboard toont de waarde bij de score (#900).
 _MATCH_DREMPEL = 1.2
+# Onder zoveel gediplomeerden per jaar (het gemiddelde over _SECTOR_GEMIDDELD_JAREN) krijgt een sector geen label en geen
+# verhouding (#952): één diploma meer of minder verschoof de verhouding met tientallen procenten (Tilburg University,
+# Techniek: 52,15 bij 63; BUas 7,73 bij 13).
+_MATCH_MIN_GEDIPLOMEERDEN = 30
+# Waarom een sector geen label en geen verhouding heeft (`match_weggelaten`), zoals de redenen van het rendement.
+_MATCH_GEEN_CLUSTERS = "geen beroepenclusters in de sectorindeling"
+_MATCH_GEEN_VACATURES = "geen vacatures of geen gediplomeerden om af te zetten"
+_MATCH_TE_WEINIG = f"te weinig gediplomeerden: minder dan {_MATCH_MIN_GEDIPLOMEERDEN} per jaar"
 
 # Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
 REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
-    "_CITY_COORDS": {"bijgewerkt": "2026-07-30", "bron": "handmatig: benaderde coördinaten van onderwijssteden"},
+    "_CITY_COORDS": {"bijgewerkt": "2026-11-05", "bron": "handmatig: benaderde coördinaten van onderwijssteden"},
 }
 
-# Approximate coordinates for Dutch educational cities (PLAATSNAAM uppercase → lat/lon).
+# Benaderde coördinaten van de plaatsen van de hoofdvestigingen (PLAATSNAAM in hoofdletters, zoals de DUO-adressen hem
+# spellen, ook "HENGELO OV" en "VELP GLD") → lat/lon. Elke plaats uit adressen_ho en adressen_mbo staat erin:
+# tests/test_dashboard_kaart.py legt dat vast tegen de bevroren bestanden. Tot #951 ontbrak Etten-Leur, en daarmee
+# Curio op haar eigen kaart.
 _CITY_COORDS: dict[str, tuple[float, float]] = {
     "AMSTERDAM": (52.374, 4.899),
     "ROTTERDAM": (51.922, 4.480),
@@ -262,6 +273,12 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
     "AMSTERDAM-ZUIDOOST": (52.317, 4.966),
     "DIEMEN": (52.336, 4.949),
     "WEESP": (52.308, 5.040),
+    "ETTEN-LEUR": (51.571, 4.636),
+    "HENGELO OV": (52.265, 6.792),
+    "LOCHEM": (52.160, 6.415),
+    "TIEL": (51.887, 5.430),
+    "VLAARDINGEN": (51.912, 4.342),
+    "VELP GLD": (51.995, 5.974),
 }
 
 
@@ -928,13 +945,22 @@ def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict
 # Zonder eigen cache: de ROA-tabel zelf staat in arbeidsmarkt._roa (met TTL), dit filtert er alleen uit. Met
 # functools.cache bleef de `{}` na één storing voorgoed staan (#901).
 def _roa_prognose(onderwijs_type: str) -> dict:
-    """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau (typering), landelijk."""
+    """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau, landelijk: per onderwerp de typering ("matig") of, als
+    ROA geen typering geeft, het aantal. De baanopeningen en de instroom van schoolverlaters zijn aantallen; tot #951
+    las het dashboard alleen typeringen en stonden die twee overal als "—"."""
     try:
         waarden = arbeidsmarkt.roa_prognose(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception as e:
         _niet_beschikbaar(e, "roa: prognose %s niet beschikbaar", onderwijs_type, onderdeel=_ONDERDEEL_ROA_PROGNOSE)
         return {}
-    uit = {n: {o: w["typering"] for o, w in ow.items() if "typering" in w} for n, ow in waarden.items()}
+    uit = {
+        n: {
+            o: w["typering"] if "typering" in w else w["aantal"]
+            for o, w in ow.items()
+            if "typering" in w or "aantal" in w
+        }
+        for n, ow in waarden.items()
+    }
     return {n: ow for n, ow in uit.items() if ow}
 
 
@@ -980,7 +1006,14 @@ def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame)
     return result
 
 
-def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> dict:
+def _regiototaal(eigen: dict[int, int], peers: dict[int, int]) -> dict[int, int]:
+    """{jaar: ingeschrevenen van de eigen instelling plus die van de peers}: het totaal van de regio, met de eigen
+    instelling erin (#951). Het is de noemer van het marktaandeel e / (e + t); alleen jaren met beide. Tot #951 stond
+    hier het totaal van de peers alleen, onder "Regio totaal"."""
+    return {jaar: eigen[jaar] + peers[jaar] for jaar in sorted(eigen) if jaar in peers}
+
+
+def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col, eigen_ingeschrevenen) -> dict:
     reeksen = {
         "ingeschrevenen": (df_inges, "STUDIEJAAR", "AANTAL_INGESCHREVENEN"),
         "eerstejaars": (df_ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"),
@@ -991,7 +1024,7 @@ def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> di
         reeks = _peer_reeks(df, code_col, inst_col, ctx.peer_codes, jaar_col, kolom)
         _met_gemiddelde(bm, sleutel, reeks)
         if sleutel == "ingeschrevenen":
-            bm["totaal_ingeschrevenen"] = reeks.totaal
+            bm["totaal_regio"] = _regiototaal(eigen_ingeschrevenen, reeks.totaal)
         if sleutel != "eerstejaars":
             _met_peers(bm, sleutel, reeks)
     return _benchmark_kop(ctx, bm["n_instellingen"]) | bm
@@ -1033,7 +1066,9 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     _met_onderdrukt(result, "sectoren_trend", leeg)
 
     if ctx:
-        result["benchmark"] = _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col)
+        result["benchmark"] = _ho_regio_benchmark(
+            ctx, df_inges, df_ej, df_dipl, code_col, inst_col, result["ingeschrevenen"]
+        )
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("ho")
@@ -1043,9 +1078,10 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     return result
 
 
-def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen) -> dict:
-    """De regiovergelijking van een mbo-instelling: elke peer op naam, over al zijn codes (#923). Gediplomeerden
-    alleen per peer, zonder gemiddelde."""
+def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen, eigen_ingeschrevenen) -> dict:
+    """De regiovergelijking van een mbo-instelling: elke peer op naam, over al zijn codes (#923). De gediplomeerden
+    krijgen een gemiddelde zoals bij het ho: tot #951 beloofde "Gediplomeerden per jaar" een vergelijking die er bij
+    het mbo niet was."""
     peers = _mbo_peernamen(ctx, code_naam, eigen)
 
     def reeks(df: pd.DataFrame, kolommen: Kolommen) -> _PeerReeks:
@@ -1057,9 +1093,11 @@ def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen) -
     for sleutel, r in (("ingeschrevenen", ingeschrevenen), ("eerstejaars", eerstejaars)):
         _met_gemiddelde(bm, sleutel, r)
         _met_peers(bm, sleutel, r)
-    bm["totaal_ingeschrevenen"] = ingeschrevenen.totaal
+    bm["totaal_regio"] = _regiototaal(eigen_ingeschrevenen, ingeschrevenen.totaal)
     if df_dipl_mbo is not None:
-        _met_peers(bm, "gediplomeerden", reeks(_mbo_per_instelling(_mbo_dipl_lang(df_dipl_mbo), code_naam), "AANTAL"))
+        gediplomeerden = reeks(_mbo_per_instelling(_mbo_dipl_lang(df_dipl_mbo), code_naam), "AANTAL")
+        _met_gemiddelde(bm, "gediplomeerden", gediplomeerden)
+        _met_peers(bm, "gediplomeerden", gediplomeerden)
     return _benchmark_kop(ctx, bm["n_instellingen"]) | bm
 
 
@@ -1144,7 +1182,9 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         _met_onderdrukt(result, "eerstejaars", leeg_ej)
 
     if ctx:
-        result["benchmark"] = _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen)
+        result["benchmark"] = _mbo_regio_benchmark(
+            ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen, result["ingeschrevenen"]
+        )
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
@@ -1319,10 +1359,13 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
 
 
 def _mbo_per_leerweg(df: pd.DataFrame) -> pd.DataFrame:
-    """mbo-studenten-per-instelling met de leerwegen als rijen (LEERWEG, AANTAL), zoals de ONDERDEEL-rijen van het ho."""
-    return df.melt(
+    """mbo-studenten-per-instelling met de leerwegen als rijen (LEERWEG, AANTAL), zoals de ONDERDEEL-rijen van het ho.
+    De leerweg heet zoals op Mijn instelling (BOL voltijd, Extraneus), niet naar de kolom (BOLVT, EX; #951)."""
+    naam = {kolom: leerweg for leerweg, kolom in _MBO_LEERWEGEN.items()}
+    lang = df.melt(
         id_vars=["JAAR", "INSTELLINGSNAAM"], value_vars=_MBO_LEERWEG_COLS, var_name="LEERWEG", value_name="AANTAL"
-    ).assign(**{_SOORT: "mbo"})
+    )
+    return lang.assign(LEERWEG=lang["LEERWEG"].map(naam), **{_SOORT: "mbo"})
 
 
 def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
@@ -1381,7 +1424,9 @@ _RENDEMENT_MBO = {
         "studenten die nieuw in het mbo zijn (DUO, instromende-mbo-studenten); diploma's de hoofddiploma's van "
         "dat diplomajaar (DUO, gediplomeerde-mbo-studenten). DUO volgt geen studenten: het zijn niet de diploma's "
         "van dit cohort, dus dit is een ruwe verhouding en geen cohortrendement. De instelling en het "
-        "regiogemiddelde rekenen met dezelfde regel."
+        "regiogemiddelde rekenen met dezelfde regel. Teller en noemer zijn ondergrenzen: DUO laat cellen met 1 tot en "
+        "met 4 studenten leeg. De diploma's staan ook per geslacht, in kleinere cellen, dus daar valt meestal meer weg "
+        "en is de verhouding eerder te laag dan te hoog."
     ),
     "niet_meegeteld": (
         "in de eerstejaars wie een jaar eerder al in het mbo stond ingeschreven, ook wie binnen het mbo van "
@@ -1540,7 +1585,11 @@ def _rendement_mbo(instelling: str) -> dict | None:
             peers[naam] = peer
         if peer_weg:
             peers_weggelaten[naam] = peer_weg
-    result["benchmark_label"] = _benchmark_kop(ctx, len(peernamen))["label"] if ctx else None
+    # Het label telt de peers in het gemiddelde, niet de gevonden peers: een peer zonder één verhouding (BBO de Schalm,
+    # geen eerstejaars) staat in peers_weggelaten (#951). `benchmark_populatie` is de groep voor de legenda.
+    kop = _benchmark_kop(ctx, len(peers)) if ctx else {}
+    result["benchmark_label"] = kop.get("label")
+    result["benchmark_populatie"] = kop.get("populatie")
     result["benchmark_rendement"], result["benchmark_n_per_jaar"] = _benchmark_rendement(peers)
     result["peers_rendement"] = peers
     result["peers_weggelaten"] = peers_weggelaten
@@ -1664,6 +1713,7 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     match = (gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
     result["match_score"] = _match_scores(*match)
     result["match_verhouding"] = _match_verhoudingen(*match)
+    result["match_weggelaten"] = _match_weggelaten(*match)
     result["match_duiding"] = _match_duiding(
         provincie, diplomajaren, vacatures_geladen=bool(result["vacatures_per_sector"]), roa_geladen=bool(roa_raw)
     )
@@ -1675,20 +1725,24 @@ def _match_duiding(provincie: str, diplomajaren: list[int], *, vacatures_geladen
     sectorindeling een LLM-classificatie noemt en niet van UWV (#460).
 
     - `drempel`: _MATCH_DREMPEL, de factor tussen vacature-aandeel en diploma-aandeel (_match_label).
+    - `min_gediplomeerden`: _MATCH_MIN_GEDIPLOMEERDEN; een kleinere sector heeft geen label en geen verhouding (#952).
     - `vacatures_peildatum`: de peildatum van de UWV-momentopname in de provincie; None als UWV niet laadde.
     - `diplomajaren`: de jaren waarover de gediplomeerden gemiddeld zijn (DUO).
     - `roa_versie`: de versie van het ROA-bestand achter `roa_per_niveau`; None als ROA niet laadde.
-    - `sectormapping`: herkomst, versie en model van de indeling van beroepenclusters bij sectoren.
+    - `sectormapping`: herkomst, versie en model van de indeling van beroepenclusters bij sectoren. Een veld dat de
+      mapping niet vastlegt ("onbekend", zoals het model nu), staat er niet in (#951): de payload belooft geen waarde
+      die er niet is.
 
     Peildatum en versie komen uit de lading die de score al deed (een cachetreffer): wat niet laadde, staat al in
     `niet_beschikbaar` en wordt hier niet opnieuw opgehaald.
     """
     return {
         "drempel": _MATCH_DREMPEL,
+        "min_gediplomeerden": _MATCH_MIN_GEDIPLOMEERDEN,
         "vacatures_peildatum": _uwv_peildatum(provincie) if vacatures_geladen else None,
         "diplomajaren": diplomajaren,
         "roa_versie": _roa_versie() if roa_geladen else None,
-        "sectormapping": dict(arbeidsmarkt.SECTOR_MANIFEST),
+        "sectormapping": {k: v for k, v in arbeidsmarkt.SECTOR_MANIFEST.items() if v != arbeidsmarkt.ONBEKEND},
     }
 
 
@@ -1717,22 +1771,46 @@ def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:
     return "evenwicht"
 
 
+def _match_reden(
+    sector: str, gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> str | None:
+    """Waarom een sector geen label en geen verhouding krijgt; None als hij er een krijgt."""
+    if not sum(gps.values()) or not sum(vacatures_per_sector.values()):
+        return _MATCH_GEEN_VACATURES
+    if not scm.get(sector):
+        return _MATCH_GEEN_CLUSTERS
+    if gps[sector] < _MATCH_MIN_GEDIPLOMEERDEN:
+        return _MATCH_TE_WEINIG
+    return None
+
+
 def _match_aandelen(
     gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
 ) -> dict[str, tuple[float, float] | None]:
     """Per sector (diploma-aandeel, vacature-aandeel).
 
     De vacatures per sector zijn gewogen (#455), dus hun som is het totaal en tellen beide aandelen
-    op tot 1. Een sector zonder clusters in de mapping krijgt None, net als elke sector zonder vacatures.
+    op tot 1. Een sector met een reden uit _match_reden krijgt None: zonder clusters in de mapping, zonder vacatures, of
+    met minder dan _MATCH_MIN_GEDIPLOMEERDEN gediplomeerden (#952). Zo'n kleine sector telt wel mee in de totalen: de
+    aandelen van de andere veranderen niet.
     """
     totaal_dipl = sum(gps.values())
     totaal_vac = sum(vacatures_per_sector.values())
-    if not totaal_dipl or not totaal_vac:
-        return dict.fromkeys(gps)
     return {
-        sector: (n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac) if scm.get(sector) else None
+        sector: None
+        if _match_reden(sector, gps, vacatures_per_sector, scm)
+        else (n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac)
         for sector, n in gps.items()
     }
+
+
+def _match_weggelaten(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, str]:
+    """{sector: reden} voor elke sector zonder label en verhouding, zodat het dashboard hem noemt in plaats van hem
+    stil weg te laten (#952)."""
+    redenen = {sector: _match_reden(sector, gps, vacatures_per_sector, scm) for sector in gps}
+    return {sector: reden for sector, reden in redenen.items() if reden}
 
 
 def _match_scores(

@@ -150,8 +150,9 @@ export function useRegioComputed(data, instelling) {
     const ejEntries = sortedEntries(data?.eerstejaars)
     const diplEntries = sortedEntries(data?.gediplomeerden)
 
-    const totaalRegioEntry = bm.totaal_ingeschrevenen
-      ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)
+    // Eigen instelling plus peers (#951), het laatste jaar met beide.
+    const totaalRegioEntry = bm.totaal_regio
+      ? Object.entries(bm.totaal_regio).sort((a, b) => a[0] - b[0]).at(-1)
       : null
 
     const vrouw = data?.geslacht?.VROUW || 0

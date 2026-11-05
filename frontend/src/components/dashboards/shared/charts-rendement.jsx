@@ -1,4 +1,4 @@
-import { horizontalBarOpts, benchmarkColor } from './chart-opts'
+import { horizontalBarOpts, benchmarkColor, staafHoogte } from './chart-opts'
 import { COLOR_EIGEN } from '../../../constants'
 import { ChartCard } from './shell'
 import { Grafiek } from './grafiek'
@@ -47,7 +47,7 @@ export function buildRendementVergelijkingData(data, instelling, dark) {
 export function RendementVergelijkingChart({ data, dark }) {
   if (!data) return null
   const { jaar, perioden, weggelaten, ...barData } = data
-  const h = Math.max(200, barData.labels.length * 34 + 40)
+  const h = staafHoogte(barData.labels, { minimum: 200 })
   const dipl = jaarLabel(jaar, perioden?.gediplomeerden)
   const inges = jaarLabel(jaar, perioden?.ingeschrevenen)
   const zonder = weggelaten?.length ? ` Zonder cijfers over ${dipl} en ${inges}: ${weggelaten.join(', ')}.` : ''

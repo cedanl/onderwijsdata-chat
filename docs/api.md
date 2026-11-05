@@ -130,6 +130,8 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 De vier `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636).
 
+Er zijn geen andere dashboard-eindpunten (#954). `GET /api/dashboard/instroom` bestond tot versie 2.6.0 (#930) en geeft 410 met `error`: de cijfers van de eigen instelling staan in `regio`. Elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met in `error` de vier eindpunten hierboven. Geen van beide laadt data of vraagt een token.
+
 ---
 
 ## Persistentie

@@ -77,7 +77,7 @@ def test_match_scores_met_gewogen_vacatures():
 
 
 def test_match_scores_schaarste_en_overaanbod():
-    scores = dashboard._match_scores({"TECHNIEK": 80, "ECONOMIE": 20}, {"TECHNIEK": 200, "ECONOMIE": 800}, _DEELKAART)
+    scores = dashboard._match_scores({"TECHNIEK": 320, "ECONOMIE": 80}, {"TECHNIEK": 200, "ECONOMIE": 800}, _DEELKAART)
 
     assert scores == {"TECHNIEK": "overaanbod", "ECONOMIE": "schaarste"}
     assert dashboard._MATCH_DREMPEL == 1.2
@@ -100,7 +100,7 @@ def test_match_scores_zonder_vacatures_is_alles_none(vacatures):
 def test_match_verhouding_is_vacature_aandeel_gedeeld_door_diploma_aandeel():
     # #949: de lengte van de staaf. TECHNIEK 0,2 / 0,76 = 0,26 (overaanbod, onder 1 / 1,2); ECONOMIE 0,8 / 0,19 = 4,2
     # (schaarste, boven 1,2); ONDERWIJS heeft geen clusters en dus geen verhouding, net als geen label.
-    gps = {"TECHNIEK": 80, "ECONOMIE": 20, "ONDERWIJS": 5}
+    gps = {"TECHNIEK": 320, "ECONOMIE": 80, "ONDERWIJS": 20}
     vacatures = {"TECHNIEK": 200, "ECONOMIE": 800}
     scm = {**_DEELKAART, "ONDERWIJS": []}
 
@@ -116,10 +116,50 @@ def test_match_verhouding_is_vacature_aandeel_gedeeld_door_diploma_aandeel():
 
 def test_match_verhouding_zonder_gediplomeerden_in_een_sector_is_none():
     verhouding = dashboard._match_verhoudingen(
-        {"TECHNIEK": 0, "ECONOMIE": 20}, {"TECHNIEK": 5, "ECONOMIE": 5}, _DEELKAART
+        {"TECHNIEK": 0, "ECONOMIE": 40}, {"TECHNIEK": 5, "ECONOMIE": 5}, _DEELKAART
     )
 
     assert verhouding == {"TECHNIEK": None, "ECONOMIE": 0.5}
+
+
+# ─── #952: een kleine sector krijgt geen verhouding ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(("n", "met_verhouding"), [(29, False), (30, True)])
+def test_onder_de_drempel_geen_label_en_geen_verhouding_maar_een_reden(n, met_verhouding):
+    # Tilburg University, Techniek: 52,15 bij 63 gediplomeerden; BUas 7,73 bij 13. Eén diploma meer of minder
+    # verschoof de verhouding met tientallen procenten. De drempel geldt voor het gemiddelde per jaar.
+    assert dashboard._MATCH_MIN_GEDIPLOMEERDEN == 30
+    gps = {"TECHNIEK": n, "ECONOMIE": 600}
+    vacatures = {"TECHNIEK": 900, "ECONOMIE": 100}
+
+    verhouding = dashboard._match_verhoudingen(gps, vacatures, _DEELKAART)
+    scores = dashboard._match_scores(gps, vacatures, _DEELKAART)
+    weggelaten = dashboard._match_weggelaten(gps, vacatures, _DEELKAART)
+
+    if met_verhouding:
+        assert verhouding["TECHNIEK"] == round(0.9 / (n / (n + 600)), 2)
+        assert scores["TECHNIEK"] == "schaarste"
+        assert "TECHNIEK" not in weggelaten
+    else:
+        assert verhouding["TECHNIEK"] is None and scores["TECHNIEK"] is None
+        assert weggelaten == {"TECHNIEK": dashboard._MATCH_TE_WEINIG}
+        assert "30" in dashboard._MATCH_TE_WEINIG
+    # De kleine sector telt mee in de totalen: de verhouding van de andere hangt niet van de drempel af.
+    assert verhouding["ECONOMIE"] == round(0.1 / (600 / (n + 600)), 2)
+
+
+def test_elke_sector_zonder_label_heeft_een_reden():
+    gps = {"TECHNIEK": 100, "ECONOMIE": 10, "ONDERWIJS": 100}
+    scm = {**_DEELKAART, "ONDERWIJS": []}
+
+    assert dashboard._match_weggelaten(gps, {"TECHNIEK": 5, "ECONOMIE": 5}, scm) == {
+        "ECONOMIE": dashboard._MATCH_TE_WEINIG,
+        "ONDERWIJS": dashboard._MATCH_GEEN_CLUSTERS,
+    }
+    assert dashboard._match_weggelaten(gps, {}, scm) == dict.fromkeys(gps, dashboard._MATCH_GEEN_VACATURES)
+    scores = dashboard._match_scores(gps, {"TECHNIEK": 5, "ECONOMIE": 5}, scm)
+    assert {s for s, label in scores.items() if label is None} == {"ECONOMIE", "ONDERWIJS"}
 
 
 def test_arbeidsmarktmatch_geeft_de_gewogen_telling_per_sector(gedeelde_clusters):
@@ -289,3 +329,36 @@ def test_roa_prognose_in_het_dashboard_is_landelijk():
     )
     with patch.object(arbeidsmarkt, "_roa", return_value=rijen):
         assert dashboard._roa_prognose("mbo") == {"Mbo4": {"ITA toekomstige arbeidsmarktsituatie in 2030": "redelijk"}}
+
+
+def test_roa_prognose_geeft_de_baanopeningen_en_de_instroom_als_aantal():
+    # #951: ROA geeft de baanopeningen en de instroom van schoolverlaters als aantal, zonder typering; het dashboard
+    # las alleen typeringen en toonde die twee overal als "—".
+    def rij(onderwerp, aantal=None, typering=None):
+        return {
+            "regionaam": "Nederland",
+            "thema": arbeidsmarkt._ROA_PROGNOSE,
+            "aggregatieniveau": arbeidsmarkt._ROA_NIVEAU,
+            "detailniveau": "Mbo4",
+            "onderwerp": onderwerp,
+            "perc": None,
+            "aantal": aantal,
+            "typering": typering,
+            "versie": "v1",
+        }
+
+    rijen = pd.DataFrame(
+        [
+            rij("ITA toekomstige arbeidsmarktsituatie in 2030", typering="redelijk"),
+            rij("verwachte baanopeningen tot 2030", aantal=325800.0),
+            rij("verwachte instroom van schoolverlaters tot 2030", aantal=358700.0),
+        ]
+    )
+    with patch.object(arbeidsmarkt, "_roa", return_value=rijen):
+        assert dashboard._roa_prognose("mbo") == {
+            "Mbo4": {
+                "ITA toekomstige arbeidsmarktsituatie in 2030": "redelijk",
+                "verwachte baanopeningen tot 2030": 325800,
+                "verwachte instroom van schoolverlaters tot 2030": 358700,
+            }
+        }

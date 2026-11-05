@@ -1,4 +1,4 @@
-import { horizontalBarOpts, darkColors, benchmarkColor, DAAL_KLEUR } from './chart-opts'
+import { horizontalBarOpts, darkColors, benchmarkColor, DAAL_KLEUR, staafHoogte } from './chart-opts'
 import { COLOR_EIGEN, COLOR_DIPLOM } from '../../../constants'
 import { ChartCard } from './shell'
 import { groeiStartjaar, groeiPct } from './chart-builders'
@@ -9,10 +9,11 @@ import { asJaar, jaarLabel } from '../../../schooljaar'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
+// Het aandeel van de eigen instelling in het regiototaal, dat haar zelf meetelt (`totaal_regio`, #951): e / (e + t).
 export function buildMarktaandeelTrendData(data) {
-  if (!data?.ingeschrevenen || !data?.benchmark?.totaal_ingeschrevenen) return null
+  if (!data?.ingeschrevenen || !data?.benchmark?.totaal_regio) return null
   const eigen = data.ingeschrevenen
-  const totaal = data.benchmark.totaal_ingeschrevenen
+  const totaal = data.benchmark.totaal_regio
   const jaren = Object.keys(eigen)
     .filter(j => (totaal[j] ?? totaal[Number(j)]) != null)
     .sort((a, b) => a - b)
@@ -20,7 +21,7 @@ export function buildMarktaandeelTrendData(data) {
   const values = jaren.map(j => {
     const e = eigen[j] ?? eigen[Number(j)]
     const t = totaal[j] ?? totaal[Number(j)]
-    return t > 0 ? Math.round((e / (e + t)) * 1000) / 10 : null
+    return t > 0 ? Math.round((e / t) * 1000) / 10 : null
   })
   return {
     labels: jaren.map(j => asJaar(j, data.perioden?.ingeschrevenen)),
@@ -188,7 +189,7 @@ export function MarktaandeelChart({ data, dark }) {
   if (!data) return null
   const { jaar: jaartal, soort, weggelaten, ...barData } = data
   const jaar = jaarLabel(jaartal, soort)
-  const h = Math.max(200, barData.labels.length * 34 + 40)
+  const h = staafHoogte(barData.labels, { minimum: 200 })
   return (
     <ChartCard
       title={`Marktpositie ${jaar}`}
@@ -205,7 +206,7 @@ export function GroeiRankingChart({ data, dark }) {
   const { startjaar: van, eindjaar: tot, soort, ...barData } = data
   const startjaar = jaarLabel(van, soort)
   const eindjaar = jaarLabel(tot, soort)
-  const h = Math.max(200, barData.labels.length * 34 + 40)
+  const h = staafHoogte(barData.labels, { minimum: 200 })
   return (
     <ChartCard
       title={`Groei ingeschrevenen ${startjaar}–${eindjaar}`}

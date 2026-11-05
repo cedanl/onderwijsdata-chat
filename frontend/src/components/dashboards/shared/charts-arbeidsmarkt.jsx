@@ -4,7 +4,7 @@ import { useDarkMode } from './hooks'
 import { fmt } from './getal'
 import { SectionHeader, ChartCard, ROA_AIS, ROA_SIS, roaPeilmoment } from './shell'
 import { Grafiek } from './grafiek'
-import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks, labelRegels, SECTOR_LABELS, DREMPELLIJNEN } from './chart-opts'
+import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks, staafHoogte, SECTOR_LABELS, DREMPELLIJNEN } from './chart-opts'
 import { MomentopnameBanner, uwvBron } from './momentopname'
 import { WeggelatenNoot } from './ondergrens'
 
@@ -15,27 +15,36 @@ export const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', 
 // Vanaf zoveel sectoren met een score staat de match als staafgrafiek, daaronder als tegels (#949): Curio kreeg 17
 // gekleurde tegels als eerste onderdeel van het dashboard.
 export const MATCH_GRAFIEK_VANAF = 8
+// Een staaf is hoogstens zo lang (#952): één uitschieter (Tilburg University, Techniek: 52,15) maakte de rest
+// onleesbaar. De echte waarde staat in de tooltip, de waardentabel en een noot onder de grafiek.
+export const MATCH_KAP = 5
 
 const sectorNaam = s => SECTOR_LABELS[s] || s
 
 // De staven van de match (#949): per sector `match_verhouding` (vacature-aandeel gedeeld door diploma-aandeel, uit
 // data/dashboard.py), aflopend. Eén reeks per label, zodat legenda en waardentabel het label in woorden geven en de
 // kleur niet de enige drager is; een sector staat alleen in de reeks van zijn eigen label. Een sector met een label
-// maar zonder verhouding (geen gediplomeerden) staat in `zonderVerhouding`.
+// maar zonder verhouding (geen gediplomeerden) staat in `zonderVerhouding`. `data` is de staaflengte, gekapt op
+// MATCH_KAP; `waarden` de echte verhouding, voor tooltip en waardentabel. `afgekapt` noemt de gekapte sectoren.
 export function buildMatchVerhoudingData(matchScore, verhouding, dark) {
   const sectoren = Object.keys(matchScore || {}).filter(s => matchScore[s] != null)
   const met = sectoren.filter(s => typeof verhouding?.[s] === 'number').sort((a, b) => verhouding[b] - verhouding[a])
   if (!met.length) return null
   return {
     labels: met.map(sectorNaam),
-    datasets: ['schaarste', 'evenwicht', 'overaanbod'].map(score => ({
-      label: MATCH_LABELS[score],
-      data: met.map(s => (matchScore[s] === score ? verhouding[s] : null)),
-      backgroundColor: oordeelKleur(MATCH_OORDEEL[score], dark),
-      borderWidth: 0,
-      borderRadius: 4,
-    })),
+    datasets: ['schaarste', 'evenwicht', 'overaanbod'].map(score => {
+      const waarden = met.map(s => (matchScore[s] === score ? verhouding[s] : null))
+      return {
+        label: MATCH_LABELS[score],
+        data: waarden.map(v => (v == null ? null : Math.min(v, MATCH_KAP))),
+        waarden,
+        backgroundColor: oordeelKleur(MATCH_OORDEEL[score], dark),
+        borderWidth: 0,
+        borderRadius: 4,
+      }
+    }),
     zonderVerhouding: sectoren.filter(s => !met.includes(s)).map(sectorNaam),
+    afgekapt: met.filter(s => verhouding[s] > MATCH_KAP).map(s => ({ sector: sectorNaam(s), waarde: verhouding[s] })),
   }
 }
 
@@ -45,38 +54,31 @@ export function matchDrempels(drempel) {
 }
 
 // Op 390 px is de as met sectornamen smal: een naam breekt af op MATCH_LABEL_BREEDTE tekens ("Ondernemerschap" past
-// nog) en elke sector krijgt een eigen naam op de as (geen autoSkip, anders valt de helft van de namen weg). Chart.js
-// geeft elke categorie even veel ruimte, dus de hoogte volgt de naam met de meeste regels.
+// nog); elke sector krijgt een eigen naam op de as en een rij voor zijn regels (staafHoogte, zoals elke liggende staaf).
 const MATCH_LABEL_BREEDTE = 15
-const REGEL_PX = 17
-const KADER_PX = 110 // legenda en waardeas
-
-export function matchGrafiekHoogte(labels) {
-  const regels = Math.max(1, ...labels.map(l => [labelRegels(l, MATCH_LABEL_BREEDTE)].flat().length))
-  return KADER_PX + labels.length * Math.max(30, regels * REGEL_PX + 8)
-}
 
 export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) {
   const uitkomst = buildMatchVerhoudingData(matchScore, verhouding, dark)
   if (!uitkomst) return null
-  const { zonderVerhouding, ...data } = uitkomst
+  const { zonderVerhouding, afgekapt, ...data } = uitkomst
   const { tick, label } = darkColors(dark)
   const baseOpts = horizontalBarOpts(dark)
   const drempels = matchDrempels(drempel)
   const grootste = Math.max(...data.datasets.flatMap(d => d.data).filter(v => v != null), ...drempels)
+  const echt = ctx => ctx.dataset.waarden?.[ctx.dataIndex] ?? ctx.raw
   return (
     <ChartCard
       title="Match per sector"
       subtitle="Vacature-aandeel gedeeld door diploma-aandeel: 1 is gelijk, hoger is meer vraag dan aanbod"
     >
-      <Grafiek soort="bar" data={data} categorie="Sector" hoogte={matchGrafiekHoogte(data.labels)} plugins={[DREMPELLIJNEN]} options={{
+      <Grafiek soort="bar" data={data} categorie="Sector" hoogte={staafHoogte(data.labels, { perRij: 30, kader: 110, minimum: 0, breedte: MATCH_LABEL_BREEDTE })} plugins={[DREMPELLIJNEN]} options={{
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
             legend: { display: true, position: 'top', labels: { color: label, boxWidth: 14 } },
             tooltip: {
               filter: item => item.raw != null,
-              callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)} keer` },
+              callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(echt(ctx))} keer` },
             },
             drempellijnen: { waarden: drempels, kleur: tick },
           },
@@ -86,6 +88,7 @@ export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) 
               stacked: true,
               beginAtZero: true,
               suggestedMax: Math.ceil(grootste * 1.1 * 10) / 10,
+              ...(afgekapt.length > 0 && { max: MATCH_KAP }),
               title: { display: true, text: 'vacature-aandeel ÷ diploma-aandeel', color: tick },
             },
             y: { ...baseOpts.scales.y, stacked: true, ticks: { ...categorieTicks(tick, MATCH_LABEL_BREEDTE), autoSkip: false } },
@@ -97,9 +100,22 @@ export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) 
           (het diploma-aandeel is dan meer dan {fmt(drempel)} keer het vacature-aandeel), daartussen evenwicht.
         </p>
       )}
+      {afgekapt.length > 0 && (
+        <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '8px 0 0' }}>
+          Staaf afgekapt bij {fmt(MATCH_KAP)}: {afgekapt.map(a => `${a.sector} (${fmt(a.waarde)})`).join(', ')}.
+        </p>
+      )}
       <WeggelatenNoot namen={zonderVerhouding} reden="geen gediplomeerden om het vacature-aandeel tegen af te zetten" />
     </ChartCard>
   )
+}
+
+// Per reden de sectoren zonder label en verhouding (`match_weggelaten`, #952): te weinig gediplomeerden, geen
+// beroepenclusters, geen vacatures. De redenen komen uit de payload; een oudere payload zonder het veld noemt niets.
+export function MatchWeggelaten({ weggelaten }) {
+  const perReden = new Map()
+  for (const [sector, reden] of Object.entries(weggelaten || {})) perReden.set(reden, [...(perReden.get(reden) || []), sectorNaam(sector)])
+  return [...perReden].map(([reden, namen]) => <WeggelatenNoot key={reden} namen={namen} reden={reden} />)
 }
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
@@ -154,7 +170,7 @@ export function RoaSection({ data, dark }) {
       y: { grid: { display: false }, ticks: categorieTicks(tick) },
     },
   }
-  const h = Math.max(160, niveaus.length * 72)
+  const h = staafHoogte(niveaus, { perRij: 72 })
 
   return (
     <>
@@ -190,6 +206,16 @@ const _PROGNOSE_LABELS = {
   'verwachte instroom van schoolverlaters tot 2030': 'Verwachte instroom schoolverlaters',
 }
 
+// Een typering ("matig") in de kleur van haar oordeel, een aantal (de baanopeningen en de instroom van schoolverlaters,
+// #951) als getal; zonder waarde een streepje.
+function PrognoseWaarde({ waarde, dark }) {
+  if (waarde == null || waarde === '') return '—'
+  if (typeof waarde === 'number') return fmt(waarde)
+  const oordeel = _TYPERING_OORDEEL[String(waarde).toLowerCase()]
+  const color = oordeel ? oordeelKleur(oordeel, dark) : 'var(--muted-text)'
+  return <span style={{ color, fontWeight: 600 }}>{waarde}</span>
+}
+
 export function PrognoseSection({ data }) {
   const dark = useDarkMode()
   const prognose = data?.arbeidsmarkt_prognose
@@ -217,12 +243,10 @@ export function PrognoseSection({ data }) {
                 <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100)' }}>
                   <th scope="row" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500 }}>{niveau}</th>
                   {Object.keys(_PROGNOSE_LABELS).map(key => {
-                    const typering = prognose[niveau]?.[key]
-                    const oordeel = _TYPERING_OORDEEL[typering?.toLowerCase()]
-                    const color = oordeel ? oordeelKleur(oordeel, dark) : 'var(--muted-text)'
+                    const waarde = prognose[niveau]?.[key]
                     return (
                       <td key={key} style={{ textAlign: 'center', padding: '6px 8px' }}>
-                        {typering ? <span style={{ color, fontWeight: 600 }}>{typering}</span> : '—'}
+                        <PrognoseWaarde waarde={waarde} dark={dark} />
                       </td>
                     )
                   })}
@@ -242,7 +266,7 @@ export function UwvSection({ data, provincie, dark }) {
   const vac = data?.vacatureaanbod
   if (!vac?.clusters || Object.keys(vac.clusters).length === 0) {
     return (
-      <ChartCard title="Vacatureaanbod in de regio">
+      <ChartCard title="Vacatureaanbod in de provincie">
         <p style={{ color: 'var(--gray-500)', fontSize: '.85rem', padding: '8px 0' }}>
           Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''}.
           UWV Open Match data is beschikbaar t/m mei 2023.
@@ -251,11 +275,12 @@ export function UwvSection({ data, provincie, dark }) {
     )
   }
   const gefilterdOp = vac.gefilterd_op || []
-  const clusterHeight = Math.max(180, Object.keys(vac.clusters).length * 32)
+  const clusterHeight = staafHoogte(Object.keys(vac.clusters), { perRij: 32, minimum: 180 })
+  // Het blok heette "in de regio"; data en KPI zijn per provincie (UWV, F5 in #951).
   return (
     <>
       <SectionHeader
-        title="Vacatureaanbod in de regio"
+        title="Vacatureaanbod in de provincie"
         subtitle={gefilterdOp.length > 0
           ? `Clusters passend bij opleidingssectoren — ${uwvBron(vac.peildatum)} (momentopname)`
           : `Openstaande vacatures per beroepscluster — ${uwvBron(vac.peildatum)} (momentopname)`}
@@ -275,7 +300,7 @@ export function UwvSection({ data, provincie, dark }) {
       </div>
       <ChartCard
         title={`Beroepencluster${gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}`}
-        subtitle={`Provincie ${provincie}${gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}`}
+        subtitle={`Provincie ${provincie}${gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(sectorNaam).join(', ')}` : ''}`}
       >
         <Grafiek
           soort="bar"

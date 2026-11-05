@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
 # Wie de clusters aan sectoren toewees: een taalmodel via scripts/refresh_sector_mapping.py, niet UWV (#460).
 MAPPING_HERKOMST = "LLM-classificatie, niet van UWV"
-_ONBEKEND = "onbekend"
+ONBEKEND = "onbekend"  # een veld van het mappingmanifest dat niet is vastgelegd
 
 # Niveaus binnen het chatprofiel; ROA kent ook basisonderwijs, vmbo en havo/vwo.
 ROA_NIVEAUS: dict[str, tuple[str, ...]] = {"mbo": ("Mbo2", "Mbo3", "Mbo4"), "ho": ("Bachelor", "Master, doctor")}
@@ -89,8 +89,8 @@ def sector_mapping_manifest(path: Path = SECTOR_CLUSTER_PATH) -> dict[str, str]:
     velden = manifest if isinstance(manifest, dict) else {}
     return {
         "herkomst": str(velden.get("herkomst") or MAPPING_HERKOMST),
-        "mapping_versie": str(velden.get("bijgewerkt") or _ONBEKEND),
-        "model": str(velden.get("model") or _ONBEKEND),
+        "mapping_versie": str(velden.get("bijgewerkt") or ONBEKEND),
+        "model": str(velden.get("model") or ONBEKEND),
     }
 
 

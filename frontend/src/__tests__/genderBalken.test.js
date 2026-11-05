@@ -35,16 +35,25 @@ afterEach(() => {
 })
 
 describe('genderbalken per sector (#931)', () => {
-  it('noemt vrouw + man als noemer, met de onbekenden erbij', () => {
+  it('noemt teller en noemer, met de onbekenden erbij', () => {
     const tekst = render(TILBURG)
-    expect(tekst).toContain('74% vrouw — 4.919 vrouw + man (8 onbekend)')
+    expect(tekst).toContain('74,0% vrouw (3.641 van 4.919 vrouwen en mannen; 8 met geslacht onbekend tellen niet mee)')
     expect(tekst).not.toContain('totaal')
   })
 
-  it('zegt niets over onbekenden als die er niet zijn', () => {
+  // #951: "32%" stond naast "67,2%", en "1.782 vrouw + man" las als een rekensom.
+  it('zegt niets over onbekenden als die er niet zijn, en geeft elk aandeel met één decimaal', () => {
     const tekst = render(BREDA)
-    expect(tekst).toContain('67,2% vrouw — 4.860 vrouw + man')
-    expect(tekst).toContain('32% vrouw — 1.782 vrouw + man')
+    expect(tekst).toContain('67,2% vrouw (3.264 van 4.860 vrouwen en mannen)')
+    expect(tekst).toContain('32,0% vrouw (571 van 1.782 vrouwen en mannen)')
     expect(tekst).not.toContain('onbekend')
+    expect(tekst).not.toContain('vrouw + man')
+  })
+
+  // #951: de sectorcode (GEDRAG_EN_MAATSCHAPPIJ) stond ruw boven de balk.
+  it('noemt de sector bij zijn naam, niet bij zijn code', () => {
+    const tekst = render(TILBURG)
+    expect(tekst).toContain('Gedrag & Maatschappij')
+    expect(tekst).not.toContain('GEDRAG_EN_MAATSCHAPPIJ')
   })
 })

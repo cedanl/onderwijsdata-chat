@@ -132,14 +132,22 @@ export function sectorKleuren(namen) {
 
 // Een lang label op de as van een liggende staaf in regels van hoogstens `breedte` tekens (#905). Chart.js geeft die as
 // hoogstens de halve grafiek; met 13 px viel op 390 px de voorkant van "Gedrag & Maatschappij" en van lange
-// instellingsnamen weg. Een woord langer dan de breedte blijft heel.
+// instellingsnamen weg. Een woord langer dan de breedte breekt af met een streepje (#951: van "Informatie- en
+// communicatietechnologie" bleef op 390 px "…municatietechnologie" over).
 export const LABEL_BREEDTE = 18
+
+function stukken(woord, breedte) {
+  if (woord.length <= breedte) return [woord]
+  const delen = []
+  for (let i = 0; i < woord.length; i += breedte - 1) delen.push(woord.slice(i, i + breedte - 1))
+  return delen.map((deel, i) => (i < delen.length - 1 ? `${deel}-` : deel))
+}
 
 export function labelRegels(label, breedte = LABEL_BREEDTE) {
   const tekst = String(label ?? '')
   if (tekst.length <= breedte) return tekst
   const regels = []
-  for (const woord of tekst.split(/\s+/)) {
+  for (const woord of tekst.split(/\s+/).flatMap(w => stukken(w, breedte))) {
     const laatste = regels.at(-1)
     if (laatste != null && `${laatste} ${woord}`.length <= breedte) regels[regels.length - 1] = `${laatste} ${woord}`
     else regels.push(woord)
@@ -147,9 +155,27 @@ export function labelRegels(label, breedte = LABEL_BREEDTE) {
   return regels
 }
 
-// Ticks voor de categorie-as van een liggende staaf: het label, afgebroken in regels.
+// Ticks voor de categorie-as van een liggende staaf: het label, afgebroken in regels, en elk label op de as. Chart.js
+// sloeg bij veel categorieën elk tweede label over (autoSkip): Gediplomeerden vs. vacatures, Beroepencluster,
+// Rendement vergelijking, Ingeschrevenen per hoofdgroep (#951). Daarom staat autoSkip hier uit, voor elke liggende
+// staaf, en geeft staafHoogte elke categorie de ruimte voor haar regels.
 export function categorieTicks(kleur, breedte = LABEL_BREEDTE) {
-  return { color: kleur, padding: 4, callback(waarde) { return labelRegels(this.getLabelForValue(waarde), breedte) } }
+  return {
+    color: kleur,
+    padding: 4,
+    autoSkip: false,
+    callback(waarde) { return labelRegels(this.getLabelForValue(waarde), breedte) },
+  }
+}
+
+// De hoogte van een liggende staafgrafiek: elke categorie krijgt ten minste `perRij` px en ruimte voor de regels van
+// haar label (labelRegels), plus `kader` voor legenda en waardeas. Chart.js geeft elke categorie even veel ruimte, dus
+// de naam met de meeste regels bepaalt de rij. Zonder die ruimte schuiven labels zonder autoSkip over elkaar.
+const REGEL_PX = 17
+
+export function staafHoogte(labels, { perRij = 34, kader = 40, minimum = 160, breedte = LABEL_BREEDTE } = {}) {
+  const regels = Math.max(1, ...labels.map(l => [labelRegels(l, breedte)].flat().length))
+  return Math.max(minimum, kader + labels.length * Math.max(perRij, regels * REGEL_PX + 8))
 }
 
 // Stippellijnen dwars over de waardeas van een liggende staaf, op de waarden in `options.plugins.drempellijnen.waarden`
@@ -178,7 +204,8 @@ export const DREMPELLIJNEN = {
   },
 }
 
-export function horizontalBarOpts(dark, tooltipSuffix = '') {
+// `opmaak` zet de waarde in de tooltip om: fmt, of fmtProcent voor een aandeel met een vast aantal decimalen.
+export function horizontalBarOpts(dark, tooltipSuffix = '', opmaak = fmt) {
   const { tick, grid } = darkColors(dark)
   return {
     indexAxis: 'y',
@@ -190,7 +217,7 @@ export function horizontalBarOpts(dark, tooltipSuffix = '') {
         display: false,
       },
       tooltip: {
-        callbacks: { label: ctx => ` ${fmt(ctx.raw)}${tooltipSuffix}` },
+        callbacks: { label: ctx => ` ${opmaak(ctx.raw)}${tooltipSuffix}` },
       },
     },
     scales: {

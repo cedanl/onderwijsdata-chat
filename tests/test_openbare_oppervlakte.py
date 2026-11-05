@@ -240,15 +240,81 @@ def test_dashboard_zonder_login_werkt_als_voorheen(database, monkeypatch, loader
     assert loaders == [(loader, "VU")]
 
 
+# De paden die geen dashboard laden, maar zeggen waar het wel kan (#954): de oude instroom (410) en elk ander pad (404).
+GEEN_DASHBOARD = {
+    "/api/dashboard/instroom",
+    "/api/dashboard/{rest:path}",
+    "/api/dashboards",
+    "/api/dashboards/{rest:path}",
+}
+
+
 def test_elk_dashboardpad_heeft_een_dashboard_dat_het_gebruikt():
     # /api/dashboard/instroom gebruikte geen enkel dashboard en is weg (#930); een nieuw pad hoort in DASHBOARDS en in
     # de hooks van de frontend.
     from pathlib import Path
 
     import server
+    from routes.instellingen import DASHBOARD_EINDPUNTEN
 
-    paden = {pad for _, pad, _ in _routes(server.app.routes) if pad and pad.startswith("/api/dashboard/")}
+    paden = {pad for _, pad, _ in _routes(server.app.routes) if pad and pad.startswith("/api/dashboard")}
     hooks = (Path(__file__).parent.parent / "frontend/src/components/dashboards/shared/hooks.js").read_text()
 
-    assert paden == set(DASHBOARDS)
-    assert all(f"'{pad}'" in hooks for pad in paden)
+    assert paden - GEEN_DASHBOARD == set(DASHBOARDS) == {f"/api/dashboard/{naam}" for naam in DASHBOARD_EINDPUNTEN}
+    assert all(f"'{pad}'" in hooks for pad in DASHBOARDS)
+
+
+def test_de_docs_noemen_dezelfde_dashboard_eindpunten_als_de_api():
+    # #954: oudere docs en testprotocollen noemden er nog vijf. docs/api.md heeft een regel per eindpunt.
+    import re
+    from pathlib import Path
+
+    docs = Path(__file__).parent.parent / "docs"
+    in_api = set(re.findall(r"`GET` \| `(/api/dashboard/[a-z]+)`", (docs / "api.md").read_text()))
+    in_dashboards = set(re.findall(r"`(/api/dashboard/[a-z]+)`", (docs / "dashboards.md").read_text()))
+
+    assert in_api == set(DASHBOARDS)
+    assert in_dashboards - {"/api/dashboard/instroom"} == set(DASHBOARDS)
+
+
+@pytest.mark.parametrize("met_spa", [False, True])
+@pytest.mark.parametrize("login", [True, False])
+def test_de_oude_instroom_geeft_410_met_waar_de_cijfers_staan(database, monkeypatch, loaders, tmp_path, login, met_spa):
+    from routes.instellingen import INSTROOM_WEG
+
+    client = _client(database, monkeypatch, login=login, dashboards=True)
+    if met_spa:
+        # Met een gebouwde frontend vangt /api/{rest} elk onbekend API-pad; de dashboardroutes gaan daaraan vooraf.
+        from server import create_app
+
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+        client = TestClient(create_app(api_docs=False, frontend_dist=tmp_path))
+
+    resp = client.get("/api/dashboard/instroom", params={"instelling": "Curio"})
+
+    assert resp.status_code == 410
+    assert resp.json() == {"error": INSTROOM_WEG}
+    assert "/api/dashboard/regio" in INSTROOM_WEG and "2.6.0" in INSTROOM_WEG
+    assert loaders == []
+
+
+@pytest.mark.parametrize("met_spa", [False, True])
+@pytest.mark.parametrize("pad", ["/api/dashboards/Curio/instroom", "/api/dashboards", "/api/dashboard/instromen"])
+def test_een_onbekend_dashboardpad_zegt_welke_er_wel_zijn(database, monkeypatch, loaders, tmp_path, pad, met_spa):
+    from routes.instellingen import ONBEKEND_EINDPUNT
+
+    client = _client(database, monkeypatch, login=False, dashboards=True)
+    if met_spa:
+        from server import create_app
+
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+        client = TestClient(create_app(api_docs=False, frontend_dist=tmp_path))
+
+    resp = client.get(pad)
+
+    assert resp.status_code == 404
+    assert resp.json() == {"error": ONBEKEND_EINDPUNT}
+    assert all(p in ONBEKEND_EINDPUNT for p in DASHBOARDS)
+    assert loaders == []

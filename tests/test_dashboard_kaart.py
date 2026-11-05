@@ -56,3 +56,34 @@ def test_kaart_geeft_haar_punten_als_rijen_voor_de_tabel(regio):
 
 def test_kaart_zonder_ontbrekende_plaats_heeft_een_lege_lijst(regio):
     assert _meta(replace(regio, peer_codes=frozenset({"PEER1"})))["zonder_locatie"] == []
+
+
+# ─── #951: elke plaats van een hoofdvestiging staat op de kaart ─────────────────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("duo_fixtures")
+def test_elke_plaats_uit_de_duo_adressen_heeft_coordinaten():
+    # Curio (Etten-Leur) stond niet op haar eigen kaart: de plaats ontbrak in _CITY_COORDS. De adressen zijn de
+    # bevroren DUO-bestanden; komt er bij het verversen van de fixtures een plaats bij, dan faalt dit.
+    from onderwijsbronnen import duo
+
+    plaatsen = {
+        str(p).strip().upper()
+        for resource in ("adressen_ho", "adressen_mbo")
+        for p in duo.load(resource, 1)["PLAATSNAAM"].dropna()
+    }
+
+    assert plaatsen - set(dashboard._CITY_COORDS) == set()
+
+
+@pytest.mark.usefixtures("duo_fixtures")
+def test_curio_staat_op_haar_eigen_kaart():
+    ctx = dashboard._build_regio_context("Curio", "mbo")
+    assert ctx is not None
+
+    figuur = _build_kaart_figure(ctx, "Curio")
+    assert figuur is not None
+    meta = json.loads(figuur)["layout"]["meta"]
+
+    assert meta["data"][0] == {"Instelling": "Curio", "Plaats": "Etten-Leur", "Rol": "eigen instelling"}
+    assert "Curio" not in meta["zonder_locatie"]
