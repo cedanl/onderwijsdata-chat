@@ -10,6 +10,8 @@ import { CHART_COLORS } from '../../../constants'
 //   de chat (#614). Chart.js luistert passief naar touch, dus een veeg over een grafiek scrolt de pagina;
 // - geen animatie bij prefers-reduced-motion (WCAG 2.3.3), en die keuze volgt een wijziging in het systeem;
 // - getallen op de assen en in de tooltips in Nederlandse notatie (10.000), zoals fmt() in de tegels.
+// Een klik op de legenda zet een reeks aan of uit met de standaard van Chart.js; geen eigen onClick (#907): de zes
+// kopieën die er waren, lieten een reeks met `hidden: true` bij de eerste klik verborgen.
 export const FONT_GROOTTE = 13
 
 export function pasStandaardenToe(defaults, bewegingMedia) {
@@ -63,13 +65,6 @@ export function buildIndexChartOpts(dark) {
         display: true,
         position: 'top',
         labels: { color: label, boxWidth: 20 },
-        onClick: (e, legendItem, legend) => {
-          const index = legendItem.datasetIndex
-          const chart = legend.chart
-          const meta = chart.getDatasetMeta(index)
-          meta.hidden = !meta.hidden
-          chart.update()
-        },
       },
       tooltip: {
         callbacks: {
@@ -166,13 +161,6 @@ export function horizontalBarOpts(dark, tooltipSuffix = '') {
     plugins: {
       legend: {
         display: false,
-        onClick: (e, legendItem, legend) => {
-          const index = legendItem.datasetIndex
-          const chart = legend.chart
-          const meta = chart.getDatasetMeta(index)
-          meta.hidden = !meta.hidden
-          chart.update()
-        },
       },
       tooltip: {
         callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('nl-NL')}${tooltipSuffix}` },
