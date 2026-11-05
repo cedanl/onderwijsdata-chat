@@ -14,6 +14,7 @@ import pytest
 from agent import scopevraag as module
 from agent.scopevraag import Kaart, maatvraag, plaatsvraag, scopevraag
 from tools import instelling, scopeprofiel
+from tools.schemas import TOOL_GET_UWV_VACATURES
 
 _REGISTER = [
     {"naam": "Hogeschool Utrecht", "type": "hbo", "aliassen": ["HU"]},
@@ -121,6 +122,42 @@ def test_de_sector_in_de_vraag_beperkt_de_instellingen():
     assert [o["label"] for o in kaart.opties] == ["Hogeschool Utrecht", _WOON_UTRECHT]
     # Geen mbo-instelling draagt de naam Groningen: dan is Groningen een gebied, geen keuze.
     assert plaatsvraag("Hoeveel mbo-studenten zijn er in Groningen?") is None
+
+
+_UWV_PROVINCIE = "Hoeveel vacatures in de zorg staan er in de provincie Utrecht volgens UWV?"
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        _UWV_PROVINCIE,  # handmatige review 05-11, F6: geen optie dekte vacatures in een provincie
+        "Hoeveel vacatures zijn er in Utrecht?",
+        "Hoeveel mensen werken in Groningen volgens het UWV?",
+        "Wat zegt de arbeidsmarkt over het aantal gediplomeerden in Twente?",
+        "Hoeveel beroepen in de zorg telt Utrecht?",
+        "Hoeveel studenten wonen in de provincie Utrecht?",  # het gebied staat er al
+        "Hoeveel studenten telt de gemeente Groningen?",
+    ],
+)
+def test_een_gebied_of_de_arbeidsmarkt_krijgt_geen_plaatskaart(vraag):
+    """Een vraag die de plaats een gebied noemt of over vacatures gaat, gaat niet over een instelling (#953)."""
+    assert plaatsvraag(vraag) is None
+    assert scopevraag(vraag) is None
+
+
+@pytest.mark.parametrize(
+    "vraag", ["Hoeveel studenten in Utrecht?", "Hoeveel studenten in het hoger beroepsonderwijs in Utrecht?"]
+)
+def test_een_telling_van_studenten_bij_een_plaats_houdt_de_plaatskaart(vraag):
+    """Regressie #953: 'beroepsonderwijs' is een sector, geen arbeidsmarktwoord."""
+    kaart = scopevraag(vraag)
+    assert kaart is not None and kaart.slot == "scope"
+    assert [o["label"] for o in kaart.opties] == ["Universiteit Utrecht", "Hogeschool Utrecht", _WOON_UTRECHT]
+
+
+def test_een_uwv_vraag_zonder_plaats_laat_de_provinciekaart_aan_het_model():
+    """Zonder plaats stelt code geen kaart: het model vraagt de provincie met clarify_scope, zoals vóór #953."""
+    assert scopevraag("Welke beroepsclusters met openstaande vacatures in de zorg noemt UWV?") is None
 
 
 def test_zonder_register_geen_scopevraag(monkeypatch):
@@ -257,6 +294,30 @@ def test_een_vaag_kort_thema_krijgt_de_maatkaart_zonder_het_model():
     }
     assert session["_clarified"] is True
     assert messages[-1] == {"role": "assistant", "content": events[0]["vraag"]}
+
+
+def test_de_uwv_vraag_over_een_provincie_gaat_naar_het_model_met_de_uwv_tool():
+    """F6 (#953): geen plaatskaart vóór het model, en de UWV-tool staat in de toolset van de beurt."""
+    run_module = importlib.import_module("agent.run")
+    gezien: dict = {}
+    events: list[dict] = []
+
+    async def model(messages, **kwargs):
+        gezien["tools"] = [t["function"]["name"] for t in kwargs["tools"]]
+        raise AssertionError("het model is aangeroepen")
+
+    async def emit(event):
+        events.append(event)
+
+    session = {"chat_settings": {}, "clarify_rondes": 0}
+    with (
+        patch.object(run_module, "tool_loop", model),
+        patch.object(run_module, "build_system", lambda *a, **k: []),
+        pytest.raises(AssertionError, match="het model is aangeroepen"),
+    ):
+        asyncio.run(run_module.run([{"role": "user", "content": _UWV_PROVINCIE}], session, emit))
+    assert "clarification" not in [e["type"] for e in events]
+    assert TOOL_GET_UWV_VACATURES in gezien["tools"]
 
 
 def test_na_drie_beantwoorde_kaarten_vraagt_code_niets_meer():
