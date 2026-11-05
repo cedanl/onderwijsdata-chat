@@ -161,13 +161,6 @@ export function useRegioComputed(data, instelling) {
       ? buildPeerLinesData(data?.ingeschrevenen, peers.ingeschrevenen, instelling, CHART_COLORS[0], bmColor)
       : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor)
 
-    const lastDiplEntry = diplEntries.at(-1)
-    const lastIngesEntry = ingesEntries.at(-1)
-    const sameYear = lastDiplEntry && lastIngesEntry && lastDiplEntry[0] === lastIngesEntry[0]
-    const rendement = sameYear && lastIngesEntry[1]
-      ? Math.round((lastDiplEntry[1] / lastIngesEntry[1]) * 100)
-      : null
-
     return {
       dark, bmColor, bm, bmLabel, hasPeers,
       indexOpts: buildIndexChartOpts(dark),
@@ -185,7 +178,6 @@ export function useRegioComputed(data, instelling) {
       totaalRegioJaar: totaalRegioEntry?.[0] ?? data?.laatste_jaar,
       pctVrouw: totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null,
       vrouw, man,
-      rendement,
       ingesLineData,
       ejLineData: buildBenchmarkLineData(data?.eerstejaars, bm.eerstejaars, instelling, bmLabel, CHART_COLORS[2], bmColor),
       diplLineData: buildBenchmarkLineData(data?.gediplomeerden, bm.gediplomeerden, instelling, bmLabel, CHART_COLORS[5], bmColor),

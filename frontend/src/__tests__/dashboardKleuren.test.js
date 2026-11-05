@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { contrast } from './helpers/pageRun'
 import { CHART_COLORS, COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../constants'
 import {
-  benchmarkColor, oordeelKleur, sectorKleuren, SECTOR_LABELS, DAAL_KLEUR, GOED_KLEUR,
+  benchmarkColor, oordeelKleur, sectorKleuren, SECTOR_LABELS, DAAL_KLEUR,
 } from '../components/dashboards/shared/chart-opts'
 
 const KAART = { licht: '#FFFFFF', donker: '#1A1F2E' } // --white in beide thema's (styles.css)
@@ -18,7 +18,7 @@ describe('palet (#905)', () => {
   })
 
   it('haalt ook 3:1 voor de vaste kleuren', () => {
-    for (const kleur of [COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS, DAAL_KLEUR, GOED_KLEUR]) {
+    for (const kleur of [COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS, DAAL_KLEUR]) {
       expect(contrast(kleur, KAART.licht), kleur).toBeGreaterThanOrEqual(3)
       expect(contrast(kleur, KAART.donker), kleur).toBeGreaterThanOrEqual(3)
     }
