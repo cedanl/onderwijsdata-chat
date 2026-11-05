@@ -39,9 +39,11 @@ die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron
 
 - **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit
   `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen (#899).
-- **Mbo per hoofdgroep** (`ingeschrevenen_per_hoofdgroep`): `TOTAAL MBO` uit `instromende-mbo-studenten`, het laatste
-  jaar. Dat zijn ingeschrevenen, nieuw of niet, geen eerstejaars (domeinregel `mbo-instroom-totaal-mbo` in
-  `data/domeinregels.toml`). Het is een ander DUO-bestand dan dat van het totaal, dus de som wijkt daarvan af.
+- **Mbo per hoofdgroep** (`ingeschrevenen_per_hoofdgroep`): `TOTAAL MBO` uit het hoofdgroep-bestand van het laatste
+  jaar van `instromende-mbo-studenten`, met dat jaar in `ingeschrevenen_per_hoofdgroep_jaar` (het bestand heeft geen
+  `JAAR`-kolom; tot #934 was het stil het bestand van 2021). Dat zijn ingeschrevenen, nieuw of niet, geen eerstejaars
+  (domeinregel `mbo-instroom-totaal-mbo` in `data/domeinregels.toml`). Het is een ander DUO-bestand dan dat van het
+  totaal, dus de som wijkt daarvan af.
 - **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
   laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
   Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
@@ -79,9 +81,18 @@ diplomabestanden tellen per code. Elke mbo-telling per instelling loopt daarom o
 gediplomeerden) en het rendement (#923). Een peer met twee codes is één peer.
 
 De mbo-eerstejaars komen uit de bestanden "met soorten instroom" van `instromende-mbo-studenten`, één per jaar, in de
-vaste lijst `_INSTROMENDE_MBO_HISTORISCH` (`data/dashboard.py`). Publiceert DUO een jaar, dan wordt de ping
-`duo-instroom-mbo` van `bron:ping` rood; voeg dan de index toe aan die lijst en aan `scripts/duo_testfixtures.py`, en
-ververs de fixtures (#924).
+vaste lijst `_INSTROMENDE_MBO_HISTORISCH` (`data/dashboard.py`). De ingeschrevenen per hoofdgroep komen uit het
+hoofdgroep-bestand van het laatste jaar, `_INSTROMENDE_MBO_HOOFDGROEP` met het jaar uit de resourcenaam in
+`_INSTROMENDE_MBO_HOOFDGROEP_JAAR` (#934). DUO publiceert per jaar beide bestanden. Komt er een jaar bij of verschuift de
+volgorde, dan wordt de ping `duo-instroom-mbo` van `bron:ping` rood en noemt hij de bestanden. Dan:
+
+1. voeg de index van het nieuwe bestand "met soorten instroom" toe aan `_INSTROMENDE_MBO_HISTORISCH` (#924);
+2. zet `_INSTROMENDE_MBO_HOOFDGROEP` en `_INSTROMENDE_MBO_HOOFDGROEP_JAAR` op het nieuwe hoofdgroep-bestand en zijn
+   jaar, na een blik op de kopregel: dezelfde kolommen, en `TOTAAL MBO` nog de ingeschrevenen (domeinregel
+   `mbo-instroom-totaal-mbo`);
+3. zet dezelfde indexen in `scripts/duo_testfixtures.py` (het oude hoofdgroep-bestand eruit), ververs de fixtures en
+   werk de verwachte jaren en getallen in `tests/test_dashboard_mbo_reeksen.py` en `tests/test_dashboard_cijfers.py`
+   bij.
 
 ---
 
