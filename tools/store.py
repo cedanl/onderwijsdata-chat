@@ -110,6 +110,10 @@ class KeyMeta:
     # Bevat deze lading het vo-deel van een bron over meer onderwijssoorten, als vo-context voor vervolgonderwijs
     # (#879, #880)? Per lading en niet per tabel: de poort van een latere beurt verandert de bronregel van deze niet.
     vo_context: bool = False
+    # Per instelling in deze selectie met een fusie binnen haar reeks de vaste regel voor onder het antwoord (#728):
+    # DUO telt de jaren vóór de fusie bij de huidige instelling. Vastgelegd bij het afleiden (dekking.van), en zo ook
+    # geërfd door een som of grafiek op deze selectie. Herkomst, geen identiteit.
+    fusies: tuple[str, ...] = field(default=(), compare=False)
 
 
 def _bytes(value) -> int:

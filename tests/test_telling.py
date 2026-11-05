@@ -155,3 +155,24 @@ def test_de_tweede_claim_met_hetzelfde_getal_krijgt_haar_eigen_ondergrens():
     blok = telling_blok(stappen, "Hogeschool B had 10.000 studenten. Hogeschool A had 10.000 studenten.")
 
     assert "Ondergrens" in blok
+
+
+# --- #728: een fusie binnen de reeks staat als vaste regel in het blok ---
+
+_FUSIE = (
+    "Fusie bij Firda (08PG): DUO telt de jaren vóór de fusie (1 augustus 2023) bij de huidige instelling "
+    "(voorgangers: Regionaal Opleidingen Centrum Friesland College (25LG))."
+)
+
+
+def test_een_selectie_met_een_fusie_in_de_reeks_krijgt_de_vaste_regel_een_keer():
+    store.derive("duo:p01hoinges:0", "duo:p01hoinges:0:firda", pd.DataFrame({"AANTAL": [1]}), fusies=(_FUSIE,))
+    store.derive("duo:p01hoinges:0:firda", "duo:p01hoinges:0:som", pd.DataFrame({"AANTAL": [1]}))
+
+    blok = telling_blok(_beurt("duo:p01hoinges:0:firda", "duo:p01hoinges:0:som"))
+
+    assert blok.count(f"- {_FUSIE}") == 1
+
+
+def test_zonder_fusie_geen_fusieregel():
+    assert "Fusie" not in telling_blok(_beurt(_selectie(met_minus_een=False)))

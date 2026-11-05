@@ -11,7 +11,9 @@ from datetime import date
 
 import httpx
 import pytest
+from riodata import overgangen
 
+from agent.telling import telling_blok
 from tools import fouten, rio_instelling
 from tools.rio import get_rio_data
 from tools.rio_instelling import get_rio_instelling
@@ -33,11 +35,11 @@ def _erkenning(code, naam, soort, wet=None, erkenner="OCW", eind=None):
     }
 
 
-def _relatie(van, naar, soort="HIERARCHISCH", eind=None):
+def _relatie(van, naar, soort="HIERARCHISCH", eind=None, begin="2000-01-01"):
     """Een instellingsrelatie zoals RIO v3 hem geeft: de codes als veld én als link."""
     return {
         "soort": soort,
-        "begindatum": "2000-01-01",
+        "begindatum": begin,
         "einddatum": eind,
         "vanErkenningId": van,
         "naarErkenningId": naar,
@@ -107,9 +109,15 @@ class _NepRio:
         )
 
     def related(self, resource: str, id: str, sub: str, **params):
-        assert not params, "instellingsrelaties weigert paging-parameters (HTTP 400)"
+        assert set(params) <= {"datumGeldigOp"}, "instellingsrelaties weigert paging-parameters (HTTP 400)"
         self.aanroepen.append((f"{resource}/{id}/{sub}", params))
-        return self._lijst(self.relaties.get(id, []))
+        # Zoals RIO: zonder datumGeldigOp alleen de relaties van vandaag (#728).
+        peil = params.get("datumGeldigOp") or date.today().isoformat()
+        return self._lijst(
+            r
+            for r in self.relaties.get(id, [])
+            if r["begindatum"] <= peil and (not r["einddatum"] or r["einddatum"] > peil)
+        )
 
     def get(self, resource: str, id: str, **params):
         self.aanroepen.append((f"{resource}/{id}", params))
@@ -128,6 +136,9 @@ def rio(monkeypatch):
         monkeypatch.setattr(rio_instelling, "fetch", nep.fetch)
         monkeypatch.setattr(rio_instelling, "get", nep.get)
         monkeypatch.setattr(rio_instelling, "related", nep.related)
+        # De overgangen (riodata.opvolgers) lezen hetzelfde nagebootste RIO.
+        monkeypatch.setattr(overgangen, "get", nep.get)
+        monkeypatch.setattr(overgangen, "related", nep.related)
         return nep
 
     return installeer
@@ -334,3 +345,176 @@ def test_de_route_zoekt_met_het_v3_typefilter(rio):
     for resource, params in nep.aanroepen:
         if resource == "erkenningen":
             assert "type" in params and "erkenningtype" not in params
+
+
+# --- #728: een opgeheven instelling zegt waarin ze opging; een peildatum in het verleden leest de relaties van toen ---
+
+
+def _uit(erkenning: dict, uit: str) -> dict:
+    return {**erkenning, "uitBedrijfdatum": uit}
+
+
+def _friesland() -> tuple[dict, dict]:
+    """Friesland College (25LG) ging op 2023-08-01 volledig op in Firda (08PG); RIO op 05-11-2026, ingekort."""
+    bestuur_oud = "Stg. Alg. Voortgez. Onderwijs, Beroepsonderwijs en Volw.educ"
+    erkenningen = {
+        "40295": _uit(_erkenning("40295", bestuur_oud, "BEVOEGD_GEZAG"), "2023-01-01"),
+        "30932": _erkenning(
+            "30932", "Stg. Beroepsonderw./ Volw.educ en AVO in Friesland en Flevoland", "BEVOEGD_GEZAG"
+        ),
+        "25LG": _uit(
+            _erkenning("25LG", "Regionaal Opleidingen Centrum Friesland College", "ERKENDE_ONDERWIJSINSTELLING", "WEB"),
+            "2023-08-01",
+        ),
+        "1000K0155": _erkenning("1000K0155", "Friesland College", "ERKENDE_ONDERWIJSINSTELLING"),
+        "08PG": _erkenning("08PG", "Firda", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"),
+        "25LG00": _uit(_erkenning("25LG00", "Friesland College", "ERKENDE_VESTIGING", wet="WEB"), "2023-08-01"),
+        "08PG00": _erkenning("08PG00", "Firda", "ERKENDE_VESTIGING", wet="WEB"),
+    }
+    oud_naar_25lg = _relatie("40295", "25LG", begin="1996-01-01", eind="2023-01-01")
+    nieuw_naar_25lg = _relatie("30932", "25LG", begin="2023-01-01")
+    fusie = _relatie("25LG", "08PG", soort="OVERGANG_VOLLEDIG", begin="2023-08-01")
+    naar_k0155 = _relatie("40295", "1000K0155", begin="2021-12-15")
+    relaties = {
+        "40295": [oud_naar_25lg, naar_k0155],
+        "30932": [nieuw_naar_25lg, _relatie("30932", "08PG", begin="1989-06-02")],
+        "25LG": [oud_naar_25lg, nieuw_naar_25lg, fusie, _relatie("25LG", "25LG00", begin="1996-01-01")],
+        "1000K0155": [naar_k0155],
+        "08PG": [_relatie("30932", "08PG", begin="1989-06-02"), fusie, _relatie("08PG", "08PG00")],
+    }
+    return erkenningen, relaties
+
+
+_FIRDA_ZIN = (
+    "Regionaal Opleidingen Centrum Friesland College (25LG) is per 1 augustus 2023 opgegaan in Firda (08PG) "
+    "(volledige overgang)."
+)
+
+
+def _vandaag(naam: str) -> dict:
+    return json.loads(get_rio_instelling(naam, peildatum=date(2026, 11, 5)))
+
+
+def test_een_oude_naam_zegt_waarin_de_instelling_opging(rio):
+    rio(*_friesland())
+    uit = _vandaag("Friesland College")
+
+    assert uit["status"] == "opgegaan"
+    assert "aantallen" not in uit
+    assert uit["fusiemelding"] == _FIRDA_ZIN
+    assert uit["melding"].startswith(_FIRDA_ZIN)
+    (opgegaan,) = uit["opgegaan"]
+    assert opgegaan["code"] == "25LG"
+    assert opgegaan["opgegaan_in"] == [
+        {"code": "08PG", "naam": "Firda", "overgang": "volledig", "datum": "2023-08-01", "via": "25LG"}
+    ]
+
+
+def test_een_oude_brin_zegt_het_ook(rio):
+    rio(*_friesland())
+    uit = _vandaag("25lg")
+    assert uit["status"] == "opgegaan"
+    assert uit["fusiemelding"] == _FIRDA_ZIN
+
+
+def test_de_fusiezin_staat_vast_onder_het_antwoord(rio):
+    """Het model kiest niets: de zin komt uit de code in het Telling-blok."""
+    rio(*_friesland())
+    blok = telling_blok([get_rio_instelling("Friesland College", peildatum=date(2026, 11, 5))])
+    assert f"- {_FIRDA_ZIN}" in blok
+
+
+def test_een_brin_van_een_actieve_instelling_geeft_het_overzicht(rio):
+    rio()
+    uit = _overzicht("27gz")
+    assert uit["bevoegd_gezag"]["code"] == "41171"
+    assert "opgegaan" not in uit
+
+
+def test_een_onbekende_brin_is_niet_gevonden(rio):
+    rio()
+    uit = _overzicht("99ZZ")
+    assert uit["status"] == "niet_gevonden"
+    assert "99ZZ" in uit["melding"]
+
+
+def test_een_peildatum_in_het_verleden_leest_de_relaties_van_toen(rio):
+    """Bijvangst #728: zonder datumGeldigOp kwam bestuur 40295 zonder mbo-instelling terug."""
+    nep = rio(*_friesland())
+    uit = json.loads(get_rio_instelling("Friesland College", peildatum=date(2022, 10, 1)))
+
+    assert uit["bevoegd_gezag"]["code"] == "40295"
+    assert "25LG" in [i["code"] for i in uit["instellingen"]]
+    assert "opgegaan" not in uit  # op die dag bestond Friesland College nog
+    relaties = [p for r, p in nep.aanroepen if r.endswith("/instellingsrelaties")]
+    assert relaties and all(p == {"datumGeldigOp": "2022-10-01"} for p in relaties)
+
+
+def test_helicon_is_gedeeltelijk_opgegaan_in_yuverta(rio):
+    erkenningen = {
+        "31142": _uit(_erkenning("31142", "Stichting Helicon Opleidingen", "BEVOEGD_GEZAG"), "2021-08-01"),
+        "26CC": _uit(_erkenning("26CC", "Helicon Opleidingen", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"), "2021-08-01"),
+        "01OE": _erkenning("01OE", "Yuverta", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"),
+    }
+    fusie = _relatie("26CC", "01OE", soort="OVERGANG_GEDEELTELIJK", begin="2021-08-01")
+    rio(erkenningen, {"26CC": [fusie], "01OE": [fusie]})
+
+    uit = _vandaag("Helicon Opleidingen")
+
+    assert uit["status"] == "opgegaan"
+    assert uit["fusiemelding"] == (
+        "Helicon Opleidingen (26CC) is per 1 augustus 2021 opgegaan in Yuverta (01OE) (gedeeltelijke overgang)."
+    )
+
+
+def test_regio_college_geeft_talland_en_zegt_dat_het_roc_erin_opging(rio):
+    """De naam vindt een actieve educatie-instelling onder Talland; het roc Regio College (25RA) ging in 2024 op in
+    Talland College. Eerder kwam het overzicht van Talland zonder melding."""
+    erkenningen = {
+        "40864": _uit(_erkenning("40864", "Stichting Regio College", "BEVOEGD_GEZAG"), "2024-01-01"),
+        "40877": _erkenning("40877", "Stichting Talland College", "BEVOEGD_GEZAG"),
+        "25RA": _uit(
+            _erkenning(
+                "25RA",
+                "Regio College voor Beroepsonderwijs en Educatie Zaanstreek-Waterland",
+                "ERKENDE_ONDERWIJSINSTELLING",
+                wet="WEB",
+            ),
+            "2024-08-01",
+        ),
+        "30TC": _erkenning("30TC", "Regio College", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"),
+        "25PT": _erkenning("25PT", "Talland College", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"),
+    }
+    fusie = _relatie("25RA", "25PT", soort="OVERGANG_VOLLEDIG", begin="2024-08-01")
+    relaties = {
+        "40877": [_relatie("40877", c, begin="2024-01-01") for c in ("30TC", "25RA")] + [_relatie("40877", "25PT")],
+        "30TC": [_relatie("40877", "30TC", begin="2024-01-01")],
+        "25RA": [_relatie("40877", "25RA", begin="2024-01-01"), fusie],
+        "25PT": [_relatie("40877", "25PT"), fusie],
+    }
+    rio(erkenningen, relaties)
+
+    uit = _vandaag("Regio College")
+
+    assert uit["bevoegd_gezag"]["code"] == "40877"
+    assert [i["code"] for i in uit["instellingen"]] == ["25PT", "30TC"]
+    assert uit["fusiemelding"] == (
+        "Regio College voor Beroepsonderwijs en Educatie Zaanstreek-Waterland (25RA) is per 1 augustus 2024 "
+        "opgegaan in Talland College (25PT) (volledige overgang)."
+    )
+
+
+def test_een_opgeheven_vo_school_krijgt_geen_fusiemelding(rio):
+    """Scope (#355): een vo-instelling (WVO) noemt de chat niet, ook niet als voorganger."""
+    erkenningen = {
+        "02EX": _uit(_erkenning("02EX", "Morgen College", "ERKENDE_ONDERWIJSINSTELLING", wet="WVO"), "2025-08-01"),
+        "01AA": _erkenning("01AA", "Stichting Landstede", "ERKENDE_ONDERWIJSINSTELLING", wet="WEB"),
+    }
+    fusie = _relatie("02EX", "01AA", soort="OVERGANG_VOLLEDIG", begin="2025-08-01")
+    nep = rio(erkenningen, {"02EX": [fusie]})
+
+    uit = _vandaag("Morgen College")
+
+    assert uit["status"] == "niet_gevonden"
+    assert "fusiemelding" not in uit
+    assert not any(r.endswith("/instellingsrelaties") for r, _ in nep.aanroepen)

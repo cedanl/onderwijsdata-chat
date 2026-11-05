@@ -427,14 +427,18 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "vestigingen op de peildatum. Gebruik dit voor elke vraag naar het bestuur, de instellingen, "
                 "vestigingen of erkenningen van een instelling. De code zoekt en telt: neem `aantallen` "
                 "letterlijk over en tel niet zelf. Bij `status: meerdere` vraag je welke van de `kandidaten` "
-                "bedoeld is."
+                "bedoeld is. Bij een opgeheven instelling zegt `fusiemelding` waarin ze opging; de app zet die zin "
+                "zelf onder het antwoord."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "naam": {
                         "type": "string",
-                        "description": "Naam van de instelling of het bestuur zoals de gebruiker hem noemt, bijv. 'ROC Mondriaan'",
+                        "description": (
+                            "Naam van de instelling of het bestuur zoals de gebruiker hem noemt, bijv. 'ROC Mondriaan', "
+                            "of de BRIN-code van de instelling, bijv. '25LG'"
+                        ),
                     },
                 },
                 "required": ["naam"],

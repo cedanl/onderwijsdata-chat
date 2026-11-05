@@ -94,6 +94,17 @@ def geen_adresdownload(monkeypatch):
     monkeypatch.setattr("tools.instellingsprovincie.get_adres_lookup", lambda: {})
 
 
+@pytest.fixture(autouse=True)
+def geen_fusieopvraging(monkeypatch):
+    """Unittests vragen RIO niet om de voorgangers van een instelling in een DUO-reeks (#728): geen fusies.
+
+    Elke meerjarige DUO-selectie per instelling vraagt ze op (`dekking.van`); `tests/test_fusies.py` patcht zelf."""
+    from tools import fusies
+
+    monkeypatch.setattr(fusies, "voorgangers", lambda code, sinds=None, peildatum=None: [])
+    fusies._voorgangers.cache_clear()
+
+
 @pytest.fixture
 def duo_fixtures(monkeypatch):
     """`duo.load` leest de bevroren DUO-bestanden van `scripts/duo_testfixtures.py`, niet onderwijsdata.duo.nl (#766).

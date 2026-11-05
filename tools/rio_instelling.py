@@ -13,20 +13,23 @@ naam onder hetzelfde bestuur. De relaties volgen doet beide goed.
 """
 
 import json
+import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from urllib.parse import urlparse
 
 import httpx
-from riodata import fetch, get, related
+from riodata import fetch, get, opvolgers, related
 
-from . import bronretry, fouten, scopeprofiel
+from . import bronretry, fouten, fusies, scopeprofiel
 from .catalog import catalogus_titel
 
 # De RIO-dataset van het register; ook de bron van de regel onder het antwoord (agent/bronvermelding.py, #621).
 ERKENNINGEN = "erkenningen"
+# Het veld met de vaste fusiezin; agent/telling.py zet hem onder het antwoord (#728).
+FUSIEMELDING = "fusiemelding"
 _BEVOEGD_GEZAG = "BEVOEGD_GEZAG"
 _INSTELLING = "ERKENDE_ONDERWIJSINSTELLING"
 _VESTIGING = "ERKENDE_VESTIGING"
@@ -38,6 +41,8 @@ _HIERARCHISCH = "HIERARCHISCH"
 _WETTEN_IN_SCOPE = frozenset({"WEB", "WHW"})
 _WETTEN_BUITEN_SCOPE = ("WPO", "WVO", "WEC")
 _MAX_INSTELLINGEN_OMHOOG = 10
+# Een BRIN-code van een instelling: twee cijfers en twee letters (25LG); dan zoekt de code niet op naam (#728).
+_BRIN = re.compile(r"\d{2}[A-Z]{2}")
 _DEFINITIE = (
     "Instellingen en vestigingen: erkenningen met een geldige hiërarchische relatie naar het bestuur "
     "of de instelling op de peildatum, in bedrijf. Erkenningen = bestuur + instellingen + vestigingen."
@@ -66,20 +71,37 @@ def _geldig(item: dict, peildatum: str) -> bool:
     return (not begin or begin <= peildatum) and (not eind or eind >= peildatum) and (not uit or uit > peildatum)
 
 
-def _zoek(naam: str, soort: str, peildatum: str) -> list[dict]:
+def _opgeheven(item: dict, peildatum: str) -> bool:
+    """Uit bedrijf of beëindigd op de peildatum: een instelling die kan zijn opgegaan in een andere (#728)."""
+    eind, uit = item.get("einddatum"), item.get("uitBedrijfdatum")
+    return bool((uit and uit <= peildatum) or (eind and eind < peildatum))
+
+
+def _zoek_alle(naam: str, soort: str, peildatum: str) -> list[dict]:
+    """Erkenningen van `soort` met `naam` in de naam, ook die uit bedrijf zijn."""
     # RIO v3: het typefilter heet `type` (v2: erkenningtype; die versie is op 19-10-2026 verwijderd, #627).
     gevonden = bronretry.haal_op_met_retry(
         "RIO", lambda: fetch(ERKENNINGEN, volledigeNaam=naam, type=soort, datumGeldigOp=peildatum)
     )
-    return [e for e in gevonden if e.get("type") == soort and _geldig(e, peildatum)]
+    return [e for e in gevonden if e.get("type") == soort]
+
+
+def _zoek(naam: str, soort: str, peildatum: str) -> list[dict]:
+    return [e for e in _zoek_alle(naam, soort, peildatum) if _geldig(e, peildatum)]
 
 
 def _relaties(code: str, peildatum: str) -> list[tuple[str, str]]:
-    """De geldige hiërarchische relaties van een erkenning, als (van, naar)."""
+    """De geldige hiërarchische relaties van een erkenning, als (van, naar).
+
+    Met `datumGeldigOp`: zonder datum geeft RIO de relaties van vandaag, en vond "Friesland College" op 2022-10-01 een
+    bestuur zonder mbo-instelling, omdat de relatie naar 25LG op 2023-01-01 eindigde (#728).
+    """
     return [
         (_relatiecode(r, "van"), _relatiecode(r, "naar"))
         # Dit endpoint pagineert niet en weigert page/pageSize (HTTP 400): related, niet fetch.
-        for r in bronretry.haal_op_met_retry("RIO", lambda: related(ERKENNINGEN, code, "instellingsrelaties"))
+        for r in bronretry.haal_op_met_retry(
+            "RIO", lambda: related(ERKENNINGEN, code, "instellingsrelaties", datumGeldigOp=peildatum)
+        )
         if r.get("soort") == _HIERARCHISCH and _geldig(r, peildatum)
     ]
 
@@ -92,13 +114,37 @@ def _boven(code: str, peildatum: str) -> list[str]:
     return sorted({van for van, naar in _relaties(code, peildatum) if naar == code})
 
 
-def _besturen(naam: str, peildatum: str) -> list[dict]:
-    """Bevoegde gezagen met deze naam; anders de besturen van instellingen met deze naam."""
-    if besturen := _zoek(naam, _BEVOEGD_GEZAG, peildatum):
-        return besturen
-    instellingen = _zoek(naam, _INSTELLING, peildatum)[:_MAX_INSTELLINGEN_OMHOOG]
+def _besturen_boven(instellingen: list[dict], peildatum: str) -> list[dict]:
     codes = sorted({b for i in instellingen for b in _boven(i["code"], peildatum)})
-    return [e for e in _lees(codes)[0].values() if e.get("type") == _BEVOEGD_GEZAG and _geldig(e, peildatum)]
+    return [e for e in _lees(codes, peildatum)[0].values() if e.get("type") == _BEVOEGD_GEZAG and _geldig(e, peildatum)]
+
+
+def _in_scope_opgeheven(instellingen: list[dict], peildatum: str) -> list[dict]:
+    """De mbo-, hbo- en wo-instellingen (WEB/WHW) die op de peildatum opgeheven zijn; po/vo blijft buiten (#355)."""
+    return [i for i in instellingen if i.get("wet") in _WETTEN_IN_SCOPE and _opgeheven(i, peildatum)]
+
+
+def _besturen(naam: str, peildatum: str) -> tuple[list[dict], list[dict]]:
+    """Bevoegde gezagen met deze naam; anders de besturen van instellingen met deze naam.
+
+    Daarnaast de opgeheven instellingen met deze naam, voor de fusiemelding (#728).
+    """
+    if besturen := _zoek(naam, _BEVOEGD_GEZAG, peildatum):
+        return besturen, []
+    gevonden = _zoek_alle(naam, _INSTELLING, peildatum)
+    instellingen = [i for i in gevonden if _geldig(i, peildatum)][:_MAX_INSTELLINGEN_OMHOOG]
+    opgeheven = sorted(_in_scope_opgeheven(gevonden, peildatum), key=lambda i: i["code"])[:_MAX_INSTELLINGEN_OMHOOG]
+    return _besturen_boven(instellingen, peildatum), opgeheven
+
+
+def _per_code(code: str, peildatum: str) -> tuple[list[dict], list[dict]]:
+    """De besturen van de instelling met deze BRIN-code; is ze opgeheven, dan de instelling zelf (#728)."""
+    instelling = _lees([code], peildatum)[0].get(code)
+    if instelling is None or instelling.get("type") != _INSTELLING:
+        return [], []
+    if _geldig(instelling, peildatum):
+        return _besturen_boven([instelling], peildatum), []
+    return [], _in_scope_opgeheven([instelling], peildatum)
 
 
 def _kies(naam: str, besturen: list[dict]) -> dict | list[dict]:
@@ -113,12 +159,12 @@ def _kies(naam: str, besturen: list[dict]) -> dict | list[dict]:
     return [{"code": c, "naam": _naam(uniek[c])} for c in sorted(uniek)]
 
 
-def _lees(codes: list[str]) -> tuple[dict[str, dict], list[str]]:
-    """De erkenningen achter `codes`, en de codes waarvan RIO geen object heeft (404)."""
+def _lees(codes: list[str], peildatum: str) -> tuple[dict[str, dict], list[str]]:
+    """De erkenningen achter `codes` op de peildatum, en de codes waarvan RIO geen object heeft (404)."""
 
     def een(code: str) -> tuple[str, dict | None]:
         try:
-            return code, bronretry.haal_op_met_retry("RIO", lambda: get(ERKENNINGEN, code))
+            return code, bronretry.haal_op_met_retry("RIO", lambda: get(ERKENNINGEN, code, datumGeldigOp=peildatum))
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return code, None
@@ -143,7 +189,7 @@ def _onder_van(code: str, soort: str, peildatum: str) -> _Telling:
 
     Een geldige relatie naar een vestiging die uit bedrijf is, telde eerder gewoon mee.
     """
-    gelezen, onleesbaar = _lees(_onder(code, peildatum))
+    gelezen, onleesbaar = _lees(_onder(code, peildatum), peildatum)
     passend = {c: e for c, e in gelezen.items() if e.get("type") == soort and _geldig(e, peildatum)}
     anders = Counter(str(e.get("type")) for e in gelezen.values() if e.get("type") != soort)
     return _Telling(passend, onleesbaar, anders)
@@ -203,18 +249,60 @@ def _overzicht(bestuur: dict, peildatum: str) -> dict:
     return uit
 
 
+def _opgegaan(opgeheven: list[dict], peildatum: str) -> list[dict]:
+    """Per opgeheven instelling met een overgang: waarin ze opging, als stappen en als vaste zin (#728)."""
+    uit = []
+    for instelling in opgeheven:
+        code, naam = instelling["code"], _naam(instelling)
+        stappen = bronretry.haal_op_met_retry("RIO", lambda c=code: opvolgers(c, peildatum))
+        if stappen:
+            uit.append(
+                {
+                    "code": code,
+                    "naam": naam,
+                    "opgegaan_in": [asdict(s) for s in stappen],
+                    "zin": fusies.opgegaan(code, naam, stappen),
+                }
+            )
+    return uit
+
+
+def _zoekopdracht(naam: str, peildatum: str) -> tuple[list[dict], list[dict]]:
+    """Besturen en opgeheven instellingen bij een BRIN-code of een naam."""
+    if _BRIN.fullmatch(naam.upper()):
+        return _per_code(naam.upper(), peildatum)
+    return _besturen(naam, peildatum)
+
+
+def _niet_gevonden(naam: str, peildatum: str, opgegaan: list[dict]) -> dict:
+    if opgegaan:
+        # Geen keuze voor het model: de zin staat vast en komt ook onder het antwoord (agent/telling.py).
+        return {
+            "status": "opgegaan",
+            "melding": " ".join(o["zin"] for o in opgegaan)
+            + " Noem dat zo; zoek de huidige instelling op met haar eigen naam als de vraag over haar gaat.",
+        }
+    if _BRIN.fullmatch(naam.upper()):
+        melding = f"RIO kent geen mbo-, hbo- of wo-instelling met code '{naam.upper()}' op {peildatum}."
+    else:
+        melding = f"RIO kent geen bevoegd gezag of instelling met '{naam}' in de naam op {peildatum}."
+    return {"status": "niet_gevonden", "melding": melding}
+
+
 def get_rio_instelling(naam: str, peildatum: date | None = None) -> str:
-    """Bestuur, instellingen en vestigingen van één onderwijsinstelling, geteld in code."""
+    """Bestuur, instellingen en vestigingen van één onderwijsinstelling, geteld in code.
+
+    Een naam of BRIN van een opgeheven mbo-, hbo- of wo-instelling geeft daarnaast waarin ze opging (#728).
+    """
     naam = " ".join(naam.split())
     peil = (peildatum or date.today()).isoformat()
     kop = {"bron": "RIO", "catalogus_titel": catalogus_titel(ERKENNINGEN), "peildatum": peil, "gezocht": naam}
     try:
-        gekozen = _kies(naam, _besturen(naam, peil))
+        besturen, opgeheven = _zoekopdracht(naam, peil)
+        gekozen = _kies(naam, besturen)
+        opgegaan = _opgegaan(opgeheven, peil)
         if not gekozen:
-            uit = {
-                "status": "niet_gevonden",
-                "melding": f"RIO kent geen bevoegd gezag of instelling met '{naam}' in de naam op {peil}.",
-            }
+            uit = _niet_gevonden(naam, peil, opgegaan)
         elif isinstance(gekozen, list):
             uit = {
                 "status": "meerdere",
@@ -225,4 +313,6 @@ def get_rio_instelling(naam: str, peildatum: date | None = None) -> str:
             uit = _overzicht(gekozen, peil)
     except Exception as e:
         return fouten.bronfout("RIO", e, f" Instelling '{naam}'.")
+    if opgegaan:
+        uit = {**uit, "opgegaan": opgegaan, FUSIEMELDING: " ".join(o["zin"] for o in opgegaan)}
     return json.dumps({**kop, **uit}, ensure_ascii=False, separators=(",", ":"))

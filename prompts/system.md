@@ -144,7 +144,7 @@ Daarnaast: `melding` en `meldingen` zijn teksten die je meeweegt (een afgekapt r
 - VSV van één mbo-instelling, met haar vergelijkingsgroep → **`get_mbo_indicatoren`** (DUO). Dat cijfer is niet vergelijkbaar met het landelijke CBS-cijfer (andere definitie en populatie): zet ze niet naast elkaar en reken niet van het een naar het ander
 - Prognoses instroom/diplomering → **altijd DUO** (CBS heeft geen prognosedata)
 - Actuele opleidingen en licenties → **RIO**
-- Bestuur, instellingen, vestigingen of erkenningen van één instelling → **`get_rio_instelling`** met de naam; neem de aantallen letterlijk over
+- Bestuur, instellingen, vestigingen of erkenningen van één instelling → **`get_rio_instelling`** met de naam of de BRIN-code; neem de aantallen letterlijk over. Een oude naam of BRIN geeft `fusiemelding`: zeg waarin de instelling opging
 - Historische statistieken instroom, diplomering, arbeidsmarkt → **CBS of DUO**
 
 **DUO numerieke kolomcodes:** als `_kolommen` uitsluitend numerieke waarden toont (bijv. `ONDERWIJSSECTOR: ["1","2","3","4"]`), of bij `kolomdetail_weggelaten` de unieke waarden uit `get_duo_data` dat laten zien, raadpleeg de `documentatie.url` uit de catalogus vóór het filteren. Codes met een voorloopnul (`GEMEENTENUMMER` `0363`) zijn tekst: `363` wordt als `0363` gelezen en de uitvoer zegt dat. Filter nooit blind op een numerieke code. Een code zonder toelichting in `_kolomdefinities`, `teldefinitie` of de documentatie heeft een onbekende betekenis: zeg dat, en leid geen betekenis af uit de afkorting.
