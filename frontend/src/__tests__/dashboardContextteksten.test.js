@@ -117,6 +117,12 @@ describe('de kaartbeschrijving van Mijn instelling (#918)', () => {
     expect(mijnInstellingBeschrijving(null)).not.toMatch(/gender/)
   })
 
+  it("belooft diploma's per eerstejaars alleen bij mbo, en nergens een rendement (#898)", () => {
+    expect(mijnInstellingBeschrijving('mbo')).toMatch(/diploma's per eerstejaars/)
+    for (const sector of ['hbo', 'wo', null]) expect(mijnInstellingBeschrijving(sector)).not.toMatch(/per eerstejaars/)
+    for (const sector of ['mbo', 'hbo', 'wo', null]) expect(mijnInstellingBeschrijving(sector)).not.toMatch(/rendement/)
+  })
+
   it.each([
     ['ROC van Amsterdam', false],
     ['Hogeschool Utrecht', true],

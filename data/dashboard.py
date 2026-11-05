@@ -57,8 +57,6 @@ _ONDERDEEL_KAART = _Onderdeel("Kaart", "DUO")
 _ONDERDEEL_HOOFDGROEPEN = _Onderdeel("Ingeschrevenen per hoofdgroep", "DUO")
 _ONDERDEEL_EERSTEJAARS = _Onderdeel("Eerstejaars", "DUO")
 _ONDERDEEL_GEDIPLOMEERDEN = _Onderdeel("Gediplomeerden", "DUO")
-_ONDERDEEL_INSTROOM = _Onderdeel("Instroom per jaar", "DUO")
-_ONDERDEEL_RENDEMENT_REGIO = _Onderdeel("Rendement van de regio", "DUO")
 _ONDERDEEL_VACATURES = _Onderdeel("Vacatures (UWV)", "UWV")
 _ONDERDEEL_ROA_SCHOOLVERLATERS = _Onderdeel("Arbeidsmarktpositie schoolverlaters (ROA)", "ROA")
 _ONDERDEEL_ROA_PROGNOSE = _Onderdeel("Arbeidsmarktprognose (ROA)", "ROA")
@@ -1353,7 +1351,52 @@ def load_dashboard_nationaal(instelling: str) -> dict:
     return _poging(_nationaal_ho, instelling, result) or _nationaal_mbo(instelling, result) or result
 
 
-# ─── Rendementsmonitor ────────────────────────────────────────────────────────
+# ─── Diploma's na drie jaar per eerstejaars (mbo, #898) ──────────────────────
+# Geen cohortrendement: DUO volgt geen studenten. De tegel deelt de mbo-diploma's van een instelling in diplomajaar
+# cohort + 3 door haar eerstejaars van het cohort, voor de instelling en elke peer met dezelfde regel (`_rendement`).
+# Bij mbo is dat een bruikbare ruwe verhouding (Curio 2021: 4.037 / 4.459 in de fixtures). Bij hbo en wo niet: de
+# diploma's van p04hogdipl tellen ook masters, associate degrees en eerdere cohorten, de eerstejaars van p02ho1ejrs
+# geen hbo-masters en niemand die eerder in het ho stond; de verhouding kwam tot 2,45 en elk cohort viel af. Daar
+# vervalt de tegel tot er een echte cohortbron is; het dashboard zegt waarom en waar het wel kan.
+
+_RENDEMENT_TERMIJN = 3  # jaren tussen het cohort (het jaar van de eerstejaars) en het diplomajaar in de teller
+
+# Waarom een cohort geen verhouding heeft. Zonder jaartal, zodat het dashboard de cohorten per reden kan noemen.
+_GEEN_EERSTEJAARS = "geen eerstejaars bekend"
+_GEEN_DIPLOMAS = f"geen diploma's bekend {_RENDEMENT_TERMIJN} jaar later"
+_TE_VEEL_DIPLOMAS = "meer diploma's dan eerstejaars, dus geen cohortmaat"
+
+# Wat de tegel telt, zoals het definitieblok (#736) en "Niet meegeteld" (#743) in het rapport. Alleen wat de
+# teldefinities van DUO en de domeinregel mbo-instroom-mbo zeggen; tests/test_dashboard_rendement.py leest het na.
+_RENDEMENT_MBO = {
+    "naam": f"Diploma's na {_RENDEMENT_TERMIJN} jaar per eerstejaars",
+    "termijn": _RENDEMENT_TERMIJN,
+    "definitie": (
+        "Per cohort (het jaar van de eerstejaars, peildatum 1 oktober) de mbo-diploma's die de instelling "
+        f"{_RENDEMENT_TERMIJN} jaar later uitreikte, gedeeld door de eerstejaars van dat cohort. Eerstejaars zijn "
+        "studenten die nieuw in het mbo zijn (DUO, instromende-mbo-studenten); diploma's de hoofddiploma's van "
+        "dat diplomajaar (DUO, gediplomeerde-mbo-studenten). DUO volgt geen studenten: het zijn niet de diploma's "
+        "van dit cohort, dus dit is een ruwe verhouding en geen cohortrendement. De instelling en het "
+        "regiogemiddelde rekenen met dezelfde regel."
+    ),
+    "niet_meegeteld": (
+        "in de eerstejaars wie een jaar eerder al in het mbo stond ingeschreven, ook wie binnen het mbo van "
+        "opleiding wisselt, en een tweede inschrijving van dezelfde student; in de diploma's een tweede diploma "
+        "van dezelfde student; cellen met 1 tot en met 4 studenten, die DUO leeg laat"
+    ),
+    "wel_meegeteld": (
+        "in de diploma's ook die van studenten uit een ander cohort, van wie eerder al in het mbo zat en van "
+        "elk niveau, entree inbegrepen"
+    ),
+}
+
+_GEEN_RENDEMENT_HO = (
+    "Voor hbo en wo staat hier geen rendement. DUO publiceert voor het hoger onderwijs geen cohorten: alleen "
+    "eerstejaars per jaar en diploma's per diplomajaar, en die zijn niet op elkaar te delen. De diploma's tellen "
+    "ook masters, associate degrees en studenten uit eerdere cohorten; de eerstejaars geen hbo-masters en niemand "
+    "die eerder in het hoger onderwijs stond. Het rendement per cohort staat landelijk in de CBS-cohorttabellen: "
+    "vraag het in de chat of zet het in een rapport."
+)
 
 
 def _pseudo_cohorten(instroom: dict[int, int], dipl: dict[int, int]) -> list[dict]:
@@ -1370,26 +1413,39 @@ def _pseudo_cohorten(instroom: dict[int, int], dipl: dict[int, int]) -> list[dic
     ]
 
 
-def _rendement_per_jaar(cohorten: list[dict]) -> dict[int, float]:
-    # Ratio > 1 indicates total-diplomas-per-year vs eerstejaars mismatch (common at WO
-    # with many masters graduates); skip those cohorts as the value is not meaningful.
-    return {
-        c["instroom_jaar"]: round(c["gediplomeerden_t3"] / c["instroom"], 4)
-        for c in cohorten
-        if c["instroom"] > 0 and c["gediplomeerden_t3"] is not None and 0 < c["gediplomeerden_t3"] <= c["instroom"]
-    }
+def _rendement(
+    cohorten: list[int], instroom: dict[int, int], dipl: dict[int, int]
+) -> tuple[dict[int, float], dict[int, str]]:
+    """({cohort: diploma's in cohort + termijn / eerstejaars}, {cohort: waarom er geen verhouding is}).
+
+    De ene regel voor de instelling en elke peer (#898). `cohorten` zijn de cohorten waarvan DUO het diplomajaar al
+    publiceert; elk daarvan krijgt een verhouding of een reden, zodat er niets stil uitvalt. Een verhouding boven 1 is
+    geen cohortmaat en staat bij de redenen, voor de instelling en de peers gelijk.
+    """
+    rendement: dict[int, float] = {}
+    weggelaten: dict[int, str] = {}
+    for cohort in cohorten:
+        eerstejaars = instroom.get(cohort)
+        diplomas = dipl.get(cohort + _RENDEMENT_TERMIJN)
+        if not eerstejaars:
+            weggelaten[cohort] = _GEEN_EERSTEJAARS
+        elif not diplomas:
+            weggelaten[cohort] = _GEEN_DIPLOMAS
+        elif diplomas > eerstejaars:
+            weggelaten[cohort] = _TE_VEEL_DIPLOMAS
+        else:
+            rendement[cohort] = round(diplomas / eerstejaars, 4)
+    return rendement, weggelaten
 
 
-def _benchmark_from_peer_rendements(peer_lists: list[dict[int, float]]) -> dict[int, float]:
-    if not peer_lists:
-        return {}
-    all_jaren: set[int] = set().union(*[set(r.keys()) for r in peer_lists])
-    bm: dict[int, float] = {}
-    for jaar in sorted(all_jaren):
-        vals = [r[jaar] for r in peer_lists if jaar in r]
-        if vals:
-            bm[jaar] = round(sum(vals) / len(vals), 4)
-    return bm
+def _benchmark_rendement(peers: dict[str, dict[int, float]]) -> tuple[dict[int, float], dict[int, int]]:
+    """({cohort: gemiddelde van de peers}, {cohort: aantal peers in dat gemiddelde})."""
+    per_cohort: dict[int, list[float]] = {}
+    for rendement in peers.values():
+        for cohort, waarde in rendement.items():
+            per_cohort.setdefault(cohort, []).append(waarde)
+    gemiddelde = {c: round(sum(w) / len(w), 4) for c, w in sorted(per_cohort.items())}
+    return gemiddelde, {c: len(w) for c, w in sorted(per_cohort.items())}
 
 
 def _mbo_dipl_reeks(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) -> _Reeks:
@@ -1400,127 +1456,35 @@ def _mbo_dipl_reeks(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) -> 
     return _reeks(_mbo_dipl_lang(rows), "JAAR", "AANTAL")
 
 
-def _mbo_dipl_per_jaar(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) -> dict[int, int]:
-    return _mbo_dipl_reeks(df_dipl, filter_col, filter_val)[0]
-
-
 @_dashboardlading
 def load_dashboard_rendement(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
-
-    ho_result = _poging(_rendement_ho, instelling)
-    if ho_result:
-        return ho_result
-
-    mbo_result = _rendement_mbo(instelling)
-    if mbo_result:
-        return mbo_result
-
-    return result
-
-
-def _sector_rendement_ho(
-    df_inges: pd.DataFrame, df_dipl: pd.DataFrame, inst_col: str, instelling: str
-) -> dict[str, float]:
-    hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
-    if hu_dipl.empty or "ONDERDEEL" not in hu_dipl.columns:
-        return {}
-    hu_inges = df_inges[df_inges[inst_col].str.lower() == instelling.lower()]
-    out: dict[str, float] = {}
-    for onderdeel in hu_inges["ONDERDEEL"].unique():
-        d = int(hu_dipl[hu_dipl["ONDERDEEL"] == onderdeel]["AANTAL_GEDIPLOMEERDEN"].sum())
-        i = int(hu_inges[hu_inges["ONDERDEEL"] == onderdeel]["AANTAL_INGESCHREVENEN"].sum())
-        if i > 0 and d > 0:
-            out[onderdeel] = round(d / i, 4)
-    return out
-
-
-def _ho_peer_rendement(df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str, code: str) -> dict[int, float]:
-    p_ej = df_ej[df_ej[code_col] == code]
-    if p_ej.empty:
-        return {}
-    p_dipl = df_dipl[df_dipl[code_col] == code]
-    p_instroom = p_ej.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum()
-    p_dipl_series = (
-        p_dipl.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum() if not p_dipl.empty else pd.Series(dtype=int)
-    )
-    rend: dict[int, float] = {}
-    for jaar in p_instroom.index:
-        iv = int(p_instroom[jaar])
-        dt3 = int(p_dipl_series.get(jaar + 3, 0))
-        if iv > 0 and dt3 > 0:
-            rend[int(jaar)] = round(dt3 / iv, 4)
-    return rend
+    return _poging(_rendement_ho, instelling) or _rendement_mbo(instelling) or result
 
 
 def _rendement_ho(instelling: str) -> dict | None:
+    """Een hbo- of wo-instelling krijgt geen rendement, alleen de reden (#898). Of ze in het ho staat, zegt
+    p01hoinges; dat bestand draagt hier geen getal en staat dus niet in het bronblok."""
     try:
-        df_inges, df_ej, df_dipl = _load_ho_full()
+        with brongebruik.verzamel():
+            df_inges = _load_ho_ingeschrevenen()
     except Exception as e:
         _hoofdbron_niet_beschikbaar(e, "rendement-ho: niet beschikbaar", instelling)
         return None
-
-    inst_col = "INSTELLINGSNAAM_ACTUEEL"
-    code_col = "INSTELLINGSCODE_ACTUEEL"
-    hu_ej = df_ej[df_ej[inst_col].str.lower() == instelling.lower()]
-    if hu_ej.empty:
+    if not df_inges["INSTELLINGSNAAM_ACTUEEL"].str.lower().eq(instelling.lower()).any():
         return None
-
-    result: dict = {"instelling": instelling, "gevonden": True, "type": "ho"}
-    result["laatste_jaar"] = int(df_ej["STUDIEJAAR"].max())
-
-    instroom, _ = _reeks(hu_ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN")
-    hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
-    dipl, _ = _reeks(hu_dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN")
-
-    cohorten = _pseudo_cohorten(instroom, dipl)
-    result["pseudo_cohorten"] = cohorten
-    result["rendement_per_jaar"] = _rendement_per_jaar(cohorten)
-
-    result["sector_rendement"] = _sector_rendement_ho(df_inges, df_dipl, inst_col, instelling)
-
-    # benchmark & peers
-    ctx = _build_regio_context(instelling, "ho")
-    peers_rendement: dict[str, dict[int, float]] = {}
-    peer_rend_lists: list[dict[int, float]] = []
-    if ctx:
-        for code in ctx.peer_codes:
-            rend = _ho_peer_rendement(df_ej, df_dipl, code_col, code)
-            if rend:
-                naam = df_ej[df_ej[code_col] == code][inst_col].iloc[0]
-                peers_rendement[naam] = rend
-                peer_rend_lists.append(rend)
-
-    result["benchmark_rendement"] = _benchmark_from_peer_rendements(peer_rend_lists)
-    result["peers_rendement"] = peers_rendement
-    return result
+    return {"instelling": instelling, "gevonden": True, "type": "ho", "geen_rendement": _GEEN_RENDEMENT_HO}
 
 
-def _mbo_peer_rendement(instroom: dict[int, int], dipl: dict[int, int]) -> dict[int, float]:
-    """{instroomjaar: gediplomeerden drie jaar later / eerstejaars} van één peer."""
-    return {
-        jaar: round(dipl[jaar + 3] / iv, 4) for jaar, iv in instroom.items() if iv > 0 and dipl.get(jaar + 3, 0) > 0
-    }
-
-
-def _mbo_peers_rendement(ctx, df_dipl_mbo, code_naam: dict[str, str], eigen: str) -> dict[str, dict[int, float]]:
-    """Het rendement per peer, op naam en over al zijn codes (#923)."""
-    if not ctx:
-        return {}
-    try:
-        instroom = _mbo_instroom(_load_instromende_mbo_historisch(), code_naam)
-    except Exception as e:
-        _niet_beschikbaar(e, "rendement-mbo: peer rendement niet beschikbaar", onderdeel=_ONDERDEEL_RENDEMENT_REGIO)
-        return {}
-    dipl = _mbo_per_instelling(df_dipl_mbo, code_naam) if df_dipl_mbo is not None else None
-    peers_rendement: dict[str, dict[int, float]] = {}
-    for naam in sorted(_mbo_peernamen(ctx, code_naam, eigen)):
-        p_instroom, _ = _mbo_eerstejaars(instroom, naam)
-        p_dipl = _mbo_dipl_per_jaar(dipl, _INSTELLING, naam) if dipl is not None else {}
-        if rend := _mbo_peer_rendement(p_instroom, p_dipl):
-            peers_rendement[naam] = rend
-    return peers_rendement
+def _mbo_cohorten(instroom: pd.DataFrame, df_dipl_mbo: pd.DataFrame) -> list[int]:
+    """De cohorten met een gepubliceerd diplomajaar: elk jaar van de eerstejaars tot het laatste diplomajaar min de
+    termijn."""
+    if instroom.empty:
+        return []
+    laatste_diplomajaar = max(int(c[-4:]) for c in df_dipl_mbo.columns if c.startswith("DIP"))
+    jaren = sorted({int(j) for j in instroom["JAAR"].dropna()})
+    return [j for j in jaren if j + _RENDEMENT_TERMIJN <= laatste_diplomajaar]
 
 
 def _rendement_mbo(instelling: str) -> dict | None:
@@ -1531,35 +1495,51 @@ def _rendement_mbo(instelling: str) -> dict | None:
         _hoofdbron_niet_beschikbaar(e, "rendement-mbo: niet beschikbaar", instelling)
         return None
 
-    inst_col = "INSTELLINGSNAAM"
-    rows = df_mbo[df_mbo[inst_col].str.lower() == instelling.lower()]
+    rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
     if rows.empty:
         return None
 
-    result: dict = {"instelling": instelling, "gevonden": True, "type": "mbo"}
-    result["laatste_jaar"] = int(rows["JAAR"].max())
     code_naam = _mbo_code_naam(df_mbo)
-    eigen = str(rows[inst_col].iloc[0])
-
-    # instroom, over alle codes van de instelling (#923)
-    instroom_per_jaar: dict[int, int] = {}
+    eigen = str(rows["INSTELLINGSNAAM"].iloc[0])
     try:
-        instroom_per_jaar, _ = _mbo_eerstejaars(_mbo_instroom(_load_instromende_mbo_historisch(), code_naam), eigen)
+        instroom = _mbo_instroom(_load_instromende_mbo_historisch(), code_naam)
     except Exception as e:
-        _niet_beschikbaar(e, "rendement-mbo: instroom per jaar niet beschikbaar", onderdeel=_ONDERDEEL_INSTROOM)
+        _niet_beschikbaar(e, "rendement-mbo: eerstejaars niet beschikbaar", onderdeel=_ONDERDEEL_EERSTEJAARS)
+        instroom = _mbo_instroom(None, code_naam)
+    dipl = _mbo_per_instelling(df_dipl_mbo, code_naam)
+    cohorten = _mbo_cohorten(instroom, df_dipl_mbo)
 
-    dipl_per_jaar = _mbo_dipl_per_jaar(df_dipl_mbo, inst_col, instelling) if df_dipl_mbo is not None else {}
+    def per_instelling(naam: str) -> tuple[dict[int, int], dict[int, int]]:
+        """({cohort: eerstejaars}, {diplomajaar: diploma's}) van één instelling, over al haar codes (#923)."""
+        return _mbo_eerstejaars(instroom, naam)[0], _mbo_dipl_reeks(dipl, _INSTELLING, naam)[0]
 
-    cohorten = _pseudo_cohorten(instroom_per_jaar, dipl_per_jaar)
-    result["pseudo_cohorten"] = cohorten
-    result["rendement_per_jaar"] = _rendement_per_jaar(cohorten)
-    result["sector_rendement"] = {}
+    eigen_instroom, eigen_dipl = per_instelling(eigen)
+    rendement, weggelaten = _rendement(cohorten, eigen_instroom, eigen_dipl)
+    result: dict = {
+        "instelling": instelling,
+        "gevonden": True,
+        "type": "mbo",
+        "laatste_jaar": int(rows["JAAR"].max()),
+        "definitie": dict(_RENDEMENT_MBO),
+        "pseudo_cohorten": _pseudo_cohorten(eigen_instroom, eigen_dipl),
+        "rendement_per_jaar": rendement,
+        "weggelaten": weggelaten,
+    }
 
-    # benchmark & peers
     ctx = _build_regio_context(instelling, "mbo")
-    peers_rendement = _mbo_peers_rendement(ctx, df_dipl_mbo, code_naam, eigen)
-    result["benchmark_rendement"] = _benchmark_from_peer_rendements(list(peers_rendement.values()))
-    result["peers_rendement"] = peers_rendement
+    peers: dict[str, dict[int, float]] = {}
+    peers_weggelaten: dict[str, dict[int, str]] = {}
+    peernamen = sorted(_mbo_peernamen(ctx, code_naam, eigen)) if ctx else []
+    for naam in peernamen:
+        peer, peer_weg = _rendement(cohorten, *per_instelling(naam))
+        if peer:
+            peers[naam] = peer
+        if peer_weg:
+            peers_weggelaten[naam] = peer_weg
+    result["benchmark_label"] = _benchmark_kop(ctx, len(peernamen))["label"] if ctx else None
+    result["benchmark_rendement"], result["benchmark_n_per_jaar"] = _benchmark_rendement(peers)
+    result["peers_rendement"] = peers
+    result["peers_weggelaten"] = peers_weggelaten
     return result
 
 

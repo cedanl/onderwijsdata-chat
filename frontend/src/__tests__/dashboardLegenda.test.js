@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // #907: een klik op een legenda-item zet die reeks aan of uit, ook bij de eerste klik op een reeks die verborgen begint.
 // Zes dashboardgrafieken hadden een eigen legendahandler die `meta.hidden = !meta.hidden` deed. Bij een reeks met
-// `hidden: true` (de peers in "Diplomarendement over tijd") is `meta.hidden` eerst null, dus de eerste klik zette hem op
+// `hidden: true` (de peers in de trend van diploma's per eerstejaars) is `meta.hidden` eerst null, dus de eerste klik zette hem op
 // true en de reeks bleef weg. Chart.js doet het standaard goed. De test rendert de drie dashboards met de fixtures,
 // vangt elke grafiek die react-chartjs-2 zou tekenen, en klikt in een echte Chart.js elke legenda-regel aan.
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
@@ -102,21 +102,22 @@ describe('legenda van de dashboardgrafieken (#907)', () => {
     }
   })
 
-  it('de peers in "Diplomarendement over tijd" beginnen verborgen en verschijnen bij de eerste klik', async () => {
-    // De fixture heeft één rendementsjaar; de trend tekent pas vanaf twee.
+  it('de peers in de trend van diploma\'s per eerstejaars beginnen verborgen en verschijnen bij de eerste klik', async () => {
+    // Alleen mbo heeft deze trend (#898); de fixture is een hogeschool, dus hier een mbo-payload met twee cohorten.
     payloads.rendement = {
-      ...payloads.rendement,
-      rendement_per_jaar: { 2019: 0.5, 2020: 0.52, 2021: 0.55 },
-      benchmark_rendement: { 2019: 0.6, 2020: 0.6, 2021: 0.61 },
-      peers_rendement: { 'Marnix Academie': { 2019: 0.7, 2020: 0.71, 2021: 0.72 }, 'Universiteit Utrecht': { 2020: 0.4, 2021: 0.42 } },
+      instelling: payloads.regio.instelling, gevonden: true, type: 'mbo',
+      definitie: { naam: "Diploma's na 3 jaar per eerstejaars", termijn: 3 },
+      rendement_per_jaar: { 2021: 0.9, 2022: 0.88 },
+      benchmark_rendement: { 2021: 0.8, 2022: 0.85 },
+      peers_rendement: { Albeda: { 2021: 0.94, 2022: 0.94 }, Zadkine: { 2022: 0.89 } },
     }
     const grafieken = await teken(InlineDashboardMijnInstelling)
     const trend = grafieken.find(g => g.data.datasets.some(d => d.hidden))
-    expect(trend?.data.datasets.filter(d => d.hidden).map(d => d.label)).toEqual(['Marnix Academie', 'Universiteit Utrecht'])
-    const peerKlikken = klikElkeRegel(trend).filter(k => ['Marnix Academie', 'Universiteit Utrecht'].includes(k.label))
+    expect(trend?.data.datasets.filter(d => d.hidden).map(d => d.label)).toEqual(['Albeda', 'Zadkine'])
+    const peerKlikken = klikElkeRegel(trend).filter(k => ['Albeda', 'Zadkine'].includes(k.label))
     expect(peerKlikken).toEqual([
-      { label: 'Marnix Academie', voor: false, na: true },
-      { label: 'Universiteit Utrecht', voor: false, na: true },
+      { label: 'Albeda', voor: false, na: true },
+      { label: 'Zadkine', voor: false, na: true },
     ])
   })
 })

@@ -12,7 +12,7 @@ op `true` staat (standaard uit in de code, #765; op test en playground staat hij
 
 | Dashboard in de UI | Eindpunten | Inhoud |
 |--------------------|------------|--------|
-| **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep. Daarnaast diplomarendement per cohort en sector |
+| **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep, en diploma's na 3 jaar per eerstejaars; hbo en wo: een noot waarom daar geen rendement staat |
 | **Arbeidsmarkt** | `/api/dashboard/arbeidsmarktmatch`, `/api/dashboard/regio` | Gediplomeerden tegen vacatures per sector, de matchscore, ROA (schoolverlaters en prognoses per opleidingsniveau) en de vacatures in de provincie |
 | **Landelijk** | `/api/dashboard/nationaal` | Positie per sector, marktaandeel, trend van de eigen sectoren en de ranking van alle instellingen van hetzelfde type |
 
@@ -122,6 +122,33 @@ decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callback
   tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
+
+### Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
+
+`/api/dashboard/rendement` heette een "rendement", maar DUO volgt geen studenten. Besluit 05-11 (#898): mbo houdt de
+tegel onder de naam van wat hij telt, hbo en wo krijgen geen tegel tot er een echte cohortbron is.
+
+- **Mbo** (`type: "mbo"`): per cohort (het jaar van de eerstejaars) de mbo-diploma's van de instelling in diplomajaar
+  cohort + 3 (`_RENDEMENT_TERMIJN`), gedeeld door haar eerstejaars van dat cohort (`INSTROOM MBO = J` in
+  `instromende-mbo-studenten`), beide over al haar codes (#923). Het is een ruwe verhouding, geen cohortrendement: de
+  diploma's zijn niet die van dit cohort. De payload draagt de naam, de termijn, de definitie, wat niet meetelt en wat
+  wel (`definitie`, `_RENDEMENT_MBO`); het dashboard toont dat boven de cijfers, zoals het definitieblok (#736) en
+  "Niet meegeteld" (#743) in het rapport. Wat niet meetelt, staat in de teldefinities van DUO en de domeinregel
+  `mbo-instroom-mbo`; `tests/test_dashboard_rendement.py` leest het na.
+- **Eén regel** (`_rendement`): de instelling en elke peer gaan door dezelfde functie, over dezelfde cohorten (alle jaren
+  van de eerstejaars waarvan DUO het diplomajaar + 3 al publiceert). Elk cohort krijgt een verhouding of een reden in
+  `weggelaten` (de instelling) of `peers_weggelaten` (per peer): geen eerstejaars, geen diploma's bekend, of meer
+  diploma's dan eerstejaars (geen cohortmaat, voor instelling en peers gelijk). Niets valt stil weg; het dashboard noemt
+  ze per reden, ook als er geen cohort overblijft. Tot #898 gold de bovengrens alleen voor de instelling, en kwam het
+  regiogemiddelde daardoor boven 100 %.
+- **Regiogemiddelde**: `benchmark_rendement` per cohort over de peers met een verhouding, met hun aantal in
+  `benchmark_n_per_jaar` en de naam in `benchmark_label` (de legenda).
+- **Hbo en wo** (`type: "ho"`): alleen `geen_rendement`, een noot waarom er geen rendement staat en dat de chat en het
+  rapport het landelijk uit de CBS-cohorttabellen halen. De diploma's van `p04hogdipl` tellen ook masters, associate
+  degrees en eerdere cohorten, de eerstejaars van `p02ho1ejrs` geen hbo-masters en niemand die eerder in het ho stond;
+  live kwam de verhouding tot 2,45 en viel elk cohort af. Of de naam in het ho staat, zegt `p01hoinges`; dat bestand
+  draagt geen getal en staat niet in het bronblok (`bronnen` is leeg). Het rendement per sector en de ho-peerberekening
+  zijn weg.
 
 ### Onderdrukte en ontbrekende cellen
 

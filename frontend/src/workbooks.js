@@ -4,10 +4,12 @@ import { getToken, sessionEndedSince } from './auth'
 import { volgOpslag } from './gesprekOpslag'
 import { terugInLijst } from './verwijderenMetUitstel'
 
-// Gender zit alleen in het ho-dashboard (hbo en wo); het mbo-dashboard heeft die sectie niet (#918). Bij een
-// onbekend niveau (vrije tekst als instelling) belooft de kaart het dus ook niet.
+// Gender zit alleen in het ho-dashboard (hbo en wo); het mbo-dashboard heeft die sectie niet (#918). De diploma's
+// per eerstejaars staan alleen bij mbo: hbo en wo hebben geen cohortbron (#898). Bij een onbekend niveau (vrije tekst
+// als instelling) belooft de kaart geen van beide.
 export function mijnInstellingBeschrijving(sector) {
-  const onderdelen = ['Kerncijfers', 'instroom', 'diplomering', 'rendement']
+  const onderdelen = ['Kerncijfers', 'instroom', 'diplomering']
+  if (sector === 'mbo') onderdelen.push("diploma's per eerstejaars")
   if (sector === 'hbo' || sector === 'wo') onderdelen.push('gender')
   return `${onderdelen.join(', ')} en regionale benchmark in één overzicht.`
 }
