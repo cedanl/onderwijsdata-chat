@@ -170,3 +170,29 @@ async def dashboard_rendement(instelling: str = Query(...)) -> dict | JSONRespon
 @router.get("/api/dashboard/arbeidsmarktmatch", response_model=None, dependencies=_INGELOGD)
 async def dashboard_arbeidsmarktmatch(instelling: str = Query(...)) -> dict | JSONResponse:
     return await _laad_dashboard(load_dashboard_arbeidsmarktmatch, instelling)
+
+
+# ─── Wat geen dashboard-eindpunt is (#954) ───────────────────────────────────
+# De vier eindpunten hierboven, zoals docs/api.md en docs/dashboards.md ze noemen. Een ander pad onder /api/dashboard of
+# /api/dashboards gaf een kale 404; nu zegt het antwoord welke er wel zijn. /api/dashboard/instroom bestond tot 2.6.0
+# (#930) en geeft 410 met waar de cijfers nu staan. Geen login nodig: er wordt niets geladen, en de paden staan in de
+# docs. De routes staan na de vier, zodat die voorgaan.
+DASHBOARD_EINDPUNTEN = ("regio", "nationaal", "rendement", "arbeidsmarktmatch")
+_WEL = ", ".join(f"/api/dashboard/{naam}" for naam in DASHBOARD_EINDPUNTEN) + ", elk met ?instelling=<naam>"
+INSTROOM_WEG = (
+    "/api/dashboard/instroom bestaat niet meer sinds versie 2.6.0: de cijfers van de eigen instelling staan in "
+    f"/api/dashboard/regio. De dashboard-eindpunten zijn {_WEL}."
+)
+ONBEKEND_EINDPUNT = f"Geen dashboard-eindpunt. De dashboard-eindpunten zijn {_WEL}."
+
+
+@router.get("/api/dashboard/instroom", include_in_schema=False)
+async def dashboard_instroom_weg() -> JSONResponse:
+    return JSONResponse({"error": INSTROOM_WEG}, status_code=410)
+
+
+@router.get("/api/dashboard/{rest:path}", include_in_schema=False)
+@router.get("/api/dashboards", include_in_schema=False)
+@router.get("/api/dashboards/{rest:path}", include_in_schema=False)
+async def onbekend_dashboard_eindpunt() -> JSONResponse:
+    return JSONResponse({"error": ONBEKEND_EINDPUNT}, status_code=404)
