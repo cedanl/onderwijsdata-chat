@@ -47,7 +47,7 @@ from .stream import Emit
 from .tabelnoot import met_tabelnoot
 from .tekens import zonder_citaatkop
 from .telling import met_telling
-from .timebox import timebox
+from .timebox import harde_grens, timebox
 from .uitgangspunt import met_uitgangspunt
 from .vaste_antwoorden import (
     SCOPE_UITLEG,
@@ -544,7 +544,7 @@ async def run(
     with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
-                async with asyncio.timeout(box.afbreken_s):
+                async with harde_grens(box.afbreken_s):
                     result = await tool_loop(
                         history,
                         model=chosen_model,

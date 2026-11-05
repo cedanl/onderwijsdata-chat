@@ -35,6 +35,7 @@ from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
 from .selectie import data_keys
 from .stream import Emit, StreamResult, Tokens, accumulate_stream
+from .timebox import grens_verstreken
 
 logger = logging.getLogger(__name__)
 
@@ -248,8 +249,9 @@ class _Loop:
             sr = await self._ask_gemeten(meting, **extra)
             meting.uitkomst = "gestopt" if sr is None else "ok"
             return sr
-        except Exception as exc:
-            meting.uitkomst = type(exc).__name__
+        except BaseException as exc:
+            # BaseException: ook een afbraak (CancelledError) krijgt zijn eigen uitkomst en gaat daarna door (#800).
+            meting.uitkomst = _uitkomst_van(exc)
             raise
         finally:
             _log_aanroep(self.model, meting)
@@ -521,6 +523,17 @@ class _Aanroepmeting:
     uitkomst: str = "ok"
 
 
+def _uitkomst_van(exc: BaseException) -> str:
+    """Hoe een aanroep eindigde die niet terugkwam: een afbraak van de harde grens, een annulering, of het fouttype.
+
+    Een CancelledError is de harde grens van de run of het rapport (`agent.timebox.harde_grens`) als die verstreken
+    is, anders een annulering van buitenaf: een gesloten WebSocket, een reset of een ander gesprek (#800).
+    """
+    if isinstance(exc, asyncio.CancelledError):
+        return "afgebroken_runlimiet" if grens_verstreken() else "geannuleerd"
+    return type(exc).__name__
+
+
 def _sec(moment: float | None, start: float) -> str:
     return "-" if moment is None else f"{moment - start:.1f}s"
 
@@ -530,7 +543,8 @@ def _log_aanroep(model: str, m: _Aanroepmeting) -> None:
 
     open: until the provider answered the request, including the waits of acompletion_with_backoff after a rate limit
     or time-out (each logged on its own); eerste_chunk: until the first chunk of the stream; totaal: until the stream
-    ended, or the stop or error. uitkomst is ok, gestopt or the type of the error.
+    ended, or the stop, error or abort. uitkomst is ok, gestopt, afgebroken_runlimiet (the hard limit of the run or
+    report cut it off), geannuleerd (cancelled from outside) or the type of the error.
     """
     logger.info(
         "MODELAANROEP  model=%s  uitkomst=%s  open=%s  eerste_chunk=%s  totaal=%s  uitvoer=%d",
