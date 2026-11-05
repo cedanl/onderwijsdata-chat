@@ -1,0 +1,8736 @@
+{
+ "_bron": {
+  "tabel": "86312NED",
+  "titel": "Woonplaatsen in Nederland 2026",
+  "url": "https://opendata.cbs.nl/statline/#/CBS/nl/dataset/86312NED",
+  "opgehaald": "2026-11-05"
+ },
+ "gemeenten": {
+  "0014": {
+   "naam": "Groningen",
+   "provincie": "PV20"
+  },
+  "0034": {
+   "naam": "Almere",
+   "provincie": "PV24"
+  },
+  "0037": {
+   "naam": "Stadskanaal",
+   "provincie": "PV20"
+  },
+  "0047": {
+   "naam": "Veendam",
+   "provincie": "PV20"
+  },
+  "0050": {
+   "naam": "Zeewolde",
+   "provincie": "PV24"
+  },
+  "0059": {
+   "naam": "Achtkarspelen",
+   "provincie": "PV21"
+  },
+  "0060": {
+   "naam": "Ameland",
+   "provincie": "PV21"
+  },
+  "0072": {
+   "naam": "Harlingen",
+   "provincie": "PV21"
+  },
+  "0074": {
+   "naam": "Heerenveen",
+   "provincie": "PV21"
+  },
+  "0080": {
+   "naam": "Leeuwarden",
+   "provincie": "PV21"
+  },
+  "0085": {
+   "naam": "Ooststellingwerf",
+   "provincie": "PV21"
+  },
+  "0086": {
+   "naam": "Opsterland",
+   "provincie": "PV21"
+  },
+  "0088": {
+   "naam": "Schiermonnikoog",
+   "provincie": "PV21"
+  },
+  "0090": {
+   "naam": "Smallingerland",
+   "provincie": "PV21"
+  },
+  "0093": {
+   "naam": "Terschelling",
+   "provincie": "PV21"
+  },
+  "0096": {
+   "naam": "Vlieland",
+   "provincie": "PV21"
+  },
+  "0098": {
+   "naam": "Weststellingwerf",
+   "provincie": "PV21"
+  },
+  "0106": {
+   "naam": "Assen",
+   "provincie": "PV22"
+  },
+  "0109": {
+   "naam": "Coevorden",
+   "provincie": "PV22"
+  },
+  "0114": {
+   "naam": "Emmen",
+   "provincie": "PV22"
+  },
+  "0118": {
+   "naam": "Hoogeveen",
+   "provincie": "PV22"
+  },
+  "0119": {
+   "naam": "Meppel",
+   "provincie": "PV22"
+  },
+  "0141": {
+   "naam": "Almelo",
+   "provincie": "PV23"
+  },
+  "0147": {
+   "naam": "Borne",
+   "provincie": "PV23"
+  },
+  "0148": {
+   "naam": "Dalfsen",
+   "provincie": "PV23"
+  },
+  "0150": {
+   "naam": "Deventer",
+   "provincie": "PV23"
+  },
+  "0153": {
+   "naam": "Enschede",
+   "provincie": "PV23"
+  },
+  "0158": {
+   "naam": "Haaksbergen",
+   "provincie": "PV23"
+  },
+  "0160": {
+   "naam": "Hardenberg",
+   "provincie": "PV23"
+  },
+  "0163": {
+   "naam": "Hellendoorn",
+   "provincie": "PV23"
+  },
+  "0164": {
+   "naam": "Hengelo (O.)",
+   "provincie": "PV23"
+  },
+  "0166": {
+   "naam": "Kampen",
+   "provincie": "PV23"
+  },
+  "0168": {
+   "naam": "Losser",
+   "provincie": "PV23"
+  },
+  "0171": {
+   "naam": "Noordoostpolder",
+   "provincie": "PV24"
+  },
+  "0173": {
+   "naam": "Oldenzaal",
+   "provincie": "PV23"
+  },
+  "0175": {
+   "naam": "Ommen",
+   "provincie": "PV23"
+  },
+  "0177": {
+   "naam": "Raalte",
+   "provincie": "PV23"
+  },
+  "0180": {
+   "naam": "Staphorst",
+   "provincie": "PV23"
+  },
+  "0183": {
+   "naam": "Tubbergen",
+   "provincie": "PV23"
+  },
+  "0184": {
+   "naam": "Urk",
+   "provincie": "PV24"
+  },
+  "0189": {
+   "naam": "Wierden",
+   "provincie": "PV23"
+  },
+  "0193": {
+   "naam": "Zwolle",
+   "provincie": "PV23"
+  },
+  "0197": {
+   "naam": "Aalten",
+   "provincie": "PV25"
+  },
+  "0200": {
+   "naam": "Apeldoorn",
+   "provincie": "PV25"
+  },
+  "0202": {
+   "naam": "Arnhem",
+   "provincie": "PV25"
+  },
+  "0203": {
+   "naam": "Barneveld",
+   "provincie": "PV25"
+  },
+  "0209": {
+   "naam": "Beuningen",
+   "provincie": "PV25"
+  },
+  "0213": {
+   "naam": "Brummen",
+   "provincie": "PV25"
+  },
+  "0214": {
+   "naam": "Buren",
+   "provincie": "PV25"
+  },
+  "0216": {
+   "naam": "Culemborg",
+   "provincie": "PV25"
+  },
+  "0221": {
+   "naam": "Doesburg",
+   "provincie": "PV25"
+  },
+  "0222": {
+   "naam": "Doetinchem",
+   "provincie": "PV25"
+  },
+  "0225": {
+   "naam": "Druten",
+   "provincie": "PV25"
+  },
+  "0226": {
+   "naam": "Duiven",
+   "provincie": "PV25"
+  },
+  "0228": {
+   "naam": "Ede",
+   "provincie": "PV25"
+  },
+  "0230": {
+   "naam": "Elburg",
+   "provincie": "PV25"
+  },
+  "0232": {
+   "naam": "Epe",
+   "provincie": "PV25"
+  },
+  "0233": {
+   "naam": "Ermelo",
+   "provincie": "PV25"
+  },
+  "0243": {
+   "naam": "Harderwijk",
+   "provincie": "PV25"
+  },
+  "0244": {
+   "naam": "Hattem",
+   "provincie": "PV25"
+  },
+  "0246": {
+   "naam": "Heerde",
+   "provincie": "PV25"
+  },
+  "0252": {
+   "naam": "Heumen",
+   "provincie": "PV25"
+  },
+  "0262": {
+   "naam": "Lochem",
+   "provincie": "PV25"
+  },
+  "0263": {
+   "naam": "Maasdriel",
+   "provincie": "PV25"
+  },
+  "0267": {
+   "naam": "Nijkerk",
+   "provincie": "PV25"
+  },
+  "0268": {
+   "naam": "Nijmegen",
+   "provincie": "PV25"
+  },
+  "0269": {
+   "naam": "Oldebroek",
+   "provincie": "PV25"
+  },
+  "0273": {
+   "naam": "Putten",
+   "provincie": "PV25"
+  },
+  "0274": {
+   "naam": "Renkum",
+   "provincie": "PV25"
+  },
+  "0275": {
+   "naam": "Rheden",
+   "provincie": "PV25"
+  },
+  "0277": {
+   "naam": "Rozendaal",
+   "provincie": "PV25"
+  },
+  "0279": {
+   "naam": "Scherpenzeel",
+   "provincie": "PV25"
+  },
+  "0281": {
+   "naam": "Tiel",
+   "provincie": "PV25"
+  },
+  "0285": {
+   "naam": "Voorst",
+   "provincie": "PV25"
+  },
+  "0289": {
+   "naam": "Wageningen",
+   "provincie": "PV25"
+  },
+  "0293": {
+   "naam": "Westervoort",
+   "provincie": "PV25"
+  },
+  "0294": {
+   "naam": "Winterswijk",
+   "provincie": "PV25"
+  },
+  "0296": {
+   "naam": "Wijchen",
+   "provincie": "PV25"
+  },
+  "0297": {
+   "naam": "Zaltbommel",
+   "provincie": "PV25"
+  },
+  "0299": {
+   "naam": "Zevenaar",
+   "provincie": "PV25"
+  },
+  "0301": {
+   "naam": "Zutphen",
+   "provincie": "PV25"
+  },
+  "0302": {
+   "naam": "Nunspeet",
+   "provincie": "PV25"
+  },
+  "0303": {
+   "naam": "Dronten",
+   "provincie": "PV24"
+  },
+  "0307": {
+   "naam": "Amersfoort",
+   "provincie": "PV26"
+  },
+  "0308": {
+   "naam": "Baarn",
+   "provincie": "PV26"
+  },
+  "0310": {
+   "naam": "De Bilt",
+   "provincie": "PV26"
+  },
+  "0312": {
+   "naam": "Bunnik",
+   "provincie": "PV26"
+  },
+  "0313": {
+   "naam": "Bunschoten",
+   "provincie": "PV26"
+  },
+  "0317": {
+   "naam": "Eemnes",
+   "provincie": "PV26"
+  },
+  "0321": {
+   "naam": "Houten",
+   "provincie": "PV26"
+  },
+  "0327": {
+   "naam": "Leusden",
+   "provincie": "PV26"
+  },
+  "0331": {
+   "naam": "Lopik",
+   "provincie": "PV26"
+  },
+  "0335": {
+   "naam": "Montfoort",
+   "provincie": "PV26"
+  },
+  "0339": {
+   "naam": "Renswoude",
+   "provincie": "PV26"
+  },
+  "0340": {
+   "naam": "Rhenen",
+   "provincie": "PV26"
+  },
+  "0342": {
+   "naam": "Soest",
+   "provincie": "PV26"
+  },
+  "0344": {
+   "naam": "Utrecht",
+   "provincie": "PV26"
+  },
+  "0345": {
+   "naam": "Veenendaal",
+   "provincie": "PV26"
+  },
+  "0351": {
+   "naam": "Woudenberg",
+   "provincie": "PV26"
+  },
+  "0352": {
+   "naam": "Wijk bij Duurstede",
+   "provincie": "PV26"
+  },
+  "0353": {
+   "naam": "IJsselstein",
+   "provincie": "PV26"
+  },
+  "0355": {
+   "naam": "Zeist",
+   "provincie": "PV26"
+  },
+  "0356": {
+   "naam": "Nieuwegein",
+   "provincie": "PV26"
+  },
+  "0358": {
+   "naam": "Aalsmeer",
+   "provincie": "PV27"
+  },
+  "0361": {
+   "naam": "Alkmaar",
+   "provincie": "PV27"
+  },
+  "0362": {
+   "naam": "Amstelveen",
+   "provincie": "PV27"
+  },
+  "0363": {
+   "naam": "Amsterdam",
+   "provincie": "PV27"
+  },
+  "0373": {
+   "naam": "Bergen (NH.)",
+   "provincie": "PV27"
+  },
+  "0375": {
+   "naam": "Beverwijk",
+   "provincie": "PV27"
+  },
+  "0376": {
+   "naam": "Blaricum",
+   "provincie": "PV27"
+  },
+  "0377": {
+   "naam": "Bloemendaal",
+   "provincie": "PV27"
+  },
+  "0383": {
+   "naam": "Castricum",
+   "provincie": "PV27"
+  },
+  "0384": {
+   "naam": "Diemen",
+   "provincie": "PV27"
+  },
+  "0385": {
+   "naam": "Edam-Volendam",
+   "provincie": "PV27"
+  },
+  "0388": {
+   "naam": "Enkhuizen",
+   "provincie": "PV27"
+  },
+  "0392": {
+   "naam": "Haarlem",
+   "provincie": "PV27"
+  },
+  "0394": {
+   "naam": "Haarlemmermeer",
+   "provincie": "PV27"
+  },
+  "0396": {
+   "naam": "Heemskerk",
+   "provincie": "PV27"
+  },
+  "0397": {
+   "naam": "Heemstede",
+   "provincie": "PV27"
+  },
+  "0399": {
+   "naam": "Heiloo",
+   "provincie": "PV27"
+  },
+  "0400": {
+   "naam": "Den Helder",
+   "provincie": "PV27"
+  },
+  "0402": {
+   "naam": "Hilversum",
+   "provincie": "PV27"
+  },
+  "0405": {
+   "naam": "Hoorn",
+   "provincie": "PV27"
+  },
+  "0406": {
+   "naam": "Huizen",
+   "provincie": "PV27"
+  },
+  "0415": {
+   "naam": "Landsmeer",
+   "provincie": "PV27"
+  },
+  "0417": {
+   "naam": "Laren (NH.)",
+   "provincie": "PV27"
+  },
+  "0420": {
+   "naam": "Medemblik",
+   "provincie": "PV27"
+  },
+  "0431": {
+   "naam": "Oostzaan",
+   "provincie": "PV27"
+  },
+  "0432": {
+   "naam": "Opmeer",
+   "provincie": "PV27"
+  },
+  "0437": {
+   "naam": "Ouder-Amstel",
+   "provincie": "PV27"
+  },
+  "0439": {
+   "naam": "Purmerend",
+   "provincie": "PV27"
+  },
+  "0441": {
+   "naam": "Schagen",
+   "provincie": "PV27"
+  },
+  "0448": {
+   "naam": "Texel",
+   "provincie": "PV27"
+  },
+  "0450": {
+   "naam": "Uitgeest",
+   "provincie": "PV27"
+  },
+  "0451": {
+   "naam": "Uithoorn",
+   "provincie": "PV27"
+  },
+  "0453": {
+   "naam": "Velsen",
+   "provincie": "PV27"
+  },
+  "0473": {
+   "naam": "Zandvoort",
+   "provincie": "PV27"
+  },
+  "0479": {
+   "naam": "Zaanstad",
+   "provincie": "PV27"
+  },
+  "0482": {
+   "naam": "Alblasserdam",
+   "provincie": "PV28"
+  },
+  "0484": {
+   "naam": "Alphen aan den Rijn",
+   "provincie": "PV28"
+  },
+  "0489": {
+   "naam": "Barendrecht",
+   "provincie": "PV28"
+  },
+  "0498": {
+   "naam": "Drechterland",
+   "provincie": "PV27"
+  },
+  "0502": {
+   "naam": "Capelle aan den IJssel",
+   "provincie": "PV28"
+  },
+  "0503": {
+   "naam": "Delft",
+   "provincie": "PV28"
+  },
+  "0505": {
+   "naam": "Dordrecht",
+   "provincie": "PV28"
+  },
+  "0512": {
+   "naam": "Gorinchem",
+   "provincie": "PV28"
+  },
+  "0513": {
+   "naam": "Gouda",
+   "provincie": "PV28"
+  },
+  "0518": {
+   "naam": "'s-Gravenhage",
+   "provincie": "PV28"
+  },
+  "0523": {
+   "naam": "Hardinxveld-Giessendam",
+   "provincie": "PV28"
+  },
+  "0531": {
+   "naam": "Hendrik-Ido-Ambacht",
+   "provincie": "PV28"
+  },
+  "0532": {
+   "naam": "Stede Broec",
+   "provincie": "PV27"
+  },
+  "0534": {
+   "naam": "Hillegom",
+   "provincie": "PV28"
+  },
+  "0537": {
+   "naam": "Katwijk",
+   "provincie": "PV28"
+  },
+  "0542": {
+   "naam": "Krimpen aan den IJssel",
+   "provincie": "PV28"
+  },
+  "0546": {
+   "naam": "Leiden",
+   "provincie": "PV28"
+  },
+  "0547": {
+   "naam": "Leiderdorp",
+   "provincie": "PV28"
+  },
+  "0553": {
+   "naam": "Lisse",
+   "provincie": "PV28"
+  },
+  "0556": {
+   "naam": "Maassluis",
+   "provincie": "PV28"
+  },
+  "0569": {
+   "naam": "Nieuwkoop",
+   "provincie": "PV28"
+  },
+  "0575": {
+   "naam": "Noordwijk",
+   "provincie": "PV28"
+  },
+  "0579": {
+   "naam": "Oegstgeest",
+   "provincie": "PV28"
+  },
+  "0589": {
+   "naam": "Oudewater",
+   "provincie": "PV26"
+  },
+  "0590": {
+   "naam": "Papendrecht",
+   "provincie": "PV28"
+  },
+  "0597": {
+   "naam": "Ridderkerk",
+   "provincie": "PV28"
+  },
+  "0599": {
+   "naam": "Rotterdam",
+   "provincie": "PV28"
+  },
+  "0603": {
+   "naam": "Rijswijk (ZH.)",
+   "provincie": "PV28"
+  },
+  "0606": {
+   "naam": "Schiedam",
+   "provincie": "PV28"
+  },
+  "0610": {
+   "naam": "Sliedrecht",
+   "provincie": "PV28"
+  },
+  "0613": {
+   "naam": "Albrandswaard",
+   "provincie": "PV28"
+  },
+  "0622": {
+   "naam": "Vlaardingen",
+   "provincie": "PV28"
+  },
+  "0626": {
+   "naam": "Voorschoten",
+   "provincie": "PV28"
+  },
+  "0627": {
+   "naam": "Waddinxveen",
+   "provincie": "PV28"
+  },
+  "0629": {
+   "naam": "Wassenaar",
+   "provincie": "PV28"
+  },
+  "0632": {
+   "naam": "Woerden",
+   "provincie": "PV26"
+  },
+  "0637": {
+   "naam": "Zoetermeer",
+   "provincie": "PV28"
+  },
+  "0638": {
+   "naam": "Zoeterwoude",
+   "provincie": "PV28"
+  },
+  "0642": {
+   "naam": "Zwijndrecht",
+   "provincie": "PV28"
+  },
+  "0654": {
+   "naam": "Borsele",
+   "provincie": "PV29"
+  },
+  "0664": {
+   "naam": "Goes",
+   "provincie": "PV29"
+  },
+  "0668": {
+   "naam": "West Maas en Waal",
+   "provincie": "PV25"
+  },
+  "0677": {
+   "naam": "Hulst",
+   "provincie": "PV29"
+  },
+  "0678": {
+   "naam": "Kapelle",
+   "provincie": "PV29"
+  },
+  "0687": {
+   "naam": "Middelburg (Z.)",
+   "provincie": "PV29"
+  },
+  "0703": {
+   "naam": "Reimerswaal",
+   "provincie": "PV29"
+  },
+  "0715": {
+   "naam": "Terneuzen",
+   "provincie": "PV29"
+  },
+  "0716": {
+   "naam": "Tholen",
+   "provincie": "PV29"
+  },
+  "0717": {
+   "naam": "Veere",
+   "provincie": "PV29"
+  },
+  "0718": {
+   "naam": "Vlissingen",
+   "provincie": "PV29"
+  },
+  "0736": {
+   "naam": "De Ronde Venen",
+   "provincie": "PV26"
+  },
+  "0737": {
+   "naam": "Tytsjerksteradiel",
+   "provincie": "PV21"
+  },
+  "0743": {
+   "naam": "Asten",
+   "provincie": "PV30"
+  },
+  "0744": {
+   "naam": "Baarle-Nassau",
+   "provincie": "PV30"
+  },
+  "0748": {
+   "naam": "Bergen op Zoom",
+   "provincie": "PV30"
+  },
+  "0753": {
+   "naam": "Best",
+   "provincie": "PV30"
+  },
+  "0755": {
+   "naam": "Boekel",
+   "provincie": "PV30"
+  },
+  "0757": {
+   "naam": "Boxtel",
+   "provincie": "PV30"
+  },
+  "0758": {
+   "naam": "Breda",
+   "provincie": "PV30"
+  },
+  "0762": {
+   "naam": "Deurne",
+   "provincie": "PV30"
+  },
+  "0765": {
+   "naam": "Pekela",
+   "provincie": "PV20"
+  },
+  "0766": {
+   "naam": "Dongen",
+   "provincie": "PV30"
+  },
+  "0770": {
+   "naam": "Eersel",
+   "provincie": "PV30"
+  },
+  "0772": {
+   "naam": "Eindhoven",
+   "provincie": "PV30"
+  },
+  "0777": {
+   "naam": "Etten-Leur",
+   "provincie": "PV30"
+  },
+  "0779": {
+   "naam": "Geertruidenberg",
+   "provincie": "PV30"
+  },
+  "0784": {
+   "naam": "Gilze en Rijen",
+   "provincie": "PV30"
+  },
+  "0785": {
+   "naam": "Goirle",
+   "provincie": "PV30"
+  },
+  "0794": {
+   "naam": "Helmond",
+   "provincie": "PV30"
+  },
+  "0796": {
+   "naam": "'s-Hertogenbosch",
+   "provincie": "PV30"
+  },
+  "0797": {
+   "naam": "Heusden",
+   "provincie": "PV30"
+  },
+  "0798": {
+   "naam": "Hilvarenbeek",
+   "provincie": "PV30"
+  },
+  "0809": {
+   "naam": "Loon op Zand",
+   "provincie": "PV30"
+  },
+  "0820": {
+   "naam": "Nuenen, Gerwen en Nederwetten",
+   "provincie": "PV30"
+  },
+  "0823": {
+   "naam": "Oirschot",
+   "provincie": "PV30"
+  },
+  "0824": {
+   "naam": "Oisterwijk",
+   "provincie": "PV30"
+  },
+  "0826": {
+   "naam": "Oosterhout",
+   "provincie": "PV30"
+  },
+  "0828": {
+   "naam": "Oss",
+   "provincie": "PV30"
+  },
+  "0840": {
+   "naam": "Rucphen",
+   "provincie": "PV30"
+  },
+  "0845": {
+   "naam": "Sint-Michielsgestel",
+   "provincie": "PV30"
+  },
+  "0847": {
+   "naam": "Someren",
+   "provincie": "PV30"
+  },
+  "0848": {
+   "naam": "Son en Breugel",
+   "provincie": "PV30"
+  },
+  "0851": {
+   "naam": "Steenbergen",
+   "provincie": "PV30"
+  },
+  "0852": {
+   "naam": "Waterland",
+   "provincie": "PV27"
+  },
+  "0855": {
+   "naam": "Tilburg",
+   "provincie": "PV30"
+  },
+  "0858": {
+   "naam": "Valkenswaard",
+   "provincie": "PV30"
+  },
+  "0861": {
+   "naam": "Veldhoven",
+   "provincie": "PV30"
+  },
+  "0865": {
+   "naam": "Vught",
+   "provincie": "PV30"
+  },
+  "0866": {
+   "naam": "Waalre",
+   "provincie": "PV30"
+  },
+  "0867": {
+   "naam": "Waalwijk",
+   "provincie": "PV30"
+  },
+  "0873": {
+   "naam": "Woensdrecht",
+   "provincie": "PV30"
+  },
+  "0879": {
+   "naam": "Zundert",
+   "provincie": "PV30"
+  },
+  "0880": {
+   "naam": "Wormerland",
+   "provincie": "PV27"
+  },
+  "0882": {
+   "naam": "Landgraaf",
+   "provincie": "PV31"
+  },
+  "0888": {
+   "naam": "Beek (L.)",
+   "provincie": "PV31"
+  },
+  "0889": {
+   "naam": "Beesel",
+   "provincie": "PV31"
+  },
+  "0893": {
+   "naam": "Bergen (L.)",
+   "provincie": "PV31"
+  },
+  "0899": {
+   "naam": "Brunssum",
+   "provincie": "PV31"
+  },
+  "0907": {
+   "naam": "Gennep",
+   "provincie": "PV31"
+  },
+  "0917": {
+   "naam": "Heerlen",
+   "provincie": "PV31"
+  },
+  "0928": {
+   "naam": "Kerkrade",
+   "provincie": "PV31"
+  },
+  "0935": {
+   "naam": "Maastricht",
+   "provincie": "PV31"
+  },
+  "0938": {
+   "naam": "Meerssen",
+   "provincie": "PV31"
+  },
+  "0944": {
+   "naam": "Mook en Middelaar",
+   "provincie": "PV31"
+  },
+  "0946": {
+   "naam": "Nederweert",
+   "provincie": "PV31"
+  },
+  "0957": {
+   "naam": "Roermond",
+   "provincie": "PV31"
+  },
+  "0965": {
+   "naam": "Simpelveld",
+   "provincie": "PV31"
+  },
+  "0971": {
+   "naam": "Stein (L.)",
+   "provincie": "PV31"
+  },
+  "0981": {
+   "naam": "Vaals",
+   "provincie": "PV31"
+  },
+  "0983": {
+   "naam": "Venlo",
+   "provincie": "PV31"
+  },
+  "0984": {
+   "naam": "Venray",
+   "provincie": "PV31"
+  },
+  "0986": {
+   "naam": "Voerendaal",
+   "provincie": "PV31"
+  },
+  "0988": {
+   "naam": "Weert",
+   "provincie": "PV31"
+  },
+  "0994": {
+   "naam": "Valkenburg aan de Geul",
+   "provincie": "PV31"
+  },
+  "0995": {
+   "naam": "Lelystad",
+   "provincie": "PV24"
+  },
+  "1507": {
+   "naam": "Horst aan de Maas",
+   "provincie": "PV31"
+  },
+  "1509": {
+   "naam": "Oude IJsselstreek",
+   "provincie": "PV25"
+  },
+  "1525": {
+   "naam": "Teylingen",
+   "provincie": "PV28"
+  },
+  "1581": {
+   "naam": "Utrechtse Heuvelrug",
+   "provincie": "PV26"
+  },
+  "1586": {
+   "naam": "Oost Gelre",
+   "provincie": "PV25"
+  },
+  "1598": {
+   "naam": "Koggenland",
+   "provincie": "PV27"
+  },
+  "1621": {
+   "naam": "Lansingerland",
+   "provincie": "PV28"
+  },
+  "1640": {
+   "naam": "Leudal",
+   "provincie": "PV31"
+  },
+  "1641": {
+   "naam": "Maasgouw",
+   "provincie": "PV31"
+  },
+  "1652": {
+   "naam": "Gemert-Bakel",
+   "provincie": "PV30"
+  },
+  "1655": {
+   "naam": "Halderberge",
+   "provincie": "PV30"
+  },
+  "1658": {
+   "naam": "Heeze-Leende",
+   "provincie": "PV30"
+  },
+  "1659": {
+   "naam": "Laarbeek",
+   "provincie": "PV30"
+  },
+  "1667": {
+   "naam": "Reusel-De Mierden",
+   "provincie": "PV30"
+  },
+  "1669": {
+   "naam": "Roerdalen",
+   "provincie": "PV31"
+  },
+  "1674": {
+   "naam": "Roosendaal",
+   "provincie": "PV30"
+  },
+  "1676": {
+   "naam": "Schouwen-Duiveland",
+   "provincie": "PV29"
+  },
+  "1680": {
+   "naam": "Aa en Hunze",
+   "provincie": "PV22"
+  },
+  "1681": {
+   "naam": "Borger-Odoorn",
+   "provincie": "PV22"
+  },
+  "1690": {
+   "naam": "De Wolden",
+   "provincie": "PV22"
+  },
+  "1695": {
+   "naam": "Noord-Beveland",
+   "provincie": "PV29"
+  },
+  "1696": {
+   "naam": "Wijdemeren",
+   "provincie": "PV27"
+  },
+  "1699": {
+   "naam": "Noordenveld",
+   "provincie": "PV22"
+  },
+  "1700": {
+   "naam": "Twenterand",
+   "provincie": "PV23"
+  },
+  "1701": {
+   "naam": "Westerveld",
+   "provincie": "PV22"
+  },
+  "1705": {
+   "naam": "Lingewaard",
+   "provincie": "PV25"
+  },
+  "1706": {
+   "naam": "Cranendonck",
+   "provincie": "PV30"
+  },
+  "1708": {
+   "naam": "Steenwijkerland",
+   "provincie": "PV23"
+  },
+  "1709": {
+   "naam": "Moerdijk",
+   "provincie": "PV30"
+  },
+  "1711": {
+   "naam": "Echt-Susteren",
+   "provincie": "PV31"
+  },
+  "1714": {
+   "naam": "Sluis",
+   "provincie": "PV29"
+  },
+  "1719": {
+   "naam": "Drimmelen",
+   "provincie": "PV30"
+  },
+  "1721": {
+   "naam": "Bernheze",
+   "provincie": "PV30"
+  },
+  "1723": {
+   "naam": "Alphen-Chaam",
+   "provincie": "PV30"
+  },
+  "1724": {
+   "naam": "Bergeijk",
+   "provincie": "PV30"
+  },
+  "1728": {
+   "naam": "Bladel",
+   "provincie": "PV30"
+  },
+  "1729": {
+   "naam": "Gulpen-Wittem",
+   "provincie": "PV31"
+  },
+  "1730": {
+   "naam": "Tynaarlo",
+   "provincie": "PV22"
+  },
+  "1731": {
+   "naam": "Midden-Drenthe",
+   "provincie": "PV22"
+  },
+  "1734": {
+   "naam": "Overbetuwe",
+   "provincie": "PV25"
+  },
+  "1735": {
+   "naam": "Hof van Twente",
+   "provincie": "PV23"
+  },
+  "1740": {
+   "naam": "Neder-Betuwe",
+   "provincie": "PV25"
+  },
+  "1742": {
+   "naam": "Rijssen-Holten",
+   "provincie": "PV23"
+  },
+  "1771": {
+   "naam": "Geldrop-Mierlo",
+   "provincie": "PV30"
+  },
+  "1773": {
+   "naam": "Olst-Wijhe",
+   "provincie": "PV23"
+  },
+  "1774": {
+   "naam": "Dinkelland",
+   "provincie": "PV23"
+  },
+  "1783": {
+   "naam": "Westland",
+   "provincie": "PV28"
+  },
+  "1842": {
+   "naam": "Midden-Delfland",
+   "provincie": "PV28"
+  },
+  "1859": {
+   "naam": "Berkelland",
+   "provincie": "PV25"
+  },
+  "1876": {
+   "naam": "Bronckhorst",
+   "provincie": "PV25"
+  },
+  "1883": {
+   "naam": "Sittard-Geleen",
+   "provincie": "PV31"
+  },
+  "1884": {
+   "naam": "Kaag en Braassem",
+   "provincie": "PV28"
+  },
+  "1891": {
+   "naam": "Dantumadiel",
+   "provincie": "PV21"
+  },
+  "1892": {
+   "naam": "Zuidplas",
+   "provincie": "PV28"
+  },
+  "1894": {
+   "naam": "Peel en Maas",
+   "provincie": "PV31"
+  },
+  "1895": {
+   "naam": "Oldambt",
+   "provincie": "PV20"
+  },
+  "1896": {
+   "naam": "Zwartewaterland",
+   "provincie": "PV23"
+  },
+  "1900": {
+   "naam": "Súdwest-Fryslân",
+   "provincie": "PV21"
+  },
+  "1901": {
+   "naam": "Bodegraven-Reeuwijk",
+   "provincie": "PV28"
+  },
+  "1903": {
+   "naam": "Eijsden-Margraten",
+   "provincie": "PV31"
+  },
+  "1904": {
+   "naam": "Stichtse Vecht",
+   "provincie": "PV26"
+  },
+  "1911": {
+   "naam": "Hollands Kroon",
+   "provincie": "PV27"
+  },
+  "1916": {
+   "naam": "Leidschendam-Voorburg",
+   "provincie": "PV28"
+  },
+  "1924": {
+   "naam": "Goeree-Overflakkee",
+   "provincie": "PV28"
+  },
+  "1926": {
+   "naam": "Pijnacker-Nootdorp",
+   "provincie": "PV28"
+  },
+  "1930": {
+   "naam": "Nissewaard",
+   "provincie": "PV28"
+  },
+  "1931": {
+   "naam": "Krimpenerwaard",
+   "provincie": "PV28"
+  },
+  "1940": {
+   "naam": "De Fryske Marren",
+   "provincie": "PV21"
+  },
+  "1942": {
+   "naam": "Gooise Meren",
+   "provincie": "PV27"
+  },
+  "1945": {
+   "naam": "Berg en Dal",
+   "provincie": "PV25"
+  },
+  "1948": {
+   "naam": "Meierijstad",
+   "provincie": "PV30"
+  },
+  "1949": {
+   "naam": "Waadhoeke",
+   "provincie": "PV21"
+  },
+  "1950": {
+   "naam": "Westerwolde",
+   "provincie": "PV20"
+  },
+  "1952": {
+   "naam": "Midden-Groningen",
+   "provincie": "PV20"
+  },
+  "1954": {
+   "naam": "Beekdaelen",
+   "provincie": "PV31"
+  },
+  "1955": {
+   "naam": "Montferland",
+   "provincie": "PV25"
+  },
+  "1959": {
+   "naam": "Altena",
+   "provincie": "PV30"
+  },
+  "1960": {
+   "naam": "West Betuwe",
+   "provincie": "PV25"
+  },
+  "1961": {
+   "naam": "Vijfheerenlanden",
+   "provincie": "PV26"
+  },
+  "1963": {
+   "naam": "Hoeksche Waard",
+   "provincie": "PV28"
+  },
+  "1966": {
+   "naam": "Het Hogeland",
+   "provincie": "PV20"
+  },
+  "1969": {
+   "naam": "Westerkwartier",
+   "provincie": "PV20"
+  },
+  "1970": {
+   "naam": "Noardeast-Fryslân",
+   "provincie": "PV21"
+  },
+  "1978": {
+   "naam": "Molenlanden",
+   "provincie": "PV28"
+  },
+  "1979": {
+   "naam": "Eemsdelta",
+   "provincie": "PV20"
+  },
+  "1980": {
+   "naam": "Dijk en Waard",
+   "provincie": "PV27"
+  },
+  "1982": {
+   "naam": "Land van Cuijk",
+   "provincie": "PV30"
+  },
+  "1991": {
+   "naam": "Maashorst",
+   "provincie": "PV30"
+  },
+  "1992": {
+   "naam": "Voorne aan Zee",
+   "provincie": "PV28"
+  }
+ },
+ "woonplaatsen": {
+  "'s Gravenmoer": [
+   "0766"
+  ],
+  "'s-Graveland": [
+   "1696"
+  ],
+  "'s-Gravendeel": [
+   "1963"
+  ],
+  "'s-Gravenhage": [
+   "0518"
+  ],
+  "'s-Gravenpolder": [
+   "0654"
+  ],
+  "'s-Gravenzande": [
+   "1783"
+  ],
+  "'s-Heer Abtskerke": [
+   "0654"
+  ],
+  "'s-Heer Arendskerke": [
+   "0664"
+  ],
+  "'s-Heer Hendrikskinderen": [
+   "0664"
+  ],
+  "'s-Heerenberg": [
+   "1955"
+  ],
+  "'s-Heerenbroek": [
+   "0166"
+  ],
+  "'s-Heerenhoek": [
+   "0654"
+  ],
+  "'s-Hertogenbosch": [
+   "0796"
+  ],
+  "'t Goy": [
+   "0321"
+  ],
+  "'t Haantje": [
+   "0109"
+  ],
+  "'t Harde": [
+   "0230"
+  ],
+  "'t Loo Oldebroek": [
+   "0269"
+  ],
+  "'t Veld": [
+   "1911"
+  ],
+  "'t Waar": [
+   "1895"
+  ],
+  "'t Zand": [
+   "0441"
+  ],
+  "'t Zandt": [
+   "1979"
+  ],
+  "1e Exloërmond": [
+   "1681"
+  ],
+  "2e Exloërmond": [
+   "1681"
+  ],
+  "2e Valthermond": [
+   "1681"
+  ],
+  "Aadorp": [
+   "0141"
+  ],
+  "Aagtekerke": [
+   "0717"
+  ],
+  "Aalden": [
+   "0109"
+  ],
+  "Aalsmeer": [
+   "0358"
+  ],
+  "Aalsmeerderbrug": [
+   "0394"
+  ],
+  "Aalst": [
+   "0297"
+  ],
+  "Aalsum": [
+   "1970"
+  ],
+  "Aalten": [
+   "0197"
+  ],
+  "Aardenburg": [
+   "1714"
+  ],
+  "Aarlanderveen": [
+   "0484"
+  ],
+  "Aarle-Rixtel": [
+   "1659"
+  ],
+  "Aartswoud": [
+   "0432"
+  ],
+  "Abbega": [
+   "1900"
+  ],
+  "Abbekerk": [
+   "0420"
+  ],
+  "Abbenbroek": [
+   "1930"
+  ],
+  "Abbenes": [
+   "0394"
+  ],
+  "Abcoude": [
+   "0736"
+  ],
+  "Achlum": [
+   "1949"
+  ],
+  "Achterveld": [
+   "0203",
+   "0327"
+  ],
+  "Achthuizen": [
+   "1924"
+  ],
+  "Achtmaal": [
+   "0879"
+  ],
+  "Acquoy": [
+   "1960"
+  ],
+  "Adorp": [
+   "1966"
+  ],
+  "Aduard": [
+   "1969"
+  ],
+  "Aerdenhout": [
+   "0377"
+  ],
+  "Aerdt": [
+   "0299"
+  ],
+  "Afferden": [
+   "0225"
+  ],
+  "Afferden L": [
+   "0893"
+  ],
+  "Agelo": [
+   "1774"
+  ],
+  "Akersloot": [
+   "0383"
+  ],
+  "Akkrum": [
+   "0074"
+  ],
+  "Akmarijp": [
+   "1940"
+  ],
+  "Albergen": [
+   "0183"
+  ],
+  "Alblasserdam": [
+   "0482"
+  ],
+  "Alde Leie": [
+   "0080"
+  ],
+  "Aldeboarn": [
+   "0074"
+  ],
+  "Aldtsjerk": [
+   "0737"
+  ],
+  "Aldwâld": [
+   "1970"
+  ],
+  "Alem": [
+   "0263"
+  ],
+  "Alkmaar": [
+   "0361"
+  ],
+  "Allingawier": [
+   "1900"
+  ],
+  "Almelo": [
+   "0141"
+  ],
+  "Almen": [
+   "0262"
+  ],
+  "Almere": [
+   "0034"
+  ],
+  "Almkerk": [
+   "1959"
+  ],
+  "Alphen": [
+   "0668",
+   "1723"
+  ],
+  "Alphen aan den Rijn": [
+   "0484"
+  ],
+  "Alteveer": [
+   "0037",
+   "1690",
+   "1699"
+  ],
+  "Alteveer gem Hoogeveen": [
+   "0118"
+  ],
+  "Altforst": [
+   "0668"
+  ],
+  "Ambt Delden": [
+   "1735"
+  ],
+  "Ameide": [
+   "1961"
+  ],
+  "Amen": [
+   "1680"
+  ],
+  "America": [
+   "1507"
+  ],
+  "Amerongen": [
+   "1581"
+  ],
+  "Amersfoort": [
+   "0307"
+  ],
+  "Ammerstol": [
+   "1931"
+  ],
+  "Ammerzoden": [
+   "0263"
+  ],
+  "Amstelhoek": [
+   "0736"
+  ],
+  "Amstelveen": [
+   "0362"
+  ],
+  "Amstenrade": [
+   "1954"
+  ],
+  "Amsterdam": [
+   "0363"
+  ],
+  "Amsterdam-Duivendrecht": [
+   "0437"
+  ],
+  "Andel": [
+   "1959"
+  ],
+  "Andelst": [
+   "1734"
+  ],
+  "Anderen": [
+   "1680"
+  ],
+  "Andijk": [
+   "0420"
+  ],
+  "Ane": [
+   "0160"
+  ],
+  "Anerveen": [
+   "0160"
+  ],
+  "Anevelde": [
+   "0160"
+  ],
+  "Angeren": [
+   "1705"
+  ],
+  "Angerlo": [
+   "0299"
+  ],
+  "Ankeveen": [
+   "1696"
+  ],
+  "Anloo": [
+   "1680"
+  ],
+  "Anna Paulowna": [
+   "1911"
+  ],
+  "Annen": [
+   "1680"
+  ],
+  "Annerveenschekanaal": [
+   "1680"
+  ],
+  "Ansen": [
+   "1690",
+   "1701"
+  ],
+  "Apeldoorn": [
+   "0200"
+  ],
+  "Appelscha": [
+   "0085"
+  ],
+  "Appeltern": [
+   "0668"
+  ],
+  "Appingedam": [
+   "1979"
+  ],
+  "Arcen": [
+   "0983"
+  ],
+  "Arkel": [
+   "1978"
+  ],
+  "Arnemuiden": [
+   "0687"
+  ],
+  "Arnhem": [
+   "0202"
+  ],
+  "Arriën": [
+   "0175"
+  ],
+  "Arum": [
+   "1900"
+  ],
+  "Asch": [
+   "0214"
+  ],
+  "Asperen": [
+   "1960"
+  ],
+  "Assen": [
+   "0106"
+  ],
+  "Assendelft": [
+   "0479"
+  ],
+  "Asten": [
+   "0743"
+  ],
+  "Augsbuert-Lytsewâld": [
+   "1970"
+  ],
+  "Augustinusga": [
+   "0059"
+  ],
+  "Austerlitz": [
+   "0355"
+  ],
+  "Avenhorn": [
+   "1598"
+  ],
+  "Axel": [
+   "0715"
+  ],
+  "Azewijn": [
+   "1955"
+  ],
+  "Baaiduinen": [
+   "0093"
+  ],
+  "Baaium": [
+   "1949"
+  ],
+  "Baak": [
+   "1876"
+  ],
+  "Baambrugge": [
+   "0736"
+  ],
+  "Baard": [
+   "0080"
+  ],
+  "Baarland": [
+   "0654"
+  ],
+  "Baarle-Nassau": [
+   "0744"
+  ],
+  "Baarlo": [
+   "1708",
+   "1894"
+  ],
+  "Baarn": [
+   "0308"
+  ],
+  "Baars": [
+   "1708"
+  ],
+  "Babberich": [
+   "0299"
+  ],
+  "Babyloniënbroek": [
+   "1959"
+  ],
+  "Bad Nieuweschans": [
+   "1895"
+  ],
+  "Badhoevedorp": [
+   "0394"
+  ],
+  "Baexem": [
+   "1640"
+  ],
+  "Baflo": [
+   "1966"
+  ],
+  "Bakel": [
+   "1652"
+  ],
+  "Bakhuizen": [
+   "1940"
+  ],
+  "Bakkeveen": [
+   "0086"
+  ],
+  "Balgoij": [
+   "0296"
+  ],
+  "Balinge": [
+   "1731"
+  ],
+  "Balk": [
+   "1940"
+  ],
+  "Balkbrug": [
+   "0160"
+  ],
+  "Balloo": [
+   "1680"
+  ],
+  "Balloërveld": [
+   "1680"
+  ],
+  "Ballum": [
+   "0060"
+  ],
+  "Baneheide": [
+   "0965"
+  ],
+  "Banholt": [
+   "1903"
+  ],
+  "Bant": [
+   "0171"
+  ],
+  "Bantega": [
+   "1940"
+  ],
+  "Barchem": [
+   "0262"
+  ],
+  "Barendrecht": [
+   "0489"
+  ],
+  "Barger-Compascuum": [
+   "0114"
+  ],
+  "Barneveld": [
+   "0203"
+  ],
+  "Barsingerhorn": [
+   "1911"
+  ],
+  "Basse": [
+   "1708"
+  ],
+  "Batenburg": [
+   "0296"
+  ],
+  "Bathmen": [
+   "0150"
+  ],
+  "Bavel": [
+   "0758"
+  ],
+  "Bavel AC": [
+   "1723"
+  ],
+  "Bears": [
+   "0080"
+  ],
+  "Bedum": [
+   "1966"
+  ],
+  "Beegden": [
+   "1641"
+  ],
+  "Beek": [
+   "0888",
+   "1945",
+   "1955"
+  ],
+  "Beek en Donk": [
+   "1659"
+  ],
+  "Beekbergen": [
+   "0200"
+  ],
+  "Beemte Broekland": [
+   "0200"
+  ],
+  "Beers NB": [
+   "1982"
+  ],
+  "Beerta": [
+   "1895"
+  ],
+  "Beerze": [
+   "0175"
+  ],
+  "Beerzerveld": [
+   "0175"
+  ],
+  "Beesd": [
+   "1960"
+  ],
+  "Beesel": [
+   "0889"
+  ],
+  "Beets": [
+   "0385"
+  ],
+  "Beetsterzwaag": [
+   "0086"
+  ],
+  "Beilen": [
+   "1731"
+  ],
+  "Beinsdorp": [
+   "0394"
+  ],
+  "Belfeld": [
+   "0983"
+  ],
+  "Bellingwolde": [
+   "1950"
+  ],
+  "Belt-Schutsloot": [
+   "1708"
+  ],
+  "Beltrum": [
+   "1859"
+  ],
+  "Bemelen": [
+   "1903"
+  ],
+  "Bemmel": [
+   "1705"
+  ],
+  "Beneden-Leeuwen": [
+   "0668"
+  ],
+  "Bennebroek": [
+   "0377"
+  ],
+  "Bennekom": [
+   "0228"
+  ],
+  "Benneveld": [
+   "0109"
+  ],
+  "Benningbroek": [
+   "0420"
+  ],
+  "Benschop": [
+   "0331"
+  ],
+  "Bentelo": [
+   "1735"
+  ],
+  "Benthuizen": [
+   "0484"
+  ],
+  "Bentveld": [
+   "0473"
+  ],
+  "Berg en Dal": [
+   "1945"
+  ],
+  "Berg en Terblijt": [
+   "0994"
+  ],
+  "Bergambacht": [
+   "1931"
+  ],
+  "Bergeijk": [
+   "1724"
+  ],
+  "Bergen (NH)": [
+   "0373"
+  ],
+  "Bergen L": [
+   "0893"
+  ],
+  "Bergen aan Zee": [
+   "0373"
+  ],
+  "Bergen op Zoom": [
+   "0748"
+  ],
+  "Bergentheim": [
+   "0160"
+  ],
+  "Bergharen": [
+   "0296"
+  ],
+  "Berghem": [
+   "0828"
+  ],
+  "Bergschenhoek": [
+   "1621"
+  ],
+  "Beringe": [
+   "1894"
+  ],
+  "Berkel en Rodenrijs": [
+   "1621"
+  ],
+  "Berkel-Enschot": [
+   "0855"
+  ],
+  "Berkenwoude": [
+   "1931"
+  ],
+  "Berkhout": [
+   "1598"
+  ],
+  "Berlicum": [
+   "0845"
+  ],
+  "Berltsum": [
+   "1949"
+  ],
+  "Bern": [
+   "0297"
+  ],
+  "Best": [
+   "0753"
+  ],
+  "Beugen": [
+   "1982"
+  ],
+  "Beuningen": [
+   "0168"
+  ],
+  "Beuningen Gld": [
+   "0209"
+  ],
+  "Beusichem": [
+   "0214"
+  ],
+  "Beutenaken": [
+   "1729"
+  ],
+  "Beverwijk": [
+   "0375"
+  ],
+  "Biddinghuizen": [
+   "0303"
+  ],
+  "Bierum": [
+   "1979"
+  ],
+  "Biervliet": [
+   "0715",
+   "1714"
+  ],
+  "Biest-Houtakker": [
+   "0798"
+  ],
+  "Biezenmortel": [
+   "0855"
+  ],
+  "Biggekerke": [
+   "0717"
+  ],
+  "Bilthoven": [
+   "0310"
+  ],
+  "Bingelrade": [
+   "1954"
+  ],
+  "Bitgum": [
+   "1949"
+  ],
+  "Bitgummole": [
+   "1949"
+  ],
+  "Bladel": [
+   "1728"
+  ],
+  "Blankenham": [
+   "1708"
+  ],
+  "Blaricum": [
+   "0376"
+  ],
+  "Blauwestad": [
+   "1895"
+  ],
+  "Blauwhuis": [
+   "1900"
+  ],
+  "Bleiswijk": [
+   "1621"
+  ],
+  "Blesdijke": [
+   "0098"
+  ],
+  "Bleskensgraaf ca": [
+   "1978"
+  ],
+  "Blessum": [
+   "1949"
+  ],
+  "Blije": [
+   "1970"
+  ],
+  "Blijham": [
+   "1950"
+  ],
+  "Blitterswijck": [
+   "0984"
+  ],
+  "Bloemendaal": [
+   "0377"
+  ],
+  "Blokker": [
+   "0405"
+  ],
+  "Blokzijl": [
+   "1708"
+  ],
+  "Boarnwert": [
+   "1970"
+  ],
+  "Boazum": [
+   "1900"
+  ],
+  "Bocholtz": [
+   "0965"
+  ],
+  "Bodegraven": [
+   "1901"
+  ],
+  "Boekel": [
+   "0755"
+  ],
+  "Boelenslaan": [
+   "0059"
+  ],
+  "Boer": [
+   "1949"
+  ],
+  "Boerakker": [
+   "1969"
+  ],
+  "Boesingheliede": [
+   "0394"
+  ],
+  "Boijl": [
+   "0098"
+  ],
+  "Boksum": [
+   "1949"
+  ],
+  "Bolsward": [
+   "1900"
+  ],
+  "Bontebok": [
+   "0074"
+  ],
+  "Boornbergum": [
+   "0090"
+  ],
+  "Boornzwaag": [
+   "1940"
+  ],
+  "Borculo": [
+   "1859"
+  ],
+  "Borger": [
+   "1681"
+  ],
+  "Borgercompagnie": [
+   "0047",
+   "1952"
+  ],
+  "Borgsweer": [
+   "1979"
+  ],
+  "Born": [
+   "1883"
+  ],
+  "Borne": [
+   "0147"
+  ],
+  "Bornerbroek": [
+   "0141"
+  ],
+  "Borssele": [
+   "0654"
+  ],
+  "Bosch en Duin": [
+   "0355"
+  ],
+  "Boschoord": [
+   "1701"
+  ],
+  "Boskoop": [
+   "0484"
+  ],
+  "Bosschenhoofd": [
+   "1655"
+  ],
+  "Botlek Rotterdam": [
+   "0599"
+  ],
+  "Bourtange": [
+   "1950"
+  ],
+  "Boven-Leeuwen": [
+   "0668"
+  ],
+  "Bovenkarspel": [
+   "0532"
+  ],
+  "Bovensmilde": [
+   "1731"
+  ],
+  "Boxmeer": [
+   "1982"
+  ],
+  "Boxtel": [
+   "0757"
+  ],
+  "Braamt": [
+   "1955"
+  ],
+  "Brakel": [
+   "0297"
+  ],
+  "Brandwijk": [
+   "1978"
+  ],
+  "Brantgum": [
+   "1970"
+  ],
+  "Breda": [
+   "0758"
+  ],
+  "Bredevoort": [
+   "0197"
+  ],
+  "Breedenbroek": [
+   "1509"
+  ],
+  "Breezand": [
+   "1911"
+  ],
+  "Breezanddijk": [
+   "1900"
+  ],
+  "Breskens": [
+   "1714"
+  ],
+  "Breukelen": [
+   "1904"
+  ],
+  "Breukeleveen": [
+   "1696"
+  ],
+  "Brielle": [
+   "1992"
+  ],
+  "Briltil": [
+   "1969"
+  ],
+  "Britsum": [
+   "0080"
+  ],
+  "Britswert": [
+   "1900"
+  ],
+  "Broek": [
+   "1940"
+  ],
+  "Broek in Waterland": [
+   "0852"
+  ],
+  "Broek op Langedijk": [
+   "1980"
+  ],
+  "Broekhuizen": [
+   "0119",
+   "1507"
+  ],
+  "Broekhuizenvorst": [
+   "1507"
+  ],
+  "Broekland": [
+   "0177"
+  ],
+  "Broeksterwâld": [
+   "1891"
+  ],
+  "Bronkhorst": [
+   "1876"
+  ],
+  "Bronneger": [
+   "1681"
+  ],
+  "Bronnegerveen": [
+   "1681"
+  ],
+  "Brouwershaven": [
+   "1676"
+  ],
+  "Bruchem": [
+   "0297"
+  ],
+  "Brucht": [
+   "0160"
+  ],
+  "Bruchterveld": [
+   "0160"
+  ],
+  "Bruinehaar": [
+   "1700"
+  ],
+  "Bruinisse": [
+   "1676"
+  ],
+  "Brummen": [
+   "0213"
+  ],
+  "Brunssum": [
+   "0899"
+  ],
+  "Bruntinge": [
+   "1731"
+  ],
+  "Buchten": [
+   "1883"
+  ],
+  "Budel": [
+   "1706"
+  ],
+  "Budel-Dorplein": [
+   "1706"
+  ],
+  "Budel-Schoot": [
+   "1706"
+  ],
+  "Buggenum": [
+   "1640"
+  ],
+  "Buinen": [
+   "1681"
+  ],
+  "Buinerveen": [
+   "1681"
+  ],
+  "Buitenkaag": [
+   "0394"
+  ],
+  "Buitenpost": [
+   "0059"
+  ],
+  "Bunde": [
+   "0938"
+  ],
+  "Bunne": [
+   "1730"
+  ],
+  "Bunnik": [
+   "0312"
+  ],
+  "Bunschoten-Spakenburg": [
+   "0313"
+  ],
+  "Burdaard": [
+   "1970"
+  ],
+  "Buren": [
+   "0060",
+   "0214"
+  ],
+  "Burgerbrug": [
+   "0441"
+  ],
+  "Burgerveen": [
+   "0394"
+  ],
+  "Burgh-Haamstede": [
+   "1676"
+  ],
+  "Burgum": [
+   "0737"
+  ],
+  "Burgwerd": [
+   "1900"
+  ],
+  "Burum": [
+   "1970"
+  ],
+  "Bussum": [
+   "1942"
+  ],
+  "Buurmalsen": [
+   "0214",
+   "1960"
+  ],
+  "Cadier en Keer": [
+   "1903"
+  ],
+  "Cadzand": [
+   "1714"
+  ],
+  "Callantsoog": [
+   "0441"
+  ],
+  "Capelle aan den IJssel": [
+   "0502"
+  ],
+  "Castelre": [
+   "0744"
+  ],
+  "Castenray": [
+   "0984"
+  ],
+  "Casteren": [
+   "1728"
+  ],
+  "Castricum": [
+   "0383"
+  ],
+  "Chaam": [
+   "1723"
+  ],
+  "Clinge": [
+   "0677"
+  ],
+  "Coevorden": [
+   "0109"
+  ],
+  "Colijnsplaat": [
+   "1695"
+  ],
+  "Collendoorn": [
+   "0160"
+  ],
+  "Colmschate": [
+   "0150"
+  ],
+  "Cornwerd": [
+   "1900"
+  ],
+  "Cortelande": [
+   "1892"
+  ],
+  "Cothen": [
+   "0352"
+  ],
+  "Creil": [
+   "0171"
+  ],
+  "Cromvoirt": [
+   "0865"
+  ],
+  "Cruquius": [
+   "0394"
+  ],
+  "Cuijk": [
+   "1982"
+  ],
+  "Culemborg": [
+   "0216"
+  ],
+  "Daarle": [
+   "0163"
+  ],
+  "Daarlerveen": [
+   "0163"
+  ],
+  "Dalem": [
+   "0512"
+  ],
+  "Dalen": [
+   "0109"
+  ],
+  "Dalerpeel": [
+   "0109"
+  ],
+  "Dalerveen": [
+   "0109"
+  ],
+  "Dalfsen": [
+   "0148"
+  ],
+  "Dalmsholte": [
+   "0175"
+  ],
+  "Damwâld": [
+   "1891"
+  ],
+  "Darp": [
+   "1701"
+  ],
+  "De Bilt": [
+   "0310"
+  ],
+  "De Blesse": [
+   "0098"
+  ],
+  "De Bult": [
+   "1708"
+  ],
+  "De Cocksdorp": [
+   "0448"
+  ],
+  "De Falom": [
+   "1891"
+  ],
+  "De Glind": [
+   "0203"
+  ],
+  "De Goorn": [
+   "1598"
+  ],
+  "De Groeve": [
+   "1730"
+  ],
+  "De Heen": [
+   "0851"
+  ],
+  "De Heurne": [
+   "0197"
+  ],
+  "De Hoeve": [
+   "0098"
+  ],
+  "De Kiel": [
+   "0109"
+  ],
+  "De Klomp": [
+   "0228"
+  ],
+  "De Knipe": [
+   "0074"
+  ],
+  "De Koog": [
+   "0448"
+  ],
+  "De Krim": [
+   "0160"
+  ],
+  "De Kwakel": [
+   "0451"
+  ],
+  "De Lier": [
+   "1783"
+  ],
+  "De Meern": [
+   "0344"
+  ],
+  "De Moer": [
+   "0809"
+  ],
+  "De Mortel": [
+   "1652"
+  ],
+  "De Pol": [
+   "1708"
+  ],
+  "De Punt": [
+   "1730"
+  ],
+  "De Rijp": [
+   "0361"
+  ],
+  "De Rips": [
+   "1652"
+  ],
+  "De Schiphorst": [
+   "0119"
+  ],
+  "De Steeg": [
+   "0275"
+  ],
+  "De Tike": [
+   "0090"
+  ],
+  "De Trieme": [
+   "1970"
+  ],
+  "De Veenhoop": [
+   "0090"
+  ],
+  "De Waal": [
+   "0448"
+  ],
+  "De Weere": [
+   "0432"
+  ],
+  "De Westereen": [
+   "1891"
+  ],
+  "De Wilgen": [
+   "0090"
+  ],
+  "De Wilp": [
+   "1969"
+  ],
+  "De Zilk": [
+   "0575"
+  ],
+  "Dearsum": [
+   "1900"
+  ],
+  "Dedemsvaart": [
+   "0160"
+  ],
+  "Dedgum": [
+   "1900"
+  ],
+  "Deelen": [
+   "0228"
+  ],
+  "Deest": [
+   "0225"
+  ],
+  "Deil": [
+   "1960"
+  ],
+  "Deinum": [
+   "1949"
+  ],
+  "Delden": [
+   "1735"
+  ],
+  "Delfgauw": [
+   "1926"
+  ],
+  "Delfstrahuizen": [
+   "1940"
+  ],
+  "Delft": [
+   "0503"
+  ],
+  "Delfzijl": [
+   "1979"
+  ],
+  "Delwijnen": [
+   "0297"
+  ],
+  "Demen": [
+   "0828"
+  ],
+  "Den Andel": [
+   "1966"
+  ],
+  "Den Bommel": [
+   "1924"
+  ],
+  "Den Burg": [
+   "0448"
+  ],
+  "Den Dolder": [
+   "0355"
+  ],
+  "Den Dungen": [
+   "0845"
+  ],
+  "Den Ham": [
+   "1700",
+   "1969"
+  ],
+  "Den Helder": [
+   "0400"
+  ],
+  "Den Hoorn": [
+   "0448",
+   "1842"
+  ],
+  "Den Horn": [
+   "1969"
+  ],
+  "Den Hout": [
+   "0826"
+  ],
+  "Den Ilp": [
+   "0415"
+  ],
+  "Den Oever": [
+   "1911"
+  ],
+  "Den Velde": [
+   "0160"
+  ],
+  "Denekamp": [
+   "1774"
+  ],
+  "Deurne": [
+   "0762"
+  ],
+  "Deurningen": [
+   "0173",
+   "1774"
+  ],
+  "Deursen-Dennenburg": [
+   "0828"
+  ],
+  "Deurze": [
+   "1680"
+  ],
+  "Deventer": [
+   "0150"
+  ],
+  "Didam": [
+   "1955"
+  ],
+  "Dieden": [
+   "0828"
+  ],
+  "Diemen": [
+   "0384"
+  ],
+  "Diepenheim": [
+   "1735"
+  ],
+  "Diepenveen": [
+   "0150"
+  ],
+  "Dieren": [
+   "0275"
+  ],
+  "Diessen": [
+   "0798"
+  ],
+  "Diever": [
+   "1701"
+  ],
+  "Dieverbrug": [
+   "1701"
+  ],
+  "Diffelen": [
+   "0160"
+  ],
+  "Dijken": [
+   "1940"
+  ],
+  "Dinteloord": [
+   "0851"
+  ],
+  "Dinxperlo": [
+   "0197"
+  ],
+  "Diphoorn": [
+   "0109"
+  ],
+  "Dirkshorn": [
+   "0441"
+  ],
+  "Dirksland": [
+   "1924"
+  ],
+  "Dodewaard": [
+   "1740"
+  ],
+  "Doenrade": [
+   "1954"
+  ],
+  "Doesburg": [
+   "0221"
+  ],
+  "Doetinchem": [
+   "0222"
+  ],
+  "Doeveren": [
+   "0797"
+  ],
+  "Doezum": [
+   "1969"
+  ],
+  "Dokkum": [
+   "1970"
+  ],
+  "Doldersum": [
+   "1701"
+  ],
+  "Domburg": [
+   "0717"
+  ],
+  "Donderen": [
+   "1730"
+  ],
+  "Dongen": [
+   "0766"
+  ],
+  "Dongjum": [
+   "1949"
+  ],
+  "Doniaga": [
+   "1940"
+  ],
+  "Donkerbroek": [
+   "0085"
+  ],
+  "Doorn": [
+   "1581"
+  ],
+  "Doornenburg": [
+   "1705"
+  ],
+  "Doornspijk": [
+   "0230"
+  ],
+  "Doorwerth": [
+   "0274"
+  ],
+  "Dordrecht": [
+   "0505"
+  ],
+  "Dorst": [
+   "0826"
+  ],
+  "Drachten": [
+   "0090"
+  ],
+  "Drachten-Azeven": [
+   "0086"
+  ],
+  "Drachtstercompagnie": [
+   "0090"
+  ],
+  "Dreischor": [
+   "1676"
+  ],
+  "Drempt": [
+   "1876"
+  ],
+  "Dreumel": [
+   "0668"
+  ],
+  "Driebergen-Rijsenburg": [
+   "1581"
+  ],
+  "Drieborg": [
+   "1895"
+  ],
+  "Driebruggen": [
+   "1901"
+  ],
+  "Driehuis NH": [
+   "0453"
+  ],
+  "Driehuizen": [
+   "0361"
+  ],
+  "Driel": [
+   "1734"
+  ],
+  "Driewegen": [
+   "0654"
+  ],
+  "Driezum": [
+   "1891"
+  ],
+  "Drijber": [
+   "1731"
+  ],
+  "Drimmelen": [
+   "1719"
+  ],
+  "Drogeham": [
+   "0059"
+  ],
+  "Drogteropslagen": [
+   "1690"
+  ],
+  "Drongelen": [
+   "1959"
+  ],
+  "Dronryp": [
+   "1949"
+  ],
+  "Dronten": [
+   "0303"
+  ],
+  "Drouwen": [
+   "1681"
+  ],
+  "Drouwenermond": [
+   "1681"
+  ],
+  "Drouwenerveen": [
+   "1681"
+  ],
+  "Drunen": [
+   "0797"
+  ],
+  "Druten": [
+   "0225"
+  ],
+  "Duiven": [
+   "0226"
+  ],
+  "Duivendrecht": [
+   "0437"
+  ],
+  "Duizel": [
+   "0770"
+  ],
+  "Dussen": [
+   "1959"
+  ],
+  "Dwingeloo": [
+   "1701"
+  ],
+  "Eagum": [
+   "0080"
+  ],
+  "Eanjum": [
+   "1970"
+  ],
+  "Earnewâld": [
+   "0737"
+  ],
+  "Easterein": [
+   "1900"
+  ],
+  "Easterlittens": [
+   "0080"
+  ],
+  "Eastermar": [
+   "0737"
+  ],
+  "Easternijtsjerk": [
+   "1970"
+  ],
+  "Easterwierrum": [
+   "1900"
+  ],
+  "Eastrum": [
+   "1970"
+  ],
+  "Echt": [
+   "1711"
+  ],
+  "Echteld": [
+   "1740"
+  ],
+  "Echten": [
+   "1690",
+   "1940"
+  ],
+  "Echtenerbrug": [
+   "1940"
+  ],
+  "Eck en Wiel": [
+   "0214"
+  ],
+  "Eckelrade": [
+   "1903"
+  ],
+  "Edam": [
+   "0385"
+  ],
+  "Ede": [
+   "0228"
+  ],
+  "Ederveen": [
+   "0228"
+  ],
+  "Eede": [
+   "1714"
+  ],
+  "Eefde": [
+   "0262"
+  ],
+  "Eelde": [
+   "1730"
+  ],
+  "Eelderwolde": [
+   "1730"
+  ],
+  "Eemdijk": [
+   "0313"
+  ],
+  "Eemnes": [
+   "0317"
+  ],
+  "Eemshaven": [
+   "1966"
+  ],
+  "Een": [
+   "1699"
+  ],
+  "Een-West": [
+   "1699"
+  ],
+  "Eenrum": [
+   "1966"
+  ],
+  "Eenum": [
+   "1979"
+  ],
+  "Eerbeek": [
+   "0213"
+  ],
+  "Eersel": [
+   "0770"
+  ],
+  "Ees": [
+   "1681"
+  ],
+  "Eesergroen": [
+   "1681"
+  ],
+  "Eeserveen": [
+   "1681"
+  ],
+  "Eesterga": [
+   "1940"
+  ],
+  "Eesveen": [
+   "1708"
+  ],
+  "Eethen": [
+   "1959"
+  ],
+  "Eext": [
+   "1680"
+  ],
+  "Eexterveen": [
+   "1680"
+  ],
+  "Eexterveenschekanaal": [
+   "1680"
+  ],
+  "Eexterzandvoort": [
+   "1680"
+  ],
+  "Egchel": [
+   "1894"
+  ],
+  "Egmond aan Zee": [
+   "0373"
+  ],
+  "Egmond aan den Hoef": [
+   "0373"
+  ],
+  "Egmond-Binnen": [
+   "0373"
+  ],
+  "Eibergen": [
+   "1859"
+  ],
+  "Eijsden": [
+   "1903"
+  ],
+  "Eindhoven": [
+   "0772"
+  ],
+  "Einighausen": [
+   "1883"
+  ],
+  "Ekehaar": [
+   "1680"
+  ],
+  "Elahuizen": [
+   "1940"
+  ],
+  "Elburg": [
+   "0230"
+  ],
+  "Eldersloo": [
+   "1680"
+  ],
+  "Eleveld": [
+   "1680"
+  ],
+  "Elim": [
+   "0118"
+  ],
+  "Elkenrade": [
+   "1729"
+  ],
+  "Ell": [
+   "1640"
+  ],
+  "Ellecom": [
+   "0275"
+  ],
+  "Ellemeet": [
+   "1676"
+  ],
+  "Ellertshaar": [
+   "1681"
+  ],
+  "Ellewoutsdijk": [
+   "0654"
+  ],
+  "Elp": [
+   "1731"
+  ],
+  "Elsendorp": [
+   "1652"
+  ],
+  "Elshout": [
+   "0797"
+  ],
+  "Elsloo": [
+   "0085",
+   "0971"
+  ],
+  "Elspeet": [
+   "0302"
+  ],
+  "Elst": [
+   "1734"
+  ],
+  "Elst Ut": [
+   "0340"
+  ],
+  "Emmeloord": [
+   "0171"
+  ],
+  "Emmen": [
+   "0114"
+  ],
+  "Emmer-Compascuum": [
+   "0114"
+  ],
+  "Empe": [
+   "0213"
+  ],
+  "Emst": [
+   "0232"
+  ],
+  "Enkhuizen": [
+   "0388"
+  ],
+  "Ens": [
+   "0171"
+  ],
+  "Enschede": [
+   "0153"
+  ],
+  "Enspijk": [
+   "1960"
+  ],
+  "Enter": [
+   "0189"
+  ],
+  "Enumatil": [
+   "1969"
+  ],
+  "Epe": [
+   "0232"
+  ],
+  "Epen": [
+   "1729"
+  ],
+  "Eppenhuizen": [
+   "1966"
+  ],
+  "Epse": [
+   "0262"
+  ],
+  "Erica": [
+   "0114"
+  ],
+  "Erichem": [
+   "0214"
+  ],
+  "Erlecom": [
+   "1945"
+  ],
+  "Erm": [
+   "0109"
+  ],
+  "Ermelo": [
+   "0233"
+  ],
+  "Erp": [
+   "1948"
+  ],
+  "Esbeek": [
+   "0798"
+  ],
+  "Esch": [
+   "0757"
+  ],
+  "Escharen": [
+   "1982"
+  ],
+  "Espel": [
+   "0171"
+  ],
+  "Est": [
+   "1960"
+  ],
+  "Etten": [
+   "1509"
+  ],
+  "Etten-Leur": [
+   "0777"
+  ],
+  "Europoort Rotterdam": [
+   "0599"
+  ],
+  "Eursinge": [
+   "1690",
+   "1731"
+  ],
+  "Everdingen": [
+   "1961"
+  ],
+  "Evertsoord": [
+   "1507"
+  ],
+  "Ewijk": [
+   "0209"
+  ],
+  "Exloo": [
+   "1681"
+  ],
+  "Exloërveen": [
+   "1681"
+  ],
+  "Exmorra": [
+   "1900"
+  ],
+  "Eygelshoven": [
+   "0928"
+  ],
+  "Eys": [
+   "1729"
+  ],
+  "Ezinge": [
+   "1969"
+  ],
+  "Farmsum": [
+   "1979"
+  ],
+  "Feankleaster": [
+   "1970"
+  ],
+  "Feanwâlden": [
+   "1891"
+  ],
+  "Feerwerd": [
+   "1969"
+  ],
+  "Feinsum": [
+   "0080"
+  ],
+  "Ferwert": [
+   "1970"
+  ],
+  "Ferwoude": [
+   "1900"
+  ],
+  "Fijnaart": [
+   "1709"
+  ],
+  "Finsterwolde": [
+   "1895"
+  ],
+  "Firdgum": [
+   "1949"
+  ],
+  "Fleringen": [
+   "0183"
+  ],
+  "Fluitenberg": [
+   "0118"
+  ],
+  "Fochteloo": [
+   "0085"
+  ],
+  "Follega": [
+   "1940"
+  ],
+  "Folsgare": [
+   "1900"
+  ],
+  "Formerum": [
+   "0093"
+  ],
+  "Foudgum": [
+   "1970"
+  ],
+  "Foxhol": [
+   "1952"
+  ],
+  "Foxwolde": [
+   "1699"
+  ],
+  "Franeker": [
+   "1949"
+  ],
+  "Frederiksoord": [
+   "1701"
+  ],
+  "Friens": [
+   "0080"
+  ],
+  "Frieschepalen": [
+   "0086"
+  ],
+  "Froombosch": [
+   "1952"
+  ],
+  "Gaanderen": [
+   "0222"
+  ],
+  "Gaast": [
+   "1900"
+  ],
+  "Gaastmeer": [
+   "1900"
+  ],
+  "Galder": [
+   "1723"
+  ],
+  "Gameren": [
+   "0297"
+  ],
+  "Gapinge": [
+   "0717"
+  ],
+  "Garderen": [
+   "0203"
+  ],
+  "Garmerwolde": [
+   "0014"
+  ],
+  "Garminge": [
+   "1731"
+  ],
+  "Garnwerd": [
+   "1969"
+  ],
+  "Garrelsweer": [
+   "1979"
+  ],
+  "Garsthuizen": [
+   "1979"
+  ],
+  "Garyp": [
+   "0737"
+  ],
+  "Gassel": [
+   "1982"
+  ],
+  "Gasselte": [
+   "1680"
+  ],
+  "Gasselternijveen": [
+   "1680"
+  ],
+  "Gasselternijveenschemond": [
+   "1680"
+  ],
+  "Gastel": [
+   "1706"
+  ],
+  "Gasteren": [
+   "1680"
+  ],
+  "Gauw": [
+   "1900"
+  ],
+  "Geelbroek": [
+   "1680"
+  ],
+  "Geerdijk": [
+   "1700"
+  ],
+  "Geersdijk": [
+   "1695"
+  ],
+  "Geertruidenberg": [
+   "0779"
+  ],
+  "Geervliet": [
+   "1930"
+  ],
+  "Gees": [
+   "0109"
+  ],
+  "Geesbrug": [
+   "0109"
+  ],
+  "Geesteren": [
+   "0183",
+   "1859"
+  ],
+  "Geeuwenbrug": [
+   "1701"
+  ],
+  "Geffen": [
+   "0828"
+  ],
+  "Geijsteren": [
+   "0984"
+  ],
+  "Geldermalsen": [
+   "1960"
+  ],
+  "Gelderswoude": [
+   "0638"
+  ],
+  "Geldrop": [
+   "1771"
+  ],
+  "Geleen": [
+   "1883"
+  ],
+  "Gellicum": [
+   "1960"
+  ],
+  "Gelselaar": [
+   "1859"
+  ],
+  "Gemert": [
+   "1652"
+  ],
+  "Gemonde": [
+   "0845"
+  ],
+  "Genderen": [
+   "1959"
+  ],
+  "Gendringen": [
+   "1509"
+  ],
+  "Gendt": [
+   "1705"
+  ],
+  "Genemuiden": [
+   "1896"
+  ],
+  "Gennep": [
+   "0907"
+  ],
+  "Gerkesklooster": [
+   "0059"
+  ],
+  "Gersloot": [
+   "0074"
+  ],
+  "Geulle": [
+   "0938"
+  ],
+  "Giesbeek": [
+   "0299"
+  ],
+  "Giessen": [
+   "1959"
+  ],
+  "Giessenburg": [
+   "1978"
+  ],
+  "Gieten": [
+   "1680"
+  ],
+  "Gieterveen": [
+   "1680"
+  ],
+  "Giethmen": [
+   "0175"
+  ],
+  "Giethoorn": [
+   "1708"
+  ],
+  "Gilze": [
+   "0784"
+  ],
+  "Ginnum": [
+   "1970"
+  ],
+  "Glane": [
+   "0168"
+  ],
+  "Glimmen": [
+   "0014"
+  ],
+  "Godlinze": [
+   "1979"
+  ],
+  "Goedereede": [
+   "1924"
+  ],
+  "Goes": [
+   "0664"
+  ],
+  "Goingarijp": [
+   "1940"
+  ],
+  "Goirle": [
+   "0785"
+  ],
+  "Goor": [
+   "1735"
+  ],
+  "Gorinchem": [
+   "0512"
+  ],
+  "Gorredijk": [
+   "0086"
+  ],
+  "Gorssel": [
+   "0262"
+  ],
+  "Gouda": [
+   "0513"
+  ],
+  "Gouderak": [
+   "1931"
+  ],
+  "Goudriaan": [
+   "1978"
+  ],
+  "Goudswaard": [
+   "1963"
+  ],
+  "Goutum": [
+   "0080"
+  ],
+  "Goënga": [
+   "1900"
+  ],
+  "Goëngahuizen": [
+   "0090"
+  ],
+  "Graauw": [
+   "0677"
+  ],
+  "Grafhorst": [
+   "0166"
+  ],
+  "Graft": [
+   "0361"
+  ],
+  "Gramsbergen": [
+   "0160"
+  ],
+  "Grashoek": [
+   "1894"
+  ],
+  "Grathem": [
+   "1640"
+  ],
+  "Grave": [
+   "1982"
+  ],
+  "Greonterp": [
+   "1900"
+  ],
+  "Grevenbicht": [
+   "1883"
+  ],
+  "Griendtsveen": [
+   "1507"
+  ],
+  "Grijpskerk": [
+   "1969"
+  ],
+  "Grijpskerke": [
+   "0717"
+  ],
+  "Groede": [
+   "1714"
+  ],
+  "Groenekan": [
+   "0310"
+  ],
+  "Groeningen": [
+   "1982"
+  ],
+  "Groenlo": [
+   "1586"
+  ],
+  "Groesbeek": [
+   "1945"
+  ],
+  "Groessen": [
+   "0226"
+  ],
+  "Groet": [
+   "0373"
+  ],
+  "Grolloo": [
+   "1680"
+  ],
+  "Groningen": [
+   "0014"
+  ],
+  "Gronsveld": [
+   "1903"
+  ],
+  "Groot-Ammers": [
+   "1978"
+  ],
+  "Grootebroek": [
+   "0532"
+  ],
+  "Grootegast": [
+   "1969"
+  ],
+  "Grootschermer": [
+   "0361"
+  ],
+  "Grou": [
+   "0080"
+  ],
+  "Grubbenvorst": [
+   "1507"
+  ],
+  "Gulpen": [
+   "1729"
+  ],
+  "Guttecoven": [
+   "1883"
+  ],
+  "Gytsjerk": [
+   "0737"
+  ],
+  "Haaften": [
+   "1960"
+  ],
+  "Haaksbergen": [
+   "0158"
+  ],
+  "Haalderen": [
+   "1705"
+  ],
+  "Haaren": [
+   "0824"
+  ],
+  "Haarle": [
+   "0163",
+   "0183"
+  ],
+  "Haarlem": [
+   "0392"
+  ],
+  "Haarlemmerliede": [
+   "0394"
+  ],
+  "Haarlo": [
+   "1859"
+  ],
+  "Haarsteeg": [
+   "0797"
+  ],
+  "Haarzuilens": [
+   "0344"
+  ],
+  "Haastrecht": [
+   "1931"
+  ],
+  "Haelen": [
+   "1640"
+  ],
+  "Hagestein": [
+   "1961"
+  ],
+  "Haghorst": [
+   "0798"
+  ],
+  "Haler": [
+   "1640"
+  ],
+  "Halfweg": [
+   "0394"
+  ],
+  "Hall": [
+   "0213"
+  ],
+  "Halle": [
+   "1876"
+  ],
+  "Hallum": [
+   "1970"
+  ],
+  "Halsteren": [
+   "0748"
+  ],
+  "Handel": [
+   "1652"
+  ],
+  "Hank": [
+   "1959"
+  ],
+  "Hansweert": [
+   "0703"
+  ],
+  "Hantum": [
+   "1970"
+  ],
+  "Hantumerútbuorren": [
+   "1970"
+  ],
+  "Hantumhuzen": [
+   "1970"
+  ],
+  "Hapert": [
+   "1728"
+  ],
+  "Haps": [
+   "1982"
+  ],
+  "Harbrinkhoek": [
+   "0183"
+  ],
+  "Hardenberg": [
+   "0160"
+  ],
+  "Harderwijk": [
+   "0243"
+  ],
+  "Hardinxveld-Giessendam": [
+   "0523"
+  ],
+  "Haren": [
+   "0828"
+  ],
+  "Haren Gn": [
+   "0014"
+  ],
+  "Harfsen": [
+   "0262"
+  ],
+  "Harich": [
+   "1940"
+  ],
+  "Haringhuizen": [
+   "1911"
+  ],
+  "Harkema": [
+   "0059"
+  ],
+  "Harkstede": [
+   "1952"
+  ],
+  "Harkstede GN": [
+   "0014"
+  ],
+  "Harlingen": [
+   "0072"
+  ],
+  "Harmelen": [
+   "0632"
+  ],
+  "Harreveld": [
+   "1586"
+  ],
+  "Harskamp": [
+   "0228"
+  ],
+  "Hartwerd": [
+   "1900"
+  ],
+  "Haskerdijken": [
+   "0074"
+  ],
+  "Haskerhorne": [
+   "1940"
+  ],
+  "Hasselt": [
+   "1896"
+  ],
+  "Hattem": [
+   "0244"
+  ],
+  "Hattemerbroek": [
+   "0269"
+  ],
+  "Haule": [
+   "0085"
+  ],
+  "Haulerwijk": [
+   "0085"
+  ],
+  "Hauwert": [
+   "0420"
+  ],
+  "Havelte": [
+   "1701"
+  ],
+  "Havelterberg": [
+   "1701"
+  ],
+  "Hazerswoude-Dorp": [
+   "0484"
+  ],
+  "Hazerswoude-Rijndijk": [
+   "0484"
+  ],
+  "Hedel": [
+   "0263"
+  ],
+  "Hedikhuizen": [
+   "0797"
+  ],
+  "Hee": [
+   "0093"
+  ],
+  "Heeg": [
+   "1900"
+  ],
+  "Heel": [
+   "1641"
+  ],
+  "Heelsum": [
+   "0274"
+  ],
+  "Heelweg": [
+   "1509"
+  ],
+  "Heemserveen": [
+   "0160"
+  ],
+  "Heemskerk": [
+   "0396"
+  ],
+  "Heemstede": [
+   "0397"
+  ],
+  "Heenvliet": [
+   "1930"
+  ],
+  "Heerde": [
+   "0246"
+  ],
+  "Heerenveen": [
+   "0074"
+  ],
+  "Heerewaarden": [
+   "0263"
+  ],
+  "Heerhugowaard": [
+   "1980"
+  ],
+  "Heerjansdam": [
+   "0642"
+  ],
+  "Heerle": [
+   "1674"
+  ],
+  "Heerlen": [
+   "0917"
+  ],
+  "Heesbeen": [
+   "0797"
+  ],
+  "Heesch": [
+   "1721"
+  ],
+  "Heesselt": [
+   "1960"
+  ],
+  "Heeswijk-Dinther": [
+   "1721"
+  ],
+  "Heeten": [
+   "0177"
+  ],
+  "Heeze": [
+   "1658"
+  ],
+  "Hegebeintum": [
+   "1970"
+  ],
+  "Hegelsom": [
+   "1507"
+  ],
+  "Hei- en Boeicop": [
+   "1961"
+  ],
+  "Heibloem": [
+   "1640"
+  ],
+  "Heide": [
+   "0984"
+  ],
+  "Heijen": [
+   "0907"
+  ],
+  "Heijenrath": [
+   "1729"
+  ],
+  "Heijningen": [
+   "1709"
+  ],
+  "Heikant": [
+   "0677"
+  ],
+  "Heilig Landstichting": [
+   "1945"
+  ],
+  "Heiligerlee": [
+   "1895"
+  ],
+  "Heiloo": [
+   "0399"
+  ],
+  "Heinenoord": [
+   "1963"
+  ],
+  "Heinkenszand": [
+   "0654"
+  ],
+  "Heino": [
+   "0177"
+  ],
+  "Hekelingen": [
+   "1930"
+  ],
+  "Hekendorp": [
+   "0589"
+  ],
+  "Helden": [
+   "1894"
+  ],
+  "Helenaveen": [
+   "0762"
+  ],
+  "Hellendoorn": [
+   "0163"
+  ],
+  "Hellevoetsluis": [
+   "1992"
+  ],
+  "Hellouw": [
+   "1960"
+  ],
+  "Hellum": [
+   "1952"
+  ],
+  "Helmond": [
+   "0794"
+  ],
+  "Helvoirt": [
+   "0865"
+  ],
+  "Hem": [
+   "0498"
+  ],
+  "Hemelum": [
+   "1900"
+  ],
+  "Hemmen": [
+   "1734"
+  ],
+  "Hempens": [
+   "0080"
+  ],
+  "Hemrik": [
+   "0086"
+  ],
+  "Hendrik-Ido-Ambacht": [
+   "0531"
+  ],
+  "Hengelo": [
+   "0164"
+  ],
+  "Hengelo (Gld)": [
+   "1876"
+  ],
+  "Hengevelde": [
+   "1735"
+  ],
+  "Hengstdijk": [
+   "0677"
+  ],
+  "Hensbroek": [
+   "1598"
+  ],
+  "Herbaijum": [
+   "1949"
+  ],
+  "Herkenbosch": [
+   "1669"
+  ],
+  "Herkingen": [
+   "1924"
+  ],
+  "Hernen": [
+   "0296"
+  ],
+  "Herpen": [
+   "0828"
+  ],
+  "Herpt": [
+   "0797"
+  ],
+  "Herten": [
+   "0957"
+  ],
+  "Hertme": [
+   "0147"
+  ],
+  "Herveld": [
+   "1734"
+  ],
+  "Herwen": [
+   "0299"
+  ],
+  "Herwijnen": [
+   "1960"
+  ],
+  "Heteren": [
+   "1734"
+  ],
+  "Heukelom": [
+   "0824"
+  ],
+  "Heukelum": [
+   "1960"
+  ],
+  "Heumen": [
+   "0252"
+  ],
+  "Heusden": [
+   "0743",
+   "0797"
+  ],
+  "Heveadorp": [
+   "0274"
+  ],
+  "Heythuysen": [
+   "1640"
+  ],
+  "Hezingen": [
+   "0183"
+  ],
+  "Hiaure": [
+   "1970"
+  ],
+  "Hichtum": [
+   "1900"
+  ],
+  "Hidaard": [
+   "1900"
+  ],
+  "Hierden": [
+   "0243"
+  ],
+  "Hieslum": [
+   "1900"
+  ],
+  "Hijken": [
+   "1731"
+  ],
+  "Hijum": [
+   "0080"
+  ],
+  "Hilaard": [
+   "0080"
+  ],
+  "Hillegom": [
+   "0534"
+  ],
+  "Hilvarenbeek": [
+   "0798"
+  ],
+  "Hilversum": [
+   "0402"
+  ],
+  "Hindeloopen": [
+   "1900"
+  ],
+  "Hinnaard": [
+   "1900"
+  ],
+  "Hippolytushoef": [
+   "1911"
+  ],
+  "Hitzum": [
+   "1949"
+  ],
+  "Hobrede": [
+   "0385"
+  ],
+  "Hoedekenskerke": [
+   "0654"
+  ],
+  "Hoef en Haag": [
+   "1961"
+  ],
+  "Hoek": [
+   "0715"
+  ],
+  "Hoek van Holland": [
+   "0599"
+  ],
+  "Hoenderloo": [
+   "0200",
+   "0228"
+  ],
+  "Hoensbroek": [
+   "0917"
+  ],
+  "Hoenzadriel": [
+   "0263"
+  ],
+  "Hoevelaken": [
+   "0267"
+  ],
+  "Hoeven": [
+   "1655"
+  ],
+  "Hoge Hexel": [
+   "0189"
+  ],
+  "Hollandsche Rading": [
+   "0310"
+  ],
+  "Hollandscheveld": [
+   "0118"
+  ],
+  "Hollum": [
+   "0060"
+  ],
+  "Holsloot": [
+   "0109"
+  ],
+  "Holten": [
+   "1742"
+  ],
+  "Holthees": [
+   "1982"
+  ],
+  "Holtheme": [
+   "0160"
+  ],
+  "Holthone": [
+   "0160"
+  ],
+  "Holtum": [
+   "1883"
+  ],
+  "Holwert": [
+   "1970"
+  ],
+  "Holwierde": [
+   "1979"
+  ],
+  "Hommerts": [
+   "1900"
+  ],
+  "Homoet": [
+   "1734"
+  ],
+  "Honselersdijk": [
+   "1783"
+  ],
+  "Hoofddorp": [
+   "0394"
+  ],
+  "Hoofdplaat": [
+   "1714"
+  ],
+  "Hoog Soeren": [
+   "0200"
+  ],
+  "Hoog-Keppel": [
+   "1876"
+  ],
+  "Hoogblokland": [
+   "1978"
+  ],
+  "Hooge Mierde": [
+   "1667"
+  ],
+  "Hooge Zwaluwe": [
+   "1719"
+  ],
+  "Hoogeloon": [
+   "1728"
+  ],
+  "Hoogenweg": [
+   "0160"
+  ],
+  "Hoogerheide": [
+   "0873"
+  ],
+  "Hoogersmilde": [
+   "1701",
+   "1731"
+  ],
+  "Hoogeveen": [
+   "0118"
+  ],
+  "Hoogezand": [
+   "1952"
+  ],
+  "Hooghalen": [
+   "1731"
+  ],
+  "Hoogkarspel": [
+   "0498"
+  ],
+  "Hoogland": [
+   "0307"
+  ],
+  "Hooglanderveen": [
+   "0307"
+  ],
+  "Hoogmade": [
+   "1884"
+  ],
+  "Hoogvliet Rotterdam": [
+   "0599"
+  ],
+  "Hoogwoud": [
+   "0432"
+  ],
+  "Hoorn": [
+   "0093",
+   "0405"
+  ],
+  "Hoornaar": [
+   "1978"
+  ],
+  "Hoornsterzwaag": [
+   "0074"
+  ],
+  "Horn": [
+   "1640"
+  ],
+  "Hornhuizen": [
+   "1966"
+  ],
+  "Horssen": [
+   "0225"
+  ],
+  "Horst": [
+   "1507"
+  ],
+  "Houten": [
+   "0321"
+  ],
+  "Houtigehage": [
+   "0090"
+  ],
+  "Houwerzijl": [
+   "1966"
+  ],
+  "Huijbergen": [
+   "0873"
+  ],
+  "Huis ter Heide": [
+   "0355",
+   "1699"
+  ],
+  "Huisduinen": [
+   "0400"
+  ],
+  "Huisseling": [
+   "0828"
+  ],
+  "Huissen": [
+   "1705"
+  ],
+  "Huizen": [
+   "0406"
+  ],
+  "Huizinge": [
+   "1979"
+  ],
+  "Hulsberg": [
+   "1954"
+  ],
+  "Hulsel": [
+   "1667"
+  ],
+  "Hulshorst": [
+   "0302"
+  ],
+  "Hulst": [
+   "0677"
+  ],
+  "Hulten": [
+   "0784"
+  ],
+  "Hummelo": [
+   "1876"
+  ],
+  "Hunsel": [
+   "1640"
+  ],
+  "Hurdegaryp": [
+   "0737"
+  ],
+  "Hurwenen": [
+   "0263"
+  ],
+  "Húns": [
+   "0080"
+  ],
+  "IJhorst": [
+   "0180"
+  ],
+  "IJlst": [
+   "1900"
+  ],
+  "IJmuiden": [
+   "0453"
+  ],
+  "IJsselham": [
+   "1708"
+  ],
+  "IJsselmuiden": [
+   "0166"
+  ],
+  "IJsselstein": [
+   "0353"
+  ],
+  "IJzendijke": [
+   "1714"
+  ],
+  "IJzendoorn": [
+   "1740"
+  ],
+  "Idaerd": [
+   "0080"
+  ],
+  "Idsegahuizum": [
+   "1900"
+  ],
+  "Idskenhuizen": [
+   "1940"
+  ],
+  "Idzega": [
+   "1900"
+  ],
+  "Ie": [
+   "1970"
+  ],
+  "Iens": [
+   "1900"
+  ],
+  "Ilpendam": [
+   "0852"
+  ],
+  "Indijk": [
+   "1900"
+  ],
+  "Ingber": [
+   "1729"
+  ],
+  "Ingelum": [
+   "1949"
+  ],
+  "Ingen": [
+   "0214"
+  ],
+  "Ingwierrum": [
+   "1970"
+  ],
+  "It Heidenskip": [
+   "1900"
+  ],
+  "Itens": [
+   "1900"
+  ],
+  "Ittervoort": [
+   "1640"
+  ],
+  "Jaarsveld": [
+   "0331"
+  ],
+  "Jabeek": [
+   "1954"
+  ],
+  "Jannum": [
+   "1970"
+  ],
+  "Jellum": [
+   "0080"
+  ],
+  "Jelsum": [
+   "0080"
+  ],
+  "Jirnsum": [
+   "0080"
+  ],
+  "Jislum": [
+   "1970"
+  ],
+  "Jisp": [
+   "0880"
+  ],
+  "Jistrum": [
+   "0737"
+  ],
+  "Jonkerslân": [
+   "0086"
+  ],
+  "Jonkersvaart": [
+   "1969"
+  ],
+  "Joppe": [
+   "0262"
+  ],
+  "Jorwert": [
+   "0080"
+  ],
+  "Joure": [
+   "1940"
+  ],
+  "Jouswier": [
+   "1970"
+  ],
+  "Jubbega": [
+   "0074"
+  ],
+  "Julianadorp": [
+   "0400"
+  ],
+  "Jutrijp": [
+   "1900"
+  ],
+  "Kaag": [
+   "1884"
+  ],
+  "Kaard": [
+   "0093"
+  ],
+  "Kaatsheuvel": [
+   "0809"
+  ],
+  "Kalenberg": [
+   "1708"
+  ],
+  "Kallenkote": [
+   "1708"
+  ],
+  "Kamerik": [
+   "0632"
+  ],
+  "Kampen": [
+   "0166"
+  ],
+  "Kamperland": [
+   "1695"
+  ],
+  "Kamperveen": [
+   "0166"
+  ],
+  "Kantens": [
+   "1966"
+  ],
+  "Kapel Avezaath": [
+   "0281"
+  ],
+  "Kapel-Avezaath": [
+   "0214"
+  ],
+  "Kapelle": [
+   "0678"
+  ],
+  "Kapellebrug": [
+   "0677"
+  ],
+  "Katlijk": [
+   "0074"
+  ],
+  "Kats": [
+   "1695"
+  ],
+  "Kattendijke": [
+   "0664"
+  ],
+  "Katwijk": [
+   "0537"
+  ],
+  "Katwijk NB": [
+   "1982"
+  ],
+  "Katwoude": [
+   "0852"
+  ],
+  "Kedichem": [
+   "1961"
+  ],
+  "Keent": [
+   "0828"
+  ],
+  "Keijenborg": [
+   "1876"
+  ],
+  "Kekerdom": [
+   "1945"
+  ],
+  "Kelpen-Oler": [
+   "1640"
+  ],
+  "Kerk Avezaath": [
+   "0281"
+  ],
+  "Kerk-Avezaath": [
+   "0214"
+  ],
+  "Kerkdriel": [
+   "0263"
+  ],
+  "Kerkenveld": [
+   "1690"
+  ],
+  "Kerkrade": [
+   "0928"
+  ],
+  "Kerkwerve": [
+   "1676"
+  ],
+  "Kerkwijk": [
+   "0297"
+  ],
+  "Kessel": [
+   "1894"
+  ],
+  "Kesteren": [
+   "1740"
+  ],
+  "Kiel-Windeweer": [
+   "1952"
+  ],
+  "Kilder": [
+   "1955"
+  ],
+  "Kimswerd": [
+   "1900"
+  ],
+  "Kinderdijk": [
+   "1978"
+  ],
+  "Kinnum": [
+   "0093"
+  ],
+  "Klaaswaal": [
+   "1963"
+  ],
+  "Klarenbeek": [
+   "0200",
+   "0285"
+  ],
+  "Klazienaveen": [
+   "0114"
+  ],
+  "Klazienaveen-Noord": [
+   "0114"
+  ],
+  "Klein Zundert": [
+   "0879"
+  ],
+  "Klijndijk": [
+   "1681"
+  ],
+  "Klimmen": [
+   "0986"
+  ],
+  "Kloetinge": [
+   "0664",
+   "0678"
+  ],
+  "Klooster Lidlum": [
+   "1949"
+  ],
+  "Kloosterburen": [
+   "1966"
+  ],
+  "Kloosterhaar": [
+   "0160",
+   "1700"
+  ],
+  "Kloosterzande": [
+   "0677"
+  ],
+  "Klundert": [
+   "1709"
+  ],
+  "Knegsel": [
+   "0770"
+  ],
+  "Koarnjum": [
+   "0080"
+  ],
+  "Kockengen": [
+   "1904"
+  ],
+  "Koedijk": [
+   "0361",
+   "1980"
+  ],
+  "Koekange": [
+   "1690"
+  ],
+  "Koewacht": [
+   "0715"
+  ],
+  "Kolderwolde": [
+   "1940"
+  ],
+  "Kolham": [
+   "1952"
+  ],
+  "Kolhorn": [
+   "1911"
+  ],
+  "Kollum": [
+   "1970"
+  ],
+  "Kollumerpomp": [
+   "1970"
+  ],
+  "Kollumersweach": [
+   "1970"
+  ],
+  "Kommerzijl": [
+   "1969"
+  ],
+  "Koningsbosch": [
+   "1711"
+  ],
+  "Koningslust": [
+   "1894"
+  ],
+  "Koog aan de Zaan": [
+   "0479"
+  ],
+  "Kootstertille": [
+   "0059"
+  ],
+  "Kootwijk": [
+   "0203"
+  ],
+  "Kootwijkerbroek": [
+   "0203"
+  ],
+  "Kornhorn": [
+   "1969"
+  ],
+  "Kornwerderzand": [
+   "1900"
+  ],
+  "Kortehemmen": [
+   "0090"
+  ],
+  "Kortenhoef": [
+   "1696"
+  ],
+  "Kortgene": [
+   "1695"
+  ],
+  "Koudekerk aan den Rijn": [
+   "0484"
+  ],
+  "Koudekerke": [
+   "0717"
+  ],
+  "Koudum": [
+   "1900"
+  ],
+  "Koufurderrige": [
+   "1900"
+  ],
+  "Krabbendijke": [
+   "0703"
+  ],
+  "Kraggenburg": [
+   "0171"
+  ],
+  "Kreileroord": [
+   "1911"
+  ],
+  "Krewerd": [
+   "1979"
+  ],
+  "Krimpen aan de Lek": [
+   "1931"
+  ],
+  "Krimpen aan den IJssel": [
+   "0542"
+  ],
+  "Kring van Dorth": [
+   "0262"
+  ],
+  "Krommenie": [
+   "0479"
+  ],
+  "Kronenberg": [
+   "1507"
+  ],
+  "Kropswolde": [
+   "1952"
+  ],
+  "Kruiningen": [
+   "0703"
+  ],
+  "Kruisland": [
+   "0851"
+  ],
+  "Kudelstaart": [
+   "0358"
+  ],
+  "Kuinre": [
+   "1708"
+  ],
+  "Kuitaart": [
+   "0677"
+  ],
+  "Kwadendamme": [
+   "0654"
+  ],
+  "Kwadijk": [
+   "0385"
+  ],
+  "Kwintsheul": [
+   "1783"
+  ],
+  "Kûbaard": [
+   "1900"
+  ],
+  "Laag Zuthem": [
+   "0177"
+  ],
+  "Laag-Keppel": [
+   "1876"
+  ],
+  "Laag-Soeren": [
+   "0275"
+  ],
+  "Lage Mierde": [
+   "1667"
+  ],
+  "Lage Vuursche": [
+   "0308"
+  ],
+  "Lage Zwaluwe": [
+   "1719"
+  ],
+  "Lageland": [
+   "1952"
+  ],
+  "Lageland GN": [
+   "0014"
+  ],
+  "Lambertschaag": [
+   "0420"
+  ],
+  "Lamswaarde": [
+   "0677"
+  ],
+  "Landerum": [
+   "0093"
+  ],
+  "Landgraaf": [
+   "0882"
+  ],
+  "Landhorst": [
+   "1982"
+  ],
+  "Landsmeer": [
+   "0415"
+  ],
+  "Langbroek": [
+   "0352"
+  ],
+  "Langedijke": [
+   "0085"
+  ],
+  "Langelille": [
+   "0098"
+  ],
+  "Langelo": [
+   "1699"
+  ],
+  "Langenboom": [
+   "1982"
+  ],
+  "Langerak": [
+   "1978"
+  ],
+  "Langeveen": [
+   "0183"
+  ],
+  "Langeweg": [
+   "1709"
+  ],
+  "Langezwaag": [
+   "0086"
+  ],
+  "Langweer": [
+   "1940"
+  ],
+  "Laren": [
+   "0262",
+   "0417"
+  ],
+  "Lathum": [
+   "0299"
+  ],
+  "Lattrop-Breklenkamp": [
+   "1774"
+  ],
+  "Lauwersoog": [
+   "1966"
+  ],
+  "Lauwerzijl": [
+   "1969"
+  ],
+  "Ledeacker": [
+   "1982"
+  ],
+  "Leek": [
+   "1969"
+  ],
+  "Leende": [
+   "1658"
+  ],
+  "Leens": [
+   "1966"
+  ],
+  "Leerbroek": [
+   "1961"
+  ],
+  "Leerdam": [
+   "1961"
+  ],
+  "Leermens": [
+   "1979"
+  ],
+  "Leersum": [
+   "1581"
+  ],
+  "Leeuwarden": [
+   "0080"
+  ],
+  "Legemeer": [
+   "1940"
+  ],
+  "Leiden": [
+   "0546"
+  ],
+  "Leiderdorp": [
+   "0547"
+  ],
+  "Leidschendam": [
+   "1916"
+  ],
+  "Leimuiden": [
+   "1884"
+  ],
+  "Leimuiderbrug": [
+   "0394"
+  ],
+  "Lekkerkerk": [
+   "1931"
+  ],
+  "Lekkum": [
+   "0080"
+  ],
+  "Lellens": [
+   "0014"
+  ],
+  "Lelystad": [
+   "0995"
+  ],
+  "Lemele": [
+   "0175"
+  ],
+  "Lemelerveld": [
+   "0148"
+  ],
+  "Lemiers": [
+   "0981"
+  ],
+  "Lemmer": [
+   "1940"
+  ],
+  "Lengel": [
+   "1955"
+  ],
+  "Lent": [
+   "0268"
+  ],
+  "Leons": [
+   "0080"
+  ],
+  "Lepelstraat": [
+   "0748"
+  ],
+  "Lettelbert": [
+   "1969"
+  ],
+  "Lettele": [
+   "0150"
+  ],
+  "Leunen": [
+   "0984"
+  ],
+  "Leur": [
+   "0296"
+  ],
+  "Leusden": [
+   "0327"
+  ],
+  "Leuth": [
+   "1945"
+  ],
+  "Leutingewolde": [
+   "1699"
+  ],
+  "Leuvenheim": [
+   "0213"
+  ],
+  "Leveroy": [
+   "0946"
+  ],
+  "Lewedorp": [
+   "0654"
+  ],
+  "Lexmond": [
+   "1961"
+  ],
+  "Lichtaard": [
+   "1970"
+  ],
+  "Lichtenvoorde": [
+   "1586"
+  ],
+  "Liempde": [
+   "0757"
+  ],
+  "Lienden": [
+   "0214"
+  ],
+  "Lierderholthuis": [
+   "0177"
+  ],
+  "Lieren": [
+   "0200"
+  ],
+  "Lierop": [
+   "0847"
+  ],
+  "Lies": [
+   "0093"
+  ],
+  "Lieshout": [
+   "1659"
+  ],
+  "Liessel": [
+   "0762"
+  ],
+  "Lievelde": [
+   "1586"
+  ],
+  "Lieveren": [
+   "1699"
+  ],
+  "Lijnden": [
+   "0394"
+  ],
+  "Limbricht": [
+   "1883"
+  ],
+  "Limmen": [
+   "0383"
+  ],
+  "Linde": [
+   "1690"
+  ],
+  "Linden": [
+   "1982"
+  ],
+  "Linne": [
+   "1641"
+  ],
+  "Linschoten": [
+   "0335"
+  ],
+  "Lippenhuizen": [
+   "0086"
+  ],
+  "Lisse": [
+   "0553"
+  ],
+  "Lisserbroek": [
+   "0394"
+  ],
+  "Lith": [
+   "0828"
+  ],
+  "Lithoijen": [
+   "0828"
+  ],
+  "Ljussens": [
+   "1970"
+  ],
+  "Lobith": [
+   "0299"
+  ],
+  "Lochem": [
+   "0262"
+  ],
+  "Loenen": [
+   "0200"
+  ],
+  "Loenen aan de Vecht": [
+   "1904"
+  ],
+  "Loenersloot": [
+   "1904"
+  ],
+  "Loerbeek": [
+   "1955"
+  ],
+  "Lollum": [
+   "1900"
+  ],
+  "Lomm": [
+   "0983"
+  ],
+  "Longerhouw": [
+   "1900"
+  ],
+  "Loo Gld": [
+   "0226",
+   "1705"
+  ],
+  "Loon": [
+   "0106"
+  ],
+  "Loon op Zand": [
+   "0809"
+  ],
+  "Loosbroek": [
+   "1721"
+  ],
+  "Loosdrecht": [
+   "1696"
+  ],
+  "Loozen": [
+   "0160"
+  ],
+  "Lopik": [
+   "0331"
+  ],
+  "Lopikerkapel": [
+   "0331"
+  ],
+  "Loppersum": [
+   "1979"
+  ],
+  "Losdorp": [
+   "1979"
+  ],
+  "Losser": [
+   "0168"
+  ],
+  "Lottum": [
+   "1507"
+  ],
+  "Loënga": [
+   "1900"
+  ],
+  "Lucaswolde": [
+   "1969"
+  ],
+  "Luddeweer": [
+   "1952"
+  ],
+  "Luinjeberd": [
+   "0074"
+  ],
+  "Lunteren": [
+   "0228"
+  ],
+  "Lutjebroek": [
+   "0532"
+  ],
+  "Lutjegast": [
+   "1969"
+  ],
+  "Lutjewinkel": [
+   "1911"
+  ],
+  "Luttelgeest": [
+   "0171"
+  ],
+  "Lutten": [
+   "0160"
+  ],
+  "Luttenberg": [
+   "0177"
+  ],
+  "Luxwoude": [
+   "0086"
+  ],
+  "Luyksgestel": [
+   "1724"
+  ],
+  "Lytsewierrum": [
+   "1900"
+  ],
+  "Maarheeze": [
+   "1706"
+  ],
+  "Maarn": [
+   "1581"
+  ],
+  "Maarsbergen": [
+   "1581"
+  ],
+  "Maarssen": [
+   "1904"
+  ],
+  "Maartensdijk": [
+   "0310"
+  ],
+  "Maasbommel": [
+   "0668"
+  ],
+  "Maasbracht": [
+   "1641"
+  ],
+  "Maasbree": [
+   "1894"
+  ],
+  "Maasdam": [
+   "1963"
+  ],
+  "Maasdijk": [
+   "1783"
+  ],
+  "Maashees": [
+   "1982"
+  ],
+  "Maasland": [
+   "1842"
+  ],
+  "Maassluis": [
+   "0556"
+  ],
+  "Maastricht": [
+   "0935"
+  ],
+  "Maastricht-Airport": [
+   "0888"
+  ],
+  "Maasvlakte Rotterdam": [
+   "0599"
+  ],
+  "Macharen": [
+   "0828"
+  ],
+  "Made": [
+   "1719"
+  ],
+  "Makkinga": [
+   "0085"
+  ],
+  "Makkum": [
+   "1900"
+  ],
+  "Malden": [
+   "0252"
+  ],
+  "Mander": [
+   "0183"
+  ],
+  "Manderveen": [
+   "0183"
+  ],
+  "Mantgum": [
+   "0080"
+  ],
+  "Mantinge": [
+   "1731"
+  ],
+  "Maren-Kessel": [
+   "0828"
+  ],
+  "Margraten": [
+   "1903"
+  ],
+  "Maria Hoop": [
+   "1711"
+  ],
+  "Mariahout": [
+   "1659"
+  ],
+  "Mariaparochie": [
+   "0183"
+  ],
+  "Marijenkampen": [
+   "1708"
+  ],
+  "Mariënberg": [
+   "0160"
+  ],
+  "Mariënheem": [
+   "0177"
+  ],
+  "Mariënvelde": [
+   "1586"
+  ],
+  "Markelo": [
+   "1735"
+  ],
+  "Marken": [
+   "0852"
+  ],
+  "Markenbinnen": [
+   "0361"
+  ],
+  "Marknesse": [
+   "0171"
+  ],
+  "Marle": [
+   "1773"
+  ],
+  "Marrum": [
+   "1970"
+  ],
+  "Marsum": [
+   "1949"
+  ],
+  "Marum": [
+   "1969"
+  ],
+  "Marwijksoord": [
+   "1680"
+  ],
+  "Mastenbroek": [
+   "0166",
+   "1896"
+  ],
+  "Matsloot": [
+   "1699"
+  ],
+  "Maurik": [
+   "0214"
+  ],
+  "Mechelen": [
+   "1729"
+  ],
+  "Medemblik": [
+   "0420"
+  ],
+  "Meeden": [
+   "1952"
+  ],
+  "Meedhuizen": [
+   "1979"
+  ],
+  "Meerkerk": [
+   "1961"
+  ],
+  "Meerlo": [
+   "1507"
+  ],
+  "Meerssen": [
+   "0938"
+  ],
+  "Meerstad": [
+   "0014"
+  ],
+  "Meeuwen": [
+   "1959"
+  ],
+  "Megchelen": [
+   "1509"
+  ],
+  "Megen": [
+   "0828"
+  ],
+  "Meijel": [
+   "1894"
+  ],
+  "Melderslo": [
+   "1507"
+  ],
+  "Melick": [
+   "1669"
+  ],
+  "Meliskerke": [
+   "0717"
+  ],
+  "Melissant": [
+   "1924"
+  ],
+  "Menaam": [
+   "1949"
+  ],
+  "Mensingeweer": [
+   "1966"
+  ],
+  "Meppel": [
+   "0119"
+  ],
+  "Meppen": [
+   "0109"
+  ],
+  "Merkelbeek": [
+   "1954"
+  ],
+  "Merselo": [
+   "0984"
+  ],
+  "Meteren": [
+   "1960"
+  ],
+  "Meterik": [
+   "1507"
+  ],
+  "Mheer": [
+   "1903"
+  ],
+  "Middelaar": [
+   "0944"
+  ],
+  "Middelburg": [
+   "0687"
+  ],
+  "Middelharnis": [
+   "1924"
+  ],
+  "Middelie": [
+   "0385"
+  ],
+  "Middelstum": [
+   "1979"
+  ],
+  "Middenbeemster": [
+   "0439"
+  ],
+  "Middenmeer": [
+   "1911"
+  ],
+  "Midlaren": [
+   "1730"
+  ],
+  "Midlum": [
+   "0072"
+  ],
+  "Midsland": [
+   "0093"
+  ],
+  "Midwolda": [
+   "1895"
+  ],
+  "Midwolde": [
+   "1969"
+  ],
+  "Midwoud": [
+   "0420"
+  ],
+  "Miedum": [
+   "0080"
+  ],
+  "Mierlo": [
+   "1771"
+  ],
+  "Mijdrecht": [
+   "0736"
+  ],
+  "Mijnsheerenland": [
+   "1963"
+  ],
+  "Mildam": [
+   "0074"
+  ],
+  "Milheeze": [
+   "1652"
+  ],
+  "Mill": [
+   "1982"
+  ],
+  "Millingen aan de Rijn": [
+   "1945"
+  ],
+  "Milsbeek": [
+   "0907"
+  ],
+  "Minnertsga": [
+   "1949"
+  ],
+  "Mirns": [
+   "1940"
+  ],
+  "Mitselwier": [
+   "1970"
+  ],
+  "Moarre": [
+   "1970"
+  ],
+  "Moddergat": [
+   "1970"
+  ],
+  "Moerdijk": [
+   "1709"
+  ],
+  "Moergestel": [
+   "0824"
+  ],
+  "Moerkapelle": [
+   "1892"
+  ],
+  "Moerstraten": [
+   "1674"
+  ],
+  "Molenaarsgraaf": [
+   "1978"
+  ],
+  "Molenhoek": [
+   "0944"
+  ],
+  "Molenschot": [
+   "0784"
+  ],
+  "Molkwerum": [
+   "1900"
+  ],
+  "Monnickendam": [
+   "0852"
+  ],
+  "Monster": [
+   "1783"
+  ],
+  "Montfoort": [
+   "0335"
+  ],
+  "Montfort": [
+   "1669"
+  ],
+  "Mook": [
+   "0944"
+  ],
+  "Mookhoek": [
+   "1963"
+  ],
+  "Moordrecht": [
+   "1892"
+  ],
+  "Moorveld": [
+   "0938"
+  ],
+  "Muiden": [
+   "1942"
+  ],
+  "Muiderberg": [
+   "1942"
+  ],
+  "Munnekeburen": [
+   "0098"
+  ],
+  "Munnekezijl": [
+   "1970"
+  ],
+  "Munstergeleen": [
+   "1883"
+  ],
+  "Muntendam": [
+   "1952"
+  ],
+  "Mussel": [
+   "0037"
+  ],
+  "Musselkanaal": [
+   "0037"
+  ],
+  "Mûnein": [
+   "0737"
+  ],
+  "Naaldwijk": [
+   "1783"
+  ],
+  "Naarden": [
+   "1942"
+  ],
+  "Nagele": [
+   "0171"
+  ],
+  "Nederasselt": [
+   "0252"
+  ],
+  "Nederhemert": [
+   "0297"
+  ],
+  "Nederhorst den Berg": [
+   "1696"
+  ],
+  "Nederland": [
+   "1708"
+  ],
+  "Nederweert": [
+   "0946"
+  ],
+  "Nederweert-Eind": [
+   "0946"
+  ],
+  "Neede": [
+   "1859"
+  ],
+  "Neer": [
+   "1640"
+  ],
+  "Neerijnen": [
+   "1960"
+  ],
+  "Neeritter": [
+   "1640"
+  ],
+  "Neerkant": [
+   "0762"
+  ],
+  "Neerlangel": [
+   "0828"
+  ],
+  "Neerloon": [
+   "0828"
+  ],
+  "Nes": [
+   "0060",
+   "0074",
+   "1970"
+  ],
+  "Netersel": [
+   "1728"
+  ],
+  "Netterden": [
+   "1509"
+  ],
+  "Nibbixwoud": [
+   "0420"
+  ],
+  "Niebert": [
+   "1969"
+  ],
+  "Niehove": [
+   "1969"
+  ],
+  "Niekerk": [
+   "1966",
+   "1969"
+  ],
+  "Nietap": [
+   "1699"
+  ],
+  "Nieuw Annerveen": [
+   "1680"
+  ],
+  "Nieuw Beerta": [
+   "1895"
+  ],
+  "Nieuw Heeten": [
+   "0177"
+  ],
+  "Nieuw Namen": [
+   "0677"
+  ],
+  "Nieuw Scheemda": [
+   "1895"
+  ],
+  "Nieuw- en Sint Joosland": [
+   "0687"
+  ],
+  "Nieuw-Amsterdam": [
+   "0114"
+  ],
+  "Nieuw-Balinge": [
+   "1731"
+  ],
+  "Nieuw-Beijerland": [
+   "1963"
+  ],
+  "Nieuw-Buinen": [
+   "1681"
+  ],
+  "Nieuw-Dordrecht": [
+   "0114"
+  ],
+  "Nieuw-Lekkerland": [
+   "1978"
+  ],
+  "Nieuw-Roden": [
+   "1699"
+  ],
+  "Nieuw-Schoonebeek": [
+   "0114"
+  ],
+  "Nieuw-Vennep": [
+   "0394"
+  ],
+  "Nieuw-Vossemeer": [
+   "0851"
+  ],
+  "Nieuw-Weerdinge": [
+   "0114"
+  ],
+  "Nieuwaal": [
+   "0297"
+  ],
+  "Nieuwdorp": [
+   "0654"
+  ],
+  "Nieuwe Niedorp": [
+   "1911"
+  ],
+  "Nieuwe Pekela": [
+   "0765"
+  ],
+  "Nieuwe Wetering": [
+   "1884"
+  ],
+  "Nieuwe-Tonge": [
+   "1924"
+  ],
+  "Nieuwebrug": [
+   "0074"
+  ],
+  "Nieuwediep": [
+   "1680"
+  ],
+  "Nieuwegein": [
+   "0356"
+  ],
+  "Nieuwehorne": [
+   "0074"
+  ],
+  "Nieuwendijk": [
+   "1959"
+  ],
+  "Nieuwer Ter Aa": [
+   "1904"
+  ],
+  "Nieuwerbrug aan den Rijn": [
+   "1901"
+  ],
+  "Nieuwerkerk": [
+   "1676"
+  ],
+  "Nieuwerkerk aan den IJssel": [
+   "1892"
+  ],
+  "Nieuweroord": [
+   "0118",
+   "1731"
+  ],
+  "Nieuwersluis": [
+   "1904"
+  ],
+  "Nieuweschoot": [
+   "0074"
+  ],
+  "Nieuwkoop": [
+   "0569"
+  ],
+  "Nieuwkuijk": [
+   "0797"
+  ],
+  "Nieuwland": [
+   "1961"
+  ],
+  "Nieuwlande": [
+   "0118"
+  ],
+  "Nieuwlande Coevorden": [
+   "0109"
+  ],
+  "Nieuwleusen": [
+   "0148"
+  ],
+  "Nieuwolda": [
+   "1895"
+  ],
+  "Nieuwpoort": [
+   "1978"
+  ],
+  "Nieuwstadt": [
+   "1711"
+  ],
+  "Nieuwveen": [
+   "0569"
+  ],
+  "Nieuwvliet": [
+   "1714"
+  ],
+  "Niezijl": [
+   "1969"
+  ],
+  "Niftrik": [
+   "0296"
+  ],
+  "Nigtevecht": [
+   "1904"
+  ],
+  "Nij Altoenae": [
+   "1949"
+  ],
+  "Nij Beets": [
+   "0086"
+  ],
+  "Nijbroek": [
+   "0285"
+  ],
+  "Nijeberkoop": [
+   "0085"
+  ],
+  "Nijega": [
+   "0090"
+  ],
+  "Nijehaske": [
+   "1940"
+  ],
+  "Nijeholtpade": [
+   "0098"
+  ],
+  "Nijeholtwolde": [
+   "0098"
+  ],
+  "Nijelamer": [
+   "0098"
+  ],
+  "Nijemirdum": [
+   "1940"
+  ],
+  "Nijensleek": [
+   "1701"
+  ],
+  "Nijetrijne": [
+   "0098"
+  ],
+  "Nijeveen": [
+   "0119"
+  ],
+  "Nijewier": [
+   "1970"
+  ],
+  "Nijhuizum": [
+   "1900"
+  ],
+  "Nijkerk": [
+   "0267"
+  ],
+  "Nijkerkerveen": [
+   "0267"
+  ],
+  "Nijland": [
+   "1900"
+  ],
+  "Nijlande": [
+   "1680"
+  ],
+  "Nijmegen": [
+   "0268"
+  ],
+  "Nijverdal": [
+   "0163"
+  ],
+  "Nispen": [
+   "1674"
+  ],
+  "Nisse": [
+   "0654"
+  ],
+  "Nistelrode": [
+   "1721"
+  ],
+  "Noardburgum": [
+   "0737"
+  ],
+  "Nooitgedacht": [
+   "1680"
+  ],
+  "Noorbeek": [
+   "1903"
+  ],
+  "Noord-Scharwoude": [
+   "1980"
+  ],
+  "Noord-Sleen": [
+   "0109"
+  ],
+  "Noordbeemster": [
+   "0439"
+  ],
+  "Noordbroek": [
+   "1952"
+  ],
+  "Noordeinde": [
+   "0361"
+  ],
+  "Noordeinde Gld": [
+   "0269"
+  ],
+  "Noordeloos": [
+   "1978"
+  ],
+  "Noorden": [
+   "0569"
+  ],
+  "Noordgouwe": [
+   "1676"
+  ],
+  "Noordhoek": [
+   "1709"
+  ],
+  "Noordhorn": [
+   "1969"
+  ],
+  "Noordlaren": [
+   "0014"
+  ],
+  "Noordscheschut": [
+   "0118"
+  ],
+  "Noordwelle": [
+   "1676"
+  ],
+  "Noordwijk": [
+   "0575",
+   "1969"
+  ],
+  "Noordwijkerhout": [
+   "0575"
+  ],
+  "Noordwolde": [
+   "0098",
+   "1966"
+  ],
+  "Nootdorp": [
+   "1926"
+  ],
+  "Norg": [
+   "1699"
+  ],
+  "Notter": [
+   "0189"
+  ],
+  "Nuenen": [
+   "0820"
+  ],
+  "Nuis": [
+   "1969"
+  ],
+  "Nuland": [
+   "0796"
+  ],
+  "Numansdorp": [
+   "1963"
+  ],
+  "Nunhem": [
+   "1640"
+  ],
+  "Nunspeet": [
+   "0302"
+  ],
+  "Nuth": [
+   "1954"
+  ],
+  "Nutter": [
+   "1774"
+  ],
+  "Obbicht": [
+   "1883"
+  ],
+  "Obdam": [
+   "1598"
+  ],
+  "Ochten": [
+   "1740"
+  ],
+  "Odijk": [
+   "0312"
+  ],
+  "Odiliapeel": [
+   "1991"
+  ],
+  "Odoorn": [
+   "1681"
+  ],
+  "Odoornerveen": [
+   "1681"
+  ],
+  "Oeffelt": [
+   "1982"
+  ],
+  "Oegstgeest": [
+   "0579"
+  ],
+  "Oene": [
+   "0232"
+  ],
+  "Oentsjerk": [
+   "0737"
+  ],
+  "Offingawier": [
+   "1900"
+  ],
+  "Ohé en Laak": [
+   "1641"
+  ],
+  "Oijen": [
+   "0828"
+  ],
+  "Oirlo": [
+   "0984"
+  ],
+  "Oirsbeek": [
+   "1954"
+  ],
+  "Oirschot": [
+   "0823"
+  ],
+  "Oisterwijk": [
+   "0824"
+  ],
+  "Okkenbroek": [
+   "0150"
+  ],
+  "Olburgen": [
+   "1876"
+  ],
+  "Oldeberkoop": [
+   "0085"
+  ],
+  "Oldebroek": [
+   "0269"
+  ],
+  "Oldeholtpade": [
+   "0098"
+  ],
+  "Oldeholtwolde": [
+   "0098"
+  ],
+  "Oldehove": [
+   "1969"
+  ],
+  "Oldekerk": [
+   "1969"
+  ],
+  "Oldelamer": [
+   "0098"
+  ],
+  "Oldemarkt": [
+   "1708"
+  ],
+  "Oldenzaal": [
+   "0173"
+  ],
+  "Oldenzijl": [
+   "1966"
+  ],
+  "Oldeouwer": [
+   "1940"
+  ],
+  "Oldetrijne": [
+   "0098"
+  ],
+  "Olst": [
+   "1773"
+  ],
+  "Olterterp": [
+   "0086"
+  ],
+  "Ommel": [
+   "0743"
+  ],
+  "Ommen": [
+   "0175"
+  ],
+  "Ommeren": [
+   "0214"
+  ],
+  "Onderdendam": [
+   "1966"
+  ],
+  "Onna": [
+   "1708"
+  ],
+  "Onnen": [
+   "0014"
+  ],
+  "Onstwedde": [
+   "0037"
+  ],
+  "Ooij": [
+   "1945"
+  ],
+  "Ooltgensplaat": [
+   "1924"
+  ],
+  "Oost West en Middelbeers": [
+   "0823"
+  ],
+  "Oost-Graftdijk": [
+   "0361"
+  ],
+  "Oost-Souburg": [
+   "0718"
+  ],
+  "Oostburg": [
+   "1714"
+  ],
+  "Oostdijk": [
+   "0703"
+  ],
+  "Oosteind": [
+   "0826"
+  ],
+  "Oosterbeek": [
+   "0274"
+  ],
+  "Oosterbierum": [
+   "1949"
+  ],
+  "Oosterblokker": [
+   "0498"
+  ],
+  "Oosterend": [
+   "0093",
+   "0448"
+  ],
+  "Oosterhesselen": [
+   "0109"
+  ],
+  "Oosterhout": [
+   "0826",
+   "1734"
+  ],
+  "Oosterland": [
+   "1676"
+  ],
+  "Oosterleek": [
+   "0498"
+  ],
+  "Oosternieland": [
+   "1966"
+  ],
+  "Oosterstreek": [
+   "0098"
+  ],
+  "Oosterwijk": [
+   "1961"
+  ],
+  "Oosterwijtwerd": [
+   "1979"
+  ],
+  "Oosterwolde": [
+   "0085"
+  ],
+  "Oosterwolde Gld": [
+   "0269"
+  ],
+  "Oosterzee": [
+   "1940"
+  ],
+  "Oosthem": [
+   "1900"
+  ],
+  "Oosthuizen": [
+   "0385"
+  ],
+  "Oostkapelle": [
+   "0717"
+  ],
+  "Oostknollendam": [
+   "0880"
+  ],
+  "Oostrum": [
+   "0984"
+  ],
+  "Oostvoorne": [
+   "1992"
+  ],
+  "Oostwold": [
+   "1895",
+   "1969"
+  ],
+  "Oostwoud": [
+   "0420"
+  ],
+  "Oostzaan": [
+   "0431"
+  ],
+  "Ootmarsum": [
+   "1774"
+  ],
+  "Opeinde": [
+   "0090"
+  ],
+  "Opende": [
+   "1969"
+  ],
+  "Ophemert": [
+   "1960"
+  ],
+  "Opheusden": [
+   "1740"
+  ],
+  "Opijnen": [
+   "1960"
+  ],
+  "Oploo": [
+   "1982"
+  ],
+  "Opmeer": [
+   "0432"
+  ],
+  "Oppenhuizen": [
+   "1900"
+  ],
+  "Opperdoes": [
+   "0420"
+  ],
+  "Oranje": [
+   "1731"
+  ],
+  "Oranjewoud": [
+   "0074"
+  ],
+  "Orvelte": [
+   "1731"
+  ],
+  "Ospel": [
+   "0946"
+  ],
+  "Oss": [
+   "0828"
+  ],
+  "Ossendrecht": [
+   "0873"
+  ],
+  "Ossenisse": [
+   "0677"
+  ],
+  "Ossenwaard": [
+   "1961"
+  ],
+  "Ossenzijl": [
+   "1708"
+  ],
+  "Oterleek": [
+   "0361"
+  ],
+  "Otterlo": [
+   "0228"
+  ],
+  "Ottersum": [
+   "0907"
+  ],
+  "Ottoland": [
+   "1978"
+  ],
+  "Oud Ade": [
+   "1884"
+  ],
+  "Oud Annerveen": [
+   "1680"
+  ],
+  "Oud Gastel": [
+   "1655"
+  ],
+  "Oud Ootmarsum": [
+   "1774"
+  ],
+  "Oud Zuilen": [
+   "1904"
+  ],
+  "Oud-Alblas": [
+   "1978"
+  ],
+  "Oud-Beijerland": [
+   "1963"
+  ],
+  "Oud-Vossemeer": [
+   "0716"
+  ],
+  "Ouddorp": [
+   "1924"
+  ],
+  "Oude Meer": [
+   "0394"
+  ],
+  "Oude Niedorp": [
+   "1911"
+  ],
+  "Oude Pekela": [
+   "0765"
+  ],
+  "Oude Wetering": [
+   "1884"
+  ],
+  "Oude Willem": [
+   "1701"
+  ],
+  "Oude-Tonge": [
+   "1924"
+  ],
+  "Oudebildtzijl": [
+   "1949"
+  ],
+  "Oudega": [
+   "0090",
+   "1900",
+   "1940"
+  ],
+  "Oudehaske": [
+   "1940"
+  ],
+  "Oudehorne": [
+   "0074"
+  ],
+  "Oudelande": [
+   "0654"
+  ],
+  "Oudemirdum": [
+   "1940"
+  ],
+  "Oudemolen": [
+   "1709",
+   "1730"
+  ],
+  "Oudenbosch": [
+   "1655"
+  ],
+  "Oudendijk": [
+   "1598"
+  ],
+  "Oudenhoorn": [
+   "1992"
+  ],
+  "Ouderkerk aan de Amstel": [
+   "0437"
+  ],
+  "Ouderkerk aan den IJssel": [
+   "1931"
+  ],
+  "Oudeschans": [
+   "1950"
+  ],
+  "Oudeschild": [
+   "0448"
+  ],
+  "Oudeschip": [
+   "1966"
+  ],
+  "Oudeschoot": [
+   "0074"
+  ],
+  "Oudesluis": [
+   "0441"
+  ],
+  "Oudewater": [
+   "0589"
+  ],
+  "Oudezijl": [
+   "1895"
+  ],
+  "Oudheusden": [
+   "0797"
+  ],
+  "Oudkarspel": [
+   "0441",
+   "1980"
+  ],
+  "Oudorp": [
+   "0361"
+  ],
+  "Ouwerkerk": [
+   "1676"
+  ],
+  "Ouwster-Nijega": [
+   "1940"
+  ],
+  "Ouwsterhaule": [
+   "1940"
+  ],
+  "Overasselt": [
+   "0252"
+  ],
+  "Overberg": [
+   "1581"
+  ],
+  "Overdinkel": [
+   "0168"
+  ],
+  "Overlangel": [
+   "0828"
+  ],
+  "Overloon": [
+   "1982"
+  ],
+  "Overschild": [
+   "1952"
+  ],
+  "Overslag": [
+   "0715"
+  ],
+  "Overveen": [
+   "0377"
+  ],
+  "Ovezande": [
+   "0654"
+  ],
+  "Paasloo": [
+   "1708"
+  ],
+  "Pannerden": [
+   "0299"
+  ],
+  "Panningen": [
+   "1894"
+  ],
+  "Papekop": [
+   "0589"
+  ],
+  "Papendrecht": [
+   "0590"
+  ],
+  "Papenhoven": [
+   "1883"
+  ],
+  "Papenvoort": [
+   "1680"
+  ],
+  "Parrega": [
+   "1900"
+  ],
+  "Paterswolde": [
+   "1730"
+  ],
+  "Peazens": [
+   "1970"
+  ],
+  "Peest": [
+   "1699"
+  ],
+  "Peins": [
+   "1949"
+  ],
+  "Peize": [
+   "1699"
+  ],
+  "Peperga": [
+   "0098"
+  ],
+  "Pernis Rotterdam": [
+   "0599"
+  ],
+  "Persingen": [
+   "1945"
+  ],
+  "Pesse": [
+   "0118",
+   "1701"
+  ],
+  "Petten": [
+   "0441"
+  ],
+  "Philippine": [
+   "0715"
+  ],
+  "Piaam": [
+   "1900"
+  ],
+  "Piershil": [
+   "1963"
+  ],
+  "Pieterburen": [
+   "1966"
+  ],
+  "Pietersbierum": [
+   "1949"
+  ],
+  "Pieterzijl": [
+   "1969"
+  ],
+  "Pijnacker": [
+   "1926"
+  ],
+  "Pingjum": [
+   "1900"
+  ],
+  "Plasmolen": [
+   "0944"
+  ],
+  "Poederoijen": [
+   "0297"
+  ],
+  "Poeldijk": [
+   "1783"
+  ],
+  "Polsbroek": [
+   "0331"
+  ],
+  "Poortugaal": [
+   "0613"
+  ],
+  "Poortvliet": [
+   "0716"
+  ],
+  "Poppenwier": [
+   "1900"
+  ],
+  "Posterholt": [
+   "1669"
+  ],
+  "Prinsenbeek": [
+   "0758"
+  ],
+  "Puiflijk": [
+   "0225"
+  ],
+  "Punthorst": [
+   "0180"
+  ],
+  "Purmer": [
+   "0385",
+   "0852"
+  ],
+  "Purmerend": [
+   "0439"
+  ],
+  "Purmerland": [
+   "0415"
+  ],
+  "Puth": [
+   "1954"
+  ],
+  "Putte": [
+   "0873"
+  ],
+  "Putten": [
+   "0273"
+  ],
+  "Puttershoek": [
+   "1963"
+  ],
+  "Raalte": [
+   "0177"
+  ],
+  "Raamsdonk": [
+   "0779"
+  ],
+  "Raamsdonksveer": [
+   "0779"
+  ],
+  "Raard": [
+   "1970"
+  ],
+  "Radewijk": [
+   "0160"
+  ],
+  "Radio Kootwijk": [
+   "0200"
+  ],
+  "Raerd": [
+   "1900"
+  ],
+  "Randwijk": [
+   "1734"
+  ],
+  "Ransdaal": [
+   "0986"
+  ],
+  "Rasquert": [
+   "1966"
+  ],
+  "Ravenstein": [
+   "0828"
+  ],
+  "Ravenswaaij": [
+   "0214"
+  ],
+  "Ravenswoud": [
+   "0085"
+  ],
+  "Readtsjerk": [
+   "1891"
+  ],
+  "Reahûs": [
+   "1900"
+  ],
+  "Reduzum": [
+   "0080"
+  ],
+  "Reek": [
+   "1991"
+  ],
+  "Reeuwijk": [
+   "1901"
+  ],
+  "Reeve": [
+   "0166"
+  ],
+  "Reijmerstok": [
+   "1729"
+  ],
+  "Reitsum": [
+   "1970"
+  ],
+  "Rekken": [
+   "1859"
+  ],
+  "Renesse": [
+   "1676"
+  ],
+  "Renkum": [
+   "0274"
+  ],
+  "Renswoude": [
+   "0339"
+  ],
+  "Ressen": [
+   "1705"
+  ],
+  "Retranchement": [
+   "1714"
+  ],
+  "Reusel": [
+   "1667"
+  ],
+  "Reutum": [
+   "0183"
+  ],
+  "Reuver": [
+   "0889"
+  ],
+  "Rha": [
+   "1876"
+  ],
+  "Rheden": [
+   "0275"
+  ],
+  "Rhee": [
+   "0106"
+  ],
+  "Rheeze": [
+   "0160"
+  ],
+  "Rheezerveen": [
+   "0160"
+  ],
+  "Rhenen": [
+   "0340"
+  ],
+  "Rhenoy": [
+   "1960"
+  ],
+  "Rhoon": [
+   "0613"
+  ],
+  "Ridderkerk": [
+   "0597"
+  ],
+  "Ried": [
+   "1949"
+  ],
+  "Riel": [
+   "0785"
+  ],
+  "Rien": [
+   "1900"
+  ],
+  "Riethoven": [
+   "1724"
+  ],
+  "Rietmolen": [
+   "1859"
+  ],
+  "Rijen": [
+   "0784"
+  ],
+  "Rijkevoort": [
+   "1982"
+  ],
+  "Rijkevoort-De Walsert": [
+   "1982"
+  ],
+  "Rijnsaterwoude": [
+   "1884"
+  ],
+  "Rijnsburg": [
+   "0537"
+  ],
+  "Rijpwetering": [
+   "1884"
+  ],
+  "Rijs": [
+   "1940"
+  ],
+  "Rijsbergen": [
+   "0879"
+  ],
+  "Rijsenhout": [
+   "0394"
+  ],
+  "Rijssen": [
+   "1742"
+  ],
+  "Rijswijk": [
+   "0603"
+  ],
+  "Rijswijk (GLD)": [
+   "0214"
+  ],
+  "Rijswijk (NB)": [
+   "1959"
+  ],
+  "Rilland": [
+   "0703"
+  ],
+  "Rinsumageast": [
+   "1891"
+  ],
+  "Ritthem": [
+   "0718"
+  ],
+  "Rockanje": [
+   "1992"
+  ],
+  "Roden": [
+   "1699"
+  ],
+  "Roderesch": [
+   "1699"
+  ],
+  "Roderwolde": [
+   "1699"
+  ],
+  "Roelofarendsveen": [
+   "1884"
+  ],
+  "Roermond": [
+   "0957"
+  ],
+  "Rogat": [
+   "0119"
+  ],
+  "Roggel": [
+   "1640"
+  ],
+  "Rohel": [
+   "1940"
+  ],
+  "Rolde": [
+   "1680"
+  ],
+  "Roodeschool": [
+   "1966"
+  ],
+  "Roosendaal": [
+   "1674"
+  ],
+  "Roosteren": [
+   "1711"
+  ],
+  "Rosmalen": [
+   "0796"
+  ],
+  "Rossum": [
+   "0263",
+   "1774"
+  ],
+  "Roswinkel": [
+   "0114"
+  ],
+  "Rotstergaast": [
+   "1940"
+  ],
+  "Rotsterhaule": [
+   "1940"
+  ],
+  "Rotterdam": [
+   "0599"
+  ],
+  "Rotterdam-Albrandswaard": [
+   "0613"
+  ],
+  "Rottevalle": [
+   "0090"
+  ],
+  "Rottum": [
+   "1940",
+   "1966"
+  ],
+  "Rouveen": [
+   "0180"
+  ],
+  "Rozenburg": [
+   "0394",
+   "0599"
+  ],
+  "Rozendaal": [
+   "0277"
+  ],
+  "Rucphen": [
+   "0840"
+  ],
+  "Ruigahuizen": [
+   "1940"
+  ],
+  "Ruinen": [
+   "1690",
+   "1701"
+  ],
+  "Ruinerwold": [
+   "1690"
+  ],
+  "Rumpt": [
+   "1960"
+  ],
+  "Rutten": [
+   "0171"
+  ],
+  "Ruurlo": [
+   "1859"
+  ],
+  "Ryptsjerk": [
+   "0737"
+  ],
+  "Saaksum": [
+   "1969"
+  ],
+  "Saasveld": [
+   "1774"
+  ],
+  "Saaxumhuizen": [
+   "1966"
+  ],
+  "Sambeek": [
+   "1982"
+  ],
+  "Sandfirden": [
+   "1900"
+  ],
+  "Santpoort-Noord": [
+   "0453"
+  ],
+  "Santpoort-Zuid": [
+   "0453"
+  ],
+  "Sappemeer": [
+   "1952"
+  ],
+  "Sas van Gent": [
+   "0715"
+  ],
+  "Sassenheim": [
+   "1525"
+  ],
+  "Sauwerd": [
+   "1966"
+  ],
+  "Schagen": [
+   "0441"
+  ],
+  "Schagerbrug": [
+   "0441"
+  ],
+  "Schaijk": [
+   "1991"
+  ],
+  "Schalkhaar": [
+   "0150"
+  ],
+  "Schalkwijk": [
+   "0321"
+  ],
+  "Schalsum": [
+   "1949"
+  ],
+  "Schardam": [
+   "0385"
+  ],
+  "Scharendijke": [
+   "1676"
+  ],
+  "Scharmer": [
+   "1952"
+  ],
+  "Scharnegoutum": [
+   "1900"
+  ],
+  "Scharsterbrug": [
+   "1940"
+  ],
+  "Scharwoude": [
+   "1598"
+  ],
+  "Scheemda": [
+   "1895"
+  ],
+  "Scheerwolde": [
+   "1708"
+  ],
+  "Schellinkhout": [
+   "0498"
+  ],
+  "Schelluinen": [
+   "1978"
+  ],
+  "Schermerhorn": [
+   "0361"
+  ],
+  "Scherpenisse": [
+   "0716"
+  ],
+  "Scherpenzeel": [
+   "0098",
+   "0279"
+  ],
+  "Schettens": [
+   "1900"
+  ],
+  "Scheulder": [
+   "1903"
+  ],
+  "Schiedam": [
+   "0606"
+  ],
+  "Schiermonnikoog": [
+   "0088"
+  ],
+  "Schijf": [
+   "0840"
+  ],
+  "Schijndel": [
+   "1948"
+  ],
+  "Schildwolde": [
+   "1952"
+  ],
+  "Schimmert": [
+   "1954"
+  ],
+  "Schin op Geul": [
+   "0994"
+  ],
+  "Schinnen": [
+   "1954"
+  ],
+  "Schinveld": [
+   "1954"
+  ],
+  "Schipborg": [
+   "1680"
+  ],
+  "Schiphol": [
+   "0394"
+  ],
+  "Schiphol-Rijk": [
+   "0394"
+  ],
+  "Schipluiden": [
+   "1842"
+  ],
+  "Schokland": [
+   "0171"
+  ],
+  "Schoondijke": [
+   "1714"
+  ],
+  "Schoonebeek": [
+   "0114"
+  ],
+  "Schoonhoven": [
+   "1931"
+  ],
+  "Schoonloo": [
+   "1680"
+  ],
+  "Schoonoord": [
+   "0109"
+  ],
+  "Schoonrewoerd": [
+   "1961"
+  ],
+  "Schoorl": [
+   "0373"
+  ],
+  "Schore": [
+   "0678"
+  ],
+  "Schouwerzijl": [
+   "1966"
+  ],
+  "Schraard": [
+   "1900"
+  ],
+  "Schuinesloot": [
+   "0160"
+  ],
+  "Sebaldeburen": [
+   "1969"
+  ],
+  "Sellingen": [
+   "1950"
+  ],
+  "Serooskerke": [
+   "0717",
+   "1676"
+  ],
+  "Sevenum": [
+   "1507"
+  ],
+  "Sexbierum": [
+   "1949"
+  ],
+  "Sibculo": [
+   "0160",
+   "1700"
+  ],
+  "Sibrandabuorren": [
+   "1900"
+  ],
+  "Sibrandahûs": [
+   "1891"
+  ],
+  "Siddeburen": [
+   "1952"
+  ],
+  "Siebengewald": [
+   "0893"
+  ],
+  "Siegerswoude": [
+   "0086"
+  ],
+  "Sijbekarspel": [
+   "0420"
+  ],
+  "Silvolde": [
+   "1509"
+  ],
+  "Simonshaven": [
+   "1930"
+  ],
+  "Simpelveld": [
+   "0965"
+  ],
+  "Sinderen": [
+   "1509"
+  ],
+  "Sint Agatha": [
+   "1982"
+  ],
+  "Sint Annen": [
+   "0014"
+  ],
+  "Sint Anthonis": [
+   "1982"
+  ],
+  "Sint Geertruid": [
+   "1903"
+  ],
+  "Sint Hubert": [
+   "1982"
+  ],
+  "Sint Jansklooster": [
+   "1708"
+  ],
+  "Sint Jansteen": [
+   "0677"
+  ],
+  "Sint Joost": [
+   "1711"
+  ],
+  "Sint Kruis": [
+   "1714"
+  ],
+  "Sint Maarten": [
+   "0441"
+  ],
+  "Sint Maartensbrug": [
+   "0441"
+  ],
+  "Sint Maartensvlotbrug": [
+   "0441"
+  ],
+  "Sint Nicolaasga": [
+   "1940"
+  ],
+  "Sint Odiliënberg": [
+   "1669"
+  ],
+  "Sint Pancras": [
+   "1980"
+  ],
+  "Sint Philipsland": [
+   "0716"
+  ],
+  "Sint-Annaland": [
+   "0716"
+  ],
+  "Sint-Maartensdijk": [
+   "0716"
+  ],
+  "Sint-Michielsgestel": [
+   "0845"
+  ],
+  "Sint-Oedenrode": [
+   "1948"
+  ],
+  "Sintjohannesga": [
+   "1940"
+  ],
+  "Sirjansland": [
+   "1676"
+  ],
+  "Sittard": [
+   "1883"
+  ],
+  "Skingen": [
+   "1949"
+  ],
+  "Slagharen": [
+   "0160"
+  ],
+  "Slappeterp": [
+   "1949"
+  ],
+  "Sleen": [
+   "0109"
+  ],
+  "Sleeuwijk": [
+   "1959"
+  ],
+  "Slenaken": [
+   "1729"
+  ],
+  "Sliedrecht": [
+   "0610"
+  ],
+  "Slijk-Ewijk": [
+   "1734"
+  ],
+  "Slijkenburg": [
+   "0098"
+  ],
+  "Slochteren": [
+   "1952"
+  ],
+  "Slootdorp": [
+   "1911"
+  ],
+  "Sloten": [
+   "1940"
+  ],
+  "Sluis": [
+   "1714"
+  ],
+  "Sluiskil": [
+   "0715"
+  ],
+  "Smakt": [
+   "0984"
+  ],
+  "Smalle Ee": [
+   "0090"
+  ],
+  "Smallebrugge": [
+   "1900"
+  ],
+  "Smilde": [
+   "1731"
+  ],
+  "Snakkerburen": [
+   "0080"
+  ],
+  "Sneek": [
+   "1900"
+  ],
+  "Snelrewaard": [
+   "0589"
+  ],
+  "Snikzwaag": [
+   "1940"
+  ],
+  "Soerendonk": [
+   "1706"
+  ],
+  "Soest": [
+   "0342"
+  ],
+  "Soesterberg": [
+   "0342"
+  ],
+  "Someren": [
+   "0847"
+  ],
+  "Sommelsdijk": [
+   "1924"
+  ],
+  "Son en Breugel": [
+   "0848"
+  ],
+  "Sondel": [
+   "1940"
+  ],
+  "Sonnega": [
+   "0098"
+  ],
+  "Spaarndam": [
+   "0394"
+  ],
+  "Spaarndam gem. Haarlem": [
+   "0392"
+  ],
+  "Spanbroek": [
+   "0432"
+  ],
+  "Spanga": [
+   "0098"
+  ],
+  "Spankeren": [
+   "0275"
+  ],
+  "Spannum": [
+   "1949"
+  ],
+  "Spaubeek": [
+   "0888"
+  ],
+  "Spier": [
+   "1701",
+   "1731"
+  ],
+  "Spierdijk": [
+   "1598"
+  ],
+  "Spijk": [
+   "0299",
+   "1960",
+   "1979"
+  ],
+  "Spijkenisse": [
+   "1930"
+  ],
+  "Spijkerboor": [
+   "0880",
+   "1680"
+  ],
+  "Sprang-Capelle": [
+   "0867"
+  ],
+  "Sprundel": [
+   "0840"
+  ],
+  "Spui": [
+   "0715"
+  ],
+  "St. Willebrord": [
+   "0840"
+  ],
+  "St.-Annaparochie": [
+   "1949"
+  ],
+  "St.-Jacobiparochie": [
+   "1949"
+  ],
+  "Stad aan 't Haringvliet": [
+   "1924"
+  ],
+  "Stadskanaal": [
+   "0037"
+  ],
+  "Stampersgat": [
+   "1655"
+  ],
+  "Standdaarbuiten": [
+   "1709"
+  ],
+  "Staphorst": [
+   "0180"
+  ],
+  "Starnmeer": [
+   "0361"
+  ],
+  "Startenhuizen": [
+   "1966",
+   "1979"
+  ],
+  "Stavenisse": [
+   "0716"
+  ],
+  "Stavoren": [
+   "1900"
+  ],
+  "Stedum": [
+   "1979"
+  ],
+  "Steenbergen": [
+   "0851",
+   "1699"
+  ],
+  "Steendam": [
+   "1952"
+  ],
+  "Steenderen": [
+   "1876"
+  ],
+  "Steenenkamer": [
+   "0285"
+  ],
+  "Steensel": [
+   "0770"
+  ],
+  "Steenwijk": [
+   "1708"
+  ],
+  "Steenwijkerwold": [
+   "1708"
+  ],
+  "Stegeren": [
+   "0175"
+  ],
+  "Steggerda": [
+   "0098"
+  ],
+  "Stein": [
+   "0971"
+  ],
+  "Stellendam": [
+   "1924"
+  ],
+  "Sterksel": [
+   "1658"
+  ],
+  "Stevensbeek": [
+   "1982"
+  ],
+  "Stevensweert": [
+   "1641"
+  ],
+  "Steyl": [
+   "0983"
+  ],
+  "Stieltjeskanaal": [
+   "0109"
+  ],
+  "Stiens": [
+   "0080"
+  ],
+  "Stitswerd": [
+   "1966"
+  ],
+  "Stokkum": [
+   "1955"
+  ],
+  "Stolwijk": [
+   "1931"
+  ],
+  "Stompetoren": [
+   "0361"
+  ],
+  "Stoutenburg": [
+   "0327"
+  ],
+  "Stoutenburg Noord": [
+   "0307"
+  ],
+  "Stramproy": [
+   "0988"
+  ],
+  "Streefkerk": [
+   "1978"
+  ],
+  "Striep": [
+   "0093"
+  ],
+  "Strijbeek": [
+   "1723"
+  ],
+  "Strijen": [
+   "1963"
+  ],
+  "Strijensas": [
+   "1963"
+  ],
+  "Stroe": [
+   "0203"
+  ],
+  "Stroobos": [
+   "0059"
+  ],
+  "Stuifzand": [
+   "0118",
+   "1731"
+  ],
+  "Sumar": [
+   "0737"
+  ],
+  "Surhuisterveen": [
+   "0059"
+  ],
+  "Surhuizum": [
+   "0059"
+  ],
+  "Susteren": [
+   "1711"
+  ],
+  "Suwâld": [
+   "0737"
+  ],
+  "Swalmen": [
+   "0957"
+  ],
+  "Sweagerbosk": [
+   "1970"
+  ],
+  "Sweikhuizen": [
+   "1954"
+  ],
+  "Swichum": [
+   "0080"
+  ],
+  "Swifterbant": [
+   "0303"
+  ],
+  "Swolgen": [
+   "1507"
+  ],
+  "Taarlo": [
+   "1730"
+  ],
+  "Teeffelen": [
+   "0828"
+  ],
+  "Teerns": [
+   "0080"
+  ],
+  "Tegelen": [
+   "0983"
+  ],
+  "Ten Boer": [
+   "0014"
+  ],
+  "Ten Post": [
+   "0014"
+  ],
+  "Ter Aar": [
+   "0569"
+  ],
+  "Ter Aard": [
+   "0106"
+  ],
+  "Ter Apel": [
+   "1950"
+  ],
+  "Ter Apelkanaal": [
+   "1950"
+  ],
+  "Ter Heijde": [
+   "1783"
+  ],
+  "Ter Idzard": [
+   "0098"
+  ],
+  "Terband": [
+   "0074"
+  ],
+  "Terborg": [
+   "1509"
+  ],
+  "Terheijden": [
+   "1719"
+  ],
+  "Terherne": [
+   "1940"
+  ],
+  "Terhole": [
+   "0677"
+  ],
+  "Terkaple": [
+   "1940"
+  ],
+  "Termunten": [
+   "1979"
+  ],
+  "Termunterzijl": [
+   "1979"
+  ],
+  "Ternaard": [
+   "1970"
+  ],
+  "Terneuzen": [
+   "0715"
+  ],
+  "Teroele": [
+   "1940"
+  ],
+  "Terschuur": [
+   "0203"
+  ],
+  "Tersoal": [
+   "1900"
+  ],
+  "Terwispel": [
+   "0086"
+  ],
+  "Terwolde": [
+   "0285"
+  ],
+  "Teteringen": [
+   "0758"
+  ],
+  "Teuge": [
+   "0285"
+  ],
+  "Thesinge": [
+   "0014"
+  ],
+  "Tholen": [
+   "0716"
+  ],
+  "Thorn": [
+   "1641"
+  ],
+  "Tiel": [
+   "0281"
+  ],
+  "Tiendeveen": [
+   "0118",
+   "1731"
+  ],
+  "Tienhoven": [
+   "1904"
+  ],
+  "Tienhoven aan de Lek": [
+   "1961"
+  ],
+  "Tienray": [
+   "1507"
+  ],
+  "Tijnje": [
+   "0086"
+  ],
+  "Tilburg": [
+   "0855"
+  ],
+  "Tilligte": [
+   "1774"
+  ],
+  "Tinallinge": [
+   "1966"
+  ],
+  "Tinte": [
+   "1992"
+  ],
+  "Tirns": [
+   "1900"
+  ],
+  "Tjalhuizum": [
+   "1900"
+  ],
+  "Tjalleberd": [
+   "0074"
+  ],
+  "Tjerkgaast": [
+   "1940"
+  ],
+  "Tjerkwerd": [
+   "1900"
+  ],
+  "Tjuchem": [
+   "1952"
+  ],
+  "Tolbert": [
+   "1969"
+  ],
+  "Toldijk": [
+   "1876"
+  ],
+  "Tolkamer": [
+   "0299"
+  ],
+  "Tollebeek": [
+   "0171"
+  ],
+  "Tonden": [
+   "0213"
+  ],
+  "Toornwerd": [
+   "1979"
+  ],
+  "Tricht": [
+   "1960"
+  ],
+  "Tripscompagnie": [
+   "1952"
+  ],
+  "Tubbergen": [
+   "0183"
+  ],
+  "Tuil": [
+   "1960"
+  ],
+  "Tuitjenhorn": [
+   "0441"
+  ],
+  "Tuk": [
+   "1708"
+  ],
+  "Tull en 't Waal": [
+   "0321"
+  ],
+  "Twello": [
+   "0285"
+  ],
+  "Twijzel": [
+   "0059"
+  ],
+  "Twijzelerheide": [
+   "0059"
+  ],
+  "Twisk": [
+   "0420"
+  ],
+  "Tynaarlo": [
+   "1730"
+  ],
+  "Tytsjerk": [
+   "0737"
+  ],
+  "Tzum": [
+   "1949"
+  ],
+  "Tzummarum": [
+   "1949"
+  ],
+  "Ubbena": [
+   "0106"
+  ],
+  "Ubbergen": [
+   "1945"
+  ],
+  "Uddel": [
+   "0200"
+  ],
+  "Uden": [
+   "1991"
+  ],
+  "Udenhout": [
+   "0855"
+  ],
+  "Uffelte": [
+   "1701"
+  ],
+  "Ugchelen": [
+   "0200"
+  ],
+  "Uitdam": [
+   "0852"
+  ],
+  "Uitgeest": [
+   "0450"
+  ],
+  "Uithoorn": [
+   "0451"
+  ],
+  "Uithuizen": [
+   "1966"
+  ],
+  "Uithuizermeeden": [
+   "1966"
+  ],
+  "Uitwellingerga": [
+   "1900"
+  ],
+  "Uitwijk": [
+   "1959"
+  ],
+  "Ulestraten": [
+   "0938"
+  ],
+  "Ulft": [
+   "1509"
+  ],
+  "Ulicoten": [
+   "0744"
+  ],
+  "Ulrum": [
+   "1966"
+  ],
+  "Ulvenhout": [
+   "0758"
+  ],
+  "Ulvenhout AC": [
+   "1723"
+  ],
+  "Ureterp": [
+   "0086"
+  ],
+  "Urk": [
+   "0184"
+  ],
+  "Urmond": [
+   "0971"
+  ],
+  "Ursem": [
+   "0361",
+   "1598"
+  ],
+  "Usquert": [
+   "1966"
+  ],
+  "Utrecht": [
+   "0344"
+  ],
+  "Vaals": [
+   "0981"
+  ],
+  "Vaassen": [
+   "0232"
+  ],
+  "Valburg": [
+   "1734"
+  ],
+  "Valkenburg": [
+   "0537",
+   "0994"
+  ],
+  "Valkenswaard": [
+   "0858"
+  ],
+  "Valthe": [
+   "1681"
+  ],
+  "Valthermond": [
+   "1681"
+  ],
+  "Varik": [
+   "1960"
+  ],
+  "Varsselder": [
+   "1509"
+  ],
+  "Varsseveld": [
+   "1509"
+  ],
+  "Vasse": [
+   "0183"
+  ],
+  "Veelerveen": [
+   "1950"
+  ],
+  "Veen": [
+   "1959"
+  ],
+  "Veendam": [
+   "0047"
+  ],
+  "Veenendaal": [
+   "0345"
+  ],
+  "Veenhuizen": [
+   "1699"
+  ],
+  "Veeningen": [
+   "1690"
+  ],
+  "Veenoord": [
+   "0114"
+  ],
+  "Veere": [
+   "0717"
+  ],
+  "Veessen": [
+   "0246"
+  ],
+  "Vegelinsoord": [
+   "1940"
+  ],
+  "Veghel": [
+   "1948"
+  ],
+  "Velddriel": [
+   "0263"
+  ],
+  "Velden": [
+   "0983"
+  ],
+  "Veldhoven": [
+   "0861"
+  ],
+  "Velp": [
+   "0275",
+   "1982"
+  ],
+  "Velsen-Noord": [
+   "0453"
+  ],
+  "Velsen-Zuid": [
+   "0453"
+  ],
+  "Velserbroek": [
+   "0453"
+  ],
+  "Ven-Zelderheide": [
+   "0907"
+  ],
+  "Venebrugge": [
+   "0160"
+  ],
+  "Venhorst": [
+   "0755"
+  ],
+  "Venhuizen": [
+   "0498"
+  ],
+  "Venlo": [
+   "0983"
+  ],
+  "Venray": [
+   "0984"
+  ],
+  "Vessem": [
+   "0770"
+  ],
+  "Vethuizen": [
+   "1955"
+  ],
+  "Veulen": [
+   "0984"
+  ],
+  "Vianen": [
+   "1961"
+  ],
+  "Vianen NB": [
+   "1982"
+  ],
+  "Vierakker": [
+   "1876"
+  ],
+  "Vierhouten": [
+   "0302"
+  ],
+  "Vierhuizen": [
+   "1966"
+  ],
+  "Vierlingsbeek": [
+   "1982"
+  ],
+  "Vierpolders": [
+   "1992"
+  ],
+  "Vijfhuizen": [
+   "0394"
+  ],
+  "Vijlen": [
+   "0981"
+  ],
+  "Vilsteren": [
+   "0175"
+  ],
+  "Vinkega": [
+   "0098"
+  ],
+  "Vinkel": [
+   "0796",
+   "1721"
+  ],
+  "Vinkenbuurt": [
+   "0175"
+  ],
+  "Vinkeveen": [
+   "0736"
+  ],
+  "Visvliet": [
+   "1969"
+  ],
+  "Vlaardingen": [
+   "0622"
+  ],
+  "Vlagtwedde": [
+   "1950"
+  ],
+  "Vledder": [
+   "1701"
+  ],
+  "Vledderveen": [
+   "0037",
+   "1701"
+  ],
+  "Vleuten": [
+   "0344"
+  ],
+  "Vlieland": [
+   "0096"
+  ],
+  "Vlierden": [
+   "0762"
+  ],
+  "Vlijmen": [
+   "0797"
+  ],
+  "Vlissingen": [
+   "0718"
+  ],
+  "Vlist": [
+   "1931"
+  ],
+  "Vlodrop": [
+   "1669"
+  ],
+  "Voerendaal": [
+   "0986"
+  ],
+  "Vogelenzang": [
+   "0377"
+  ],
+  "Vogelwaarde": [
+   "0677"
+  ],
+  "Volendam": [
+   "0385"
+  ],
+  "Volkel": [
+   "1991"
+  ],
+  "Vollenhove": [
+   "1708"
+  ],
+  "Vondelingenplaat Rotterdam": [
+   "0599"
+  ],
+  "Voorburg": [
+   "1916"
+  ],
+  "Voorhout": [
+   "1525"
+  ],
+  "Voorschoten": [
+   "0626"
+  ],
+  "Voorst": [
+   "0285",
+   "1509"
+  ],
+  "Voorthuizen": [
+   "0203"
+  ],
+  "Vorchten": [
+   "0246"
+  ],
+  "Vorden": [
+   "1876"
+  ],
+  "Vorstenbosch": [
+   "1721"
+  ],
+  "Vortum-Mullem": [
+   "1982"
+  ],
+  "Vragender": [
+   "1586"
+  ],
+  "Vredenheim": [
+   "1680"
+  ],
+  "Vredepeel": [
+   "0984"
+  ],
+  "Vreeland": [
+   "1904"
+  ],
+  "Vries": [
+   "1730"
+  ],
+  "Vriescheloo": [
+   "1950"
+  ],
+  "Vriezenveen": [
+   "1700"
+  ],
+  "Vroomshoop": [
+   "1700"
+  ],
+  "Vrouwenakker": [
+   "0569"
+  ],
+  "Vrouwenparochie": [
+   "1949"
+  ],
+  "Vrouwenpolder": [
+   "0717"
+  ],
+  "Vught": [
+   "0865"
+  ],
+  "Vuren": [
+   "1960"
+  ],
+  "Waaksens": [
+   "1900"
+  ],
+  "Waal": [
+   "1978"
+  ],
+  "Waalre": [
+   "0866"
+  ],
+  "Waalwijk": [
+   "0867"
+  ],
+  "Waarde": [
+   "0703"
+  ],
+  "Waardenburg": [
+   "1960"
+  ],
+  "Waarder": [
+   "1901"
+  ],
+  "Waardhuizen": [
+   "1959"
+  ],
+  "Waarland": [
+   "0441"
+  ],
+  "Waaxens": [
+   "1970"
+  ],
+  "Wachtum": [
+   "0109"
+  ],
+  "Waddinxveen": [
+   "0627"
+  ],
+  "Wadenoijen": [
+   "0281"
+  ],
+  "Wagenberg": [
+   "1719"
+  ],
+  "Wagenborgen": [
+   "1979"
+  ],
+  "Wageningen": [
+   "0289"
+  ],
+  "Walem": [
+   "0994"
+  ],
+  "Walsoorden": [
+   "0677"
+  ],
+  "Wamel": [
+   "0668"
+  ],
+  "Wanneperveen": [
+   "1708"
+  ],
+  "Wanroij": [
+   "1982"
+  ],
+  "Wanssum": [
+   "0984"
+  ],
+  "Wapenveld": [
+   "0246"
+  ],
+  "Wapse": [
+   "1701"
+  ],
+  "Wapserveen": [
+   "1701"
+  ],
+  "Warder": [
+   "0385"
+  ],
+  "Warffum": [
+   "1966"
+  ],
+  "Warfhuizen": [
+   "1966"
+  ],
+  "Warfstermolen": [
+   "1970"
+  ],
+  "Warmenhuizen": [
+   "0441"
+  ],
+  "Warmond": [
+   "1525"
+  ],
+  "Warns": [
+   "1900"
+  ],
+  "Warnsveld": [
+   "0301"
+  ],
+  "Warstiens": [
+   "0080"
+  ],
+  "Warten": [
+   "0080"
+  ],
+  "Waskemeer": [
+   "0085"
+  ],
+  "Waspik": [
+   "0867"
+  ],
+  "Wassenaar": [
+   "0629"
+  ],
+  "Wateren": [
+   "1701"
+  ],
+  "Watergang": [
+   "0852"
+  ],
+  "Waterhuizen": [
+   "1952"
+  ],
+  "Wateringen": [
+   "1783"
+  ],
+  "Waterlandkerkje": [
+   "1714"
+  ],
+  "Waverveen": [
+   "0736"
+  ],
+  "Wedde": [
+   "1950"
+  ],
+  "Weerselo": [
+   "1774"
+  ],
+  "Weert": [
+   "0988"
+  ],
+  "Weesp": [
+   "0363"
+  ],
+  "Wehe-den Hoorn": [
+   "1966"
+  ],
+  "Wehl": [
+   "0222"
+  ],
+  "Weidum": [
+   "0080"
+  ],
+  "Weiteveen": [
+   "0114"
+  ],
+  "Wekerom": [
+   "0228"
+  ],
+  "Well": [
+   "0263"
+  ],
+  "Well L": [
+   "0893"
+  ],
+  "Wellerlooi": [
+   "0893"
+  ],
+  "Welsum": [
+   "1773"
+  ],
+  "Wemeldinge": [
+   "0678"
+  ],
+  "Wenum Wiesel": [
+   "0200"
+  ],
+  "Wergea": [
+   "0080"
+  ],
+  "Werkendam": [
+   "1959"
+  ],
+  "Werkhoven": [
+   "0312"
+  ],
+  "Wernhout": [
+   "0879"
+  ],
+  "Wervershoof": [
+   "0420"
+  ],
+  "Wesepe": [
+   "1773"
+  ],
+  "Wessem": [
+   "1641"
+  ],
+  "West-Graftdijk": [
+   "0361"
+  ],
+  "West-Terschelling": [
+   "0093"
+  ],
+  "Westbeemster": [
+   "0439"
+  ],
+  "Westbroek": [
+   "0310"
+  ],
+  "Westdorp": [
+   "1681"
+  ],
+  "Westdorpe": [
+   "0715"
+  ],
+  "Westendorp": [
+   "1509"
+  ],
+  "Westerbeek": [
+   "1982"
+  ],
+  "Westerbork": [
+   "1731"
+  ],
+  "Westerbroek": [
+   "1952"
+  ],
+  "Westeremden": [
+   "1979"
+  ],
+  "Westergeast": [
+   "1970"
+  ],
+  "Westerhaar-Vriezenveensewijk": [
+   "1700"
+  ],
+  "Westerhoven": [
+   "1724"
+  ],
+  "Westerland": [
+   "1911"
+  ],
+  "Westerlee": [
+   "1895"
+  ],
+  "Westernieland": [
+   "1966"
+  ],
+  "Westervelde": [
+   "1699"
+  ],
+  "Westervoort": [
+   "0293"
+  ],
+  "Westerwijtwerd": [
+   "1979"
+  ],
+  "Westhem": [
+   "1900"
+  ],
+  "Westhoek": [
+   "1949"
+  ],
+  "Westkapelle": [
+   "0717"
+  ],
+  "Westknollendam": [
+   "0479"
+  ],
+  "Westmaas": [
+   "1963"
+  ],
+  "Westwoud": [
+   "0498"
+  ],
+  "Westzaan": [
+   "0479"
+  ],
+  "Wetering": [
+   "1708"
+  ],
+  "Weteringbrug": [
+   "0394"
+  ],
+  "Wetsens": [
+   "1970"
+  ],
+  "Wetsinge": [
+   "1966"
+  ],
+  "Weurt": [
+   "0209"
+  ],
+  "Wezep": [
+   "0269"
+  ],
+  "Wezup": [
+   "0109"
+  ],
+  "Wezuperbrug": [
+   "0109"
+  ],
+  "Wichmond": [
+   "1876"
+  ],
+  "Wier": [
+   "1949"
+  ],
+  "Wierden": [
+   "0189"
+  ],
+  "Wieringerwaard": [
+   "1911"
+  ],
+  "Wieringerwerf": [
+   "1911"
+  ],
+  "Wierum": [
+   "1970"
+  ],
+  "Wijchen": [
+   "0296"
+  ],
+  "Wijckel": [
+   "1940"
+  ],
+  "Wijdenes": [
+   "0498"
+  ],
+  "Wijdewormer": [
+   "0880"
+  ],
+  "Wijhe": [
+   "1773"
+  ],
+  "Wijk aan Zee": [
+   "0375"
+  ],
+  "Wijk bij Duurstede": [
+   "0352"
+  ],
+  "Wijk en Aalburg": [
+   "1959"
+  ],
+  "Wijlre": [
+   "1729"
+  ],
+  "Wijnaldum": [
+   "0072"
+  ],
+  "Wijnandsrade": [
+   "1954"
+  ],
+  "Wijnbergen": [
+   "1955"
+  ],
+  "Wijngaarden": [
+   "1978"
+  ],
+  "Wijnjewoude": [
+   "0086"
+  ],
+  "Wijster": [
+   "1731"
+  ],
+  "Wilbertoord": [
+   "1982"
+  ],
+  "Wildervank": [
+   "0047"
+  ],
+  "Wilhelminadorp": [
+   "0664"
+  ],
+  "Wilhelminaoord": [
+   "1701"
+  ],
+  "Willemsoord": [
+   "1708"
+  ],
+  "Willemstad": [
+   "1709"
+  ],
+  "Wilnis": [
+   "0736"
+  ],
+  "Wilp": [
+   "0285"
+  ],
+  "Wilsum": [
+   "0166"
+  ],
+  "Winde": [
+   "1730"
+  ],
+  "Windraak": [
+   "1883"
+  ],
+  "Winkel": [
+   "1911"
+  ],
+  "Winneweer": [
+   "0014"
+  ],
+  "Winschoten": [
+   "1895"
+  ],
+  "Winssen": [
+   "0209"
+  ],
+  "Winsum": [
+   "1949",
+   "1966"
+  ],
+  "Wintelre": [
+   "0770"
+  ],
+  "Winterswijk": [
+   "0294"
+  ],
+  "Winterswijk Brinkheurne": [
+   "0294"
+  ],
+  "Winterswijk Corle": [
+   "0294"
+  ],
+  "Winterswijk Henxel": [
+   "0294"
+  ],
+  "Winterswijk Huppel": [
+   "0294"
+  ],
+  "Winterswijk Kotten": [
+   "0294"
+  ],
+  "Winterswijk Meddo": [
+   "0294"
+  ],
+  "Winterswijk Miste": [
+   "0294"
+  ],
+  "Winterswijk Ratum": [
+   "0294"
+  ],
+  "Winterswijk Woold": [
+   "0294"
+  ],
+  "Wirdum": [
+   "0080",
+   "1979"
+  ],
+  "Wissenkerke": [
+   "1695"
+  ],
+  "Witharen": [
+   "0175"
+  ],
+  "Witmarsum": [
+   "1900"
+  ],
+  "Witte Paarden": [
+   "1708"
+  ],
+  "Wittelte": [
+   "1701"
+  ],
+  "Wittem": [
+   "1729"
+  ],
+  "Witteveen": [
+   "1731"
+  ],
+  "Wiuwert": [
+   "1900"
+  ],
+  "Wjelsryp": [
+   "1949"
+  ],
+  "Woensdrecht": [
+   "0873"
+  ],
+  "Woerden": [
+   "0632"
+  ],
+  "Woerdense Verlaat": [
+   "0569"
+  ],
+  "Wognum": [
+   "0420"
+  ],
+  "Woldendorp": [
+   "1979"
+  ],
+  "Wolfheze": [
+   "0274"
+  ],
+  "Wolphaartsdijk": [
+   "0664"
+  ],
+  "Wolsum": [
+   "1900"
+  ],
+  "Woltersum": [
+   "0014"
+  ],
+  "Wolvega": [
+   "0098"
+  ],
+  "Wommels": [
+   "1900"
+  ],
+  "Wons": [
+   "1900"
+  ],
+  "Workum": [
+   "1900"
+  ],
+  "Wormer": [
+   "0880"
+  ],
+  "Wormerveer": [
+   "0479"
+  ],
+  "Woubrugge": [
+   "1884"
+  ],
+  "Woudbloem": [
+   "1952"
+  ],
+  "Woudenberg": [
+   "0351"
+  ],
+  "Woudrichem": [
+   "1959"
+  ],
+  "Woudsend": [
+   "1900"
+  ],
+  "Wouw": [
+   "1674"
+  ],
+  "Wouwse Plantage": [
+   "1674"
+  ],
+  "Wyns": [
+   "0737"
+  ],
+  "Wytgaard": [
+   "0080"
+  ],
+  "Wâlterswâld": [
+   "1891"
+  ],
+  "Wânswert": [
+   "1970"
+  ],
+  "Yde": [
+   "1730"
+  ],
+  "Yerseke": [
+   "0703"
+  ],
+  "Ypecolsga": [
+   "1900"
+  ],
+  "Ysbrechtum": [
+   "1900"
+  ],
+  "Ysselsteyn": [
+   "0984"
+  ],
+  "Zaamslag": [
+   "0715"
+  ],
+  "Zaandam": [
+   "0479"
+  ],
+  "Zaandijk": [
+   "0479"
+  ],
+  "Zalk": [
+   "0166"
+  ],
+  "Zaltbommel": [
+   "0297"
+  ],
+  "Zandberg": [
+   "1681"
+  ],
+  "Zandeweer": [
+   "1966"
+  ],
+  "Zandhuizen": [
+   "0098"
+  ],
+  "Zandpol": [
+   "0114"
+  ],
+  "Zandvoort": [
+   "0473"
+  ],
+  "Zeddam": [
+   "1955"
+  ],
+  "Zeegse": [
+   "1730"
+  ],
+  "Zeeland": [
+   "1991"
+  ],
+  "Zeerijp": [
+   "1979"
+  ],
+  "Zeewolde": [
+   "0050"
+  ],
+  "Zegge": [
+   "0840"
+  ],
+  "Zegveld": [
+   "0632"
+  ],
+  "Zeijen": [
+   "1730"
+  ],
+  "Zeijerveen": [
+   "0106"
+  ],
+  "Zeijerveld": [
+   "0106"
+  ],
+  "Zeist": [
+   "0355"
+  ],
+  "Zelhem": [
+   "1876"
+  ],
+  "Zenderen": [
+   "0147"
+  ],
+  "Zennewijnen": [
+   "0281",
+   "1960"
+  ],
+  "Zetten": [
+   "1734"
+  ],
+  "Zevenaar": [
+   "0299"
+  ],
+  "Zevenbergen": [
+   "1709"
+  ],
+  "Zevenbergschen Hoek": [
+   "1709",
+   "1719"
+  ],
+  "Zevenhoven": [
+   "0569"
+  ],
+  "Zevenhuizen": [
+   "1892",
+   "1969"
+  ],
+  "Zierikzee": [
+   "1676"
+  ],
+  "Zieuwent": [
+   "1586"
+  ],
+  "Zijderveld": [
+   "1961"
+  ],
+  "Zijdewind": [
+   "1911"
+  ],
+  "Zijldijk": [
+   "1979"
+  ],
+  "Zoelen": [
+   "0214"
+  ],
+  "Zoelmond": [
+   "0214"
+  ],
+  "Zoetermeer": [
+   "0637"
+  ],
+  "Zoeterwoude": [
+   "0638"
+  ],
+  "Zonnemaire": [
+   "1676"
+  ],
+  "Zorgvlied": [
+   "1701"
+  ],
+  "Zoutelande": [
+   "0717"
+  ],
+  "Zoutkamp": [
+   "1966"
+  ],
+  "Zuid-Beijerland": [
+   "1963"
+  ],
+  "Zuid-Scharwoude": [
+   "1980"
+  ],
+  "Zuidbroek": [
+   "1952"
+  ],
+  "Zuiddorpe": [
+   "0715"
+  ],
+  "Zuidermeer": [
+   "1598"
+  ],
+  "Zuiderwoude": [
+   "0852"
+  ],
+  "Zuidhorn": [
+   "1969"
+  ],
+  "Zuidlaarderveen": [
+   "1730"
+  ],
+  "Zuidland": [
+   "1930"
+  ],
+  "Zuidlaren": [
+   "1730"
+  ],
+  "Zuidoostbeemster": [
+   "0439"
+  ],
+  "Zuidschermer": [
+   "0361"
+  ],
+  "Zuidveen": [
+   "1708"
+  ],
+  "Zuidveld": [
+   "1731"
+  ],
+  "Zuidvelde": [
+   "1699"
+  ],
+  "Zuidwolde": [
+   "1690",
+   "1966"
+  ],
+  "Zuidzande": [
+   "1714"
+  ],
+  "Zuilichem": [
+   "0297"
+  ],
+  "Zuna": [
+   "0189"
+  ],
+  "Zundert": [
+   "0879"
+  ],
+  "Zurich": [
+   "1900"
+  ],
+  "Zutphen": [
+   "0301"
+  ],
+  "Zuurdijk": [
+   "1966"
+  ],
+  "Zwaag": [
+   "0405"
+  ],
+  "Zwaagdijk-Oost": [
+   "0420"
+  ],
+  "Zwaagdijk-West": [
+   "0420"
+  ],
+  "Zwaanshoek": [
+   "0394"
+  ],
+  "Zwammerdam": [
+   "0484"
+  ],
+  "Zwanenburg": [
+   "0394"
+  ],
+  "Zwartebroek": [
+   "0203"
+  ],
+  "Zwartemeer": [
+   "0114"
+  ],
+  "Zwartewaal": [
+   "1992"
+  ],
+  "Zwartsluis": [
+   "1896"
+  ],
+  "Zweeloo": [
+   "0109"
+  ],
+  "Zweins": [
+   "1949"
+  ],
+  "Zwiggelte": [
+   "1731"
+  ],
+  "Zwijndrecht": [
+   "0642"
+  ],
+  "Zwinderen": [
+   "0109"
+  ],
+  "Zwolle": [
+   "0193"
+  ],
+  "de Hoef": [
+   "0736"
+  ],
+  "de Lutte": [
+   "0168"
+  ],
+  "de Wijk": [
+   "1690"
+  ],
+  "de Woude": [
+   "0383"
+  ]
+ }
+}

@@ -13,7 +13,7 @@ Een code zonder adres krijgt geen provincie: leeg, niet geraden.
 
 import pandas as pd
 
-from data.instellingen import HOOFDVESTIGING, LOCATIE_AANBOD, get_adres_lookup
+from data.instellingen import HOOFDVESTIGING, REGIO_VIA_LOCATIES, get_adres_lookup
 
 KOLOM = "PROVINCIE INSTELLING"  # dezelfde naam als in DUO's eigen mbo-bestanden
 _CODEKOLOM = "INSTELLINGSCODE"
@@ -28,7 +28,7 @@ DEFINITIE = (
     "voegt de chat hem toe op INSTELLINGSCODE; een code zonder adres blijft leeg. "
     + HOOFDVESTIGING
     + " "
-    + LOCATIE_AANBOD
+    + REGIO_VIA_LOCATIES
 )
 
 

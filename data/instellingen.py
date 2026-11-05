@@ -20,17 +20,16 @@ logger = logging.getLogger(__name__)
 # een adresbestand dat niet laadde bleef anders tot de pod herstartte ontbreken.
 _ADRES_CACHE: dict[str, dict] | None = None
 
-# Wat het adres van een instelling wel en niet zegt (#744). DUO kent één adres per BRIN, dat van de hoofdvestiging.
-# Zone.college (31JC, Lochem) staat dus niet onder Doetinchem, terwijl mbo_opleidingsaanbod (de plaats per
-# onderwijslocatie) er 22 opleidingen van noemt. De code koppelt dat bestand niet aan de BRIN-aantallen: het kent geen
-# BRIN (#728). Het model krijgt de twee zinnen mee waar het het adres leest: de kolomdefinitie en het profiel.
-HOOFDVESTIGING = (
-    "Het adres is dat van de hoofdvestiging: DUO kent één adres per instelling (BRIN), geen nevenlocaties. "
-    "Een instelling die alleen een nevenlocatie in de regio heeft, valt er niet onder."
-)
-LOCATIE_AANBOD = (
-    "De plaats per onderwijslocatie staat in het DUO-bestand mbo_opleidingsaanbod (kolom PLAATSNAAM, aanbieder in "
-    "NAAM). Studentaantallen bestaan alleen per instelling, niet per locatie."
+# Wat het adres van een instelling wel en niet zegt (#744). DUO kent één adres per BRIN, dat van de hoofdvestiging:
+# Zone.college (31JC, Lochem) staat niet onder Doetinchem, al geeft het er 22 opleidingen. Een filter op de plaats,
+# gemeente of provincie van een mbo-instelling neemt daarom ook de instellingen met een onderwijslocatie in dat gebied
+# mee (tools/regiolocaties.py). Het model krijgt de twee zinnen mee waar het het adres leest: de kolomdefinitie en het
+# profiel.
+HOOFDVESTIGING = "Het adres is dat van de hoofdvestiging: DUO kent één adres per instelling (BRIN), geen nevenlocaties."
+REGIO_VIA_LOCATIES = (
+    "Filter je een mbo-bestand op de plaats, gemeente of provincie van de instelling, dan neemt de app ook de "
+    "instellingen mee met een onderwijslocatie in dat gebied (RIO) en noemt ze in een vaste regel onder het antwoord; "
+    "hun studentaantallen gelden per instelling, niet per locatie."
 )
 
 # Handgemaakte referentielijsten: wanneer elk voor het laatst is bijgewerkt en

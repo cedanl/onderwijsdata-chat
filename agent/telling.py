@@ -10,7 +10,7 @@ import json
 import re
 
 from core.sentinels import BETEKENIS, CBS_BETEKENIS
-from tools import cbs_afronding, duo, duo_bestandskeuze, periode, store
+from tools import cbs_afronding, duo, duo_bestandskeuze, periode, regiolocaties, store
 from tools.catalog import bron_naam
 from tools.rio_instelling import FUSIEMELDING
 
@@ -166,6 +166,12 @@ def _fusieregels(tool_results: list[str]) -> list[str]:
     return [f"- {regel}" for regel in regels]
 
 
+def _nevenlocatieregels(tool_results: list[str]) -> list[str]:
+    """Wie alleen via een onderwijslocatie in het gefilterde gebied meedoet, uit code (#744); staat op de selectie."""
+    locaties = {n: None for key in data_keys(tool_results) if (known := store.meta(key)) for n in known.nevenlocaties}
+    return [f"- {regel}" for regel in regiolocaties.regels(locaties)]
+
+
 def _datasets(bestanden: set[_Bestand]) -> str:
     return ", ".join(sorted({dataset for _, dataset, _ in bestanden}))
 
@@ -197,7 +203,8 @@ def _teldefinities(tool_results: list[str]) -> dict[str, str]:
 
 def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding, CBS-selectie,
-    jaarkolom zonder schooljaar, Historie-jaren uit een prognosebestand of fusie (#728) raakte.
+    jaarkolom zonder schooljaar, Historie-jaren uit een prognosebestand, fusie (#728) of instelling via een
+    onderwijslocatie (#744) raakte.
 
     Onder- en bovengrens horen bij de selecties waarop de getallen in `tekst` rusten, niet
     bij elke verkenning van de beurt (#414). Rust er geen getal op een selectie, dan gelden
@@ -221,6 +228,7 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in _historienoten(tool_results).items()]
     regels += selectie_regels(tool_results)
     regels += _fusieregels(tool_results)
+    regels += _nevenlocatieregels(tool_results)
     regels += _ondergrensregels(ondergrens)
     if bovengrens:
         regels.append(
