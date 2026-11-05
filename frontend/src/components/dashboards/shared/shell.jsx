@@ -174,15 +174,53 @@ export const BRONNEN_MBO = [
   { label: 'DUO Open Onderwijsdata — Gediplomeerde MBO-studenten', url: 'https://onderwijsdata.duo.nl/datasets/gediplomeerde-mbo-studenten' },
 ]
 
-export const BRONNEN_NATIONAAL = [
-  { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
-  { label: 'DUO Open Onderwijsdata — MBO studenten per instelling', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
+// Landelijk (#919): per niveau de ene bron waar de ranking en de sectorpositie uit komen, met dataset-ID. De ranking
+// voor "ho" is de gemengde top van hbo en wo samen (p01hoinges kent geen aparte wo-ranking).
+export const BRONNEN_NATIONAAL = {
+  ho: [
+    { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
+  ],
+  mbo: [
+    { label: 'DUO Open Onderwijsdata — MBO studenten per instelling (mbo-studenten-per-instelling)', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
+  ],
+}
+
+// De populatie die de ranking telt, per niveau (#919): de ondertitels noemen dit, zodat "alle instellingen" niet als wo-
+// of sectorranking leest.
+export const POPULATIE_NATIONAAL = { ho: 'alle HO-instellingen (hbo + wo)', mbo: 'alle MBO-instellingen' }
+
+// De namen van de ROA-bronnen (#917): AIS tot 2030 en de schoolverlatersinformatie. De footer en de teksten bij de
+// ROA-grafieken gebruiken dezelfde twee, zodat één bron niet twee namen krijgt. Er staat bewust geen editie bij: de
+// editie komt uit de data (`/version`, catalogus roa), en een vast label loopt achter zodra er een nieuwe uitkomt;
+// het structurele bronblok met editie is #904.
+export const ROA_AIS = 'AIS tot 2030'
+export const ROA_SIS = 'SIS 2024'
+
+// Arbeidsmarkt (#917): de aanbodkant is de DUO-gediplomeerden van het niveau van de instelling (zie
+// `_arbeidsmarktmatch_ho` en `_arbeidsmarktmatch_mbo` in data/dashboard.py), de vraagkant UWV, de context ROA.
+// `kort` is de naam in de badge; de badge is afgeleid van deze lijst, zodat badge en footer niet uiteenlopen.
+const BRONNEN_ARBEIDSMARKT_AANBOD = {
+  ho: [
+    { kort: 'DUO', label: 'DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)', url: 'https://onderwijsdata.duo.nl/datasets/p04hogdipl' },
+  ],
+  mbo: [
+    { kort: 'DUO', label: 'DUO Open Onderwijsdata — Gediplomeerde MBO-studenten (gediplomeerde-mbo-studenten)', url: 'https://onderwijsdata.duo.nl/datasets/gediplomeerde-mbo-studenten' },
+  ],
+}
+
+const BRONNEN_ARBEIDSMARKT_VRAAG_EN_CONTEXT = [
+  { kort: 'UWV', label: 'UWV Open Match — Vacaturedata per provincie en beroepscluster', url: 'https://data.overheid.nl/dataset/uwv-open-match-data' },
+  { kort: 'ROA', label: `ROA — ${ROA_AIS}, incl. ${ROA_SIS}`, url: 'https://doi.org/10.34894/DVQTOG' },
 ]
 
-export const BRONNEN_ARBEIDSMARKT = [
-  { label: 'UWV Open Match — Vacaturedata per provincie en beroepscluster', url: 'https://data.overheid.nl/dataset/uwv-open-match-data' },
-  { label: 'ROA — Arbeidsmarktinformatiesysteem (AIS) 2024', url: 'https://doi.org/10.34894/DVQTOG' },
-]
+// Zonder bekend niveau (de instelling is niet gevonden) is er geen aanbodkant en dus geen DUO-bron.
+export const bronnenArbeidsmarkt = type => [...(BRONNEN_ARBEIDSMARKT_AANBOD[type] || []), ...BRONNEN_ARBEIDSMARKT_VRAAG_EN_CONTEXT]
+
+// "DUO, UWV & ROA": de korte namen van de bronnen in de lijst, ieder één keer.
+export function bronBadge(bronnen) {
+  const namen = [...new Set(bronnen.map(b => b.kort))]
+  return namen.length > 1 ? `${namen.slice(0, -1).join(', ')} & ${namen[namen.length - 1]}` : namen.join('')
+}
 
 export function DashboardSources({ sources }) {
   if (!sources?.length) return null

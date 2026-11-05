@@ -1,7 +1,7 @@
 import TabelScroll from '../../TabelScroll'
 import { COLOR_EIGEN } from '../../../constants'
 import { fmt, useDarkMode } from './hooks'
-import { SectionHeader, ChartCard } from './shell'
+import { SectionHeader, ChartCard, ROA_AIS, ROA_SIS } from './shell'
 import { Grafiek } from './grafiek'
 import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks } from './chart-opts'
 
@@ -67,7 +67,7 @@ export function RoaSection({ data, dark }) {
     <>
       <SectionHeader
         title="Landelijk referentiekader (ROA)"
-        subtitle="Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA Schoolverlatersinformatie 2024)"
+        subtitle={`Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA, ${ROA_SIS})`}
       />
       <ChartCard>
         <Grafiek soort="bar" data={chartData} options={opts} hoogte={h} titel="Landelijk referentiekader (ROA)" categorie="Niveau" />
@@ -138,7 +138,7 @@ export function PrognoseSection({ data }) {
             </tbody>
           </TabelScroll>
           <div className="db-noot">
-            Landelijk gemiddelde — niet specifiek voor deze instelling of regio (ROA AIS2030)
+            Landelijk gemiddelde — niet specifiek voor deze instelling of regio · ROA, {ROA_AIS}
           </div>
         </ChartCard>
     </>

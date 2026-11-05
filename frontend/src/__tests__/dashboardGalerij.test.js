@@ -68,15 +68,16 @@ describe('galerijtitel (#921)', () => {
 
 describe('bronlinks van een dashboard (#921)', () => {
   it('melden dat ze in een nieuw tabblad openen, in naam en met een zichtbare cue', async () => {
-    await toon(createElement(DashboardSources, { sources: BRONNEN_NATIONAAL }))
+    const bronnen = [...BRONNEN_NATIONAAL.ho, ...BRONNEN_NATIONAAL.mbo]
+    await toon(createElement(DashboardSources, { sources: bronnen }))
     const links = [...container.querySelectorAll('.dashboard-sources-list a')]
-    expect(links).toHaveLength(BRONNEN_NATIONAAL.length)
+    expect(links).toHaveLength(bronnen.length)
     links.forEach((a, i) => {
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
-      expect(a.getAttribute('aria-label')).toBe(`${BRONNEN_NATIONAAL[i].label} (opent in een nieuw tabblad)`)
+      expect(a.getAttribute('aria-label')).toBe(`${bronnen[i].label} (opent in een nieuw tabblad)`)
       // De cue staat in de linktekst (CSS tekent het pictogram erachter), niet los naast de link.
-      expect(a.querySelector('span').textContent).toBe(BRONNEN_NATIONAAL[i].label)
+      expect(a.querySelector('span').textContent).toBe(bronnen[i].label)
     })
   })
 
