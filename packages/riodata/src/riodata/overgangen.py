@@ -33,6 +33,8 @@ class Stap:
     Bij ``opvolgers`` is ``code`` de erkenning waarin ``via`` opging; bij ``voorgangers`` is ``code`` de erkenning
     die in ``via`` opging. ``overgang`` is ``"volledig"`` of ``"gedeeltelijk"``, ``datum`` de dag van de overgang
     (jjjj-mm-dd) en ``naam`` de volledige naam van ``code`` (None als RIO de erkenning op die dag niet kent).
+    ``wet`` is het wettelijk kader van ``code`` op die dag (``WEB``, ``WHW``, ``WVO``, ...; None als RIO het niet
+    kent): een vo-school (``WVO``) kan opgaan in een instelling die ook mbo geeft (Morgen College in Landstede).
     """
 
     code: str
@@ -40,6 +42,7 @@ class Stap:
     overgang: str
     datum: str
     via: str
+    wet: str | None = None
 
 
 def _iso(datum: dt.date | str | None) -> str:
@@ -65,14 +68,16 @@ def _overgangen(code: str, peil: str) -> list[tuple[str, str, str, str]]:
     return uit
 
 
-def _naam(code: str, op: str) -> str | None:
+def _naam_en_wet(code: str, op: str) -> tuple[str | None, str | None]:
+    """De naam en het wettelijk kader van ``code`` op ``op``, uit één aanroep; (None, None) als RIO haar niet kent."""
     try:
         erkenning = get(_ERKENNINGEN, code, datumGeldigOp=op)
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            return None
+            return None, None
         raise
-    return " ".join(str(erkenning.get("volledigeNaam") or "").split()) or None
+    naam = " ".join(str(erkenning.get("volledigeNaam") or "").split()) or None
+    return naam, erkenning.get("wet") or None
 
 
 def _dag_ervoor(datum: str) -> str:
@@ -97,7 +102,8 @@ def opvolgers(brin: str, peildatum: dt.date | str | None = None) -> list[Stap]:
                 continue
             gezien.add(naar)
             rij.append(naar)
-            stappen.append(Stap(naar, _naam(naar, peil), soort, datum, via=code))
+            naam, wet = _naam_en_wet(naar, peil)
+            stappen.append(Stap(naar, naam, soort, datum, via=code, wet=wet))
     return _sorteer(stappen)
 
 
@@ -105,7 +111,7 @@ def voorgangers(brin: str, sinds: dt.date | str | None = None, peildatum: dt.dat
     """De erkenningen die vanaf ``sinds`` (standaard: altijd) in ``brin`` opgingen, ook verder terug in de keten.
 
     ``peildatum`` (standaard vandaag) is de ``datumGeldigOp`` van de relaties; de naam van een voorganger is die van
-    de dag vóór haar overgang, toen ze nog bestond. Gesorteerd op datum en code.
+    de dag vóór haar overgang, toen ze nog bestond, en zo ook haar ``wet``. Gesorteerd op datum en code.
     """
     peil, vanaf = _iso(peildatum), _iso(sinds) if sinds is not None else ""
     gezien, rij, stappen = {brin}, [brin], []
@@ -116,5 +122,6 @@ def voorgangers(brin: str, sinds: dt.date | str | None = None, peildatum: dt.dat
                 continue
             gezien.add(van)
             rij.append(van)
-            stappen.append(Stap(van, _naam(van, _dag_ervoor(datum)), soort, datum, via=code))
+            naam, wet = _naam_en_wet(van, _dag_ervoor(datum))
+            stappen.append(Stap(van, naam, soort, datum, via=code, wet=wet))
     return _sorteer(stappen)

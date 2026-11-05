@@ -81,9 +81,10 @@ _RELATIES = {
 class _NepRio:
     """RIO als woordenboek; onthoudt elke aanroep met haar parameters."""
 
-    def __init__(self, relaties=None, namen=None):
+    def __init__(self, relaties=None, namen=None, wetten=None):
         self.relaties = _RELATIES if relaties is None else relaties
         self.namen = _NAMEN if namen is None else namen
+        self.wetten = wetten or {}
         self.aanroepen: list[tuple[str, dict]] = []
 
     def related(self, resource, id, sub, **params):
@@ -95,7 +96,11 @@ class _NepRio:
         if id not in self.namen:
             verzoek = httpx.Request("GET", f"{_BASIS}/{id}")
             raise httpx.HTTPStatusError("404", request=verzoek, response=httpx.Response(404, request=verzoek))
-        return {"code": id, "volledigeNaam": f" {self.namen[id]} "}
+        return {
+            "code": id,
+            "volledigeNaam": f" {self.namen[id]} ",
+            "wet": self.wetten.get((id, params.get("datumGeldigOp"))),
+        }
 
 
 @pytest.fixture
@@ -166,6 +171,20 @@ def test_de_naam_van_een_voorganger_komt_van_de_dag_voor_de_overgang(rio):
     nep = rio()
     voorgangers("08PG", "2021-10-01", peildatum="2026-11-05")
     assert ("erkenningen/25LG", {"datumGeldigOp": "2023-07-31"}) in nep.aanroepen
+
+
+def test_de_wet_van_een_voorganger_komt_uit_dezelfde_aanroep_als_de_naam(rio):
+    """Een vo-school (WVO) kan opgaan in een mbo-instelling; de aanroeper ziet dat aan `wet` (#937)."""
+    nep = rio(wetten={("25LG", "2023-07-31"): "WEB"})
+    (stap,) = voorgangers("08PG", "2021-10-01", peildatum="2026-11-05")
+    assert stap.wet == "WEB"
+    assert [a for a, _ in nep.aanroepen].count("erkenningen/25LG") == 1
+
+
+def test_zonder_wet_in_rio_is_de_wet_none(rio):
+    rio()
+    assert voorgangers("08PG", "2021-10-01", peildatum="2026-11-05")[0].wet is None
+    assert opvolgers("25LG", "2026-11-05")[0].wet is None
 
 
 def test_sinds_laat_oudere_overgangen_weg(rio):

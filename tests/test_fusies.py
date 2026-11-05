@@ -17,8 +17,11 @@ from core import actualiteit
 from tools import dekking, fusies, query, store
 from tools.store import KeyMeta
 
-_FRIESLAND = Stap("25LG", "Regionaal Opleidingen Centrum Friesland College", "volledig", "2023-08-01", via="08PG")
-# Wat RIO op 05-11-2026 gaf voor de zes instellingen met een fusie na 1-10-2021 (onderzoek 04-11).
+_FRIESLAND = Stap(
+    "25LG", "Regionaal Opleidingen Centrum Friesland College", "volledig", "2023-08-01", via="08PG", wet="WEB"
+)
+# Wat RIO op 05-11-2026 gaf voor de zes instellingen met een fusie na 1-10-2021 (onderzoek 04-11), met de wet van de
+# voorganger op de dag vóór de overgang: Morgen College (02EX) is een vmbo-school (WVO), de rest mbo (WEB) (#937).
 _VOORGANGERS = {
     "25EF": [
         Stap(
@@ -27,12 +30,15 @@ _VOORGANGERS = {
             "volledig",
             "2022-08-01",
             "25EF",
+            wet="WEB",
         ),
-        Stap("30RA", "Regionaal Opleidingen Centrum Kop van Noord-Holland", "volledig", "2022-08-01", "25EF"),
+        Stap(
+            "30RA", "Regionaal Opleidingen Centrum Kop van Noord-Holland", "volledig", "2022-08-01", "25EF", wet="WEB"
+        ),
     ],
-    "04FO": [Stap("28DE", "ROC de Leijgraaf", "volledig", "2022-08-01", "04FO")],
+    "04FO": [Stap("28DE", "ROC de Leijgraaf", "volledig", "2022-08-01", "04FO", wet="WEB")],
     "08PG": [_FRIESLAND],
-    "25PW": [Stap("01NJ", "Agrarisch Opleidingscentrum Terra", "volledig", "2024-08-01", "25PW")],
+    "25PW": [Stap("01NJ", "Agrarisch Opleidingscentrum Terra", "volledig", "2024-08-01", "25PW", wet="WEB")],
     "25PT": [
         Stap(
             "25RA",
@@ -40,13 +46,21 @@ _VOORGANGERS = {
             "volledig",
             "2024-08-01",
             "25PT",
+            wet="WEB",
         )
     ],
     "01AA": [
-        Stap("02EX", "Morgen College christelijke scholengemeenschap voor vmbo", "volledig", "2025-08-01", "01AA")
+        Stap(
+            "02EX",
+            "Morgen College christelijke scholengemeenschap voor vmbo",
+            "volledig",
+            "2025-08-01",
+            "01AA",
+            wet="WVO",
+        )
     ],
     # Yuverta: de fusie (1-8-2021) ligt vóór de eerste telling van de reeks (1-10-2021).
-    "01OE": [Stap("26CC", "Helicon Opleidingen", "gedeeltelijk", "2021-08-01", "01OE")],
+    "01OE": [Stap("26CC", "Helicon Opleidingen", "gedeeltelijk", "2021-08-01", "01OE", wet="WEB")],
 }
 
 
@@ -78,9 +92,41 @@ def test_twee_voorgangers_op_dezelfde_dag_staan_in_een_regel(rio):
     assert regel.endswith("Regionaal Opleidingen Centrum Kop van Noord-Holland (30RA)).")
 
 
-@pytest.mark.parametrize("code", ["25EF", "04FO", "08PG", "25PW", "25PT", "01AA"])
-def test_de_zes_instellingen_uit_het_onderzoek(rio, code):
+@pytest.mark.parametrize("code", ["25EF", "04FO", "08PG", "25PW", "25PT"])
+def test_vijf_van_de_zes_instellingen_uit_het_onderzoek_krijgen_de_regel(rio, code):
     assert len(fusies.in_reeks({code: code}, (2021, 2022, 2023, 2024, 2025))) == 1
+
+
+def test_landstede_noemt_de_vmbo_voorganger_niet(rio):
+    """Een mbo-reeks van DUO telt geen vmbo-leerlingen: Morgen College (02EX, WVO) is geen voorganger in die reeks,
+    en zonder andere voorganger binnen de reeks komt er geen regel (#937, besluit A)."""
+    assert fusies.in_reeks({"01AA": "Landstede"}, (2021, 2022, 2023, 2024, 2025)) == ()
+    assert rio == [("01AA", "2021-10-01")]
+
+
+def test_naast_een_vo_voorganger_blijft_de_mbo_voorganger_staan(rio, monkeypatch):
+    stappen = [
+        Stap("02EX", "Morgen College", "volledig", "2025-08-01", "01AA", wet="WVO"),
+        Stap("99ZZ", "ROC Voorbeeld", "volledig", "2025-08-01", "01AA", wet="WEB"),
+    ]
+    monkeypatch.setattr(fusies, "voorgangers", lambda code, sinds=None, peildatum=None: stappen)
+    (regel,) = fusies.in_reeks({"01AA": "Landstede"}, (2021, 2025))
+    assert "(voorgangers: ROC Voorbeeld (99ZZ))" in regel
+    assert "02EX" not in regel
+
+
+@pytest.mark.parametrize("wet", ["WPO", "WVO", "WEC", "WVO 2020"])
+def test_een_voorganger_uit_po_vo_of_so_valt_weg(rio, monkeypatch, wet):
+    stap = Stap("02EX", "Een school", "volledig", "2023-08-01", "08PG", wet=wet)
+    monkeypatch.setattr(fusies, "voorgangers", lambda code, sinds=None, peildatum=None: [stap])
+    assert fusies.in_reeks({"08PG": "Firda"}, (2021, 2025)) == ()
+
+
+def test_een_voorganger_met_onbekende_wet_blijft_staan(rio, monkeypatch):
+    """RIO kent de erkenning niet (meer): de regel noemt haar, zoals vóór #937."""
+    stap = Stap("25LG", None, "volledig", "2023-08-01", "08PG", wet=None)
+    monkeypatch.setattr(fusies, "voorgangers", lambda code, sinds=None, peildatum=None: [stap])
+    assert len(fusies.in_reeks({"08PG": "Firda"}, (2021, 2025))) == 1
 
 
 def test_een_fusie_voor_de_eerste_telling_geeft_geen_regel(rio):

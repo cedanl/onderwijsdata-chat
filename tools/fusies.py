@@ -6,7 +6,9 @@ Twee plekken waar een fusie stil een antwoord kleurde:
 - DUO rekent een meerjarige reeks per instelling om naar de huidige code: Firda telt in 2021 en 2022 ook Friesland
   College mee, dat pas op 1-8-2023 in Firda opging. Een vergelijking met "Firda 2021" leek zo een gewone groei of
   krimp. `in_reeks` geeft per instelling met een fusie binnen de reeks een vaste regel; die komt bij het afleiden op de
-  selectie (`dekking.van`) en zo in het Telling-blok onder het antwoord (`agent/telling.py`).
+  selectie (`dekking.van`) en zo in het Telling-blok onder het antwoord (`agent/telling.py`). Een voorganger uit po,
+  vo of so (Morgen College, vmbo, in Landstede) telt niet mee in een mbo- of ho-reeks van DUO en staat er niet in
+  (#937); was dat de enige voorganger binnen de reeks, dan komt er geen regel.
 
 De voorgangers per code komen uit RIO en staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in
 de cache; een storing geeft geen regel en een WARNING, en breekt het antwoord niet.
@@ -18,6 +20,8 @@ from datetime import date
 from riodata import Stap, voorgangers
 
 from core import actualiteit
+
+from .scopeprofiel import wet_buiten_scope
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +106,6 @@ def in_reeks(namen: dict[str, str], schooljaren: tuple[int, ...] | None) -> tupl
         except Exception as e:  # een storing bij RIO breekt het antwoord niet: geen regel
             logger.warning("FUSIES_ONBEKEND code=%s fout=%s", code, type(e).__name__)
             continue
-        if binnen := [s for s in stappen if begin < s.datum <= eind]:
+        if binnen := [s for s in stappen if begin < s.datum <= eind and not wet_buiten_scope(s.wet)]:
             regels.append(_regel(code, namen[code], binnen))
     return tuple(regels)
