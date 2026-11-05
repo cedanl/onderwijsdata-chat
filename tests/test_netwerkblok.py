@@ -138,12 +138,17 @@ def test_het_blok_staat_open_voor_een_live_test():
 
 
 def test_de_pakketten_hebben_hetzelfde_blok():
-    """De pakketten importeren de chat niet (#886) en hebben daarom een kopie; die mag niet uit de pas lopen."""
+    """De pakketten hebben een byte-gelijke kopie; die mag niet uit de pas lopen.
+
+    Eén bron gaat niet zonder de importgrens (#886, tests/test_importgrens.py): een pakket importeert de chat niet en
+    het andere pakket niet, en `cd packages/<naam> && pytest` moet op zichzelf het blok aan hebben. Een pytest-plugin
+    die alleen de CI met `-p` laadt, mist die losse run. Na #910 (één pakket) blijven er twee kopieën over.
+    """
     pakketten = sorted(p for p in (ROOT / "packages").iterdir() if (p / "pyproject.toml").is_file())
     assert pakketten
-    origineel = (ROOT / "tests" / "netwerkblok.py").read_text()
+    origineel = (ROOT / "tests" / "netwerkblok.py").read_bytes()
     for pakket in pakketten:
         kopie = pakket / "tests" / "netwerkblok.py"
         assert kopie.is_file(), f"{kopie} ontbreekt"
-        assert kopie.read_text() == origineel, f"{kopie} wijkt af van tests/netwerkblok.py"
+        assert kopie.read_bytes() == origineel, f"{kopie} wijkt af van tests/netwerkblok.py: kopieer het origineel"
         assert "BLOK.installeer()" in (pakket / "tests" / "conftest.py").read_text()
