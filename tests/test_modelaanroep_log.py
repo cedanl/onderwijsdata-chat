@@ -169,7 +169,7 @@ def test_de_harde_afbraak_na_de_rungrens_logt_afgebroken_runlimiet(monkeypatch, 
     monkeypatch.setattr(run_module, "RUN_TIMEOUT_S", 0.05)
     monkeypatch.setattr(timebox_module, "_UITLOOP_S", 0.05)
     # Geen kaart en geen profiel uit het register: alleen de modelaanroep telt hier.
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings, eerder=(): None)
     monkeypatch.setattr(run_module, "build_system", lambda settings, beurt: [])
     events: list[dict] = []
 

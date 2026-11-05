@@ -1,7 +1,8 @@
-"""Hoogstens één clarify per vraag, in code (#75).
+"""Hoogstens drie clarifies per vraag, in code (#75).
 
 "Hoeveel studenten RUG?" kreeg een scopevraag en na het antwoord daarop nog een, terwijl
-"meest recente" al gekozen was. De prompt vraagt om één; hier staat dat het niet anders kan.
+"meest recente" al gekozen was. Een vraag die na een antwoord nog echt open is, mag tot drie kaarten
+krijgen (uit code of van het model); de prompt vraagt erom, hier staat dat het niet meer kan.
 """
 
 import asyncio
@@ -20,8 +21,13 @@ def test_a_new_question_may_ask_for_clarification():
     assert "clarify_scope" in _names({"clarify_rondes": 0})
 
 
-def test_after_an_answered_clarification_the_tool_is_gone():
-    names = _names({"clarify_rondes": 1})
+def test_after_one_or_two_answered_clarifications_the_tool_stays():
+    assert "clarify_scope" in _names({"clarify_rondes": 1})
+    assert "clarify_scope" in _names({"clarify_rondes": 2})
+
+
+def test_after_three_answered_clarifications_the_tool_is_gone():
+    names = _names({"clarify_rondes": 3})
     assert "clarify_scope" not in names
     assert "search_catalog" in names  # the rest stays available
 
@@ -52,8 +58,11 @@ def test_a_clarification_choice_counts_as_a_round_and_a_new_question_resets_it()
     _run(chat._handle_clarification, {"choice": "2024/2025"}, session, _emit, None)
     assert session["clarify_rondes"] == 1
 
+    session["clarify_slots"] = ["afbakening"]
+
     _run(chat._handle_message, {"content": "Hoeveel studenten heeft de RUG?"}, session, _emit, None)
     assert session["clarify_rondes"] == 0
+    assert session["clarify_slots"] == []  # een nieuwe vraag mag elk slot weer vragen
 
 
 def test_een_gekozen_optie_blijft_bewaard_tot_een_nieuwe_vraag():

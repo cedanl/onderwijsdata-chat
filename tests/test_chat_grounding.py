@@ -19,6 +19,10 @@ from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
 
+# Deze tests gaan over wat het model daarna doet; een kale testvraag als "Hoeveel eerstejaars?" krijgt anders de
+# afbakeningskaart uit code (#932). De kaart zelf staat in test_afbakeningsvraag.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopekaart")
+
 
 def _niet_meegeteld(dataset: str) -> str:
     """De regel die een DUO-telling vooraan krijgt (#743)."""

@@ -13,15 +13,21 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
   telt wie voor het eerst in het ho staat, dus geen doorstroom naar een master; na doorvragen bleek dat de masters
   ontbraken. De kaart vraagt welke instroom, met wat elke optie wel en niet kan.
 
+- **afbakening**: een telling van personen zonder instelling, sector of gebied ("Hoeveel studenten?"). Het model
+  koos dan stilzwijgend een afbakening; de kaart vraagt landelijk of per sector. Een instelling of regio noemt de
+  gebruiker via "Anders formuleren".
+
 De opties komen uit het register en de catalogus, dus ze zijn altijd geldig; het model formuleert na
-de keuze het antwoord en beslist niet óf de vraag komt. Alleen in de eerste ronde (daarna is
-clarify_scope ook voor het model weg, #75) en nooit als het profiel de instelling al bepaalt. De
-vaste plannen voor de aanbevolen startvragen, het tweede deel van #348, wachten op het besluit in #349.
+de keuze het antwoord en beslist niet óf de vraag komt. Een vraag kan zo tot `MAX_CLARIFY_RONDES` kaarten achter
+elkaar krijgen (de beurt leest de vraag samen met de gekozen opties), maar een slot komt nooit twee keer, en een
+slot dat het profiel al bepaalt (de instelling, de sector) komt niet. De vaste plannen voor de aanbevolen
+startvragen, het tweede deel van #348, wachten op het besluit in #349.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from data.instellingen import get_all
@@ -85,7 +91,7 @@ _MAX_BESCHRIJVING = 140
 class Kaart:
     """Een verduidelijkingskaart uit code, in de vorm die de clarify_scope-tool ook geeft."""
 
-    slot: str  # scope | maat | fase
+    slot: str  # scope | maat | fase | afbakening
     vraag: str
     opties: list[dict] = field(default_factory=list)
 
@@ -261,6 +267,66 @@ def fasevraag(vraag: str) -> Kaart | None:
     return Kaart("fase", "Welke instroom bedoel je?", [dict(optie) for optie in _FASE_OPTIES])
 
 
-def scopevraag(vraag: str, settings: dict | None = None) -> Kaart | None:
-    """De vaste eerste stap voor een vraag met een open slot; None als code niets te vragen heeft."""
-    return plaatsvraag(vraag, settings) or maatvraag(vraag) or fasevraag(vraag)
+_TELLING = re.compile(r"\b(hoeveel|aantal(?:len)?)\b", re.IGNORECASE)
+_PERSONEN = re.compile(
+    r"\b(studenten|leerlingen|deelnemers|ingeschrevenen|eerstejaars\w*|gediplomeerden|afgestudeerden)\b", re.IGNORECASE
+)
+# Een afbakening die de vraag al noemt: sector, niveau, gebied, of de optie die de gebruiker koos.
+_AFGEBAKEND = re.compile(
+    r"\b(landelijk\w*|nederland\w*|sector\w*|mbo|hbo|wo|ho|hoger|beroepsonderwijs|wetenschappelijk\w*|vmbo|havo|vwo|po|vo|"
+    r"roc(?:'s)?|universiteit\w*|"
+    r"hogescho(?:ol|len)|mbo-\w+|hbo-\w+|wo-\w+|niveau|bol|bbl|provincie\w*|gemeente\w*|regio\w*|instelling\w*|"
+    r"per|buitenlandse|internationale|groep|basisschool\w*|basisonderwijs|primair\w*|speciaal|voortgezet\w*|middelbare)\b",
+    re.IGNORECASE,
+)
+_AFBAKENING_OPTIES = [
+    {
+        "label": "Landelijk: mbo, hbo en wo samen",
+        "beschrijving": "Eén totaal voor heel Nederland.",
+        "aanbevolen": True,
+    },
+    {
+        "label": "Per sector: mbo, hbo en wo naast elkaar",
+        "beschrijving": "Drie aantallen, één per sector.",
+    },
+]
+
+
+def _eigennaam(vraag: str) -> bool:
+    """Staat er midden in de zin een woord met een hoofdletter (een plaats, opleiding of afkorting)?"""
+    woorden = [_kaal(w).strip("?!") for w in vraag.split()[1:]]
+    return any(len(w) >= 2 and w[0].isupper() and w.isalpha() for w in woorden)
+
+
+def afbakeningsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
+    """De afbakeningskaart voor een telling van personen zonder instelling, sector of gebied; anders None."""
+    settings = settings or {}
+    if not (_TELLING.search(vraag) and _PERSONEN.search(vraag)):
+        return None
+    if _AFGEBAKEND.search(vraag) or _eigennaam(vraag) or instelling.genoemde_namen(vraag):
+        return None
+    if str(settings.get("instelling") or "").strip() or str(settings.get("domein") or "").strip().lower() in _SECTOREN:
+        return None  # het profiel bepaalt de instelling of de sector
+    return Kaart(
+        "afbakening",
+        "Waarvoor wil je dit aantal: heel Nederland of per sector? Wil je één instelling of regio, "
+        "kies dan 'Anders formuleren' en noem die.",
+        [dict(optie) for optie in _AFBAKENING_OPTIES],
+    )
+
+
+def scopevraag(vraag: str, settings: dict | None = None, eerder: Iterable[str] = ()) -> Kaart | None:
+    """De vaste eerste stap voor een vraag met een open slot; None als code niets te vragen heeft.
+
+    `vraag` is de vraag samen met de keuzes van eerdere kaarten; `eerder` zijn de slots die al gevraagd zijn."""
+    gevraagd = set(eerder)
+    stappen = (
+        ("scope", lambda: plaatsvraag(vraag, settings)),
+        ("maat", lambda: maatvraag(vraag)),
+        ("fase", lambda: fasevraag(vraag)),
+        ("afbakening", lambda: afbakeningsvraag(vraag, settings)),
+    )
+    for slot, stel in stappen:
+        if slot not in gevraagd and (kaart := stel()) is not None:
+            return kaart
+    return None

@@ -427,6 +427,7 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
     session["current_model"] = model
     session["clarify_rondes"] = 0
     session["clarify_keuzes"] = []
+    session["clarify_slots"] = []
     if content in TAG_STARTERS:
         tags = TAG_STARTERS[content]
         label = content.removeprefix("Verken ")

@@ -259,8 +259,8 @@ def test_een_vaag_kort_thema_krijgt_de_maatkaart_zonder_het_model():
     assert messages[-1] == {"role": "assistant", "content": events[0]["vraag"]}
 
 
-def test_na_een_beantwoorde_kaart_vraagt_code_niets_meer():
-    session = {"chat_settings": {}, "clarify_rondes": 1}
+def test_na_drie_beantwoorde_kaarten_vraagt_code_niets_meer():
+    session = {"chat_settings": {}, "clarify_rondes": 3}
     with (
         patch.object(module, "scopevraag", side_effect=AssertionError("tweede kaart")),
         pytest.raises(AssertionError, match="het model is aangeroepen"),

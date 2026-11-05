@@ -474,7 +474,7 @@ def _run(monkeypatch, steps: list[StreamResult], vraag: str | list[dict], sessio
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
     monkeypatch.setattr(loop_module, "_execute_tool", execute)
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings, eerder=(): None)
     events: list[dict] = []
 
     async def emit(event):
