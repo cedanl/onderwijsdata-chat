@@ -322,7 +322,8 @@ chat via `get_mbo_indicatoren`, alleen voor mbo-instellingen (#727).
 - **Alleen de nieuwste editie:** edities mengen geeft andere cijfers voor hetzelfde schooljaar. DUO herberekent na een
   fusie, en het laatste vsv-jaar is voorlopig (zo gelabeld in het resultaat). Oudere edities (2021 en 2022 als `.xls`,
   met andere vergelijkingsgroepen) leest de app niet.
-- **Geen financiën:** de sheet `Financieel` (per bestuur, afgeleid van XBRL) leest de app niet; die hoort bij #725.
+- **Geen financiën:** de sheet `Financieel` (per bestuur, afgeleid van XBRL) leest de app niet: de financiën per bestuur
+  komen uit de verantwoording uit XBRL zelf (hieronder, #935).
 - **Geen cijfer:** een lege cel en een exacte 0 zijn "geen cijfer", tot DUO uitsluitsel geeft. In de editie 2026 staat
   0 bij de vsv van Talland College en Drenthe College Terra over 2023/24 en 2024/25.
 - **Per instelling:** de cijfers gelden per BRIN, niet per opleiding, vestiging of bestuur. Eén organisatie kan twee
@@ -341,6 +342,53 @@ chat via `get_mbo_indicatoren`, alleen voor mbo-instellingen (#727).
 | Inhoud | Jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling, met vergelijkingsgroep |
 | Formaat | xlsx, één editie per jaar, één keer per dag opgehaald |
 | Koppeling | Instellingscode (BRIN) uit het register |
+
+---
+
+## DUO — financiële verantwoording per bestuur (XBRL)
+
+DUO publiceert elk jaar (september/oktober) de jaarrekeningen die de besturen in XBRL aanleveren, per onderdeel als
+xlsx op [financiele-verantwoording-uit-xbrl.jsp](https://duo.nl/open_onderwijsdata/onderwijs-algemeen/financiele-overzichten/financiele-verantwoording-uit-xbrl.jsp).
+In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.financien`, in de catalogus als
+`duo:financien` (geen CKAN-dataset; `get_duo_data` verwijst naar de tool). Onderzoek en besluit: #725, bouw: #935.
+- **Inhoud:** solvabiliteit I en II, liquiditeit (current ratio), rentabiliteit en het totaal van de verantwoorde
+  rijksbijdragen, per bestuur en verslagjaar (de laatste vijf; editie 2021-2025, gepubliceerd 15 september 2026).
+  Weerstandsvermogen, kapitalisatiefactor en netto werkkapitaal zijn voor mbo, hbo en wo leeg en blijven weg.
+- **Alleen mbo, hbo en wo:** besturen die DUO aan po of vo toerekent, laadt de app niet (fail closed, #355). DUO rekent
+  een bestuur met meer sectoren toe aan één leidende sector: Aeres Hogeschool hoort bij een bestuur onder mbo.
+- **Editie uit de bestandsnaam:** de jaren staan in de naam, dus de app leest de pagina en neemt per onderdeel de
+  nieuwste. Een vervallen bestand geeft HTTP 200 met een HTML-pagina (soft 404): dat telt niet als bestand. De
+  bestanden staan een dag in de cache en worden daarna met If-Modified-Since opnieuw gevraagd.
+- **Variant `standaard`:** geconsolideerd waar het bestuur dat aanleverde, anders enkelvoudig. 13 van de 111 reeksen
+  wisselen binnen 2021-2025; het antwoord meldt dat. Varianten worden nooit gemengd of opgeteld.
+- **Bestuur 40833** heeft geen eigen rij maar drie verantwoordingen, één per BRIN (`40833-25LR` ROC van Flevoland,
+  `40833-25PZ` ROC van Amsterdam, `40833-30RM` ROC TOP). Ze blijven aparte eenheden (`Bestuurssleutel`), ook in het
+  sectorcijfer.
+- **Sectorcijfer volgens de Inspectie:** gewogen, de som van de teller over alle eenheden van de sector gedeeld door de
+  som van de noemer (technisch rapport financiële kwaliteit, Staat van het Onderwijs 2024). Daarvoor leest de app ook
+  de balans en de staat van baten en lasten; die posten zelf geeft ze niet. Nagerekend: mbo 2021 liquiditeit 1,58,
+  solvabiliteit II 0,64, rentabiliteit 4,05 %, zoals in het rapport. De mediaan uit de verkenning (0,573 voor
+  solvabiliteit I in 2025) gebruikt de app niet.
+- **Signaleringswaarden van de Inspectie** (zelfde rapport, §3.2.1, vast in de code): solvabiliteit II onder 0,30;
+  liquiditeit onder 1,50 (baten onder € 3 mln), 1,00 (tot en met € 12 mln), 0,75 (tot en met € 25 mln) of 0,50
+  (daarboven). Geen voor rentabiliteit, en geen voor bovenmatig eigen vermogen (daarvoor ontbreken gegevens).
+- **Leeg is geen nul:** een lege cel blijft `null`. Bij de wo-besturen met umc staat de rijksbijdrage voor de
+  werkplaatsfunctie apart; het totaal is zonder dat bedrag (nagerekend op alle 90 wo-rijen).
+- **Fusies:** XBRL rekent niet om naar het huidige bestuur, de DUO-studentbestanden wel. Een voorganger houdt eigen
+  rijen tot zijn laatste verslagjaar; het antwoord meldt een bestuursfusie binnen de reeks uit de RIO-overgangen (#728),
+  alleen met voorgangers die zelf als mbo-, hbo- of wo-bestuur in de verantwoording staan.
+- **Vaste voorbehouden:** het hele bestuur (ook vo), geen uitspraak over kwaliteit, verslagjaar = boekjaar en niet door
+  een accountant gecontroleerd, één variant, een signaal is geen oordeel.
+- **Licentie:** de pagina noemt geen licentie; de vraag ligt bij DUO. Tot DUO bevestigt, geeft de tool op playground en
+  productie alleen een melding (`LICENTIE_BEVESTIGD` in `tools/financien.py`).
+- **Bereikbaarheid:** `bron:ping` (`duo-financien`) leest dagelijks de nieuwste editie en telt de eenheden per sector.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | duo.nl, open onderwijsdata (licentie nog niet bevestigd) |
+| Inhoud | Financiële kengetallen en rijksbijdragen per bestuur, met gewogen sectorcijfer en signaleringswaarden |
+| Formaat | xlsx, één editie per jaar (vier onderdelen, variant standaard) |
+| Koppeling | `Bevoegd Gezag` = DUO `BEVOEGD GEZAG NUMMER` (adressenbestanden) = RIO-bestuurscode (vijf tekens) |
 
 ---
 

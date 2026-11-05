@@ -485,6 +485,43 @@ uit DUO's indicatoren per instelling (#727, `tools/mbo_indicatoren.py`).
 
 ---
 
+## get_bestuursfinancien
+
+De financiële positie van het bestuur (bevoegd gezag) van een mbo-, hbo- of wo-instelling, uit DUO's financiële
+verantwoording uit XBRL (#935, besluit op #725; `tools/financien.py`, bron en rekenen in
+`onderwijsbronnen.duo.financien`).
+- **Route:** de code zoekt de instelling in het register, het bestuur via DUO's adressenbestand (`bestuur_van`) en de
+  verslagjaren in de nieuwste editie. Een bestuursnummer (`40597`) of de bestuursnaam uit de verantwoording werkt ook.
+  De editie staat een dag in de cache; daarna vraagt de app de bestanden opnieuw met If-Modified-Since
+  (`core.actualiteit.Voorwaardelijk`).
+- **Resultaat:** per eenheid en verslagjaar de variant (`geconsolideerd` of `enkelvoudig`), solvabiliteit I en II,
+  liquiditeit en rentabiliteit (in procent), elk als `bestuur`, `sector` en `verschil`, het totaal van de
+  rijksbijdragen in euro en in miljoenen, bij een universiteit met umc de werkplaatsfunctie apart, de
+  liquiditeitsgrens die bij de baten hoort en de `signaleringen`. Verder het sectorcijfer (methode, sector, eenheden per
+  jaar), de definities, de signaleringswaarden met bron en jaar, vaste `voorbehouden` en de bron.
+  - **Sectorcijfer:** gewogen zoals de Inspectie: de som van de teller gedeeld door de som van de noemer over alle
+    eenheden die DUO aan de sector toerekent. Geen mediaan.
+  - **Signaleringswaarden** (Inspectie, technisch rapport financiële kwaliteit 2024): solvabiliteit II onder 0,30;
+    liquiditeit onder 1,50 / 1,00 / 0,75 / 0,50 naar totale baten (onder € 3 mln, tot en met € 12 mln, tot en met
+    € 25 mln, daarboven). Rentabiliteit heeft er geen.
+  - **Bestuur 40833** heeft drie eenheden (`40833-25LR`, `-25PZ`, `-30RM`): ROC van Amsterdam krijgt alleen 25PZ, het
+    bestuur alle drie, nooit een som.
+  - Een `melding` per eenheid bij een wissel van variant of een reeks die later begint of eerder stopt; een `noot` bij
+    `null` (leeg in de bron, geen 0), bij een bestuur dat DUO aan een andere sector toerekent (Aeres Hogeschool: mbo),
+    en bij een bestuursfusie binnen de reeks (RIO-overgangen, `fusies.bestuur_in_reeks`).
+- **Geen cijfers:** een bestuur dat DUO niet aan mbo, hbo of wo toerekent (po, vo), een onbekende instelling, een
+  instelling zonder bestuur in het adressenbestand (27YA). Op playground en productie geeft de tool een melding tot DUO
+  de licentie bevestigt (`LICENTIE_BEVESTIGD`).
+- **Bronregel:** "DUO · Financiële verantwoording uit XBRL (variant standaard), editie verslagjaren …, peildatum …,
+  versie van …", met een link naar de pagina van DUO.
+- **Snippet:** `financien.overzicht(financien.laad(), "<bestuur>")`, dezelfde pakketfunctie als de tool, onafgerond.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling_of_bestuur` | string | Naam, alias of instellingscode uit het register, of het bestuursnummer, bijv. `"ROC Midden Nederland"` of `"40597"` |
+
+---
+
 ## get_accreditatie
 
 De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit DUO's Overzicht Erkenningen ho (#726 stap A,
