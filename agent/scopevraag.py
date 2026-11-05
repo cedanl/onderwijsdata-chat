@@ -6,7 +6,8 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
 
 - **scope**: een plaatsnaam die in meer dan één instellingsnaam uit het register zit (Utrecht,
   Groningen, Amsterdam, Twente), terwijl de vraag geen instelling noemt: de kaart vraagt instelling
-  of woonplaats, met de instellingen uit het register als opties.
+  of woonplaats, met de instellingen uit het register als opties. Niet als de vraag de plaats al een gebied
+  noemt ("provincie Utrecht") of over de arbeidsmarkt gaat (UWV-vacatures): dan dekt geen optie haar (#953).
 - **maat**: een kort thema zonder maat ("studentenwelzijn", `interpretatie.is_vaag`): de kaart vraagt
   welke maat, met de catalogusrecords die `search_catalog` bovenaan zet als opties.
 - **fase** (#743): instroom in het hoger onderwijs zonder fase ("de instroom van de HvA"). Eerstejaars ho (DUO)
@@ -80,6 +81,9 @@ _GENERIEK = frozenset(
         "sciences",
     }
 )
+# Een vraag over de arbeidsmarkt telt vacatures of beroepen, geen studenten of instellingen: de plaats is dan een
+# gebied voor UWV of ROA (#953). Geen "beroeps\w*": hoger beroepsonderwijs is een sector, geen arbeidsmarkt.
+_ARBEIDSMARKT = re.compile(r"\b(vacature\w*|uwv|arbeidsmarkt\w*|beroep(?:en|encluster\w*)?)\b", re.IGNORECASE)
 _MIN_LETTERS = 4
 _MAX_INSTELLINGEN = 2
 _MAX_MATEN = 3
@@ -179,7 +183,7 @@ def _hoofdinstellingen(kandidaten: list[dict], volgorde: list[str]) -> list[dict
 def plaatsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
     """De scopekaart voor een telling bij een plaats die ook een instellingsnaam kan zijn; anders None."""
     settings = settings or {}
-    if not _MAAT.search(vraag):
+    if not _MAAT.search(vraag) or _ARBEIDSMARKT.search(vraag):
         return None
     register = _register()
     if not register or instelling.genoemde_namen(vraag):
@@ -189,6 +193,8 @@ def plaatsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
     if len(genoemd) != 1:  # geen plaats, of twee: dan is het een vergelijking tussen gebieden
         return None
     plaats = genoemd[0]
+    if re.search(rf"\b(?:provincie|gemeente)\s+{re.escape(plaats)}(?!\w)", vraag, re.IGNORECASE):
+        return None  # "provincie Utrecht": de vraag noemt het gebied al
     kandidaten = plaatsen[plaats]
     if _profielinstelling(settings, register) in {i["naam"] for i in kandidaten}:
         return None  # het profiel bepaalt de instelling; de prompt laat de scopevraag dan ook weg
