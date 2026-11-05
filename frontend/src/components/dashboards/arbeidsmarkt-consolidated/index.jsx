@@ -16,7 +16,7 @@ const REGIO_BRONNEN = ['UWV', 'ROA']
 const MATCH_OORDEEL = { schaarste: 'slecht', overaanbod: 'neutraal', evenwicht: 'goed' }
 const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
 
-function MatchScoreSection({ matchScore, dark }) {
+export function MatchScoreSection({ matchScore, dark }) {
   if (!matchScore) return null
   const entries = Object.entries(matchScore).filter(([, v]) => v != null)
   if (entries.length === 0) return null

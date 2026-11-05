@@ -132,6 +132,11 @@ describe('axe-poort (#687)', () => {
       expect(container.querySelectorAll('.dashboard-content canvas[role="img"][aria-label]').length).toBeGreaterThan(0)
     } else {
       expect(container.textContent).toContain('Mijn instelling')
+      // De miniaturen met hun cijfers (#933): axe moet de kaarten zien zoals ze er geladen uitzien.
+      for (let i = 0; i < 200 && container.querySelectorAll('.wb-miniatuur .kpi-card').length === 0; i++) {
+        await act(async () => { await new Promise(r => setTimeout(r, 20)) })
+      }
+      expect(container.querySelectorAll('.wb-miniatuur-pagina')).toHaveLength(3)
     }
     expect(await ernstigeBevindingen()).toEqual([])
   })

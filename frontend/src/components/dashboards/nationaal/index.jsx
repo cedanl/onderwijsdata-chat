@@ -109,7 +109,7 @@ function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
 }
 
 // Een positie waarin een onderdrukte cel meetelt, kan verschuiven: die heet indicatief (#902).
-function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
+export function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
   if (!eigenPositie || Object.keys(eigenPositie).length === 0) return null
   const entries = Object.entries(eigenPositie).sort((a, b) => a[1] - b[1])
   return (
