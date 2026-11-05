@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 import httpx
-from onderwijsbronnen import duo as riodata_duo
+from onderwijsbronnen import duo as duo_bron
 from onderwijsbronnen.cbs.client import get as cbs_get
 from onderwijsbronnen.rio import fetch as rio_fetch
 
@@ -88,10 +88,8 @@ def _duo_bestand(dataset_id: str, index: int, resource: dict, snapshot: dict[str
 
 def duo_dataset(dataset_id: str) -> list[Bevinding]:
     """De bestandenlijst van CKAN, en per CSV de kopregel naast de snapshot; ook een verdwenen bestand telt."""
-    bestanden = haal_op_met_retry("DUO", lambda: riodata_duo.resources(dataset_id))
-    snapshot = {
-        s["resource_id"]: s for s in riodata_duo.resource_schemas(dataset_id) if s["inspectie"]["status"] == "ok"
-    }
+    bestanden = haal_op_met_retry("DUO", lambda: duo_bron.resources(dataset_id))
+    snapshot = {s["resource_id"]: s for s in duo_bron.resource_schemas(dataset_id) if s["inspectie"]["status"] == "ok"}
     uit = [_duo_bestand(dataset_id, i, r, snapshot) for i, r in enumerate(bestanden) if "CSV" in r.get("format", "")]
     live = {r["id"] for r in bestanden}
     uit += [

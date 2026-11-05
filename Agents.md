@@ -49,7 +49,7 @@ Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update)
    **Waar broncode hoort:** ophalen en de bronlogica (clients, kolommen, catalogus, bronversies) horen in `packages/`
    (`onderwijsbronnen`, per bron een subpakket), het beleid (scope, poorten, etiketten, wat de gebruiker te zien krijgt) in `tools/`.
    Het pakket importeert de chat nooit, een bron importeert alleen zichzelf en `_kern` (nooit een andere bron), en de
-   chat gebruikt alleen de publieke API (geen pad met underscore, niet de shims `riodata`/`onderwijsdata`);
+   chat gebruikt alleen de publieke API (geen pad met underscore, niet de oude namen `riodata`/`onderwijsdata`);
    `tests/test_importgrens.py` bewaakt dat en maakt de pipeline rood. De tests van het pakket staan in
    `packages/onderwijsbronnen/tests` en draaien mee in de CI-job `pytest`.
 

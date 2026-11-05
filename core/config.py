@@ -80,10 +80,6 @@ DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
 MAX_DASHBOARD_LOADS = int(os.getenv("MAX_DASHBOARD_LOADS", "4"))
 DASHBOARD_QUEUE_TIMEOUT_S = float(os.getenv("DASHBOARD_QUEUE_TIMEOUT_S", "30"))
 DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
-# Het ID-contract `bron:id` uit onderwijsbronnen (#912, tools/bron_ids.py): `uit` (de oude herleiding), `schaduw` (de
-# oude herleiding, en de nieuwe ernaast met een logregel BRON_ID_VERSCHIL bij elk verschil) of `aan` (de nieuwe). Standaard
-# uit; manifests/test zet schaduw. Een andere waarde telt als uit (tools/bron_ids.py meldt dat één keer).
-BRON_ID_CONTRACT = os.getenv("BRON_ID_CONTRACT", "uit").strip().lower()
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

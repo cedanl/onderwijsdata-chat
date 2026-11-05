@@ -857,7 +857,7 @@ def search_catalog(
     try:
         return _zoek(query, source, top_n, geo_niveau)
     except (OSError, ImportError, json.JSONDecodeError) as e:
-        # De catalogus komt uit de packages `onderwijsdata` en `riodata`; zonder leesbare data is er niets te zoeken.
+        # De catalogus komt uit het pakket `onderwijsbronnen`; zonder leesbare data is er niets te zoeken.
         # Op ERROR type en kenmerk, de traceback op DEBUG (#819).
         logger.error("search_catalog bron niet beschikbaar %s: %s", tekst_kenmerk(query, "query_"), foutkenmerk(e))
         logger.debug("search_catalog bron niet beschikbaar", exc_info=True)

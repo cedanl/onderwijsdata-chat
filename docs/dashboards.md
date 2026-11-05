@@ -73,10 +73,10 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   (`core/brongebruik.py`); `actualiteit.Lading` meldt die bestanden ook bij een cachetreffer opnieuw. Een bron die niet
   laadde, staat er niet in, wel in `niet_beschikbaar`. De ho-poging van een mbo-instelling (de naam zoeken in
   `p01hoinges`) telt niet mee.
-- **DUO:** per bestand het resource-ID en `last_modified` van riodata (#717); `peilmoment` in de woorden van de
+- **DUO:** per bestand het resource-ID en `last_modified` uit `onderwijsbronnen.duo` (#717); `peilmoment` in de woorden van de
   bronregel in de chat. `peildatum` en `voorlopig_jaren` komen uit de DUO-beschrijving in de catalogus.
 - **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM.
-- **ROA:** `editie` uit het schema van riodata, `versie` uit de kolom `versie` van het bestand.
+- **ROA:** `editie` uit het schema van `onderwijsbronnen.roa`, `versie` uit de kolom `versie` van het bestand.
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 

@@ -9,14 +9,13 @@ ook een import binnen een functie of achter `try`, en relatieve imports omgereke
 1. Niets onder `packages/` importeert de chat (`tools`, `agent`, `core`, `routes`, `persistence`, …). Het pakket moet
    los te installeren en te testen blijven (`cd packages/onderwijsbronnen && pytest`).
 2. Een bron importeert alleen zichzelf en `onderwijsbronnen._kern`: nooit een andere bron, nooit de bovenlaag
-   (`onderwijsbronnen` zelf, `contract`, `scope`) en nooit een shim (`riodata`, `onderwijsdata`).
-3. `_kern` importeert geen bron, geen bovenlaag en geen shim: alleen zichzelf.
+   (`onderwijsbronnen` zelf, `contract`, `scope`) en nooit een oude pakketnaam (`riodata`, `onderwijsdata`).
+3. `_kern` importeert geen bron, geen bovenlaag en geen oude pakketnaam: alleen zichzelf.
 4. De chat importeert alleen de publieke API van het pakket. Publiek is alles waarvan geen enkel deel van het pad met
-   een underscore begint (`onderwijsbronnen.duo` wel, `onderwijsbronnen._kern.verrijking` niet). De shims zelf horen
-   bij het pakket en vallen daar niet onder.
-5. De chat gebruikt de oude namen `riodata` en `onderwijsdata` niet meer; alleen de nulmeting (`OUDE_NAMEN_TOEGESTAAN`)
-   toetst er bewust mee dat ze blijven werken. Zo blijft een vergeten import tijdens de overgang werken (de shim),
-   maar valt hij hier op.
+   een underscore begint (`onderwijsbronnen.duo` wel, `onderwijsbronnen._kern.verrijking` niet).
+5. De chat gebruikt de oude namen `riodata` en `onderwijsdata` niet. Ze bestaan sinds #914 niet meer (de shims van
+   #910 zijn weg); een import binnen een functie zou pas falen als die functie draait, dus valt hij hier op. Een
+   opgeslagen snippet met die namen staat als tekst in een fixture, niet als import.
 
 Een nieuwe overtreding geeft hier een rode test met bestand en regel.
 """
@@ -35,9 +34,7 @@ PAKKET = "onderwijsbronnen"
 BRON_SRC = PAKKETTEN_MAP / PAKKET / "src"
 BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb")
 KERN = "_kern"
-SHIMS = ("riodata", "onderwijsdata")
-# De nulmeting van #909 toetst dat opgeslagen snippets met de oude namen blijven werken; daarvoor importeert ze ze.
-OUDE_NAMEN_TOEGESTAAN = {"tests/test_bron_id_vormen.py"}
+OUDE_NAMEN = ("riodata", "onderwijsdata")
 
 # Uit #886: de modules die een pakket nooit mag importeren. De afgeleide lijst hieronder vult dit aan met alles wat
 # er verder op het hoogste niveau van de chat staat; deze vijf blijven expliciet, zodat hernoemen hier opvalt.
@@ -137,10 +134,10 @@ def pakket_importeert_chat(bron: str, chat: frozenset[str]) -> list[str]:
 
 
 def laag_van(pad: str) -> str | None:
-    """De laag van een importpad: een bronnaam, `_kern`, `bovenlaag`, `shim`, of None (buiten het pakket)."""
+    """De laag van een importpad: een bronnaam, `_kern`, `bovenlaag`, `oude naam`, of None (buiten het pakket)."""
     delen = pad.split(".")
-    if delen[0] in SHIMS:
-        return "shim"
+    if delen[0] in OUDE_NAMEN:
+        return "oude naam"
     if delen[0] != PAKKET:
         return None
     if len(delen) == 1 or delen[1] not in (*BRONNEN, KERN):
@@ -191,8 +188,8 @@ def chat_gebruikt_niet_publiek(bron: str, pakketten: frozenset[str]) -> list[str
 
 
 def chat_gebruikt_oude_naam(bron: str) -> list[str]:
-    """Regel 5: imports van de shims `riodata` en `onderwijsdata`."""
-    return _eerste_per_regel(_modulepaden(bron), frozenset(SHIMS))
+    """Regel 5: imports van de oude pakketnamen `riodata` en `onderwijsdata`."""
+    return _eerste_per_regel(_modulepaden(bron), frozenset(OUDE_NAMEN))
 
 
 def _overtredingen(bestanden: Iterator[Path], controle) -> list[str]:
@@ -239,8 +236,7 @@ def test_een_bron_importeert_alleen_zichzelf_en_de_kern(laag):
 
 
 def test_de_chat_importeert_alleen_de_publieke_api_van_het_pakket():
-    pakketten = frozenset({PAKKET, *SHIMS})
-    gevonden = _overtredingen(_chatbestanden(), lambda bron: chat_gebruikt_niet_publiek(bron, pakketten))
+    gevonden = _overtredingen(_chatbestanden(), lambda bron: chat_gebruikt_niet_publiek(bron, frozenset({PAKKET})))
 
     assert not gevonden, (
         "De chat gebruikt een intern deel van het bronpakket (pad met underscore). Maak het deel publiek in het "
@@ -249,12 +245,11 @@ def test_de_chat_importeert_alleen_de_publieke_api_van_het_pakket():
 
 
 def test_de_chat_gebruikt_de_oude_pakketnamen_niet():
-    bestanden = (p for p in _chatbestanden() if str(p.relative_to(ROOT)) not in OUDE_NAMEN_TOEGESTAAN)
-    gevonden = _overtredingen(bestanden, chat_gebruikt_oude_naam)
+    gevonden = _overtredingen(_chatbestanden(), chat_gebruikt_oude_naam)
 
     assert not gevonden, (
-        "De chat importeert `riodata` of `onderwijsdata`; die zijn alleen nog een shim voor de overgang (#910) en "
-        "verdwijnen in #914. Gebruik onderwijsbronnen:\n" + "\n".join(gevonden)
+        "De chat importeert `riodata` of `onderwijsdata`; die namen bestaan sinds #914 niet meer. "
+        "Gebruik onderwijsbronnen:\n" + "\n".join(gevonden)
     )
 
 
@@ -266,9 +261,8 @@ def test_het_pakket_en_elke_bron_zijn_gevonden_en_de_scan_is_niet_leeg():
     assert _pakketnamen() == (PAKKET,)
     for laag in (*BRONNEN, KERN):
         assert _bronbestanden(laag), laag
-    assert sorted(p.name for p in BRON_SRC.iterdir() if p.is_dir() and not _is_overgeslagen(p)) == sorted(
-        [PAKKET, *SHIMS]
-    )
+    # Een map met alleen `__pycache__` (een oude checkout van vóór #914) telt niet: er staat geen code in.
+    assert [p.name for p in BRON_SRC.iterdir() if p.is_dir() and any(_python_bestanden(p))] == [PAKKET]
     assert sum(1 for _ in _python_bestanden(PAKKETTEN_MAP / PAKKET / "tests")) >= 3
     assert sum(1 for _ in _chatbestanden()) > 100
 
@@ -286,7 +280,7 @@ def test_de_chatmodules_bevatten_de_kern_en_bestaan_nog():
     for naam in CHAT_KERN:
         assert (ROOT / naam).is_dir(), f"{naam}/ bestaat niet meer: werk CHAT_KERN in tests/test_importgrens.py bij"
     assert {"config", "server", "auth"} <= chat
-    assert not chat & {"packages", "tests", PAKKET, *SHIMS}
+    assert not chat & {"packages", "tests", PAKKET, *OUDE_NAMEN}
 
 
 @pytest.mark.parametrize(
@@ -379,11 +373,10 @@ def test_de_scanner_rekent_relatieve_imports_om_vanuit_het_pakket_van_het_bestan
         "from onderwijsbronnen import duo\nduo._lees()",
         "import onderwijsbronnen.duo as d\nd._lees()",
         "import onderwijsbronnen\nonderwijsbronnen.duo._lees()",
-        "from riodata import _catalog",
     ],
 )
 def test_de_scanner_ziet_gebruik_van_een_intern_pakketdeel(bron):
-    assert chat_gebruikt_niet_publiek(bron, frozenset({PAKKET, *SHIMS}))
+    assert chat_gebruikt_niet_publiek(bron, frozenset({PAKKET}))
 
 
 @pytest.mark.parametrize(
@@ -397,7 +390,7 @@ def test_de_scanner_ziet_gebruik_van_een_intern_pakketdeel(bron):
     ],
 )
 def test_de_scanner_geeft_geen_vals_alarm_op_de_publieke_api(bron):
-    assert chat_gebruikt_niet_publiek(bron, frozenset({PAKKET, *SHIMS})) == []
+    assert chat_gebruikt_niet_publiek(bron, frozenset({PAKKET})) == []
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 """Een idempotente GET naar CBS, DUO of RIO opnieuw proberen na een tijdelijke fout (#867).
 
-De bronpakketten (`onderwijsdata`, `riodata`) roepen `httpx.get` per functie aan, zonder sessie of transport om
+Het bronpakket `onderwijsbronnen` roept `httpx.get` per functie aan, zonder sessie of transport om
 een retry in te hangen. Daarom zit de herhaling hier, om de aanroep van de chat heen: `haal_op_met_retry("CBS",
 lambda: data(...))`. Zo blijven de pakketten ongewijzigd, en kiest elk aanroeppunt zelf of zijn aanroep een
 herhaling waard is.
