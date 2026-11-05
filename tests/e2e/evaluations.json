@@ -6,8 +6,8 @@
       "message": "Hoe heeft de deelname aan voltijdonderwijs bij Hogeschool Utrecht zich ontwikkeld de laatste 5 jaar? Geef het totaal.",
       "description": "Trend over meerdere jaren, moet grafiek opleveren",
       "expected": {
-        "datasets": ["duo:01.-ingeschrevenen-ho"],
-        "datasets_alt": ["cbs:71037ned"],
+        "datasets": ["duo:p03hoinschr"],
+        "datasets_alt": ["duo:p01hoinges"],
         "tool_flow": ["search_catalog", "dataset_details", "get_duo_data|get_cbs_data", "query_data", "create_plot"],
         "tool_flow_description": "Zoek → details → laad data → filter → grafiek",
         "must_contain_tools": ["search_catalog|get_maat", "create_plot"],
@@ -33,7 +33,7 @@
       "message": "Wat is het marktaandeel van ROC Mondriaan voor Sport en Bewegen in Zuid Holland? Geef instroom laatste schooljaar.",
       "description": "Marktaandeel-berekening met filtering op regio + opleiding",
       "expected": {
-        "datasets": ["duo:01.-instromers-mbo"],
+        "datasets": ["duo:instromende-mbo-studenten"],
         "tool_flow": ["search_catalog", "dataset_details", "get_duo_data", "query_data", "run_analysis"],
         "tool_flow_description": "Zoek MBO instroom → details → laad → filter ROC Mondriaan + Zuid-Holland → bereken percentage",
         "must_contain_tools": ["search_catalog", "query_data"],
@@ -52,8 +52,8 @@
       "message": "Waar komen de lerenden van Hogeschool Utrecht vandaan en met welke instellingen in de regio concurreer ik? Geef per provincie.",
       "description": "Geo-analyse met concurrentieperspectief",
       "expected": {
-        "datasets": ["duo:01.-ingeschrevenen-ho"],
-        "datasets_alt": ["cbs:71037ned"],
+        "datasets": ["duo:p01hoinges"],
+        "datasets_alt": ["cbs:85701NED"],
         "tool_flow": ["search_catalog", "dataset_details", "get_duo_data|get_cbs_data", "query_data", "run_analysis", "create_plot"],
         "tool_flow_description": "Zoek HO-inschrijvingen met woonprovincie → laad → filter HU → vergelijk met andere instellingen per provincie",
         "must_contain_tools": ["search_catalog", "query_data"],
@@ -72,8 +72,8 @@
       "message": "Sluit het onderwijsaanbod van Hogeschool Utrecht goed aan bij de arbeidsmarkt? Analyseer arbeidsmarktpositie van afgestudeerden de laatste 5 jaar per sector.",
       "description": "Cross-bron-analyse, arbeidsmarkt-data, sector-uitsplitsing",
       "expected": {
-        "datasets": ["cbs:85776ned"],
-        "datasets_alt": ["cbs:86060ned", "cbs:85777ned"],
+        "datasets": ["cbs:85776NED"],
+        "datasets_alt": ["cbs:85777NED"],
         "tool_flow": ["search_catalog", "dataset_details", "get_cbs_data", "get_cbs_dimension", "query_data", "run_analysis", "create_plot"],
         "tool_flow_description": "Zoek CBS arbeidsmarktpositie HO → dimensies → filter HBO → analyseer per sector",
         "must_contain_tools": ["search_catalog", "get_cbs_data"],
@@ -104,8 +104,7 @@
       "message": "Hoe groot is het aandeel voortijdig schoolverlaters dat werk heeft gevonden in de regio Utrecht? Geef het meest recente jaar.",
       "description": "Niche-dataset (VSV), regiofilter, percentage-berekening",
       "expected": {
-        "datasets": ["cbs:85859ned"],
-        "datasets_alt": ["cbs:84780ned", "cbs:86223ned"],
+        "datasets": ["cbs:85859NED"],
         "tool_flow": ["search_catalog", "dataset_details", "get_cbs_data", "get_cbs_dimension", "query_data"],
         "tool_flow_description": "Zoek VSV + arbeidsmarktpositie → details → laad CBS → dimensies → filter Utrecht + werkzaam",
         "must_contain_tools": ["search_catalog", "get_cbs_data"],

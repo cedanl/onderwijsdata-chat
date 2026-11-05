@@ -110,7 +110,7 @@ function goed(extra = {}) {
       { type: 'tool_start', name: 'get_duo_data' },
       { type: 'tool_start', name: 'create_plot' },
       { type: 'tool_start', name: 'query_data' },
-      { type: 'tool_end', name: 'get_duo_data', output: '{"data_key":"duo:01.-ingeschrevenen-ho:0"}' },
+      { type: 'tool_end', name: 'get_duo_data', output: '{"data_key":"duo:p03hoinschr:0"}' },
       { type: 'tool_end', name: 'query_data', output: BRON },
       { type: 'message_end', content: 'Hogeschool Utrecht, voltijd: 30.280 (2022), 29.941 (2023), 29.620 (2024).' },
     ]),
