@@ -8,7 +8,7 @@ import {
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
   buildSectorTrendData, buildLeerwegenData, buildRendementVergelijkingData,
-  DemografieKpis, InstroomKpis, DiplomeringKpis,
+  DemografieKpis, InstroomKpis, DiplomeringKpis, JaarNoot, eerstejaarsNoot,
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
@@ -22,7 +22,7 @@ const REGIO_BRONNEN = ['DUO']
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens }) {
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
@@ -35,6 +35,7 @@ function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkVa
           {regioLabel}: {regioOndergrens ? 'ten minste ' : ''}{fmt(regioWaarde)}
         </div>
       )}
+      <JaarNoot noot={noot} />
       {sparkValues && <Sparkline values={sparkValues} color={color} />}
     </div>
   )
@@ -130,6 +131,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               icon={iconChart(COLOR_EERSTEJAARS)}
               ondergrens={isOndergrens(od.eerstejaars, c.lastEj[0])}
               regioOndergrens={isOndergrens(bmOd.eerstejaars, bmEjJaar)}
+              noot={eerstejaarsNoot({ ejJaar: c.lastEj[0], ingesJaar: c.lastInges?.[0], type: data?.type })}
             />
           )}
           {c.lastDipl && (
@@ -160,7 +162,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
         {/* ── Instroom & demografie ── */}
         <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
-        <DemografieKpis {...c} nInstellingen={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
+        <DemografieKpis {...c} regioType={bm.regio_type} nInstellingen={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
         <OndergrensNoot reeksen={noot('ingeschrevenen', 'Ingeschrevenen')} />
         <PeersTable data={data} instelling={instelling} dark={c.dark} />
         <PeerLinesChart
@@ -169,13 +171,13 @@ export function InlineDashboardMijnInstelling({ instelling }) {
           data={c.ingesLineData}
           opts={c.hasPeers ? c.peerOpts : c.indexOpts}
         />
-        <InstroomKpis {...c} />
+        <InstroomKpis {...c} type={data?.type} />
         <OndergrensNoot reeksen={noot('eerstejaars', 'Eerstejaars')} />
         <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.ejLineData} indexOpts={c.indexOpts} />
         <MarktaandeelChart data={marktData} jaar={data?.laatste_jaar} dark={c.dark} />
         <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} />
         <GroeiRankingChart data={groeiData} dark={c.dark} />
-        <InstroomRatioChart data={ratioData} dark={c.dark} />
+        <InstroomRatioChart data={ratioData} dark={c.dark} type={data?.type} />
 
         {/* ── Diplomering & rendement ── */}
         <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />

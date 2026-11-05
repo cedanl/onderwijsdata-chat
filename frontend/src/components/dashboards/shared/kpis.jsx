@@ -1,10 +1,29 @@
 import { fmt } from './hooks'
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import { Sparkline } from './shell'
+import { schooljaarLabel } from '../../../schooljaar'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
 
-export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, pctVrouw, vrouw, man, laatsteJaar }) {
+// De bron achter de Eerstejaars-KPI, zoals het dashboard hem onderaan noemt.
+const EERSTEJAARS_BRON = { mbo: 'DUO, Instromende MBO-studenten', ho: 'DUO, Eerstejaars HO per instelling' }
+
+// Loopt het laatste jaar van de eerstejaars achter op dat van de ingeschrevenen, dan zegt de pagina waarom (#920):
+// de bron is nog niet verder. Anders geen noot; twee jaren naast elkaar zonder uitleg lijken een fout.
+export function eerstejaarsNoot({ ejJaar, ingesJaar, type }) {
+  if (ejJaar == null || ingesJaar == null || Number(ejJaar) >= Number(ingesJaar)) return null
+  const bron = EERSTEJAARS_BRON[type === 'mbo' ? 'mbo' : 'ho']
+  return `${schooljaarLabel(ejJaar)} is het laatst beschikbare jaar in de bron (${bron}); de ingeschrevenen lopen door tot ${schooljaarLabel(ingesJaar)}.`
+}
+
+export function JaarNoot({ noot }) {
+  if (!noot) return null
+  return <div className="kpi-trend" data-testid="jaarnoot" style={{ color: 'var(--muted-text)' }}>{noot}</div>
+}
+
+// Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918).
+export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, regioType, pctVrouw, vrouw, man, laatsteJaar }) {
+  const landelijk = regioType === 'nationaal'
   return (
     <div className="kpi-grid">
       {lastInges && (
@@ -23,13 +42,13 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
       {totaalRegio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Regio totaal {totaalRegioJaar}–{Number(totaalRegioJaar)+1}</span>
+            <span className="kpi-label">{landelijk ? 'Landelijk totaal' : 'Regio totaal'} {totaalRegioJaar}–{Number(totaalRegioJaar)+1}</span>
             <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
           </div>
           <div className="kpi-value">{fmt(totaalRegio)}</div>
-          {nInstellingen && <div className="kpi-trend">{nInstellingen} instellingen in regio</div>}
+          {nInstellingen && <div className="kpi-trend">{nInstellingen} instellingen{landelijk ? '' : ' in regio'}</div>}
         </div>
       )}
       {pctVrouw != null && vrouw != null && man != null && (
@@ -57,19 +76,20 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
   )
 }
 
-export function InstroomKpis({ lastEj, ejDelta, ejEntries }) {
+export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type }) {
   if (!lastEj) return null
   return (
     <div className="kpi-grid">
       <div className="kpi-card">
         <div className="kpi-card-header">
-          <span className="kpi-label">Eerstejaars {lastEj[0]}–{Number(lastEj[0])+1}</span>
+          <span className="kpi-label">Eerstejaars {schooljaarLabel(lastEj[0])}</span>
           <div className="kpi-icon" style={{ background: '#F0FDF4' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EERSTEJAARS} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
         </div>
         <div className="kpi-value">{fmt(lastEj[1])}</div>
         {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+        <JaarNoot noot={eerstejaarsNoot({ ejJaar: lastEj[0], ingesJaar: lastInges?.[0], type })} />
         <Sparkline values={ejEntries.map(([,v]) => v)} color={COLOR_EERSTEJAARS} />
       </div>
     </div>

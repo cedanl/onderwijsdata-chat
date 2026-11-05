@@ -4,10 +4,18 @@ import { getToken, sessionEndedSince } from './auth'
 import { volgOpslag } from './gesprekOpslag'
 import { terugInLijst } from './verwijderenMetUitstel'
 
+// Gender zit alleen in het ho-dashboard (hbo en wo); het mbo-dashboard heeft die sectie niet (#918). Bij een
+// onbekend niveau (vrije tekst als instelling) belooft de kaart het dus ook niet.
+export function mijnInstellingBeschrijving(sector) {
+  const onderdelen = ['Kerncijfers', 'instroom', 'diplomering', 'rendement']
+  if (sector === 'hbo' || sector === 'wo') onderdelen.push('gender')
+  return `${onderdelen.join(', ')} en regionale benchmark in één overzicht.`
+}
+
 export const BUILTIN_MIJN_INSTELLING = {
   id: '__builtin_mijn_instelling__',
   title: 'Mijn instelling',
-  description: 'Kerncijfers, instroom, diplomering, rendement, gender en regionale benchmark in één overzicht.',
+  description: mijnInstellingBeschrijving(null),
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }

@@ -23,6 +23,7 @@ vi.mock('../workbooks', () => ({
   BUILTIN_MIJN_INSTELLING: { id: 'b-1' },
   BUILTIN_ARBEIDSMARKT: { id: 'b-2' },
   BUILTIN_NATIONAAL: { id: 'b-3' },
+  mijnInstellingBeschrijving: () => '',
   getWorkbooks: () => [],
   getWorkbookType: (wb) => wb.type,
   deleteWorkbook: vi.fn(),
