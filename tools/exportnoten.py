@@ -5,7 +5,7 @@ md5 van het DUO-bestand (#717) stonden alleen boven de tabel-CSV. Twee paden lie
 de tabel-CSV hoort (de herlaadnotitie per gebruiker, de prognosenoot bij afgeronde cellen) blijft in csv_export.
 """
 
-from . import duo, inhoudshash, store
+from . import bron_ids, duo, inhoudshash, store
 
 # Wat de CSV zegt als de tabel afgekapt is (BEV-08): in de taal van wie het bestand opent, niet de
 # aanwijzing voor de tool (store.ONVOLLEDIG). Een compleet bestand krijgt geen regel: dat is het gewone geval.
@@ -31,4 +31,4 @@ def herkomstregels(key: str) -> list[str]:
         )
     if known is not None and not known.volledig:
         regels.append(ONVOLLEDIG_EXPORT)
-    return regels + duo.sentinel_notes(duo.onderdrukt(key), duo.bron_van(key))
+    return regels + duo.sentinel_notes(duo.onderdrukt(key), bron_ids.bron_van(key))

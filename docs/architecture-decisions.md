@@ -453,6 +453,58 @@ app.
 
 ---
 
+## ADR-010: Eén ID-contract `bron:id` voor alle bronnen, eerst in schaduwmodus
+
+**Date:** 2026-11-05 (besluit 2026-11-04 op #890)
+**Status:** Decided; gebouwd achter de vlag `BRON_ID_CONTRACT`, op test in `schaduw`; `aan` na de acceptatie (#913)
+**Issue:** #912 (epic #890; nulmeting #909, verhuizing #910, importgrenzen #911)
+
+### Problem
+Welke bron bij een ID hoort, werd op drie plekken beslist, elk met een eigen regel: `tools/catalog.py` `bron_id` en
+`cbs_bron_id` (voorvoegsel eraf, hoofdletterongevoelig zoeken in de inventaris) en `tools/duo.py` `bron_van` (het
+voorvoegsel van een datasleutel). Het CBS-pakket en riodata hadden elk een eigen catalogus en een eigen validatie; de
+chat voegde ze zelf samen. Foutieve bronkeuzes ontstaan op die naden. Tegelijk staan in opgeslagen recepten,
+gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423NED` naast `80040ned`, `cbs_85423ned`,
+`duo:p01hoinges`, `P01HOINGES`, `rio/aangeboden-opleidingen`, `ais2030`. Recepten worden niet gemigreerd.
+
+### Decision
+- **Eén type `BronId(bron, id)`** met `parse` en `normaliseer` in `onderwijsbronnen._kern.bron_id`; `str()` geeft
+  `bron:id` in de spelling van de catalogus (`cbs:85423NED`, `cbs:71733ned`, `duo:p01hoinges`). Het `Register` kent per
+  bron de ID's uit de catalogus; `onderwijsbronnen.register()` bouwt het uit `<bron>.metadata(record)["id"]`.
+- **Elke opgeslagen vorm is een alias**, altijd: met voorvoegsel (`cbs:`, `cbs_`, `cbs/`, `duo:`, `rio/`, `roa:` …),
+  zonder voorvoegsel en in elke hoofdletterspelling. Een kale ID die bij twee bronnen past, is `AmbigueBronId` met de
+  opties, nooit een stille keuze; een onbekende ID is `OnbekendBronId`. Een test bewaakt dat geen ID in twee bronnen
+  (of twee records) voorkomt en dat elk record heen en terug naar zichzelf herleidt.
+- **Eén samengevoegde catalogus**: `onderwijsbronnen.catalogus()` geeft per bron haar records, CBS eerst. De chat
+  leest die en voegt geen twee catalogi meer zelf samen.
+- **In de chat één plek**: `tools/bron_ids.py` (`bron_id`, `cbs_tabel_id`, `bron_van`) vervangt de drie oude
+  functies. De vlag `BRON_ID_CONTRACT` kiest: `uit` (oude herleiding), `schaduw` (oude herleiding beslist, de nieuwe
+  draait ernaast; elk verschil komt als `BRON_ID_VERSCHIL` met een telling in het log) of `aan` (het contract
+  beslist). Standaard `uit`; test draait `schaduw`.
+- **Niet nu:** waarden die het model ziet (`source="riodata"` in `search_catalog`, toolbeschrijvingen) en het
+  catalogusformaat blijven gelijk; dat vraagt een eval tegen de nulmeting. BRIN- en bestuursnummers vallen buiten dit
+  contract (#728): die identificeren een instelling, geen dataset.
+
+### Rationale
+- **Eén regel, één plek:** een nieuwe bron of een nieuwe spelling verandert één functie, en de test "elk ID hoort bij
+  precies één bron" maakt een botsing rood vóór ze een verkeerde bronkeuze wordt.
+- **Bewijs vóór overstap:** de nulmeting (`tests/test_bron_id_vormen.py`) draait onder `uit`, `schaduw` en `aan` en
+  eist in `schaduw` nul verschillen voor elke opgeslagen vorm. Op test laat het schaduwlog zien of echte gesprekken
+  vormen bevatten die de fixture mist (#913).
+- **Terugvalknop:** de vlag schakelt zonder nieuwe release terug (`docs/promoten.md`, bevriezing).
+
+### Trade-off(s)
+- Zolang de vlag bestaat, staat de oude herleiding nog in `tools/bron_ids.py` (`_oud_*`) naast het contract; ze gaat
+  weg met de vlag, na de go in #913 (#914).
+- In `aan` herleidt het contract ook vormen die de oude regel niet kende (`roa:ais2030` → `ais2030`); dat zijn
+  verbeteringen, en ze staan vooraf in het schaduwlog.
+- **Heroverwegen** zodra een van deze zich voordoet:
+    - het schaduwlog op test toont een verschil voor een vorm die gebruikers echt opsloegen;
+    - een nieuwe bron heeft ID's die met een bestaande bron botsen (de test wordt rood);
+    - het model moet het volledige `bron:id` gaan zien (dan eerst een eval tegen de nulmeting).
+
+---
+
 ## How to add a new ADR
 
 1. Increment the number (ADR-008, etc.)

@@ -137,6 +137,21 @@ Dekking is `supported`/`unsupported`/`unknown`, nooit afgeleid uit een ontbreken
 (`ho_breed`) staat los van hbo en wo; `sectorselectie[sector].verplicht` zegt wanneer een sector
 alleen met een filter (RIO-type), resourcekeuze of rijselectie (DUO) leverbaar is.
 
+## ID-contract `bron:id`
+
+Eén sleutel per dataset, voor alle zeven bronnen (#912):
+
+```python
+import onderwijsbronnen as o
+
+o.normaliseer_bron_id("cbs_85423ned")   # 'cbs:85423NED'
+o.normaliseer_bron_id("71733NED")       # 'cbs:71733ned' (de spelling van de catalogus, nooit upper())
+o.parse_bron_id("rio/aangeboden-opleidingen")  # BronId(bron='rio', id='aangeboden-opleidingen')
+o.catalogus()                           # {"cbs": [...], "rio": [...], "duo": [...], ...}: de samengevoegde catalogus
+```
+
+Een kale ID die bij twee bronnen past geeft `AmbigueBronId` (met `.opties`), een onbekende `OnbekendBronId`.
+
 ## Broncontrole
 
 Een wekelijkse GitLab-job in de chatrepo (`rio:broncontrole`, zie `docs/operatie.md` daar) vergelijkt de DUO

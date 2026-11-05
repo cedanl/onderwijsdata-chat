@@ -27,8 +27,9 @@ from . import (
     scopeprofiel,
     store,
 )
+from .bron_ids import cbs_tabel_id
 from .bronretry import haal_op_met_retry
-from .catalog import archief, bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
+from .catalog import archief, bron_titel, catalogus_laatste_update, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
@@ -498,7 +499,7 @@ def laad_cbs_data(
 ) -> str:
     """get_cbs_data met de poort als argument: zo herlaadt een recept (#472) de lading zoals ze was, ook in een
     latere beurt met een andere vraag."""
-    dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
+    dataset_id = cbs_tabel_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370, #912)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
     _metadata.actueel()
@@ -644,7 +645,7 @@ def _dimensierijen(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
 
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
-    dataset_id = cbs_bron_id(dataset_id)
+    dataset_id = cbs_tabel_id(dataset_id)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
     _metadata.actueel()

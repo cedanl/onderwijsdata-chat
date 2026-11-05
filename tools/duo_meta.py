@@ -13,7 +13,7 @@ Ook het toegangspunt van de tools tot de domeinregels in data/domeinregels.toml 
 import re
 from functools import cache
 
-from onderwijsbronnen import catalog as _rio_catalog
+from onderwijsbronnen import duo as _duo_bron
 
 from core import domeinregels
 
@@ -30,7 +30,7 @@ def regels() -> domeinregels.Domeinregels:
 
 @cache
 def _records() -> dict[str, dict]:
-    return {r["_ckan_id"]: r for r in _rio_catalog(source="duo") if r.get("_ckan_id")}
+    return {r["_ckan_id"]: r for r in _duo_bron.catalogusrecords() if r.get("_ckan_id")}
 
 
 def record(dataset_id: str) -> dict:

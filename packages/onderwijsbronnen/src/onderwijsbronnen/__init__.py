@@ -12,14 +12,42 @@ bron-subpakket heeft dezelfde interface (`BRON`, `catalogusrecords()`, `laad`, `
 `riodata` en `onderwijsdata` blijven tijdens de overgang importeerbaar als shim (DeprecationWarning).
 """
 
+from functools import cache
+
 from . import cbs, duo, inspectie, rio, roa, sbb, uwv
 from . import contract, scope
+from ._kern.bron_id import BRONNEN, AmbigueBronId, BronId, BronIdFout, OnbekendBronId, Register, bron_van_sleutel
 from ._kern.resolutie import AmbigueResource, ResourceNietGevonden
 from ._kern.versie import VERSIE as __version__
 
-# Alle bronnen, en de volgorde van catalog(source="all") (zonder CBS: die catalogus staat apart in `cbs`).
-BRONNEN = ("cbs", "rio", "duo", "roa", "uwv", "inspectie", "sbb")
+# De volgorde van catalog(source="all") (zonder CBS: die catalogus staat apart in `cbs`).
 _CATALOGUS_ALLES = ("rio", "duo", "roa", "uwv", "inspectie", "sbb")
+_BRON = {"cbs": cbs, "rio": rio, "duo": duo, "roa": roa, "uwv": uwv, "inspectie": inspectie, "sbb": sbb}
+
+
+def catalogus() -> dict[str, list[dict]]:
+    """De samengevoegde catalogus (#912): per bron, in de volgorde van `BRONNEN`, haar catalogusrecords.
+
+    Eén aanroep voor alle zeven bronnen, zodat een gebruiker (de chat) niet zelf twee catalogi samenvoegt. De records
+    zijn die van `<bron>.catalogusrecords()`, ongewijzigd; elke aanroep geeft nieuwe lijsten.
+    """
+    return {bron: _BRON[bron].catalogusrecords() for bron in BRONNEN}
+
+
+@cache
+def register() -> Register:
+    """Alle catalogus-ID's per bron (`<bron>.metadata(record)["id"]`), voor het ID-contract `bron:id`."""
+    return Register({bron: [_BRON[bron].metadata(r)["id"] for r in records] for bron, records in catalogus().items()})
+
+
+def parse_bron_id(tekst: str) -> BronId:
+    """Het `BronId` (`bron:id`, in de spelling van de catalogus) achter elke ID-vorm; zie `_kern/bron_id.py`."""
+    return BronId.parse(tekst, register())
+
+
+def normaliseer_bron_id(tekst: str) -> str:
+    """`str(parse_bron_id(tekst))`, bijvoorbeeld `cbs_85423ned` → `cbs:85423NED`."""
+    return BronId.normaliseer(tekst, register())
 
 
 def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[dict]:
@@ -55,5 +83,6 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
     )
 
 
-__all__ = ["BRONNEN", "catalog", "cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "contract", "scope",
-           "AmbigueResource", "ResourceNietGevonden", "__version__"]
+__all__ = ["BRONNEN", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
+           "BronId", "BronIdFout", "OnbekendBronId", "AmbigueBronId", "Register", "cbs", "duo", "rio", "roa", "uwv",
+           "inspectie", "sbb", "contract", "scope", "AmbigueResource", "ResourceNietGevonden", "__version__"]

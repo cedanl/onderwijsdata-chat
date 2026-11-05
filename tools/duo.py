@@ -79,12 +79,6 @@ _CELLEN = {
 }
 
 
-def bron_van(key: str) -> str:
-    """De bron van een store-key (duo, cbs, rio): uit de meta, anders het voorvoegsel van de key."""
-    known = store.meta(key)
-    return known.bron if known else key.split(":", 1)[0]
-
-
 def _cellen(bron: str) -> tuple[str, str, str]:
     """(hoe de cellen heten, hun teken, wat ze betekenen) in de woorden van de bron; DUO als de bron er geen kent."""
     return _CELLEN.get(bron, _CELLEN["duo"])

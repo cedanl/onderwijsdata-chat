@@ -68,7 +68,7 @@ def zonder_bronprefix(dataset_id: str) -> str:
 def zonder_cbs_prefix(dataset_id: str) -> str:
     """Het ID zonder het contract-voorvoegsel van de CBS-package: `cbs:85423NED` → `85423NED` (#370).
 
-    Alleen het voorvoegsel; de spelling van het ID zelf kent de catalogus (`catalog.cbs_bron_id`):
+    Alleen het voorvoegsel; de spelling van het ID zelf kent de catalogus (`bron_ids.cbs_tabel_id`):
     CBS schrijft `85423NED` naast `80040ned`, dus hoofdletters zijn niet te raden.
     """
     return _CBS_PREFIX.sub("", str(dataset_id).strip())
