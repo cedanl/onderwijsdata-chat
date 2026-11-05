@@ -66,6 +66,19 @@ voorgangers("08PG", sinds="2021-10-01")
 # [Stap(code='25LG', naam='Regionaal Opleidingen Centrum Friesland College', overgang='volledig', datum='2023-08-01', via='08PG')]
 ```
 
+### Aanbieders van een instelling
+
+Het aanbod per onderwijslocatie (RIO, en DUO's `mbo_opleidingsaanbod`) noemt de onderwijsaanbieder, niet het BRIN.
+`onderwijsaanbieders` geeft de aanbieders van een erkenning op een peildatum (standaard vandaag), via
+`/erkenningen/{brin}/organisatorische-eenheden`:
+
+```python
+from riodata import onderwijsaanbieders
+
+onderwijsaanbieders("31JC", "2026-11-05")
+# ['100A932', '100A933', '110A638']  (Zone.college mbo, Zone.college vmbo, Zone.college)
+```
+
 ## DUO Open Data
 
 ```python
