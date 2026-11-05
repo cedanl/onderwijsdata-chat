@@ -22,9 +22,6 @@ from data.dashboard import (
     load_dashboard_regio,
     load_dashboard_rendement,
 )
-from data.dashboard import (
-    load_dashboard as load_dashboard_data,
-)
 from data.instellingen import get_all as get_all_instellingen
 from tools.catalog import _cbs as _cbs_catalog
 from tools.catalog import _rio_duo as _rio_duo_catalog
@@ -153,11 +150,6 @@ async def _laad_dashboard(loader: Callable[[str], dict], instelling: str) -> dic
     except BronNietBeschikbaar as e:
         # Geen "niet gevonden": de instelling is niet te bepalen zolang de bron uitligt.
         return JSONResponse({"error": str(e)}, status_code=503)
-
-
-@router.get("/api/dashboard/instroom", response_model=None, dependencies=_INGELOGD)
-async def dashboard_instroom(instelling: str = Query(...)) -> dict | JSONResponse:
-    return await _laad_dashboard(load_dashboard_data, instelling)
 
 
 @router.get("/api/dashboard/regio", response_model=None, dependencies=_INGELOGD)

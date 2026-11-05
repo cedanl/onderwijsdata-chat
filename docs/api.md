@@ -123,13 +123,12 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 |---------|-----|--------------|
 | `GET` | `/api/settings/config` | Beschikbare modellen en standaardmodel voor de ingelogde gebruiker. Met authenticatie aan alleen met een geldig token in `Authorization: Bearer …`, anders 401; zonder authenticatie voor `gast` |
 | `GET` | `/api/instellingen` | Lijst van onderwijsinstellingen, optioneel gefilterd op `type` (query param, komma-gescheiden) |
-| `GET` | `/api/dashboard/instroom` | Dashboard-instroomgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/regio` | Dashboard-regiogegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/nationaal` | Dashboard-nationale gegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/rendement` | Dashboard-rendementsgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/arbeidsmarktmatch` | Dashboard-arbeidsmarktmatch voor een instelling (`instelling` param) |
 
-De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636).
+De vier `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636).
 
 ---
 

@@ -146,7 +146,6 @@ def test_de_fabriek_zet_dezelfde_beveiligingsheaders_als_server_app():
 
 # Pad en de loader in routes.instellingen die het pad aanroept.
 DASHBOARDS = {
-    "/api/dashboard/instroom": "load_dashboard_data",
     "/api/dashboard/regio": "load_dashboard_regio",
     "/api/dashboard/nationaal": "load_dashboard_nationaal",
     "/api/dashboard/rendement": "load_dashboard_rendement",
@@ -239,3 +238,17 @@ def test_dashboard_zonder_login_werkt_als_voorheen(database, monkeypatch, loader
     assert resp.status_code == 200
     assert resp.json() == {"ok": loader}
     assert loaders == [(loader, "VU")]
+
+
+def test_elk_dashboardpad_heeft_een_dashboard_dat_het_gebruikt():
+    # /api/dashboard/instroom gebruikte geen enkel dashboard en is weg (#930); een nieuw pad hoort in DASHBOARDS en in
+    # de hooks van de frontend.
+    from pathlib import Path
+
+    import server
+
+    paden = {pad for _, pad, _ in _routes(server.app.routes) if pad and pad.startswith("/api/dashboard/")}
+    hooks = (Path(__file__).parent.parent / "frontend/src/components/dashboards/shared/hooks.js").read_text()
+
+    assert paden == set(DASHBOARDS)
+    assert all(f"'{pad}'" in hooks for pad in paden)

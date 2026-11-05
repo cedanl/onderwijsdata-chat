@@ -842,7 +842,7 @@ def _geslacht(df: pd.DataFrame) -> dict[str, int]:
 
 
 def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame) -> dict:
-    """De reeksen van één ho-instelling, voor het regio- en het instroomdashboard: één berekening (#899, #902)."""
+    """De reeksen van één ho-instelling op het regiodashboard (#899, #902)."""
     result: dict = {}
     result["ingeschrevenen"], leeg = _reeks(hu_inges, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     _met_onderdrukt(result, "ingeschrevenen", leeg)
@@ -970,7 +970,7 @@ def _mbo_load_eerstejaars(code_naam: dict[str, str], eigen: str) -> tuple[pd.Dat
 
 
 def _mbo_kern(rows: pd.DataFrame) -> dict:
-    """De ingeschrevenen van één mbo-instelling per jaar en per leerweg, voor regio en instroom (#899, #902)."""
+    """De ingeschrevenen van één mbo-instelling per jaar en per leerweg, op het regiodashboard (#899, #902)."""
     result: dict = {}
     result["ingeschrevenen"], leeg = _reeks(rows, "JAAR", _MBO_LEERWEG_COLS)
     _met_onderdrukt(result, "ingeschrevenen", leeg)
@@ -1071,87 +1071,6 @@ def load_dashboard_regio(instelling: str) -> dict:
             result["geen_suggesties"] = _GEEN_SUGGESTIES
     except Exception as e:
         _niet_beschikbaar(e, "load_dashboard_regio: beschikbare instellingen niet laden")
-
-    return result
-
-
-# ─── Instroom dashboard (zonder benchmark) ───────────────────────────────────
-
-
-def _load_ho(_instelling: str) -> pd.DataFrame:
-    return _load_ho_full()[0]
-
-
-def _filter_ho(df: pd.DataFrame, instelling: str) -> pd.DataFrame:
-    col = "INSTELLINGSNAAM_ACTUEEL"
-    if col not in df.columns:
-        return df.iloc[0:0]
-    return df[df[col].str.lower() == instelling.lower()]
-
-
-def load_dashboard_ho(instelling: str) -> dict | None:
-    try:
-        df_inges, df_ej, df_dipl = _load_ho_full()
-        hu = _filter_ho(df_inges, instelling)
-        if hu.empty:
-            return None
-    except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "dashboard-ho: data laden mislukt voor %s", instelling)
-        return None
-    return _ho_kern(hu, _filter_ho(df_ej, instelling), _filter_ho(df_dipl, instelling))
-
-
-def load_dashboard_mbo(instelling: str) -> dict | None:
-    try:
-        df = _load_mbo_studenten()
-    except Exception as e:
-        _hoofdbron_niet_beschikbaar(e, "dashboard-mbo: data laden mislukt voor %s", instelling)
-        return None
-
-    rows = df[df["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
-    if rows.empty:
-        return None
-
-    result = _mbo_kern(rows)
-    try:
-        gediplomeerden, leeg = _mbo_dipl_reeks(_load_mbo_gediplomeerden(), "INSTELLINGSNAAM", instelling)
-        if gediplomeerden:
-            result["gediplomeerden"] = gediplomeerden
-            _met_onderdrukt(result, "gediplomeerden", leeg)
-    except Exception as e:
-        _niet_beschikbaar(
-            e,
-            "dashboard-mbo: gediplomeerden niet beschikbaar voor %s",
-            instelling,
-            onderdeel=_ONDERDEEL_GEDIPLOMEERDEN,
-        )
-
-    return result
-
-
-@_dashboardlading
-def load_dashboard(instelling: str) -> dict:
-    instelling = resolve_alias(instelling)
-    result: dict = {"instelling": instelling, "gevonden": False}
-
-    ho = load_dashboard_ho(instelling)
-    if ho:
-        result["gevonden"] = True
-        result.update(ho)
-        return result
-
-    mbo = load_dashboard_mbo(instelling)
-    if mbo:
-        result["gevonden"] = True
-        result.update(mbo)
-        return result
-
-    try:
-        result["beschikbare_instellingen"] = _beschikbare_instellingen(
-            instelling, _load_ho(instelling), _load_mbo_studenten()
-        )
-    except Exception as e:
-        _niet_beschikbaar(e, "load_dashboard: beschikbare instellingen niet laden")
 
     return result
 

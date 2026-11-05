@@ -160,7 +160,9 @@ def _leeg_laadcaches():
 
 def test_mbo_dashboard_sluit_minus_een_uit(mbo_met_sentinels):
     # Audit ronde 2, D1: Grafisch Lyceum Utrecht 2024 toonde 2377 (= 2379 − 2).
-    result = dashboard.load_dashboard_mbo("Grafisch Lyceum")
+    # De lading van het mbo-bestand en de reeks van het regiodashboard; dit nepbestand is alleen mbo, dus niet de hele lader.
+    df = dashboard._load_mbo_studenten()
+    result = dashboard._mbo_kern(df[df["INSTELLINGSNAAM"] == "Grafisch Lyceum"])
     assert result["ingeschrevenen"] == {2024: 2379, 2025: 2410}
 
 
