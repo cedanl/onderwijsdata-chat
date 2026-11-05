@@ -194,4 +194,25 @@ describe('landelijk: populatie en bron per type (#919, #928)', () => {
       expect(badge()).toBe('Bron: DUO, som per instelling')
     })
   }
+
+  // #950: het marktaandeel rekent over het totaal van het eigen type; de pagina noemt die noemer.
+  for (const [type, soort, populatie, studenten] of [
+    ['ho', 'hbo', 'alle hogescholen (hbo)', 'alle hbo-studenten'],
+    ['ho', 'wo', 'alle universiteiten (wo)', 'alle wo-studenten'],
+    ['mbo', 'mbo', 'alle mbo-instellingen', 'alle mbo-studenten'],
+  ]) {
+    it(`noemt voor ${soort} de populatie van het marktaandeel`, async () => {
+      const payload = {
+        ...PAYLOAD(type, soort, 10, P01),
+        eigen_sectoren: { RECHT: { 2025: 300 } },
+        sectoren_landelijk: { RECHT: { 2025: 3000 } },
+      }
+      await render(createElement(InlineDashboardNationaal, { instelling: 'X' }), { '/api/dashboard/nationaal': payload })
+
+      const tekst = container.textContent
+      expect(tekst).toContain(`Aandeel in het landelijke totaal van ${populatie} per sector`)
+      expect(tekst).toContain(`Aandeel van ${studenten} per sector, 2025`)
+      expect(tekst).not.toContain('Percentage van landelijk totaal')
+    })
+  }
 })

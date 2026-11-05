@@ -14,7 +14,7 @@ import { buildLeerwegenData, buildSectorTrendData, HoofdgroepenChart, LEERWEGEN_
 import { OndergrensNoot, isOndergrens } from '../components/dashboards/shared/ondergrens'
 import { pctVrouwFromGeslacht } from '../components/dashboards/mijn-instelling/gender-section'
 import { verdeelCohorten } from '../components/dashboards/mijn-instelling/rendement-section'
-import { buildMarktaandeelPerSector, LandelijkDefinitie } from '../components/dashboards/nationaal/index'
+import { buildMarktaandeelPerSector, LandelijkDefinitie, studentenTekst } from '../components/dashboards/nationaal/index'
 import { buildBenchmarkLineData, buildPeerLinesData, groeiPct, groeiStartjaar } from '../components/dashboards/shared/chart-builders'
 import { buildGroeiRankingData, GroeiRankingChart } from '../components/dashboards/shared/charts-markt'
 import { PeersTable } from '../components/dashboards/shared/charts-peers'
@@ -102,6 +102,18 @@ describe('ontbrekende waarden blijven een gat (#902)', () => {
     expect(uit.data.labels).toEqual(['Techniek', 'Economie'])
     expect(uit.data.datasets[0].data).toEqual([30, 5])
     expect(uit.weggelaten).toEqual(['Onderwijs', 'BOLDT'])
+  })
+
+  it('noemt de populatie van de noemer in de reeksnaam van het marktaandeel (#950)', () => {
+    const eigen = { RECHT: { 2025: 300 } }
+    const landelijk = { RECHT: { 2025: 3000 } }
+
+    expect(buildMarktaandeelPerSector(eigen, landelijk, { soort: 'wo', n: 18 }).data.datasets[0].label)
+      .toBe('Aandeel van alle wo-studenten (%)')
+    expect(buildMarktaandeelPerSector(eigen, landelijk, { soort: 'hbo', n: 36 }).data.datasets[0].label)
+      .toBe('Aandeel van alle hbo-studenten (%)')
+    expect(studentenTekst({ soort: 'mbo' })).toBe('alle mbo-studenten')
+    expect(studentenTekst(undefined)).toBe('alle studenten')
   })
 
   it('verdeelt de cohorten in getoond, meer diploma\'s dan instroom en zonder diplomajaar', () => {
@@ -228,7 +240,7 @@ describe('een peer zonder gegevens (#925)', () => {
 describe('landelijk zegt wat het telt (#903)', () => {
   it('noemt de DUO-som en de CBS-tabel van de chat', () => {
     const el = render(createElement(LandelijkDefinitie, { landelijk: {
-      definitie: 'de som van DUO p01hoinges over alle instellingen',
+      definitie: 'de som van DUO p01hoinges over alle universiteiten',
       verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-tabel 85423NED.',
     } }))
 

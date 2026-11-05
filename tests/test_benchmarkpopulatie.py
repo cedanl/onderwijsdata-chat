@@ -288,3 +288,45 @@ def test_landelijk_mbo_noemt_zijn_populatie():
 
     assert result["populatie"] == {"soort": "mbo", "n": len(result["alle_instellingen"])}
     assert set(result["positie_populatie"]) == set(result["eigen_positie"])
+
+
+@_met_duo
+@pytest.mark.parametrize(("instelling", "soort"), [("Hogeschool Utrecht", "hbo"), ("Universiteit Utrecht", "wo")])
+def test_marktaandeel_rekent_over_het_totaal_van_het_eigen_type(instelling, soort):
+    # #950: de noemer van het marktaandeel (`sectoren_landelijk`) is het totaal van hetzelfde type, in elk jaar; een
+    # hogeschool met wo-studenten (HvA) telt met al haar studenten bij de hogescholen, zoals in de ranking.
+    from riodata import duo
+
+    hbo, wo = duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)
+    alles = pd.concat([hbo, wo], ignore_index=True)
+    alles = alles[alles["AANTAL_INGESCHREVENEN"] >= 0]
+    in_soort = alles[alles[_INST].isin(set(hbo[_INST])) == (soort == "hbo")]
+    verwacht: dict[str, dict[int, int]] = {}
+    for (onderdeel, jaar), n in in_soort.groupby(["ONDERDEEL", "STUDIEJAAR"])["AANTAL_INGESCHREVENEN"].sum().items():
+        verwacht.setdefault(onderdeel, {})[int(jaar)] = int(n)
+
+    result = dashboard.load_dashboard_nationaal(instelling)
+
+    assert result["sectoren_landelijk"] == verwacht
+    # Het eigen aantal zit in de noemer: per sector ligt het aandeel tussen 0 en 1.
+    laatste = result["laatste_jaar"]
+    for onderdeel, reeks in result["eigen_sectoren"].items():
+        if reeks.get(laatste):
+            assert 0 < reeks[laatste] <= result["sectoren_landelijk"][onderdeel][laatste]
+    assert result["landelijk"]["definitie"].startswith(
+        f"de som van DUO p01hoinges over alle {dashboard._SOORTNAAM[soort][1]};"
+    )
+
+
+@_met_duo
+def test_marktaandeel_mbo_blijft_over_alle_mbo_instellingen():
+    # Het mbo was al type-zuiver: het bestand kent alleen mbo-instellingen, en de noemer blijft het hele bestand.
+    result = dashboard.load_dashboard_nationaal("Albeda")
+
+    mbo = dashboard._load_mbo_studenten()
+    laatste = result["laatste_jaar"]
+    for leerweg in ("BBL", "BOLVT"):
+        assert result["sectoren_landelijk"][leerweg][laatste] == int(mbo[mbo["JAAR"] == laatste][leerweg].sum())
+    assert result["landelijk"]["definitie"].startswith(
+        "de som van DUO mbo-studenten-per-instelling over alle mbo-instellingen;"
+    )

@@ -181,8 +181,14 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   paar wo-studenten (HvA, Hanze, BUas staan ook in de wo-resource van `p01hoinges`) blijft een hogeschool en telt
   met al haar studenten. `populatie` noemt type en aantal in de ranking (`{"soort": "wo", "n": 18}`),
   `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector; de pagina
-  toont "4e van 9 wo". De landelijke sectortotalen (`sectoren_landelijk`, het marktaandeel) blijven over alle
-  instellingen van het niveau.
+  toont "4e van 9 wo".
+- **Marktaandeel** op Landelijk is per type (#950): de landelijke sectortotalen (`sectoren_landelijk`, de noemer) lopen
+  over de instellingen van het eigen type, met het type uit het register zoals bij de ranking. Een universiteit heeft
+  zo een aandeel in alle wo-studenten van een sector, een hogeschool in alle hbo-studenten (een hogeschool met een paar
+  wo-studenten telt met al haar studenten bij de hogescholen). Titel, ondertitel, reeksnaam en tooltip noemen die
+  populatie ("aandeel van alle wo-studenten in Recht"), net als `landelijk.definitie` ("de som van DUO p01hoinges over
+  alle universiteiten"). Het mbo was al type-zuiver: het bestand kent alleen mbo-instellingen. Tot #950 was de noemer
+  alle hbo- plus wo-studenten.
 - **Groei** op Mijn instelling loopt voor elke instelling vanaf hetzelfde startjaar (het laatste van de eerste jaren
   met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
   de kop.

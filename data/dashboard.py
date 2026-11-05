@@ -1211,15 +1211,16 @@ _LANDELIJK = {
 }
 
 
-def _landelijk_definitie(sector: str) -> dict[str, str]:
-    """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven."""
+def _landelijk_definitie(sector: str, soort: str) -> dict[str, str]:
+    """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven. De som loopt over de
+    instellingen van `soort`, het type van de eigen instelling (#950)."""
     bron = _LANDELIJK[sector]
     return {
         "maat": "duo_som_per_instelling",
         **bron,
         "definitie": (
-            f"de som van DUO {bron['dataset']} over alle instellingen; onderdrukte cellen tellen niet mee, dus een "
-            "totaal kan een ondergrens zijn"
+            f"de som van DUO {bron['dataset']} over alle {_SOORTNAAM[soort][1]}; onderdrukte cellen tellen niet mee, "
+            "dus een totaal kan een ondergrens zijn"
         ),
         "verschil_met_chat": (
             f"De chat geeft het landelijke aantal uit de CBS-tabel {bron['chat_dataset']}. "
@@ -1233,10 +1234,11 @@ def _nationaal_cijfers(
 ) -> dict:
     """Landelijke sectortotalen, eigen sectoren, ranking en positie per sector: één berekening voor ho en mbo.
 
-    `kol` noemt de kolommen: instelling, sector, jaar, waarde en soort (hbo, wo of mbo). De sectortotalen lopen over
-    alle instellingen; de ranking en de posities alleen over de instellingen van `soort`, het type van de eigen
-    instelling (#928): een universiteit staat naast universiteiten. `populatie` noemt dat type en het aantal in de
-    ranking, `positie_populatie` per sector het aantal instellingen van dat type met ingeschrevenen in die sector.
+    `kol` noemt de kolommen: instelling, sector, jaar, waarde en soort (hbo, wo of mbo). Sectortotalen, ranking en
+    posities lopen alleen over de instellingen van `soort`, het type van de eigen instelling: een universiteit staat
+    naast universiteiten (#928), en haar marktaandeel is haar aandeel in alle wo-studenten van de sector (#950).
+    `populatie` noemt dat type en het aantal in de ranking, `positie_populatie` per sector het aantal instellingen van
+    dat type met ingeschrevenen in die sector.
 
     Een som over lege cellen is een ondergrens en staat in `onderdrukt`; een positie waarin een onderdrukte cel
     meetelt, staat er ook in, want die kan verschuiven (#902). Een sector waarin de instelling in het laatste jaar geen
@@ -1244,11 +1246,12 @@ def _nationaal_cijfers(
     """
     inst_col, sector_col, jaar_col, waarde_col = kol["instelling"], kol["sector"], kol["jaar"], kol["waarde"]
     uit: dict = {}
-    for sleutel, bron in (("sectoren_landelijk", df), ("eigen_sectoren", eigen)):
+    van_soort = df[df[kol["soort"]] == soort]
+    for sleutel, bron in (("sectoren_landelijk", van_soort), ("eigen_sectoren", eigen)):
         uit[sleutel], leeg = _genest(bron, sector_col, jaar_col, waarde_col)
         _met_onderdrukt(uit, sleutel, leeg)
 
-    laatste = df[(df[jaar_col] == laatste_jaar) & (df[kol["soort"]] == soort)]
+    laatste = van_soort[van_soort[jaar_col] == laatste_jaar]
     per_inst = _som(laatste, inst_col, waarde_col).dropna().sort_values(ascending=False, kind="stable")
     leeg_inst = _leeg(laatste, inst_col, waarde_col)
     uit["alle_instellingen"] = [
@@ -1301,7 +1304,7 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     result["type"] = "ho"
     laatste_jaar = int(hu["STUDIEJAAR"].max())
     result["laatste_jaar"] = laatste_jaar
-    result["landelijk"] = _landelijk_definitie("ho")
+    result["landelijk"] = _landelijk_definitie("ho", soort)
 
     kol = {
         "instelling": inst_col,
@@ -1338,7 +1341,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     result["type"] = "mbo"
     laatste_jaar = int(df_mbo["JAAR"].max())
     result["laatste_jaar"] = laatste_jaar
-    result["landelijk"] = _landelijk_definitie("mbo")
+    result["landelijk"] = _landelijk_definitie("mbo", "mbo")
 
     kol = {"instelling": inst_col_mbo, "sector": "LEERWEG", "jaar": "JAAR", "waarde": "AANTAL", "soort": _SOORT}
     result.update(_nationaal_cijfers(_mbo_per_leerweg(df_mbo), _mbo_per_leerweg(rows), kol, laatste_jaar, "mbo"))

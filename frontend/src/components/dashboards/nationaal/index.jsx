@@ -9,9 +9,15 @@ import { jaarLabel } from '../../../schooljaar'
 
 const sectorNaam = s => SECTOR_LABELS[s] || s
 
+// De noemer van het marktaandeel in woorden (#950): de landelijke sectortotalen lopen over het eigen type, dus een
+// universiteit heeft een aandeel in "alle wo-studenten". Zonder type (een oudere payload) de algemene vorm.
+export function studentenTekst(populatie) {
+  return POPULATIE_NATIONAAL[populatie?.soort] ? `alle ${populatie.soort}-studenten` : 'alle studenten'
+}
+
 // Het eigen aandeel per sector in het laatste jaar, aflopend. Een sector zonder eigen of landelijke waarde, of met 0
-// eigen ingeschrevenen, valt weg en staat in `weggelaten` (#902).
-export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
+// eigen ingeschrevenen, valt weg en staat in `weggelaten` (#902). `populatie` noemt de noemer in label en tooltip.
+export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk, populatie) {
   if (!eigenSectoren || !sectorenLandelijk) return null
   const sectors = Object.keys(eigenSectoren)
   const jaren = sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(Number))
@@ -37,7 +43,7 @@ export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
     data: {
       labels: entries.map(e => sectorNaam(e.sector)),
       datasets: [{
-        label: 'Marktaandeel %',
+        label: `Aandeel van ${studentenTekst(populatie)} (%)`,
         data: entries.map(e => e.pct),
         backgroundColor: entries.map(e => kleuren.get(e.sector)),
         borderWidth: 0,
@@ -178,22 +184,31 @@ function EigenSectorenTrendChart({ eigenSectoren, soort, dark }) {
 }
 
 // Een eigen naam: MarktaandeelChart in shared/ is de marktpositie per instelling in de regio (#907).
-function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, soort, dark }) {
+// De noemer is het totaal van het eigen type (#950): "aandeel van alle wo-studenten in Recht".
+function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, populatie, soort, dark }) {
   const uitkomst = useMemo(
-    () => buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk),
-    [eigenSectoren, sectorenLandelijk],
+    () => buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk, populatie),
+    [eigenSectoren, sectorenLandelijk, populatie],
   )
   const chartData = uitkomst?.data
   if (!chartData) return null
-  const baseOpts = horizontalBarOpts(dark, '%')
+  const baseOpts = horizontalBarOpts(dark)
   const jaar = jaarLabel(uitkomst.jaar, soort)
+  const studenten = studentenTekst(populatie)
   return (
-    <ChartCard title="Marktaandeel per sector" subtitle={`Percentage van landelijk totaal in ${jaar}`}>
-      <Grafiek soort="bar" categorie="Sector" hoogte={Math.max(160, chartData.labels.length * 36)} options={{
+    <ChartCard title="Marktaandeel per sector" subtitle={`Aandeel van ${studenten} per sector, ${jaar}`}>
+      {/* Elke sector zijn naam op de as: op 390 px sloeg Chart.js anders de helft over (een naam als "Gedrag &
+          Maatschappij" breekt in twee regels), dus geen autoSkip en 44 px per sector. */}
+      <Grafiek soort="bar" categorie="Sector" hoogte={Math.max(160, chartData.labels.length * 44)} options={{
           ...baseOpts,
+          plugins: {
+            ...baseOpts.plugins,
+            tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}% van ${studenten} in ${ctx.label}` } },
+          },
           scales: {
             ...baseOpts.scales,
             x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${fmt(v)}%` } },
+            y: { ...baseOpts.scales.y, ticks: { ...baseOpts.scales.y.ticks, autoSkip: false } },
           },
         }} data={chartData} />
       <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${jaar}`} />
@@ -220,8 +235,8 @@ export function InlineDashboardNationaal({ instelling }) {
         <SectionHeader title="Positie per sector" subtitle={`Ranking binnen ${populatie} per sector/leerweg`} />
         <PositieKpis data={data} />
 
-        <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
-        <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} soort={data?.perioden?.ingeschrevenen} dark={dark} />
+        <SectionHeader title="Marktaandeel" subtitle={`Aandeel in het landelijke totaal van ${populatieTekst({ soort: data?.populatie?.soort })} per sector`} />
+        <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} populatie={data?.populatie} soort={data?.perioden?.ingeschrevenen} dark={dark} />
         <OndergrensNoot reeksen={[
           ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
           ...sectorReeksen(data?.onderdrukt?.eigen_sectoren, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Eigen ${r.label}` })),
