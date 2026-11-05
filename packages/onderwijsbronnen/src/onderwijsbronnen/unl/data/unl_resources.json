@@ -1,0 +1,30 @@
+[
+  {
+    "leverancier": "Universiteiten van Nederland",
+    "bron": "WOPI-personeelsbestand (wo)",
+    "beschrijving": "Personeel in dienst van de 14 universiteiten van UNL op 31 december, uit de records van de WOPI-draaitabellen: fte per functiecategorie (hoogleraar, uhd, ud, docent, onderzoeker, overig wp, promovendus, obp) met vast of tijdelijk, en personen per leeftijdsklasse, per universiteit (BRIN) en landelijk. Zonder of met het HOOP-gebied Gezondheid (GEZO), nooit door elkaar.",
+    "periode": "Peildatum 31-12; fte vanaf 1998, personen per universiteit vanaf 2005; jaarlijkse editie (mei tot november van het jaar erna)",
+    "onderwijstype": ["WO"],
+    "doel": "De enige open bron voor personeel per universiteit. Alleen wo: voor hbo en mbo bestaat geen open personeelsbestand per instelling. Vier wo-instellingen die geen lid zijn van UNL (TUA, PThU, UvH, TU Kampen) staan er niet in.",
+    "frequentie": "Jaarlijks",
+    "categorie": "Personeel",
+    "sectie": "Universiteiten van Nederland",
+    "documentatie": {
+      "tekst": "Downloadbare gegevens personeel — Universiteiten van Nederland",
+      "url": "https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Hoeveel wetenschappelijk personeel heeft de Universiteit Utrecht?",
+      "Hoe ontwikkelt het aantal fte hoogleraren zich landelijk sinds 2005?",
+      "Welk aandeel van het personeel van de TU Delft heeft een tijdelijke aanstelling?"
+    ],
+    "tags": ["personeel", "wopi", "unl", "wo", "universiteiten", "fte", "hoogleraren", "promovendi", "obp", "wetenschappelijk personeel"],
+    "combineerbaar_met": ["DUO wo-instellingen (via BRIN-code)"],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_unl_id": "wopi",
+    "_resources": []
+  }
+]

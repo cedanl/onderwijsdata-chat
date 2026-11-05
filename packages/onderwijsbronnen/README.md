@@ -1,6 +1,6 @@
 # onderwijsbronnen
 
-Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit zeven bronnen, elk in een eigen subpakket:
+Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit acht bronnen, elk in een eigen subpakket:
 
 - **CBS** — StatLine-tabellen over onderwijs via de OData API (`onderwijsbronnen.cbs`, zie [CBS.md](CBS.md))
 
@@ -10,6 +10,7 @@ Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit zeven bronnen,
 - **UWV** — Open Match Data (1 dataset) (`onderwijsbronnen.uwv`)
 - **Inspectie van het Onderwijs** — open data (2 datasets) (`onderwijsbronnen.inspectie`)
 - **SBB** — CREBO-lijst en kwalificatiedossiers (2 datasets) (`onderwijsbronnen.sbb`, met `sbb.crebo` en `sbb.dossiers`)
+- **UNL** — WOPI-personeelsbestand van de 14 universiteiten (`onderwijsbronnen.unl`, zie [UNL](#unl-wopi-personeel)); niet in `catalog(source="all")`
 
 Tot november 2026 waren dit twee pakketten: `onderwijsdata` (CBS) en `riodata` (de rest). Sinds 0.9.0 (#914) bestaan
 die namen niet meer in dit pakket. Overstappen: `from riodata import duo` wordt `from onderwijsbronnen import duo`
@@ -141,7 +142,7 @@ alleen met een filter (RIO-type), resourcekeuze of rijselectie (DUO) leverbaar i
 
 ## ID-contract `bron:id`
 
-Eén sleutel per dataset, voor alle zeven bronnen (#912):
+Eén sleutel per dataset, voor alle acht bronnen (#912):
 
 ```python
 import onderwijsbronnen as o
@@ -153,6 +154,28 @@ o.catalogus()                           # {"cbs": [...], "rio": [...], "duo": [.
 ```
 
 Een kale ID die bij twee bronnen past geeft `AmbigueBronId` (met `.opties`), een onbekende `OnbekendBronId`.
+
+## UNL: WOPI-personeel
+
+Het WOPI-personeelsbestand van Universiteiten van Nederland (#936): personeel in dienst op 31 december, per
+universiteit (BRIN) en landelijk. De lader leest de link naar de nieuwste editie van de
+[downloadpagina](https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel) en daarna de records van
+de draaitabellen (de pivotcaches), niet de getoonde cellen. Een cache wordt gekozen op de naam van zijn brontabel;
+velden, de 14 BRIN-codes en het editiejaar worden gecontroleerd (`unl.WopiFout` als iets afwijkt).
+
+```python
+from onderwijsbronnen import unl
+
+df = unl.load("functie")                  # fte per functie en vast/tijdelijk, zonder GEZO (standaard), totaal
+df = unl.load("functie", gezo="incl")     # met het HOOP-gebied Gezondheid; nooit door elkaar
+df = unl.load("personen", geslacht="vrouwen")  # personen per leeftijdsklasse, alleen vrouwen
+
+wopi = unl.lees(*unl.haal_op())           # alle tabellen van één download, met de herkomst
+wopi.herkomst                             # url, editiejaar, sha256, bytes, Last-Modified; .peildatum = "31-12-2025"
+```
+
+Licentie: UNL zegt niets over hergebruik. Er staat geen data van UNL in dit pakket; de tests gebruiken een
+synthetisch bestand met dezelfde XML-vorm (`unl.proefbestand`). Het XML gaat door `defusedxml`.
 
 ## Broncontrole
 

@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.config import RIO_PAGE_SIZE
+from core.config import RIO_PAGE_SIZE, WO_PERSONEEL_ENABLED
 from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 from data.roa_koppeling import ONDERDELEN as ROA_ONDERDELEN
 
@@ -29,6 +29,7 @@ TOOL_GET_INSPECTIEOORDEEL_VO = "get_inspectieoordeel_vo"
 TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 TOOL_GET_ACCREDITATIE = "get_accreditatie"
 TOOL_GET_COLLEGEGELD = "get_collegegeld"
+TOOL_GET_WO_PERSONEEL = "get_wo_personeel"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -804,3 +805,61 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
 ]
+
+# Personeel van de universiteiten (WOPI, UNL; #936). Alleen in de toolset met de vlag ENABLE_WO_PERSONEEL (core/config.py):
+# tot UNL hergebruik bevestigt, staat de bron alleen op test. De waarden van de enums staan in tools/wo_personeel.py.
+SCHEMA_GET_WO_PERSONEEL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": TOOL_GET_WO_PERSONEEL,
+        "description": (
+            "Personeel in dienst van een universiteit of van alle 14 universiteiten samen (landelijk), uit het "
+            "WOPI-bestand van Universiteiten van Nederland, peildatum 31 december. Standaard in fte en zonder het "
+            "HOOP-gebied Gezondheid (gezo='excl'); gezo='incl' alleen als de gebruiker er uitdrukkelijk om vraagt. "
+            "Gebruik dit bij elke vraag naar personeel, medewerkers, wetenschappelijk personeel, hoogleraren, "
+            "promovendi of tijdelijke contracten van een universiteit, en ook bij zo'n vraag over een hogeschool of "
+            "mbo-instelling: de tool zegt dan dat daarvoor geen open bron is. Neem de getallen, de eenheid, de "
+            "peildatum, de GEZO-variant en de voorbehouden letterlijk over; reken niet zelf en noem fte nooit "
+            "'medewerkers'."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "instelling": {
+                    "type": "string",
+                    "description": "Naam, afkorting of BRIN-code van de instelling, of 'landelijk' (standaard).",
+                },
+                "jaar": {
+                    "type": "integer",
+                    "description": "Peiljaar (31 december van dat jaar). Weglaten: het nieuwste jaar.",
+                },
+                "reeks": {
+                    "type": "boolean",
+                    "description": "true: alle beschikbare jaren in plaats van één jaar.",
+                },
+                "uitsplitsing": {
+                    "type": "string",
+                    "enum": ["geen", "wp_obp", "functie", "vast_tijdelijk", "geslacht", "leeftijd"],
+                    "description": (
+                        "geen (standaard); wp_obp: wetenschappelijk personeel en OBP; functie: hoogleraar, uhd, ud, "
+                        "docent, onderzoeker, overig wp, promovendus, obp; vast_tijdelijk; geslacht: totaal en "
+                        "vrouwen; leeftijd: alleen met eenheid 'personen'."
+                    ),
+                },
+                "eenheid": {
+                    "type": "string",
+                    "enum": ["fte", "personen"],
+                    "description": "fte (standaard) of personen (alleen totaal, per leeftijd of per geslacht).",
+                },
+                "gezo": {
+                    "type": "string",
+                    "enum": ["excl", "incl"],
+                    "description": "excl (standaard): zonder het HOOP-gebied Gezondheid; incl alleen op verzoek.",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+if WO_PERSONEEL_ENABLED:
+    TOOL_SCHEMAS.append(SCHEMA_GET_WO_PERSONEEL)

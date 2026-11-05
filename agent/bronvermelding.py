@@ -13,7 +13,7 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import collegegeld, inspectie, inspectie_vo, mbo_indicatoren, store
+from tools import collegegeld, inspectie, inspectie_vo, mbo_indicatoren, store, wo_personeel
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
@@ -23,6 +23,7 @@ from tools.schemas import (
     TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_GET_WO_PERSONEEL,
 )
 from tools.scopeprofiel import VO_CONTEXT_DEEL
 from tools.store import KeyMeta
@@ -111,6 +112,8 @@ _BESTANDSBRONNEN = {
     TOOL_GET_INSPECTIEOORDEEL_VO: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie_vo.BRONTITEL}, {VO_CONTEXT_DEEL}",
     TOOL_GET_MBO_INDICATOREN: f"{mbo_indicatoren.BRONNAAM}{SCHEIDING}{mbo_indicatoren.BRONTITEL}",
     TOOL_GET_COLLEGEGELD: f"{collegegeld.BRONNAAM}{SCHEIDING}{collegegeld.BRONTITEL}",
+    # De vaste bronregel komt uit de tool zelf (`bron.regel`), met de GEZO-variant erin (#936).
+    TOOL_GET_WO_PERSONEEL: f"{wo_personeel.BRONNAAM}{SCHEIDING}{wo_personeel.BRONTITEL}",
 }
 # Welke velden van `bron` in de bronregel komen, en met welk woord ervoor.
 _BRONVELDEN = {"editie": "editie", "peildatum": "peildatum", "versie": "versie van", "opgehaald": "opgehaald op"}
@@ -131,6 +134,9 @@ def _bestand(tool: str, result: str) -> dict | None:
 def _bestandsbron(tool: str, result: str) -> list[Bronregel]:
     if (bron := _bestand(tool, result)) is None:
         return []
+    if isinstance(regel := bron.get("regel"), str) and regel:
+        # Een bron met een voorgeschreven bronregel (WOPI: "WOPI 2025, Universiteiten van Nederland, …", #936).
+        return [(regel, None)]
     delen = [_BESTANDSBRONNEN[tool]]
     delen += [f"{woord} {bron[veld]}" for veld, woord in _BRONVELDEN.items() if bron.get(veld)]
     return [(", ".join(delen), None)]

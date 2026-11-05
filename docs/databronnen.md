@@ -401,6 +401,45 @@ de dag waarop ze zijn nagelezen. In de chat via `get_collegegeld`, één studiej
 
 ---
 
+## Personeel van de universiteiten — UNL, WOPI (achter een vlag, alleen test)
+
+Universiteiten van Nederland (UNL) publiceert jaarlijks het WOPI-personeelsbestand als xlsx met draaitabellen
+([downloadpagina](https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel)). Het pakket leest het in
+`onderwijsbronnen.unl`, de chat via `get_wo_personeel` (#936; onderzoek en besluit op #731). Alleen wo: voor hbo en mbo
+bestaat geen open personeelsbestand per instelling, en de tool zegt dat bij zo'n vraag.
+- **Achter een vlag:** `ENABLE_WO_PERSONEEL` staat alleen in `manifests/test` aan. UNL zegt niets over hergebruik
+  ("De universiteiten zijn eigenaar van deze gegevens"); playground wacht op een schriftelijk ja van UNL. Er staat geen
+  data van UNL in de repo: de tests gebruiken een synthetisch bestand met dezelfde XML-vorm
+  (`onderwijsbronnen.unl.proefbestand`).
+- **Records, geen cellen:** de lader leest de link naar de nieuwste editie van de pagina (de bestandsnaam verschilt per
+  editie, `…WOPI_draaitabellen_tm_{jaar}.xlsx`) en daarna de caches van de draaitabellen (`xl/pivotCache`), gekozen op
+  de naam van de brontabel, niet op hun nummer. De getoonde cellen tellen de rij "Totaal" bij een kolomsom dubbel
+  (116.924 in plaats van 58.462 fte). Elk totaal is een som over de records.
+- **Controles:** de velden van elke cache, 14 BRIN-codes in het jongste jaar en het jongste jaar gelijk aan de editie;
+  wijkt er iets af, dan geeft de tool een bronfout en geen cijfer. Het bestand gaat door `defusedxml`.
+- **GEZO:** standaard zonder het HOOP-gebied Gezondheid (`gezo="excl"`), zodat de reeks vergelijkbaar blijft; met GEZO
+  alleen op uitdrukkelijk verzoek, één variant per antwoord, en de variant staat in de bronregel. Met GEZO is vóór 2006
+  niet vergelijkbaar (het medische personeel ging over naar de umc's): de tool weigert die jaren.
+- **Eenheid:** standaard fte; personen per instelling bestaan alleen per leeftijdsklasse (vanaf 2005). Docent en
+  onderzoeker bestaan vanaf 2005, vast en tijdelijk vanaf 2003. "Mannen" leidt de app niet af (totaal min vrouwen).
+- **Wat er niet in staat:** inhuur, uitzendkrachten, studentassistenten, gastmedewerkers en umc-personeel; promovendi
+  alleen als ze in dienst zijn. Vier wo-instellingen zijn geen lid van UNL (Theologische Universiteit Apeldoorn,
+  Protestantse Theologische Universiteit, Universiteit voor Humanistiek, Theologische Universiteit Kampen): voor hen
+  een vaste melding, geen 0. HOOP-gebied, salarisgroep en fte per leeftijd zijn (nog) niet ontsloten.
+- **Controlewaarden (editie 2025, peildatum 31-12-2025):** Universiteit Utrecht 6.184,36 fte zonder GEZO, waarvan
+  3.584,05 wetenschappelijk personeel; landelijk 58.462,07 fte zonder en 61.371,30 met GEZO. Het synthetische
+  proefbestand reproduceert ze.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | universiteitenvannederland.nl, downloadpagina; hergebruik nog niet bevestigd door UNL |
+| Inhoud | fte per functiecategorie en vast/tijdelijk (Tabel 1), personen per leeftijdsklasse (Tabel 9), per universiteit |
+| Formaat | xlsx met draaitabellen, één editie per jaar (mei tot november); runtime-cache van 24 uur, geen opslag |
+| Koppeling | BRIN-code (`brincode` in de caches), via het register van de chat |
+| ID | `unl:wopi` in het ID-contract; niet in de zoekcatalogus van de chat en niet in `catalog(source="all")` |
+
+---
+
 ## ID's: één contract `bron:id`
 
 Elke dataset heeft één getypeerde sleutel `bron:id`, bijvoorbeeld `cbs:85423NED`, `duo:p01hoinges`,
@@ -432,6 +471,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | ROA | de dataset AIS 2030 (DOI) |
 | Onderwijsinspectie (bg en po-so-vo), DUO-indicatoren mbo | het gelezen bestand zelf (#749, #881, #727) |
 | Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
+| UNL, WOPI | de downloadpagina van UNL; de regel is vast: "WOPI {jaar}, Universiteiten van Nederland, peildatum 31-12-{jaar}, excl. sector Gezondheid" (of incl., #936) |
 
 Een regel heeft bewust geen link:
 

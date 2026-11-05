@@ -32,6 +32,7 @@ from . import (
     regiolocaties,
     scopeprofiel,
     store,
+    wo_personeel,
 )
 from .canoniek import parse_filter_key
 from .duo import cijferresource, is_prognose
@@ -58,6 +59,7 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
@@ -762,7 +764,79 @@ def _get_maat_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
     return f"# {fout}" if fout else "\n".join([*regels, "print(df)"])
 
 
+def _wo_personeel_keuze(result: str | None) -> dict | None:
+    """Wat get_wo_personeel na zijn controles opvroeg (#936): instelling als BRIN, eenheid, GEZO, uitsplitsing en jaren.
+
+    Uit de uitkomst, niet uit de argumenten: de app maakt van een naam een BRIN-code en van "geen jaar" het nieuwste
+    jaar. Een weigering (gewone tekst) geeft geen snippet.
+    """
+    try:
+        data = json.loads(result) if result else None
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("cijfers"), list):
+        return None
+    instelling = data.get("instelling")
+    return {
+        "brin": instelling.get("brin") if isinstance(instelling, dict) else None,
+        "eenheid": data["eenheid"],
+        "gezo": data["gezo"],
+        "uitsplitsing": data["uitsplitsing"],
+        "jaren": [rij["jaar"] for rij in data["cijfers"]],
+        "bronregel": (data.get("bron") or {}).get("regel", ""),
+    }
+
+
+def _get_wo_personeel_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
+    """Dezelfde stappen als `wo_personeel.reken` (#936), op `unl.load`: een equivalentietest bewaakt dat."""
+    maat = "fte" if args["eenheid"] == "fte" else "personen"
+    tabel = "functie" if maat == "fte" else "personen"
+    gezo, uitsplitsing, jaren = _lit(args["gezo"]), args["uitsplitsing"], args["jaren"]
+    brin = [f'df = df[df["brin"] == {_lit(args["brin"])}]'] if args["brin"] else []
+    regels = [
+        "import pandas as pd",
+        "from onderwijsbronnen import unl",
+        "",
+        f"# {args['bronregel']}. Totalen zijn sommen over de records van de draaitabellen.",
+        f"df = unl.load({_lit(tabel)}, gezo={gezo})",
+        f'df = df[df["jaar"].isin({jaren!r})]',
+        *brin,
+        f'uit = df.groupby("jaar")[{_lit(maat)}].sum().rename("totaal").to_frame()',
+    ]
+    if uitsplitsing == "wp_obp":
+        regels += [
+            'groep = df["functie"].eq("OBP").map({True: "obp", False: "wetenschappelijk_personeel"})',
+            f'uit = uit.join(df.groupby(["jaar", groep])[{_lit(maat)}].sum().unstack(fill_value=0))',
+        ]
+    elif kolom := wo_personeel.KOLOM.get(uitsplitsing):
+        regels.append(f'uit = uit.join(df.groupby(["jaar", {_lit(kolom)}])[{_lit(maat)}].sum().unstack(fill_value=0))')
+    elif uitsplitsing == "geslacht":
+        regels += [
+            "# Het totaal staat al in `uit`; de vrouwen komen uit een eigen tabel van dezelfde variant.",
+            f'df = unl.load({_lit(tabel)}, gezo={gezo}, geslacht="vrouwen")',
+            f'df = df[df["jaar"].isin({jaren!r})]',
+            *brin,
+            f'uit["vrouwen"] = df.groupby("jaar")[{_lit(maat)}].sum()',
+            'uit["vrouwen"] = uit["vrouwen"].fillna(0)',
+            'uit["aandeel_vrouwen_procent"] = (100 * uit["vrouwen"] / uit["totaal"]).round(1)',
+        ]
+    afronden = "round(2)" if maat == "fte" else "astype(int)"
+    regels += [
+        "df = uit.fillna(0).reset_index()",
+        'waarden = [k for k in df.columns if k not in ("jaar", "aandeel_vrouwen_procent")]',
+        f"df[waarden] = df[waarden].{afronden}",
+    ]
+    if uitsplitsing == "vast_tijdelijk":
+        regels += [
+            "# Het aandeel tijdelijk is berekend over vast plus tijdelijk, zonder de restpost 'onbekend'.",
+            'bekend = df.get("vast", 0) + df.get("tijdelijk", 0)',
+            'df["aandeel_tijdelijk_procent"] = (100 * df.get("tijdelijk", 0) / bekend).round(1)',
+        ]
+    return "\n".join([*regels, "print(df)"])
+
+
 _GENERATORS = {
+    TOOL_GET_WO_PERSONEEL: _get_wo_personeel_snippet,
     TOOL_GET_MAAT: _get_maat_snippet,
     TOOL_QUERY_DATA: _query_data_snippet,
     TOOL_RUN_ANALYSIS: _run_analysis_snippet,
@@ -820,6 +894,11 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     if tool_name == TOOL_QUERY_DATA:
         # De instellingen die de app via een onderwijslocatie meenam (#744), van de selectie die de stap opleverde.
         args = _met_locatiecodes(args, _resultaatmeta(result))
+    if tool_name == TOOL_GET_WO_PERSONEEL:
+        # De keuze na de controles van de tool (BRIN, jaren), niet de ruwe argumenten (#936, #945).
+        if (keuze := _wo_personeel_keuze(result)) is None:
+            return None
+        args = keuze
     if tool_name == TOOL_GET_CBS_DATA and _laadde_vo_rijen(result):
         # De poort van de beurt, niet het model, liet de vo-rijen toe (#879): dat staat in de lading, niet in de args.
         args = {**args, "vo_context": True}

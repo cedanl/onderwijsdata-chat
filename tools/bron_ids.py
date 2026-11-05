@@ -1,7 +1,7 @@
 """Welke bron en welk catalogus-ID achter een ID of datasleutel zit: de enige plek in de chat (#912, #914).
 
 Het ID-contract `bron:id` staat in het pakket (`onderwijsbronnen.parse_bron_id`, `_kern/bron_id.py`): één
-normalisatie voor alle zeven bronnen, en een kale ID die bij twee bronnen past is een fout met opties. De chat volgt
+normalisatie voor alle acht bronnen, en een kale ID die bij twee bronnen past is een fout met opties. De chat volgt
 alleen dat contract; de oude herleiding en de vlag `BRON_ID_CONTRACT` zijn na de acceptatie weggehaald (#913, #914).
 
 Drie vragen, drie functies:
