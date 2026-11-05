@@ -19,9 +19,9 @@ De tabel met het wettelijk collegegeld (tools/collegegeld.py, #729) haalt de cha
 vraagt het lopende studiejaar door de tool en wordt rood zodra dat er niet in staat. Zo komt rond 1 september de
 jaarlijkse controle tegen de wettekst (docs/promoten.md, "Jaarlijks") vanzelf binnen.
 
-Zo ook de vaste lijst van DUO-bestanden achter de mbo-eerstejaars van de dashboards (data/dashboard.py, #924): de ping
-duo-instroom-mbo wordt rood zodra DUO een jaar publiceert dat niet in die lijst staat, of de volgorde verschuift. Een
-vaste lijst houdt de pytest-job zonder netwerk; deze ping is de live controle erop.
+Zo ook de vaste DUO-bestanden achter de mbo-eerstejaars (#924) en de ingeschrevenen per hoofdgroep (#934) van de
+dashboards (data/dashboard.py): de ping duo-instroom-mbo wordt rood zodra DUO een jaar publiceert dat er niet in staat,
+of de volgorde verschuift. Een vaste lijst houdt de pytest-job zonder netwerk; deze ping is de live controle erop.
 
 Met --sweep volgt een goedkope controle van elke dataset die de chat kan opvragen (scripts/bronsweep.py, #869): een
 afwijking daar is een waarschuwing in de log en het rapport, de exitcode blijft die van de pings.
@@ -170,7 +170,7 @@ def _mbo_indicatoren_bewijs(uitkomst: dict) -> str | None:
 
 
 def _instroom_mbo() -> dict:
-    # De vaste bestandenlijst van de mbo-eerstejaars in de dashboards tegen wat DUO nu publiceert (#924).
+    # De vaste bestanden van de mbo-eerstejaars en -hoofdgroepen in de dashboards tegen wat DUO nu publiceert (#924, #934).
     return {"afwijkingen": dashboard.instromende_mbo_afwijkingen()}
 
 

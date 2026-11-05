@@ -14,6 +14,7 @@ from core.sentinels import mask_sentinels
 pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
 _MONDRIAAN = "ROC Mondriaan"
+_HOOFDGROEP_2025 = 8  # het hoofdgroep-bestand van instromende-mbo-studenten van 2025, het laatste jaar (#934)
 
 
 def _duo(dataset_id: str, resource: int = 0) -> pd.DataFrame:
@@ -33,7 +34,7 @@ def test_de_hoofdgroepsom_telt_ingeschrevenen_zoals_de_domeinregel_zegt():
     result = dashboard.load_dashboard_regio(_MONDRIAAN)
 
     assert "sectorkamers" not in result  # heette "sectorkamers" en stond in de UI als eerstejaars
-    snap = _duo("instromende-mbo-studenten")
+    snap = _duo("instromende-mbo-studenten", _HOOFDGROEP_2025)
     per_hoofdgroep = snap[snap["INSTELLINGSNAAM"] == _MONDRIAAN].groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum()
     verwacht = {k: int(v) for k, v in per_hoofdgroep.sort_values(ascending=False).items() if v > 0}
     assert len(verwacht) > 5
@@ -54,7 +55,7 @@ def test_de_arbeidsmarktmatch_mbo_telt_gediplomeerden_per_hoofdgroep():
     result = dashboard.load_dashboard_arbeidsmarktmatch(_MONDRIAAN)
 
     assert result["gediplomeerden_per_sector"] == verwacht
-    snap = _duo("instromende-mbo-studenten")
+    snap = _duo("instromende-mbo-studenten", _HOOFDGROEP_2025)
     ingeschreven = snap[snap["INSTELLINGSNAAM"] == _MONDRIAAN].groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum()
     assert sum(verwacht.values()) < ingeschreven.sum() / 2, "het aanbod is niet meer het aantal ingeschrevenen"
 
