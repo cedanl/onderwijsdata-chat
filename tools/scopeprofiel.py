@@ -377,7 +377,13 @@ REGISTER_MELDING = (
 
 
 def dataset_id(entry: dict) -> str | None:
-    return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or entry.get("_roa_id")
+    return (
+        entry.get("_cbs_id")
+        or entry.get("_ckan_id")
+        or entry.get("_rio_resource")
+        or entry.get("_roa_id")
+        or entry.get("_unl_id")
+    )
 
 
 def is_vo_context(entry_or_id: dict | str) -> bool:

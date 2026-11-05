@@ -16,10 +16,24 @@ from onderwijsbronnen.rio.client import zonder_lijstendpoint
 from core.config import TOOL_RESULT_MAX_CHARS
 from core.logging_util import foutkenmerk, tekst_kenmerk
 
-from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
+from . import (
+    beschikbaarheid,
+    cbs_meta,
+    duo_bestandskeuze,
+    duo_correcties,
+    duo_meta,
+    ho_markers,
+    instelling,
+    scopeprofiel,
+)
 from .bron_ids import bron_id
 from .definitie import met_voorbeeldstatus
-from .schemas import TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
+from .schemas import (
+    TOOL_GET_BESTUURSFINANCIEN,
+    TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_UWV_VACATURES,
+    TOOL_GET_WO_PERSONEEL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,27 +65,32 @@ def stil() -> Generator[None]:
 # catalogus maar hebben geen bruikbare machineleesbare resources — hun structuur is niet
 # geschikt voor de query-interfaces (search_catalog, get_*_data). Deze filtered-out state
 # is intentioneel: README mag ze niet noemen, want zij zijn niet bereikbaar voor gebruikers.
-SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
+# UNL (WOPI) staat alleen in de catalogus waar zijn vlag aan staat (_TOOLBRONNEN, #956).
+SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV", "UNIVERSITEITEN VAN NEDERLAND"})
 
 # Bronnen waarvan de chat data kan ophalen (get_cbs_data, get_duo_data, get_rio_data).
 # ROA en UWV staan wel in de catalogus; zonder datatool mag het model er geen cijfers
 # voor geven, en ook niet concluderen dat ze niet bestaan (#200). Twee ervan hebben
 # een eigen tool (#441).
 CHAT_BRONNEN = ("CBS", "DUO", "RIO")
-# Bronnen van het pakket die de chat alleen via een eigen tool leest, niet via de catalogus: UNL (WOPI-personeel, #936)
-# is één bestand achter get_wo_personeel en een vlag. Zoeken, details en tellingen kennen het niet, net als
-# `onderwijsbronnen.catalog(source="all")`.
-_TOOLBRONNEN = ("unl",)
+# Bronnen van het pakket die de chat alleen via een eigen tool leest, met de regel die zegt of die tool hier antwoord
+# geeft (tools/beschikbaarheid.py): UNL (WOPI-personeel, #936) staat achter de vlag ENABLE_WO_PERSONEEL. Zonder vlag
+# kennen zoeken, details en tellingen de bron niet, zoals `onderwijsbronnen.catalog(source="all")`; met de vlag is het
+# record vindbaar als `via_tool` (#956). De vlag is per proces: de catalogus wordt één keer gelezen.
+_TOOLBRONNEN = {"unl": beschikbaarheid.wo_personeel}
 _EIGEN_TOOL = {
     "uwv-open-match-data": TOOL_GET_UWV_VACATURES,
     "ais2030": TOOL_GET_ROA_BENCHMARK,
     "financien": TOOL_GET_BESTUURSFINANCIEN,  # DUO's verantwoording uit XBRL, geen CKAN-dataset (#935)
+    "wopi": TOOL_GET_WO_PERSONEEL,  # WOPI van UNL (#936)
 }
+# Hoe de tellingen een bron met een lange naam noemen.
+_KORTE_NAAM = {"Universiteiten van Nederland": "UNL"}
 
 # Vindbaar, package-leesbaar en chat-opvraagbaar zijn drie statussen (#356). Elke zoekhit en elk
 # detailrecord zegt welke; de chat beslist, de package meldt alleen wat ze kan lezen.
 STATUS_OPVRAAGBAAR = "opvraagbaar"  # get_cbs_data, get_duo_data of get_rio_data laadt hem
-STATUS_VIA_TOOL = "via_tool"  # een eigen tool (UWV-vacatures, ROA-benchmark), geen datatool
+STATUS_VIA_TOOL = "via_tool"  # een eigen tool (UWV, ROA, financiën, WOPI) die hier antwoord geeft, geen datatool
 STATUS_ALLEEN_DOCUMENTATIE = "alleen_documentatie"  # de bron heeft alleen een PDF of changelog
 STATUS_ALLEEN_CATALOGUS = "alleen_catalogus"  # vindbaar en voor de package leesbaar, maar zonder chat-adapter
 _NIET_OPVRAAGBAAR = {
@@ -79,6 +98,15 @@ _NIET_OPVRAAGBAAR = {
     "melding": (
         "Deze bron staat in de catalogus, maar is in de chat niet op te vragen: er is geen "
         "datatool voor. Noem de dataset, geef er geen cijfers voor, en zeg niet dat de bron niet bestaat."
+    ),
+}
+# Een bron met een eigen tool die in deze omgeving geen cijfers geeft (#956): de financiën tot DUO de licentie
+# bevestigt. Het record blijft vindbaar met wat er niet kan; het model noemt de bron, maar roept de tool niet aan.
+_NIET_IN_DEZE_OMGEVING = {
+    "opvraagbaar": False,
+    "melding": (
+        "Deze bron heeft een eigen tool, maar die geeft in deze omgeving geen cijfers (de licentie is nog niet "
+        "bevestigd). Noem de dataset, geef er geen cijfers voor, en zeg niet dat de bron niet bestaat."
     ),
 }
 # RIO LOD API v3 (#627): een register dat alleen als sub-resource van een ander record bestaat
@@ -105,8 +133,14 @@ _ALLEEN_DOCUMENTATIE = {
 
 
 def eigen_tool(dataset_id: str) -> str | None:
-    """De tool die deze dataset ophaalt als het geen datatool is (UWV, ROA, DUO-financiën); None anders."""
+    """De tool die deze dataset ophaalt als het geen datatool is (UWV, ROA, DUO-financiën, WOPI); None anders."""
     return _EIGEN_TOOL.get(dataset_id)
+
+
+def _eigen_tool_hier(entry: dict) -> bool | None:
+    """Heeft dit record een eigen tool, en geeft die hier antwoord (tools/beschikbaarheid.py)? None zonder eigen tool."""
+    tool = _EIGEN_TOOL.get(scopeprofiel.dataset_id(entry) or "")
+    return None if tool is None else beschikbaarheid.tool(tool)
 
 
 def _via_chat(entry: dict) -> bool:
@@ -126,8 +160,9 @@ def status(entry: dict) -> str:
     """Wat de chat met deze catalogusregel kan: opvraagbaar, via een eigen tool, of alleen noemen (#356)."""
     if entry.get("_cbs_id"):
         return STATUS_OPVRAAGBAAR
-    if (scopeprofiel.dataset_id(entry) or "") in _EIGEN_TOOL:
-        return STATUS_VIA_TOOL
+    if (hier := _eigen_tool_hier(entry)) is not None:
+        # Een eigen tool die hier alleen een melding geeft, is geen weg naar cijfers (#956).
+        return STATUS_VIA_TOOL if hier else STATUS_ALLEEN_CATALOGUS
     if not _via_chat(entry):
         return STATUS_ALLEEN_CATALOGUS
     if (resource := entry.get("_rio_resource")) and zonder_lijstendpoint(resource):
@@ -151,6 +186,8 @@ def _niet_opvraagbaar(entry: dict) -> dict | None:
         }
     if soort == STATUS_ALLEEN_DOCUMENTATIE:
         return {"status": soort, **_ALLEEN_DOCUMENTATIE}
+    if _eigen_tool_hier(entry) is False:
+        return {"status": soort, **_NIET_IN_DEZE_OMGEVING}
     if (resource := entry.get("_rio_resource")) and zonder_lijstendpoint(resource):
         return {"status": soort, **_ALLEEN_SUBRESOURCE}
     return {"status": soort, **_NIET_OPVRAAGBAAR}
@@ -219,6 +256,7 @@ _SEARCH_KEEP_FIELDS = frozenset(
         "_cbs_id",
         "_ckan_id",
         "_rio_resource",
+        "_unl_id",
         "_dimensies",
         "_meetwaarden",
         "_geo_niveau",
@@ -323,7 +361,12 @@ def _cbs() -> list:
 @cache
 def _rio_duo_alles() -> list:
     """De andere bronnen in de volgorde van `onderwijsbronnen.catalog(source="all")`: RIO, DUO, ROA, UWV, …."""
-    return [record for bron, records in _alles().items() if bron not in ("cbs", *_TOOLBRONNEN) for record in records]
+    return [
+        record
+        for bron, records in _alles().items()
+        if bron != "cbs" and (bron not in _TOOLBRONNEN or _TOOLBRONNEN[bron]())
+        for record in records
+    ]
 
 
 @cache
@@ -390,7 +433,7 @@ def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
 
 
 def _dataset_id(entry: dict) -> str:
-    return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or "?"
+    return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or entry.get("_unl_id") or "?"
 
 
 @cache
@@ -414,8 +457,29 @@ def opvraagbare_ids(bron: str) -> list[str]:
 
 
 def dataset_counts() -> dict[str, int]:
-    """Datasets per bron die de chat kan opvragen; bron voor startpagina, databronnenvenster en README."""
+    """Datasets per bron die de chat met een datatool kan opvragen; bron voor README, docs en systeemprompt."""
     return {bron: len(opvraagbare_ids(bron)) for bron in CHAT_BRONNEN}
+
+
+def via_tool_aantallen() -> dict[str, int]:
+    """Datasets per bron die de chat alleen via een eigen tool opvraagt, als die tool hier antwoord geeft (#956): wat
+    search_catalog als `via_tool` vindt. UWV, ROA, de DUO-financiën waar de licentie het toelaat en WOPI met de vlag."""
+    aantallen: dict[str, int] = {}
+    for entry in _rio_duo():
+        if status(entry) == STATUS_VIA_TOOL:
+            bron = str(entry.get("leverancier", ""))
+            bron = _KORTE_NAAM.get(bron, bron)
+            aantallen[bron] = aantallen.get(bron, 0) + 1
+    return aantallen
+
+
+def catalogus_aantallen() -> dict[str, int]:
+    """Alles wat de chat hier kan opvragen per bron, met een datatool of een eigen tool: voor de startpagina en het
+    databronnenvenster (/api/catalog/counts). Verschilt per omgeving; dataset_counts niet."""
+    aantallen = dataset_counts()
+    for bron, n in via_tool_aantallen().items():
+        aantallen[bron] = aantallen.get(bron, 0) + n
+    return aantallen
 
 
 def catalogus_telling() -> str:
@@ -423,8 +487,12 @@ def catalogus_telling() -> str:
     return json.dumps(
         {
             "datasets_per_bron": dataset_counts(),
+            "via_eigen_tool": via_tool_aantallen(),
             "cbs_gearchiveerd": sum(1 for e in _cbs() if e.get("_archief")),
-            "toelichting": "Datasets die deze chat kan opvragen. CBS telt gearchiveerde tabellen mee.",
+            "toelichting": (
+                "Datasets die deze chat kan opvragen met een datatool; via_eigen_tool: bronnen met een eigen tool "
+                "die hier antwoord geeft. CBS telt gearchiveerde tabellen mee."
+            ),
         },
         ensure_ascii=False,
     )

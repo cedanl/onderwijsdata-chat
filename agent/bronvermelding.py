@@ -146,12 +146,15 @@ def _bestandsbron(tool: str, result: str) -> list[Bronregel]:
 
 
 def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
-    datasets = [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
+    # Een tool met een eigen bronregel (WOPI, de financien) noemt haar bron zelf; haar tabel in de store (#956) geeft
+    # geen tweede regel. Een selectie op die tabel heeft wel de regel uit de store.
+    bestand = _bestandsbron(tool, result)
+    datasets = [] if bestand else [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
     # peildatum of versie, al in `datasets`.
-    buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron]
-    return datasets + buiten_de_store + _registerbron(tool, result) + _bestandsbron(tool, result)
+    buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron and not w.data_key]
+    return datasets + buiten_de_store + _registerbron(tool, result) + bestand
 
 
 def _bronregels(steps: list[tuple[str, str]]) -> dict[str, str | None]:

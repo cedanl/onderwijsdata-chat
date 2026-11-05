@@ -1,8 +1,8 @@
 """Een data-key terughalen na een herstart, uit zijn recept (#472).
 
 De store leeft in het geheugen. Per key bewaart de database daarom hoe hij ontstond: de
-laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_uwv_vacatures, get_roa_benchmark)
-of de selectie (query_data) op een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste
+laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_uwv_vacatures, get_roa_benchmark,
+get_bestuursfinancien, get_wo_personeel) of de selectie (query_data) op een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste
 keer: scopegrens, sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug.
 Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
 geëvalueerd. Een eigen berekening (run_analysis) wordt niet opnieuw uitgevoerd: van die
@@ -19,24 +19,28 @@ from datetime import date
 
 from core.logging_util import foutkenmerk
 
-from . import store
+from . import beschikbaarheid, store
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_laatste_update
 from .cbs import laad_cbs_data
 from .duo import get_duo_data
+from .financien import get_bestuursfinancien
 from .maten import get_maat
 from .query import query_data
 from .rio import laad_rio_data
 from .schemas import (
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
+from .wo_personeel import get_wo_personeel
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +55,10 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
     # Een arbeidsmarktresultaat is een dataset met een laadaanroep (#577).
     TOOL_GET_UWV_VACATURES: (get_uwv_vacatures, "UWV"),
     TOOL_GET_ROA_BENCHMARK: (get_roa_benchmark, "ROA"),
+    # Een bron met een eigen resultaatvorm zet haar tabel met laadaanroep in de store (#956). Of die bron hier antwoord
+    # geeft, beslist tools/beschikbaarheid.py bij het herladen: zonder vlag of licentie haalt ook een recept niets op.
+    TOOL_GET_BESTUURSFINANCIEN: (get_bestuursfinancien, "DUO"),
+    TOOL_GET_WO_PERSONEEL: (get_wo_personeel, "Universiteiten van Nederland"),
 }
 _MAX_STAPPEN = 10  # een keten van selecties; meer is een kapot of rondlopend recept
 _MAX_REDEN = 300
@@ -189,6 +197,9 @@ def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
     if not isinstance(tool, str) or tool not in _LADERS or not isinstance(args, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} noemt geen bekende laadstap.")
     functie, bron = _LADERS[tool]
+    if not beschikbaarheid.tool(tool):
+        melding = f"{bron} geeft in deze omgeving geen cijfers, dus key {key} komt niet terug."
+        return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
     try:
         uitkomst = functie(**args)
     except Exception as e:  # een recept met argumenten die de tool niet (meer) kent

@@ -75,7 +75,7 @@ const gespreksKnop = id => kiezerMetId('.history-btn', 'data-conv-id', id)
 const NIEUW_GESPREK = '.new-chat-btn'
 const GESPREK = '.chat-messages'
 
-export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, bronnen = {}, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
   // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
@@ -769,7 +769,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           )}
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
-            <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} />
+            <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} bronnen={bronnen} />
           </div>
           <ConversationHistory
             history={conversationHistory}
@@ -808,7 +808,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
                 {narrowScreen && (
                   <div className="chat-welcome-suggestions">
-                    <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} />
+                    <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} bronnen={bronnen} />
                   </div>
                 )}
               </WelcomeScreen>
@@ -1132,9 +1132,10 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
   )
 }
 
-export function SuggestedQuestions({ onSend, busy, instelling, sector = null }) {
+export function SuggestedQuestions({ onSend, busy, instelling, sector = null, bronnen = {} }) {
   // Without an institution only the general questions: "onze instelling" ended in a scope refusal (CH-42).
-  return suggestionsFor(sector, { profiel: Boolean(instelling?.trim()) }).map(cat => (
+  // `bronnen` from /api/config: a question about the finances or WOPI only where that source answers (#956).
+  return suggestionsFor(sector, { profiel: Boolean(instelling?.trim()), bronnen }).map(cat => (
     <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={onSend} busy={busy} instelling={instelling} />
   ))
 }

@@ -31,10 +31,13 @@ from onderwijsbronnen import unl
 from core import actualiteit
 from data import instellingen
 
-from . import fouten
+from . import fouten, store
+from .schemas import TOOL_GET_WO_PERSONEEL
 
 BRONNAAM = "Universiteiten van Nederland"
 BRONTITEL = "WOPI-personeelsbestand"
+# Het ID in het bron:id-contract (#936); de tabel achter een uitkomst staat onder dit ID in de store (#956).
+DATASET = "unl:wopi"
 
 UITSPLITSINGEN = ("geen", "wp_obp", "functie", "vast_tijdelijk", "geslacht", "leeftijd")
 EENHEDEN = ("fte", "personen")
@@ -129,6 +132,20 @@ OVERNEMEN = (
     "getal staat in `cijfers`."
 )
 
+SOM_OVER_RECORDS = (
+    "Elk getal is een som over de records van de draaitabellen, nooit over getoonde cellen of een rij 'Totaal'; "
+    "wetenschappelijk personeel, OBP en de aandelen rekent de app uit."
+)
+# Wat de getallen tellen, voor het Telling-blok onder het antwoord (#956).
+TELT = {
+    "fte": "fte (1 fte is een volledige werkweek; geen aantal personen)",
+    "personen": (
+        "personen, elk één keer per universiteit (landelijk telt iemand met een aanstelling bij twee universiteiten "
+        "twee keer)"
+    ),
+}
+GEZO_KORT = {"excl": "zonder het HOOP-gebied Gezondheid (GEZO)", "incl": "met het HOOP-gebied Gezondheid (GEZO)"}
+
 _NOG_NIET = (
     "Uitsplitsing naar HOOP-gebied, salarisgroep of fte per leeftijd zit (nog) niet in deze tool; noem er geen cijfers "
     "voor."
@@ -145,6 +162,21 @@ class Keuze:
     uitsplitsing: str
     gezo: str
     jaren: tuple[int, ...]
+    reeks: bool = False  # alle jaren vanaf de breuk in de reeks, niet één gekozen jaar
+
+    @property
+    def laadargumenten(self) -> dict:
+        """De aanroep die deze keuze opnieuw maakt (herladen, snippet; #956): de BRIN in plaats van de naam en het
+        gekozen jaar in plaats van "het nieuwste", zodat dezelfde aanroep later dezelfde selectie geeft."""
+        jaren = {"reeks": True} if self.reeks else {"jaar": self.jaren[0]}
+        instelling = self.brin or "landelijk"
+        return {
+            "instelling": instelling,
+            **jaren,
+            "uitsplitsing": self.uitsplitsing,
+            "eenheid": self.eenheid,
+            "gezo": self.gezo,
+        }
 
     @property
     def tabel(self) -> str:
@@ -190,6 +222,10 @@ def reken(totaal: pd.DataFrame, vrouwen: pd.DataFrame | None, keuze: Keuze) -> p
     uit = uit.fillna(0).reset_index()
     waarden = [k for k in uit.columns if k not in ("jaar", "aandeel_vrouwen_procent")]
     uit[waarden] = uit[waarden].round(2) if maat == "fte" else uit[waarden].astype(int)
+    if keuze.uitsplitsing == "vast_tijdelijk":
+        # Over vast plus tijdelijk, zonder de restpost 'onbekend'; zonder bekende aanstelling leeg (NaN), geen 0.
+        bekend = uit.get("vast", 0) + uit.get("tijdelijk", 0)
+        uit["aandeel_tijdelijk_procent"] = (100 * uit.get("tijdelijk", 0) / bekend).round(1)
     return uit
 
 
@@ -313,32 +349,62 @@ def _noten(keuze: Keuze) -> list[str]:
     return noten
 
 
-def _cijfers(df: pd.DataFrame, keuze: Keuze) -> list[dict]:
-    """De rijen van `reken` als JSON-waarden, met de peildatum per jaar en het aandeel tijdelijk."""
+def _cijfers(df: pd.DataFrame) -> list[dict]:
+    """De rijen van `reken` als JSON-waarden, met de peildatum per jaar; een leeg aandeel (NaN) is null."""
     rijen = []
-    for rij in df.to_dict(orient="records"):
+    for rij in json.loads(df.to_json(orient="records") or "[]"):
         jaar = int(rij.pop("jaar"))
-        if keuze.uitsplitsing == "vast_tijdelijk":
-            bekend = rij.get("vast", 0) + rij.get("tijdelijk", 0)
-            rij["aandeel_tijdelijk_procent"] = round(100 * rij.get("tijdelijk", 0) / bekend, 1) if bekend else None
         rijen.append({"jaar": jaar, "peildatum": f"31-12-{jaar}", **rij})
     return rijen
+
+
+def tabel(df: pd.DataFrame, args: dict) -> pd.DataFrame:
+    """De uitkomst van `reken` met de selectie als kolommen: zo zeggen de rijen in een export zelf waar ze over gaan.
+    `args` zijn de laadargumenten; de snippet zet dezelfde kolommen (tools/snippet.py)."""
+    uit = df.copy()
+    for plek, kolom in enumerate(("instelling", "eenheid", "gezo")):
+        uit.insert(plek, kolom, args[kolom])
+    return uit
+
+
+def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: unl.Herkomst) -> str:
+    """De tabel achter de uitkomst in de store (#956), met de laadaanroep (herladen, snippet), de peildatum en wat de
+    getallen tellen."""
+    args = keuze.laadargumenten
+    jaren = "reeks" if keuze.reeks else str(keuze.jaren[0])
+    key = ":".join(["wopi", args["instelling"].lower(), keuze.eenheid, keuze.gezo, keuze.uitsplitsing, jaren])
+    regel = bronregel(herkomst.editiejaar, keuze.gezo)
+    meta = store.KeyMeta(
+        bron="unl",
+        dataset=DATASET,
+        laad=(TOOL_GET_WO_PERSONEEL, args),
+        peilmoment=regel.removeprefix(f"WOPI {herkomst.editiejaar}, {BRONNAAM}, "),
+        telregels=(
+            f"WOPI telt {TELT[keuze.eenheid]} van het personeel in dienst op 31 december, {GEZO_KORT[keuze.gezo]}.",
+        ),
+    )
+    store.put(key, tabel(df, args), meta)
+    return key
 
 
 def _uitkomst(df: pd.DataFrame, keuze: Keuze, herkomst: unl.Herkomst) -> dict:
     voorbehouden = [PEILDATUM, FTE_GEEN_PERSONEN if keuze.eenheid == "fte" else PERSONEN, UITGESLOTEN]
     voorbehouden += [GEZO_UITLEG[keuze.gezo], JAARVERSLAG]
+    regel = bronregel(herkomst.editiejaar, keuze.gezo)
     uit: dict = {
+        "dataset": DATASET,
+        "data_key": _bewaar(df, keuze, herkomst),
         "instelling": {"naam": keuze.naam, "brin": keuze.brin} if keuze.brin else "landelijk",
         "eenheid": keuze.eenheid,
         "gezo": keuze.gezo,
         "uitsplitsing": keuze.uitsplitsing,
-        "cijfers": _cijfers(df, keuze),
+        "cijfers": _cijfers(df),
         "voorbehouden": voorbehouden,
         "instructie": OVERNEMEN,
+        "databewerking": [SOM_OVER_RECORDS, f"Editie en variant: {regel}"],
         "bron": {
             "naam": f"{BRONNAAM}, {BRONTITEL}",
-            "regel": bronregel(herkomst.editiejaar, keuze.gezo),
+            "regel": regel,
             "url": unl.PAGINA,
             "bestand": herkomst.url,
             "editie": str(herkomst.editiejaar),
@@ -379,7 +445,7 @@ def _keuze(instelling, jaar, reeks, uitsplitsing, eenheid, gezo, wopi: unl.Wopi)
     jaren = _jaren(jaar, bool(reeks), uitsplitsing, gezo, _beschikbaar(wopi, tabel, gezo))
     if isinstance(jaren, str):
         return jaren
-    return Keuze(brin, naam, eenheid, uitsplitsing, gezo, jaren)
+    return Keuze(brin, naam, eenheid, uitsplitsing, gezo, jaren, reeks=bool(reeks))
 
 
 def get_wo_personeel(

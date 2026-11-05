@@ -1441,7 +1441,12 @@ def test_een_doorstroomvraag_haalt_het_vavo_aanbod_op_met_het_etiket_van_de_vo_c
     assert result["catalogus_titel"] == f"{_RIO_SECTORFILTER['bron']}, {_VO_DEEL}"
     assert result["context"] == scopeprofiel.VO_CONTEXT_ETIKET
     assert _VO_DEEL in (selectie_in_woorden(result["data_key"]) or "")
-    assert store.herkomst(result["data_key"])[0] == f"bron: RIO, dataset aangeboden-opleidingen, {_VO_DEEL}"
+    known = store.meta(result["data_key"])
+    assert known is not None
+    peilmoment = known.peilmoment  # de stand van het register (#956)
+    assert (
+        store.herkomst(result["data_key"])[0] == f"bron: RIO, dataset aangeboden-opleidingen, {_VO_DEEL}, {peilmoment}"
+    )
     assert _lading(result["data_key"])[1]["vo_context"] is True
 
 

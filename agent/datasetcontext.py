@@ -18,22 +18,38 @@ from agent.session_data import (
 )
 from agent.stream import Emit
 from core.errors import Gebruikersfout
-from tools import arbeidsmarkt, store
+from tools import arbeidsmarkt, financien, store, wo_personeel
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
+    TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_WO_PERSONEEL,
 )
 
 # De tools die data laden: alleen hun aanroep gaat als herlaadaanroep het recept in (#505).
-# De arbeidsmarkttools laden sinds #577 ook een dataset.
+# De arbeidsmarkttools laden sinds #577 ook een dataset, de financiën en WOPI sinds #956.
 LAADTOOLS = frozenset(
-    {TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA, TOOL_GET_UWV_VACATURES, TOOL_GET_ROA_BENCHMARK}
+    {
+        TOOL_GET_DUO_DATA,
+        TOOL_GET_CBS_DATA,
+        TOOL_GET_RIO_DATA,
+        TOOL_GET_UWV_VACATURES,
+        TOOL_GET_ROA_BENCHMARK,
+        TOOL_GET_BESTUURSFINANCIEN,
+        TOOL_GET_WO_PERSONEEL,
+    }
 )
+# De vaste dataset achter een tool waarvan de aanroep geen dataset-ID noemt (#577, #956).
+_VASTE_DATASET = {
+    **arbeidsmarkt.DATASET,
+    TOOL_GET_BESTUURSFINANCIEN: financien.DATASET,
+    TOOL_GET_WO_PERSONEEL: wo_personeel.DATASET,
+}
 
 
 def build_recipe(datasets: list[dict]) -> list[dict]:
@@ -155,6 +171,8 @@ _SOURCE_PREFIXES = {
     TOOL_GET_RIO_DATA: "RIO",
     TOOL_GET_UWV_VACATURES: "UWV",
     TOOL_GET_ROA_BENCHMARK: "ROA",
+    TOOL_GET_BESTUURSFINANCIEN: "DUO",
+    TOOL_GET_WO_PERSONEEL: "UNL",
 }
 
 
@@ -183,8 +201,8 @@ def sources_from_recipe(recipe: list[dict]) -> list[str]:
             args = json.loads(call["arguments"]) if isinstance(call["arguments"], str) else call["arguments"]
         except (json.JSONDecodeError, TypeError):
             args = {}
-        # Een arbeidsmarkttool laadt één vaste dataset (#577): het ID en de peildatum of versie komen uit de tool.
-        dataset = args.get("dataset_id") or args.get("resource") or arbeidsmarkt.DATASET.get(call["name"], "")
+        # Een arbeidsmarkttool, de financiën en WOPI laden één vaste dataset (#577, #956): het ID komt uit de tool.
+        dataset = args.get("dataset_id") or args.get("resource") or _VASTE_DATASET.get(call["name"], "")
         resource = args.get("resource") if args.get("dataset_id") else None
         label = _source_label(prefix, dataset, resource, args.get("vo_context") is True)
         if peilmoment := arbeidsmarkt.peilmoment(call["name"]):

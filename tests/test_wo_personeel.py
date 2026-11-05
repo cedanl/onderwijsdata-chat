@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import httpx
+import pandas as pd
 import pytest
 from onderwijsbronnen import unl
 from onderwijsbronnen.unl import proefbestand
@@ -22,7 +23,7 @@ from agent.bronvermelding import bronlinks_van, bronnen_van
 from agent.grounding import bewijs_getallen
 from core import config
 from data import instellingen
-from tools import catalog, snippet, wo_personeel
+from tools import catalog, snippet, store, wo_personeel
 from tools.schemas import SCHEMA_GET_WO_PERSONEEL, TOOL_GET_WO_PERSONEEL, TOOL_SCHEMAS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -290,14 +291,17 @@ def _snippet_df(args: dict, monkeypatch):
     ids=lambda a: ",".join(f"{k}={v}" for k, v in a.items()) or "standaard",
 )
 def test_de_snippet_rekent_hetzelfde_als_de_app(args, monkeypatch, capsys):
-    """Equivalentie (#945): de snippet laadt met de keuze van de app (BRIN, jaren) en geeft dezelfde cijfers."""
+    """Equivalentie (#945): de snippet laadt met de keuze van de app (BRIN, jaren) en geeft dezelfde cijfers, en precies
+    de tabel die de app in de store zet en exporteert (#956)."""
     code, df, uit = _snippet_df(args, monkeypatch)
 
+    selectie = ("instelling", "eenheid", "gezo")
     verwacht = [{k: v for k, v in rij.items() if k != "peildatum"} for rij in uit["cijfers"]]
-    gekregen = json.loads(df.to_json(orient="records"))
+    gekregen = json.loads(df.drop(columns=list(selectie)).to_json(orient="records"))
     assert gekregen == verwacht
+    pd.testing.assert_frame_equal(df, store.get(uit["data_key"]))
     assert "from onderwijsbronnen import unl" in code
-    assert code.startswith("# Gemaakt met onderwijsbronnen"), "de snippetkop noemt het pakket en de installatieregel"
+    assert "# Gemaakt met onderwijsbronnen" in code, "de snippetkop noemt het pakket en de installatieregel"
     assert uit["bron"]["regel"] in code
     if isinstance(uit["instelling"], dict):
         assert f'== "{uit["instelling"]["brin"]}"' in code  # de BRIN van de app, niet de naam uit de vraag

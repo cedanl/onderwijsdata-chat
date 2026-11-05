@@ -43,6 +43,19 @@ describe('SuggestedQuestions', () => {
     expect(shown.filter(q => q.includes('woongemeente'))).toEqual([])
   })
 
+  // #956: the questions about the finances and WOPI follow `bronnen` from /api/config.
+  it('shows the finance and WOPI questions to a university where those sources answer', async () => {
+    const shown = await shownQuestions({ instelling: 'Universiteit Utrecht', sector: 'wo', bronnen: { financien: true, wo_personeel: true } })
+    expect(shown).toContain('Hoeveel fte wetenschappelijk personeel heeft Universiteit Utrecht?')
+    expect(shown).toContain('Hoe staat Universiteit Utrecht er financieel voor?')
+  })
+
+  it('does not show them where the sources do not answer', async () => {
+    const shown = await shownQuestions({ instelling: 'Universiteit Utrecht', sector: 'wo', bronnen: { financien: false, wo_personeel: false } })
+    expect(shown.length).toBeGreaterThan(0)
+    expect(shown.filter(q => /personeel|financieel/.test(q))).toEqual([])
+  })
+
   // CH-42 (#465): a demo without a profile clicked "onze instelling" into a scope refusal.
   it('without an institution, shows only questions about the open data in general', async () => {
     const shown = await shownQuestions({ instelling: '', sector: null })

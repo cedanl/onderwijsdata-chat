@@ -3,7 +3,8 @@ from fastapi import APIRouter
 from core.auth import SESSION_MAX, SESSION_TTL
 from core.config import DASHBOARDS_ENABLED, FEEDBACK_ENABLED, MAX_CHAT_TURNS, MAX_HISTORY, MAX_MESSAGE_CHARS
 from persistence.opschonen import OngeldigeTermijn, termijnen
-from tools.catalog import dataset_counts
+from tools import beschikbaarheid
+from tools.catalog import catalogus_aantallen
 
 router = APIRouter(tags=["config"])
 
@@ -33,10 +34,14 @@ async def get_config():
         # De sessieduur (#479) in uren, zoals SESSION_TTL_HOURS en SESSION_MAX_HOURS hem instellen.
         "sessie_uren": SESSION_TTL / 3600,
         "sessie_max_uren": SESSION_MAX / 3600,
+        # Welke bron met een omgevingsregel hier antwoord geeft (#956): de suggestievragen op het startscherm volgen
+        # dezelfde regel als de tools (tools/beschikbaarheid.py).
+        "bronnen": beschikbaarheid.bronnen(),
     }
 
 
 @router.get("/api/catalog/counts")
 async def get_catalog_counts() -> dict[str, int]:
-    """Dataset counts per source for the data sources overview (public)."""
-    return dataset_counts()
+    """Dataset counts per source for the data sources overview (public): what the chat can query, also through a
+    source's own tool where that source is available here (#956)."""
+    return catalogus_aantallen()

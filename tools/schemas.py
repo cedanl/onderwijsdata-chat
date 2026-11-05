@@ -1,8 +1,10 @@
 from typing import Any
 
-from core.config import RIO_PAGE_SIZE, WO_PERSONEEL_ENABLED
+from core.config import RIO_PAGE_SIZE
 from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 from data.roa_koppeling import ONDERDELEN as ROA_ONDERDELEN
+
+from . import beschikbaarheid
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
@@ -836,7 +838,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
 ]
 
-# Personeel van de universiteiten (WOPI, UNL; #936). Alleen in de toolset met de vlag ENABLE_WO_PERSONEEL (core/config.py):
+# Personeel van de universiteiten (WOPI, UNL; #936). Alleen in de toolset met de vlag ENABLE_WO_PERSONEEL (tools/beschikbaarheid.py):
 # tot UNL hergebruik bevestigt, staat de bron alleen op test. De waarden van de enums staan in tools/wo_personeel.py.
 SCHEMA_GET_WO_PERSONEEL: dict[str, Any] = {
     "type": "function",
@@ -891,5 +893,5 @@ SCHEMA_GET_WO_PERSONEEL: dict[str, Any] = {
         },
     },
 }
-if WO_PERSONEEL_ENABLED:
+if beschikbaarheid.wo_personeel():
     TOOL_SCHEMAS.append(SCHEMA_GET_WO_PERSONEEL)

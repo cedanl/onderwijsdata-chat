@@ -255,12 +255,90 @@ def _roa_laadregels(args: dict) -> list[str]:
     return regels
 
 
+def _wopi_jaarfilter(args: dict) -> list[str]:
+    """Eén jaar, of de reeks vanaf de breuk in de reeks: met GEZO vanaf 2006, vast/tijdelijk vanaf 2003 (#936)."""
+    if not args.get("reeks"):
+        return [f'df = df[df["jaar"] == {args["jaar"]!r}]']
+    grenzen = [wo_personeel.GEZO_VANAF] * (args["gezo"] == "incl")
+    grenzen += [wo_personeel.AANSTELLING_VANAF] * (args["uitsplitsing"] == "vast_tijdelijk")
+    return [f'df = df[df["jaar"] >= {max(grenzen)}]  # de reeks begint na de breuk'] if grenzen else []
+
+
+def _wopi_laadregels(args: dict) -> list[str]:
+    """Dezelfde stappen als `wo_personeel.reken` en `wo_personeel.tabel` (#936, #956), op `unl.load`, met de laadaanroep
+    van de tabel in de store: de BRIN (of landelijk) en één jaar of de reeks."""
+    maat, tabel = ("fte", "functie") if args["eenheid"] == "fte" else ("personen", "personen")
+    gezo, uitsplitsing = _lit(args["gezo"]), args["uitsplitsing"]
+    selectie = _wopi_jaarfilter(args)
+    if args["instelling"] != "landelijk":
+        selectie.append(f'df = df[df["brin"] == {_lit(args["instelling"])}]')
+    regels = [
+        "import pandas as pd",
+        "from onderwijsbronnen import unl",
+        "",
+        "# Totalen zijn sommen over de records van de draaitabellen, nooit over een rij 'Totaal'.",
+        f"df = unl.load({_lit(tabel)}, gezo={gezo})",
+        *selectie,
+        f'uit = df.groupby("jaar")[{_lit(maat)}].sum().rename("totaal").to_frame()',
+    ]
+    if uitsplitsing == "wp_obp":
+        regels += [
+            'groep = df["functie"].eq("OBP").map({True: "obp", False: "wetenschappelijk_personeel"})',
+            f'uit = uit.join(df.groupby(["jaar", groep])[{_lit(maat)}].sum().unstack(fill_value=0))',
+        ]
+    elif kolom := wo_personeel.KOLOM.get(uitsplitsing):
+        regels.append(f'uit = uit.join(df.groupby(["jaar", {_lit(kolom)}])[{_lit(maat)}].sum().unstack(fill_value=0))')
+    elif uitsplitsing == "geslacht":
+        regels += [
+            "# Het totaal staat al in `uit`; de vrouwen komen uit een eigen tabel van dezelfde variant.",
+            f'df = unl.load({_lit(tabel)}, gezo={gezo}, geslacht="vrouwen")',
+            *selectie,
+            f'uit["vrouwen"] = df.groupby("jaar")[{_lit(maat)}].sum()',
+            'uit["vrouwen"] = uit["vrouwen"].fillna(0)',
+            'uit["aandeel_vrouwen_procent"] = (100 * uit["vrouwen"] / uit["totaal"]).round(1)',
+        ]
+    afronden = "round(2)" if maat == "fte" else "astype(int)"
+    regels += [
+        "df = uit.fillna(0).reset_index()",
+        'waarden = [k for k in df.columns if k not in ("jaar", "aandeel_vrouwen_procent")]',
+        f"df[waarden] = df[waarden].{afronden}",
+    ]
+    if uitsplitsing == "vast_tijdelijk":
+        regels += [
+            "# Het aandeel tijdelijk is berekend over vast plus tijdelijk, zonder de restpost 'onbekend'.",
+            'bekend = df.get("vast", 0) + df.get("tijdelijk", 0)',
+            'df["aandeel_tijdelijk_procent"] = (100 * df.get("tijdelijk", 0) / bekend).round(1)',
+        ]
+    regels.append("# De selectie als kolommen, zoals de app de tabel bewaart en exporteert.")
+    return regels + [
+        f"df.insert({plek}, {_lit(kolom)}, {_lit(args[kolom])})"
+        for plek, kolom in enumerate(("instelling", "eenheid", "gezo"))
+    ]
+
+
+def _financien_laadregels(args: dict) -> list[str]:
+    """Het overzicht van DUO's verantwoording uit XBRL (#935, #956), met dezelfde pakketfunctie als de tool en de
+    bestuurssleutel waartoe de app de vraag herleidde (een bestuur, of één eenheid van bestuur 40833)."""
+    return [
+        "import pandas as pd",
+        "from onderwijsbronnen.duo import financien",
+        "",
+        "# De nieuwste editie van DUO's verantwoording uit XBRL: variant standaard, alleen mbo, hbo en wo.",
+        "f = financien.laad()",
+        f"df = pd.DataFrame(financien.overzicht(f, {_lit(args['instelling_of_bestuur'])}))",
+        "# Kengetallen als fractie, zoals DUO ze geeft (rentabiliteit 0.02 = 2 %). De kolommen *_sector zijn het",
+        "# gewogen sectorcijfer van de Inspectie; de signaleringswaarden zijn die van de Inspectie (2024).",
+    ]
+
+
 _LAADREGELS = {
     "get_duo_data": _duo_laadregels,
     "get_cbs_data": _cbs_laadregels,
     "get_rio_data": _rio_laadregels,
     "get_uwv_vacatures": _uwv_laadregels,
     "get_roa_benchmark": _roa_laadregels,
+    TOOL_GET_WO_PERSONEEL: _wopi_laadregels,
+    TOOL_GET_BESTUURSFINANCIEN: _financien_laadregels,
 }
 
 
@@ -765,102 +843,15 @@ def _get_maat_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
     return f"# {fout}" if fout else "\n".join([*regels, "print(df)"])
 
 
-def _wo_personeel_keuze(result: str | None) -> dict | None:
-    """Wat get_wo_personeel na zijn controles opvroeg (#936): instelling als BRIN, eenheid, GEZO, uitsplitsing en jaren.
-
-    Uit de uitkomst, niet uit de argumenten: de app maakt van een naam een BRIN-code en van "geen jaar" het nieuwste
-    jaar. Een weigering (gewone tekst) geeft geen snippet.
-    """
-    try:
-        data = json.loads(result) if result else None
-    except ValueError:
-        return None
-    if not isinstance(data, dict) or not isinstance(data.get("cijfers"), list):
-        return None
-    instelling = data.get("instelling")
-    return {
-        "brin": instelling.get("brin") if isinstance(instelling, dict) else None,
-        "eenheid": data["eenheid"],
-        "gezo": data["gezo"],
-        "uitsplitsing": data["uitsplitsing"],
-        "jaren": [rij["jaar"] for rij in data["cijfers"]],
-        "bronregel": (data.get("bron") or {}).get("regel", ""),
-    }
-
-
-def _get_wo_personeel_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
-    """Dezelfde stappen als `wo_personeel.reken` (#936), op `unl.load`: een equivalentietest bewaakt dat."""
-    maat = "fte" if args["eenheid"] == "fte" else "personen"
-    tabel = "functie" if maat == "fte" else "personen"
-    gezo, uitsplitsing, jaren = _lit(args["gezo"]), args["uitsplitsing"], args["jaren"]
-    brin = [f'df = df[df["brin"] == {_lit(args["brin"])}]'] if args["brin"] else []
-    regels = [
-        "import pandas as pd",
-        "from onderwijsbronnen import unl",
-        "",
-        f"# {args['bronregel']}. Totalen zijn sommen over de records van de draaitabellen.",
-        f"df = unl.load({_lit(tabel)}, gezo={gezo})",
-        f'df = df[df["jaar"].isin({jaren!r})]',
-        *brin,
-        f'uit = df.groupby("jaar")[{_lit(maat)}].sum().rename("totaal").to_frame()',
-    ]
-    if uitsplitsing == "wp_obp":
-        regels += [
-            'groep = df["functie"].eq("OBP").map({True: "obp", False: "wetenschappelijk_personeel"})',
-            f'uit = uit.join(df.groupby(["jaar", groep])[{_lit(maat)}].sum().unstack(fill_value=0))',
-        ]
-    elif kolom := wo_personeel.KOLOM.get(uitsplitsing):
-        regels.append(f'uit = uit.join(df.groupby(["jaar", {_lit(kolom)}])[{_lit(maat)}].sum().unstack(fill_value=0))')
-    elif uitsplitsing == "geslacht":
-        regels += [
-            "# Het totaal staat al in `uit`; de vrouwen komen uit een eigen tabel van dezelfde variant.",
-            f'df = unl.load({_lit(tabel)}, gezo={gezo}, geslacht="vrouwen")',
-            f'df = df[df["jaar"].isin({jaren!r})]',
-            *brin,
-            f'uit["vrouwen"] = df.groupby("jaar")[{_lit(maat)}].sum()',
-            'uit["vrouwen"] = uit["vrouwen"].fillna(0)',
-            'uit["aandeel_vrouwen_procent"] = (100 * uit["vrouwen"] / uit["totaal"]).round(1)',
-        ]
-    afronden = "round(2)" if maat == "fte" else "astype(int)"
-    regels += [
-        "df = uit.fillna(0).reset_index()",
-        'waarden = [k for k in df.columns if k not in ("jaar", "aandeel_vrouwen_procent")]',
-        f"df[waarden] = df[waarden].{afronden}",
-    ]
-    if uitsplitsing == "vast_tijdelijk":
-        regels += [
-            "# Het aandeel tijdelijk is berekend over vast plus tijdelijk, zonder de restpost 'onbekend'.",
-            'bekend = df.get("vast", 0) + df.get("tijdelijk", 0)',
-            'df["aandeel_tijdelijk_procent"] = (100 * df.get("tijdelijk", 0) / bekend).round(1)',
-        ]
-    return "\n".join([*regels, "print(df)"])
-
-
-def _get_bestuursfinancien_snippet(args: dict, recept_van: Receptbron | None = None) -> str | None:
-    """Het overzicht van DUO's verantwoording uit XBRL, met dezelfde pakketfunctie als de tool (#935).
-
-    De tool herleidt een instelling tot een bestuur of tot één eenheid van bestuur 40833; die sleutel (`bestuur`) komt
-    uit haar uitkomst. Zonder sleutel (een melding in plaats van cijfers) is er geen snippet.
-    """
-    if not isinstance(sleutel := args.get("bestuur"), str):
-        return None
-    return "\n".join(
-        [
-            "import pandas as pd",
-            "from onderwijsbronnen.duo import financien",
-            "",
-            "# De nieuwste editie van DUO's verantwoording uit XBRL: variant standaard, alleen mbo, hbo en wo.",
-            "f = financien.laad()",
-            f"df = pd.DataFrame(financien.overzicht(f, {_lit(sleutel)}))",
-            "# Kengetallen als fractie, zoals DUO ze geeft (rentabiliteit 0.02 = 2 %). De kolommen *_sector zijn het",
-            "# gewogen sectorcijfer van de Inspectie; de signaleringswaarden zijn die van de Inspectie (2024).",
-            "print(df)",
-        ]
-    )
+def _alleen_met_tabel(args: dict, recept_van: Receptbron | None = None) -> None:
+    """get_wo_personeel en get_bestuursfinancien (#935, #936) zetten hun tabel met laadaanroep in de store (#956): hun
+    snippet komt uit `_LAADREGELS`, met de keuze van de app (BRIN, jaar, bestuurssleutel). Zonder tabel (een melding of
+    weigering) is er geen snippet."""
+    return None
 
 
 _GENERATORS = {
-    TOOL_GET_WO_PERSONEEL: _get_wo_personeel_snippet,
+    TOOL_GET_WO_PERSONEEL: _alleen_met_tabel,
     TOOL_GET_MAAT: _get_maat_snippet,
     TOOL_QUERY_DATA: _query_data_snippet,
     TOOL_RUN_ANALYSIS: _run_analysis_snippet,
@@ -870,7 +861,7 @@ _GENERATORS = {
     TOOL_GET_CBS_DATA: _get_cbs_data_snippet,
     TOOL_CREATE_PLOT: _create_plot_snippet,
     TOOL_CREATE_CHOROPLETH_MAP: _create_choropleth_snippet,
-    TOOL_GET_BESTUURSFINANCIEN: _get_bestuursfinancien_snippet,
+    TOOL_GET_BESTUURSFINANCIEN: _alleen_met_tabel,
 }
 
 
@@ -902,15 +893,6 @@ def _resultaatkey(result: str | None) -> str | None:
     return data["data_key"] if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
 
 
-def _bestuurssleutel(result: str | None) -> str | None:
-    """Het bestuur of de eenheid waarvoor get_bestuursfinancien cijfers gaf (#935); None bij een melding."""
-    try:
-        data = json.loads(result) if result else None
-    except ValueError:
-        return None
-    return data.get("sleutel") if isinstance(data, dict) and isinstance(data.get("sleutel"), str) else None
-
-
 def _resultaatmeta(result: str | None):
     """De metadata van de key die een toolresponse noemt; None zonder."""
     return store.meta(key) if (key := _resultaatkey(result)) else None
@@ -937,18 +919,11 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     if tool_name == TOOL_QUERY_DATA:
         # De instellingen die de app via een onderwijslocatie meenam (#744), van de selectie die de stap opleverde.
         args = _met_locatiecodes(args, _resultaatmeta(result))
-    if tool_name == TOOL_GET_WO_PERSONEEL:
-        # De keuze na de controles van de tool (BRIN, jaren), niet de ruwe argumenten (#936, #945).
-        if (keuze := _wo_personeel_keuze(result)) is None:
-            return None
-        args = keuze
-    if tool_name == TOOL_GET_BESTUURSFINANCIEN:
-        # De app herleidde de instelling tot een bestuur of eenheid: de snippet begint bij die sleutel (#935).
-        args = {**args, "bestuur": _bestuurssleutel(result)}
     if tool_name in _LAADREGELS and (key := _geladen_key(tool_name, result)):
         # Een laadstap laadt wat de app laadde, uit de laadaanroep in de store, niet uit de ruwe argumenten van het
         # model (#945): de index achter een bestandsnaam of het standaardbestand, de dataset-ID in de spelling van de
-        # catalogus, de peildag van RIO (#718) en de vo-rijen die de poort van de beurt toeliet (#879).
+        # catalogus, de peildag van RIO (#718), de vo-rijen die de poort van de beurt toeliet (#879), en de BRIN, het jaar
+        # of de bestuurssleutel waartoe WOPI en de financien de vraag herleidden (#935, #936, #956).
         snippet = "\n".join([*_laadregels(key), "print(df)"])
     else:
         snippet = gen(args, recept_van=recept_van)

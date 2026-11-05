@@ -5,7 +5,12 @@
     "beschrijving": "Personeel in dienst van de 14 universiteiten van UNL op 31 december, uit de records van de WOPI-draaitabellen: fte per functiecategorie (hoogleraar, uhd, ud, docent, onderzoeker, overig wp, promovendus, obp) met vast of tijdelijk, en personen per leeftijdsklasse, per universiteit (BRIN) en landelijk. Zonder of met het HOOP-gebied Gezondheid (GEZO), nooit door elkaar.",
     "periode": "Peildatum 31-12; fte vanaf 1998, personen per universiteit vanaf 2005; jaarlijkse editie (mei tot november van het jaar erna)",
     "onderwijstype": ["WO"],
-    "doel": "De enige open bron voor personeel per universiteit. Alleen wo: voor hbo en mbo bestaat geen open personeelsbestand per instelling. Vier wo-instellingen die geen lid zijn van UNL (TUA, PThU, UvH, TU Kampen) staan er niet in.",
+    "doel": "De enige open bron voor personeel per universiteit (wo).",
+    "niet_geschikt_voor": [
+      "Personeel van hogescholen (hbo) of mbo-instellingen: daarvoor bestaat geen open personeelsbestand per instelling.",
+      "De vier wo-instellingen die geen lid zijn van UNL (TUA, PThU, UvH, TU Kampen): die staan er niet in.",
+      "Onderzoeksfinanciering of andere financiële gegevens van universiteiten."
+    ],
     "frequentie": "Jaarlijks",
     "categorie": "Personeel",
     "sectie": "Universiteiten van Nederland",

@@ -147,4 +147,15 @@ export const SUGGESTED = [
       { tekst: 'In welke provincies wonen de meeste mbo-studenten, en hoe verandert dat?', sectoren: SECTOREN, profiel: false },
     ],
   },
+  {
+    // `bron`: alleen waar die bron hier antwoord geeft (/api/config `bronnen`, tools/beschikbaarheid.py, #956). De
+    // financiën gaan over het bestuur van een mbo-, hbo- of wo-instelling; WOPI heeft alleen de universiteiten.
+    category: 'Financiën & Personeel',
+    questions: [
+      { tekst: 'Hoe staat onze instelling er financieel voor?', sectoren: SECTOREN, profiel: true, bron: 'financien' },
+      { tekst: 'Hoe verhoudt de solvabiliteit van onze instelling zich tot de sector?', sectoren: SECTOREN, profiel: true, bron: 'financien' },
+      { tekst: 'Hoeveel fte wetenschappelijk personeel heeft onze instelling?', sectoren: ['wo'], profiel: true, bron: 'wo_personeel' },
+      { tekst: 'Wat is het aandeel vrouwen onder het personeel van onze instelling?', sectoren: ['wo'], profiel: true, bron: 'wo_personeel' },
+    ],
+  },
 ]

@@ -380,7 +380,12 @@ In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.fina
 - **Vaste voorbehouden:** het hele bestuur (ook vo), geen uitspraak over kwaliteit, verslagjaar = boekjaar en niet door
   een accountant gecontroleerd, één variant, een signaal is geen oordeel.
 - **Licentie:** de pagina noemt geen licentie; de vraag ligt bij DUO. Tot DUO bevestigt, geeft de tool op playground en
-  productie alleen een melding (`LICENTIE_BEVESTIGD` in `tools/financien.py`).
+  productie alleen een melding (`LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py`). Dezelfde regel bepaalt de
+  status in search_catalog (daar `alleen_catalogus`), de suggestievragen op het startscherm en de tellingen (#956).
+- **Citaties, telling en export (#956):** elk getal uit de tool krijgt een citatie (ook met decimale komma); de tabel
+  achter het resultaat (`financien.overzicht`, onafgerond) staat in de store als `financien:<sleutel>` met dataset
+  `duo:financien` en de editie als peilmoment, en is als CSV met inhoudshash te exporteren. De Telling noemt over hoeveel
+  eenheden het sectorcijfer gaat en een fusie in de reeks.
 - **Bereikbaarheid:** `bron:ping` (`duo-financien`) leest dagelijks de nieuwste editie en telt de eenheden per sector.
 
 | Eigenschap | Details |
@@ -484,7 +489,8 @@ bestaat geen open personeelsbestand per instelling, en de tool zegt dat bij zo'n
 | Inhoud | fte per functiecategorie en vast/tijdelijk (Tabel 1), personen per leeftijdsklasse (Tabel 9), per universiteit |
 | Formaat | xlsx met draaitabellen, één editie per jaar (mei tot november); runtime-cache van 24 uur, geen opslag |
 | Koppeling | BRIN-code (`brincode` in de caches), via het register van de chat |
-| ID | `unl:wopi` in het ID-contract; niet in de zoekcatalogus van de chat en niet in `catalog(source="all")` |
+| ID | `unl:wopi` in het ID-contract; niet in `catalog(source="all")`. In de zoekcatalogus van de chat alleen met de vlag `ENABLE_WO_PERSONEEL`, als `via_tool` naar `get_wo_personeel` (#956) |
+| Citaties en export | elk getal (fte, personen, aandeel) met citatie; de tabel staat in de store als `wopi:<brin>:…` met dataset `unl:wopi`, als CSV met inhoudshash te exporteren; de Telling zegt wat fte en personen tellen (#956) |
 
 ---
 

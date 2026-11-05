@@ -122,6 +122,10 @@ class KeyMeta:
     # vaste regel onder het antwoord en de snippet lezen ze hier. Geërfd zolang de instelling in de selectie staat
     # (dekking.van). Herkomst, geen identiteit.
     nevenlocaties: "tuple[Nevenlocatie, ...]" = field(default=(), compare=False)
+    # Wat de getallen van een bron met een eigen tool tellen, als vaste regels voor het Telling-blok (#956): over hoeveel
+    # eenheden het sectorcijfer van DUO's verantwoording gaat, of wat fte en personen in WOPI zijn. De tool zet ze bij het
+    # laden. Herkomst, geen identiteit.
+    telregels: tuple[str, ...] = field(default=(), compare=False)
 
 
 def _bytes(value) -> int:
@@ -265,6 +269,9 @@ def herkomst(key: str) -> list[str]:
         bron += f", {etiket}"
     if known.resource is not None:
         bron += f", resource {known.resource}"
+    if known.peilmoment:
+        # Een momentopname of editie (UWV, ROA, WOPI, de financien) zegt wanneer; DUO welke versie van het bestand.
+        bron += f", {known.peilmoment}"
     regels = [bron, *reversed(stappen)]
     if known.afronding:
         from .cbs_afronding import noot  # lazy: cbs_afronding importeert store
