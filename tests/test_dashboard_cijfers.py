@@ -10,7 +10,8 @@ import data.dashboard as dashboard
 from core import domeinregels
 from core.sentinels import mask_sentinels
 
-pytestmark = pytest.mark.usefixtures("duo_fixtures")
+# UWV en ROA uit fixtures (#915): de regio- en arbeidsmarktdashboards halen ze anders live op.
+pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
 _MONDRIAAN = "ROC Mondriaan"
 

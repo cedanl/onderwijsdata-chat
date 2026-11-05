@@ -1,8 +1,16 @@
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from tools import store
 from tools.cbs import get_cbs_data
+
+
+@pytest.fixture(autouse=True)
+def geen_cbs_metadata(monkeypatch):
+    """De DataProperties van CBS komen niet live (#915): deze tests gaan over de rijen, niet over de kolommen."""
+    monkeypatch.setattr("tools.cbs.definitions", MagicMock(return_value={}))
 
 
 def _mock_data(dataset_id, **params):

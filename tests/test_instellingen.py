@@ -3,8 +3,8 @@ import importlib
 import pandas as pd
 import pytest
 
-# Register en dashboards draaien op bevroren DUO-bestanden, niet op live DUO (#766).
-pytestmark = pytest.mark.usefixtures("duo_fixtures")
+# Register en dashboards draaien op bevroren DUO-bestanden, niet op live DUO (#766), en zonder live UWV en ROA (#915).
+pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
 # De waardetests (#824) rekenen elk getal met pandas na uit dezelfde fixtures, los van data/dashboard.py.
 _HU = "Hogeschool Utrecht"

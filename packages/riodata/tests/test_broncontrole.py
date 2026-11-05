@@ -100,8 +100,10 @@ def test_mislukte_controle_laat_manifest_staan(tmp_path, monkeypatch):
 def test_exitcodes_en_schrijven(tmp_path, monkeypatch):
     pad = tmp_path / "m.json"
     monkeypatch.setattr(bc, "fetch_duo", lambda c: [pkg("a")])
+    # Zonder deze patch pingde main() RIO live (#915); met alles op 200 is de uitkomst vast: geen meldingen.
+    monkeypatch.setattr(bc, "ping_rio", lambda c: {"organisatorische-eenheden": 200})
     monkeypatch.setattr(bc, "_catalogus_ids", lambda: {"a"})
-    assert bc.main(["--manifest", str(pad), "--schrijf"]) in (0, 10)
+    assert bc.main(["--manifest", str(pad), "--schrijf"]) == 0
     assert json.loads(pad.read_text())["schema_versie"] == 1
     monkeypatch.setattr(bc, "_catalogus_ids", lambda: {"a", "weg"})
     assert bc.main(["--manifest", str(pad)]) == 10

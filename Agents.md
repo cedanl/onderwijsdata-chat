@@ -52,6 +52,11 @@ Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update)
    (geen pad met underscore); `tests/test_importgrens.py` bewaakt dat en maakt de pipeline rood. De tests van een
    pakket staan in `packages/<naam>/tests` en draaien mee in de CI-job `pytest`.
 
+   **Geen netwerk in tests:** uitgaand netwerk is dicht voor elke test zonder marker `live` (`tests/netwerkblok.py`,
+   #915); een test die toch naar buiten gaat, faalt met de host erbij. Gebruik een bevroren fixture of mock
+   (`tests/fixtures/`, `duo_fixtures`, `gouden`), of markeer de test `live` als hij echt een bron hoort te testen.
+   Details in `CONTRIBUTING.md`.
+
 3. **Verify tests pass**: `uv run pytest tests/test_feature.py -v`
 
 4. **Commit once, with narrative**: Explain what & why

@@ -10,7 +10,7 @@ import json
 import httpx
 import pytest
 
-from tests.gouden import NetwerkInGoudenTest
+from tests.netwerkblok import BLOK, NetwerkGeblokkeerd
 from tools import inspectie
 from tools.accreditatie import get_accreditatie
 from tools.inspectie import get_inspectieoordeel
@@ -27,8 +27,9 @@ def _json(tekst: str) -> dict:
 
 def test_het_netwerk_is_dicht():
     """De gouden tests zijn netwerkvrij: een tool die toch naar buiten gaat, faalt hierop."""
-    with pytest.raises(NetwerkInGoudenTest):
+    with pytest.raises(NetwerkGeblokkeerd):
         httpx.get("https://duo.nl/", timeout=1)
+    BLOK.pogingen.clear()  # bewust geweigerd: laat de test zelf niet falen
 
 
 # --- get_mbo_indicatoren --------------------------------------------------------------------------------------------
