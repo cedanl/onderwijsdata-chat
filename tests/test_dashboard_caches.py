@@ -59,7 +59,7 @@ def test_een_ontbrekende_instroompartitie_geeft_een_fout_en_geen_onvolledige_cac
         storing.clear()
         jaren = dashboard._load_instromende_mbo_historisch()["JAAR"].tolist()
 
-    assert jaren == [2021, 2023, 2025, 2027]
+    assert jaren == [2020 + i for i in dashboard._INSTROMENDE_MBO_HISTORISCH]
 
 
 def test_de_duo_ladingen_verlopen_na_de_ttl(klok):

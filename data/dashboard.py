@@ -386,25 +386,47 @@ def _met_onderdrukt(result: dict, sleutel: str, leeg: dict) -> None:
 # ─── Benchmark helpers ────────────────────────────────────────────────────────
 
 
-def _peers(df: pd.DataFrame, code_col: str, peer_codes: frozenset) -> pd.DataFrame:
-    return df[df[code_col].isin(peer_codes)]
+@dataclass(frozen=True)
+class _PeerReeks:
+    """Eén reeks over de peers van een regio, alleen over de peers met gegevens (#903, #925).
+
+    Een peer met in elk jaar 0 of een lege cel (BBO de Schalm: elk jaar 0 en een onderdrukte cel) heeft geen gegevens.
+    Hij telt niet mee in het gemiddelde, het aantal peers, het totaal en de lege cellen; hij staat in `geen_gegevens`,
+    zodat de lijst en het aantal niet stil uiteenlopen. Een peer met één echt nuljaar en verder waarden telt wel mee.
+    """
+
+    gemiddelde: dict[int, float]  # {jaar: gemiddelde over de peers met een waarde in dat jaar}
+    n_per_jaar: dict[int, int]  # {jaar: aantal peers achter dat gemiddelde}; niet elke peer heeft elk jaar een waarde
+    per_peer: dict[str, dict[int, int]]  # {naam: {jaar: waarde}}; een jaar met alleen lege cellen ontbreekt
+    leeg: dict[int, int]  # {jaar: lege cellen}: het gemiddelde en het totaal van zo'n jaar zijn een ondergrens
+    totaal: dict[int, int]  # {jaar: som over de peers}
+    geen_gegevens: list[str]  # de peers zonder één waarde boven 0, op naam
 
 
-def _gemiddelde_per_jaar(
+def _peer_reeks(
     df: pd.DataFrame,
     code_col: str,
+    inst_col: str,
     peer_codes: frozenset,
     jaar_col: str,
     kolommen: Kolommen,
-) -> tuple[dict[int, float], dict[int, int]]:
-    """({jaar: gemiddelde}, {jaar: aantal peers}): het gemiddelde over de peers met een waarde in dat jaar, en hoeveel
-    dat er zijn. Niet elke peer heeft elk jaar een waarde, dus het aantal staat per jaar (#903)."""
-    per_inst = _som(_peers(df, code_col, peer_codes), [code_col, jaar_col], kolommen).dropna()
-    if per_inst.empty:
-        return {}, {}
+) -> _PeerReeks:
+    """De reeks van de peers in `peer_codes` (waarden van code_col), met hun naam uit inst_col."""
+    subset = df[df[code_col].isin(peer_codes)]
+    namen = subset.groupby(code_col)[inst_col].first()
+    per_inst = _som(subset, [code_col, jaar_col], kolommen).dropna()
+    met_gegevens = per_inst[per_inst > 0].index.unique(level=code_col)
+    subset = subset[subset[code_col].isin(met_gegevens)]
+    per_inst = per_inst[per_inst.index.get_level_values(code_col).isin(met_gegevens)]
     per_jaar = per_inst.groupby(level=jaar_col)
-    gem = {int(k): round(float(v), 1) for k, v in per_jaar.mean().items()}
-    return gem, _ints(per_jaar.count())
+    return _PeerReeks(
+        gemiddelde={int(k): round(float(v), 1) for k, v in per_jaar.mean().items()},
+        n_per_jaar=_ints(per_jaar.count()),
+        per_peer={str(namen[c]): _ints(r.droplevel(code_col)) for c, r in per_inst.groupby(level=code_col)},
+        leeg=_alleen_leeg(_leeg(subset, jaar_col, kolommen)),
+        totaal=_ints(_som(subset, jaar_col, kolommen)),
+        geen_gegevens=sorted(str(namen[c]) for c in namen.index.difference(met_gegevens)),
+    )
 
 
 def _met_aantal_peers(bm: dict, sleutel: str, n_per_jaar: dict[int, int]) -> None:
@@ -415,69 +437,60 @@ def _met_aantal_peers(bm: dict, sleutel: str, n_per_jaar: dict[int, int]) -> Non
         bm["n_instellingen"] = n_per_jaar[max(n_per_jaar)] if n_per_jaar else 0
 
 
-def _per_peer(
-    df: pd.DataFrame,
-    code_col: str,
-    inst_col: str,
-    peer_codes: frozenset,
-    jaar_col: str,
-    kolommen: Kolommen,
-) -> dict[str, dict[int, int]]:
-    """{naam: {jaar: waarde}} per peer; een jaar met alleen lege cellen ontbreekt."""
-    subset = _peers(df, code_col, peer_codes)
-    out: dict[str, dict[int, int]] = {}
-    for _code, grp in subset.groupby(code_col):
-        reeks = _ints(_som(grp, jaar_col, kolommen))
-        if reeks:
-            out[grp[inst_col].iloc[0]] = reeks
-    return out
+def _met_geen_gegevens(bm: dict, sleutel: str, reeks: _PeerReeks) -> None:
+    if reeks.geen_gegevens:
+        bm.setdefault("geen_gegevens", {})[sleutel] = reeks.geen_gegevens
 
 
-def _peer_leeg(df: pd.DataFrame, code_col: str, peer_codes: frozenset, jaar_col: str, kolommen: Kolommen) -> dict:
-    """{jaar: lege cellen} over alle peers: het gemiddelde en het regiototaal van zo'n jaar zijn een ondergrens."""
-    subset = _peers(df, code_col, peer_codes)
-    return _alleen_leeg(_leeg(subset, jaar_col, kolommen)) if not subset.empty else {}
+def _met_gemiddelde(bm: dict, sleutel: str, reeks: _PeerReeks) -> None:
+    """Het regiogemiddelde van een reeks in de benchmark: per jaar, met het aantal peers en de lege cellen erachter."""
+    bm[sleutel] = reeks.gemiddelde
+    _met_aantal_peers(bm, sleutel, reeks.n_per_jaar)
+    _met_onderdrukt(bm, sleutel, reeks.leeg)
+    _met_geen_gegevens(bm, sleutel, reeks)
 
 
-def _mbo_instroom(df: pd.DataFrame | None) -> pd.DataFrame:
-    """De rijen van instromende-mbo-studenten die eerstejaars mbo zijn (INSTROOM MBO = J)."""
+def _met_peers(bm: dict, sleutel: str, reeks: _PeerReeks) -> None:
+    """De peers van een reeks in de benchmark: wie meetelt onder `peers`, wie geen gegevens heeft onder `geen_gegevens`."""
+    bm.setdefault("peers", {})[sleutel] = reeks.per_peer
+    _met_geen_gegevens(bm, sleutel, reeks)
+
+
+# ─── Een mbo-instelling over al haar codes (#923) ────────────────────────────
+# mbo-studenten-per-instelling kent een instelling met meer codes (Curio: 21CY en 25LX); de instroom- en
+# diplomabestanden tellen per code. Elke mbo-telling per instelling loopt daarom over de naam die
+# mbo-studenten-per-instelling bij de code geeft, zoals de ingeschrevenen: eigen reeks, peers en rendement.
+
+_INSTELLING = "INSTELLING"
+
+
+def _mbo_code_naam(df_mbo: pd.DataFrame) -> dict[str, str]:
+    """{instellingscode: instellingsnaam} uit mbo-studenten-per-instelling."""
+    rijen = df_mbo.drop_duplicates("INSTELLINGSCODE")
+    return dict(zip(rijen["INSTELLINGSCODE"].astype(str), rijen["INSTELLINGSNAAM"].astype(str), strict=True))
+
+
+def _mbo_per_instelling(df: pd.DataFrame, code_naam: dict[str, str]) -> pd.DataFrame:
+    """df met de kolom INSTELLING: de naam bij de code. Een code buiten mbo-studenten-per-instelling hoort bij niemand."""
+    return df.assign(**{_INSTELLING: df["INSTELLINGSCODE"].astype(str).map(code_naam)})
+
+
+def _mbo_peernamen(ctx: RegioContext, code_naam: dict[str, str], eigen: str) -> frozenset[str]:
+    """De peers op naam. De regiocontext noemt één code per instelling (die van het register); de naam brengt de andere
+    codes mee. De eigen instelling valt eruit, ook onder een tweede code."""
+    return frozenset(code_naam[c] for c in ctx.peer_codes if c in code_naam) - {eigen}
+
+
+def _mbo_instroom(df: pd.DataFrame | None, code_naam: dict[str, str]) -> pd.DataFrame:
+    """De eerstejaars mbo (INSTROOM MBO = J) uit instromende-mbo-studenten, met hun instelling."""
     if df is None or df.empty:
-        return pd.DataFrame(columns=["INSTELLINGSCODE", "JAAR", "AANTAL"])
-    return df[df[_INSTROOM_MBO] == "J"]
+        df = pd.DataFrame(columns=["INSTELLINGSCODE", "JAAR", "AANTAL", _INSTROOM_MBO])
+    return _mbo_per_instelling(df[df[_INSTROOM_MBO] == "J"], code_naam)
 
 
-def _mbo_eerstejaars_from_df(df: pd.DataFrame | None, code: str) -> tuple[dict[int, int], dict[int, int]]:
-    """({jaar: eerstejaars}, {jaar: lege cellen}) voor één instellingscode."""
-    instroom = _mbo_instroom(df)
-    return _reeks(instroom[instroom["INSTELLINGSCODE"] == code], "JAAR", "AANTAL")
-
-
-def _mbo_peer_eerstejaars(
-    df_instromende: pd.DataFrame | None,
-    df_mbo: pd.DataFrame,
-    code_col: str,
-    inst_col: str,
-    peer_codes: frozenset,
-) -> tuple[dict[int, float], dict[int, int], dict[str, dict[int, int]], dict[int, int]]:
-    """(benchmark_eerstejaars, aantal peers per jaar, peers_eerstejaars, lege cellen per jaar) voor MBO peers."""
-    instroom = _mbo_instroom(df_instromende)
-    bm, n = _gemiddelde_per_jaar(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
-    code_to_naam = df_mbo.drop_duplicates(code_col).set_index(code_col)[inst_col].to_dict()
-    peers: dict[str, dict[int, int]] = {}
-    for code, grp in _peers(instroom, "INSTELLINGSCODE", peer_codes).groupby("INSTELLINGSCODE"):
-        if reeks := _ints(_som(grp, "JAAR", "AANTAL")):
-            peers[code_to_naam.get(str(code), str(code))] = reeks
-    return bm, n, peers, _peer_leeg(instroom, "INSTELLINGSCODE", peer_codes, "JAAR", "AANTAL")
-
-
-def _totaal_regio(
-    df: pd.DataFrame,
-    code_col: str,
-    peer_codes: frozenset,
-    jaar_col: str,
-    kolommen: Kolommen,
-) -> dict[int, int]:
-    return _ints(_som(_peers(df, code_col, peer_codes), jaar_col, kolommen))
+def _mbo_eerstejaars(instroom: pd.DataFrame, naam: str) -> tuple[dict[int, int], dict[int, int]]:
+    """({jaar: eerstejaars}, {jaar: lege cellen}) van één instelling, over al haar codes."""
+    return _reeks(instroom[instroom[_INSTELLING] == naam], "JAAR", "AANTAL")
 
 
 def _benchmark_label(ctx: RegioContext) -> str:
@@ -632,25 +645,47 @@ def _load_mbo_gediplomeerden() -> pd.DataFrame:
     return _duo_load("gediplomeerde-mbo-studenten", 0)
 
 
-# De resources van instromende-mbo-studenten met JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N) + AANTAL; 0 is de
-# momentopname per hoofdgroep. Vast, net als de fixtures (scripts/duo_testfixtures.py): ze opvragen kost een live
-# CKAN-aanroep per lading.
-_INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7)
+# De resources van instromende-mbo-studenten met JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N) + AANTAL: per jaar het
+# bestand "met soorten instroom" (2021 tot en met 2025). Het andere bestand van elk jaar (0, 2, …) is per hoofdgroep,
+# zonder JAAR. Vast, net als de fixtures (scripts/duo_testfixtures.py): ze opvragen kost een live CKAN-aanroep per
+# lading, en de pytest-job draait zonder netwerk. Publiceert DUO een jaar, dan wordt de ping duo-instroom-mbo van
+# scripts/bronping.py rood (instromende_mbo_afwijkingen) tot het jaar hier en in de fixtures staat (#924).
+_INSTROMENDE_MBO = "instromende-mbo-studenten"
+_INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7, 9)
+_INSTROMENDE_MBO_SOORT = "met-soorten-instroom"  # in de resourcenaam bij CKAN
+
+
+def instromende_mbo_afwijkingen() -> list[str]:
+    """Waar de CKAN-lijst van instromende-mbo-studenten afwijkt van _INSTROMENDE_MBO_HISTORISCH (live, #924).
+
+    Een bestand met soorten instroom dat de dashboards niet laden (DUO publiceerde een jaar), of een index in de lijst
+    die geen zo'n bestand meer is (DUO verschoof de volgorde). Leeg als ze overeenkomen.
+    """
+    namen = [r.get("naam", "") for r in duo.resources(_INSTROMENDE_MBO)]
+    soorten = {i for i, naam in enumerate(namen) if _INSTROMENDE_MBO_SOORT in naam}
+    nieuw = [
+        f"bestand {i} ({namen[i]}) staat niet in _INSTROMENDE_MBO_HISTORISCH (data/dashboard.py)"
+        for i in sorted(soorten - set(_INSTROMENDE_MBO_HISTORISCH))
+    ]
+    weg = [
+        f"bestand {i} uit _INSTROMENDE_MBO_HISTORISCH is bij CKAN geen bestand met soorten instroom"
+        for i in _INSTROMENDE_MBO_HISTORISCH
+        if i not in soorten
+    ]
+    return nieuw + weg
 
 
 @actualiteit.Lading
 def _load_instromende_mbo_historisch() -> pd.DataFrame:
     """Alle jaren samen, of een fout: een ontbrekende resource gaf eerder stil minder jaren, en dat bleef in de
     cache tot de pod herstartte (#901)."""
-    return pd.concat(
-        [_duo_load("instromende-mbo-studenten", i) for i in _INSTROMENDE_MBO_HISTORISCH], ignore_index=True
-    )
+    return pd.concat([_duo_load(_INSTROMENDE_MBO, i) for i in _INSTROMENDE_MBO_HISTORISCH], ignore_index=True)
 
 
 @actualiteit.Lading
 def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     """Partition 0: INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO (latest year snapshot)."""
-    return _duo_load("instromende-mbo-studenten", 0)
+    return _duo_load(_INSTROMENDE_MBO, 0)
 
 
 def _mbo_leerwegen(rij: pd.Series) -> dict[str, int]:
@@ -828,23 +863,19 @@ def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame)
 
 
 def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col) -> dict:
-    peer_codes = ctx.peer_codes
     reeksen = {
         "ingeschrevenen": (df_inges, "STUDIEJAAR", "AANTAL_INGESCHREVENEN"),
         "eerstejaars": (df_ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"),
         "gediplomeerden": (df_dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
     }
-    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type}
+    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type, "peers": {}}
     for sleutel, (df, jaar_col, kolom) in reeksen.items():
-        bm[sleutel], n = _gemiddelde_per_jaar(df, code_col, peer_codes, jaar_col, kolom)
-        _met_aantal_peers(bm, sleutel, n)
-        _met_onderdrukt(bm, sleutel, _peer_leeg(df, code_col, peer_codes, jaar_col, kolom))
-    bm["totaal_ingeschrevenen"] = _totaal_regio(df_inges, code_col, peer_codes, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
-    bm["peers"] = {
-        sleutel: _per_peer(df, code_col, inst_col, peer_codes, jaar_col, kolom)
-        for sleutel, (df, jaar_col, kolom) in reeksen.items()
-        if sleutel != "eerstejaars"
-    }
+        reeks = _peer_reeks(df, code_col, inst_col, ctx.peer_codes, jaar_col, kolom)
+        _met_gemiddelde(bm, sleutel, reeks)
+        if sleutel == "ingeschrevenen":
+            bm["totaal_ingeschrevenen"] = reeks.totaal
+        if sleutel != "eerstejaars":
+            _met_peers(bm, sleutel, reeks)
     return bm
 
 
@@ -894,31 +925,23 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     return result
 
 
-def _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, inst_col):
-    peer_codes = ctx.peer_codes
-    bm_eerstejaars, n_ej, peers_eerstejaars, leeg_ej = _mbo_peer_eerstejaars(
-        df_instromende, df_mbo, code_col, inst_col, peer_codes
-    )
-    gem, n_ins = _gemiddelde_per_jaar(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS)
-    peers: dict = {
-        "ingeschrevenen": _per_peer(df_mbo, code_col, inst_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
-        "eerstejaars": peers_eerstejaars,
-    }
-    bm: dict = {
-        "label": _benchmark_label(ctx),
-        "regio_type": ctx.regio_type,
-        "ingeschrevenen": gem,
-        "totaal_ingeschrevenen": _totaal_regio(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
-        "eerstejaars": bm_eerstejaars,
-        "peers": peers,
-    }
-    _met_aantal_peers(bm, "ingeschrevenen", n_ins)
-    _met_aantal_peers(bm, "eerstejaars", n_ej)
-    _met_onderdrukt(bm, "ingeschrevenen", _peer_leeg(df_mbo, code_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS))
-    _met_onderdrukt(bm, "eerstejaars", leeg_ej)
+def _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen) -> dict:
+    """De regiovergelijking van een mbo-instelling: elke peer op naam, over al zijn codes (#923). Gediplomeerden
+    alleen per peer, zonder gemiddelde."""
+    peers = _mbo_peernamen(ctx, code_naam, eigen)
+
+    def reeks(df: pd.DataFrame, kolommen: Kolommen) -> _PeerReeks:
+        return _peer_reeks(df, _INSTELLING, _INSTELLING, peers, "JAAR", kolommen)
+
+    bm: dict = {"label": _benchmark_label(ctx), "regio_type": ctx.regio_type, "peers": {}}
+    ingeschrevenen = reeks(_mbo_per_instelling(df_mbo, code_naam), _MBO_LEERWEG_COLS)
+    eerstejaars = reeks(instroom, "AANTAL")
+    for sleutel, r in (("ingeschrevenen", ingeschrevenen), ("eerstejaars", eerstejaars)):
+        _met_gemiddelde(bm, sleutel, r)
+        _met_peers(bm, sleutel, r)
+    bm["totaal_ingeschrevenen"] = ingeschrevenen.totaal
     if df_dipl_mbo is not None:
-        dipl_lang = _mbo_dipl_lang(df_dipl_mbo)
-        peers["gediplomeerden"] = _per_peer(dipl_lang, code_col, inst_col, peer_codes, "JAAR", "AANTAL")
+        _met_peers(bm, "gediplomeerden", reeks(_mbo_per_instelling(_mbo_dipl_lang(df_dipl_mbo), code_naam), "AANTAL"))
     return bm
 
 
@@ -934,13 +957,14 @@ def _mbo_load_gediplomeerden(inst_col: str, instelling: str) -> tuple[pd.DataFra
         return None, ({}, {})
 
 
-def _mbo_load_eerstejaars(self_code: str) -> tuple[pd.DataFrame | None, _Reeks]:
+def _mbo_load_eerstejaars(code_naam: dict[str, str], eigen: str) -> tuple[pd.DataFrame, _Reeks]:
+    """(de eerstejaars van alle instellingen, de reeks van de eigen instelling); leeg als de bron niet laadde."""
     try:
-        df = _load_instromende_mbo_historisch()
-        return df, _mbo_eerstejaars_from_df(df, self_code)
+        instroom = _mbo_instroom(_load_instromende_mbo_historisch(), code_naam)
     except Exception as e:
         _niet_beschikbaar(e, "regio-mbo: eerstejaars niet beschikbaar", onderdeel=_ONDERDEEL_EERSTEJAARS)
-        return None, ({}, {})
+        instroom = _mbo_instroom(None, code_naam)
+    return instroom, _mbo_eerstejaars(instroom, eigen)
 
 
 def _mbo_kern(rows: pd.DataFrame) -> dict:
@@ -992,13 +1016,15 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         result["gediplomeerden"] = dipl
         _met_onderdrukt(result, "gediplomeerden", leeg_dipl)
 
-    df_instromende, (eerstejaars, leeg_ej) = _mbo_load_eerstejaars(self_code)
+    code_naam = _mbo_code_naam(df_mbo)
+    eigen = str(rows[inst_col].iloc[0])
+    instroom, (eerstejaars, leeg_ej) = _mbo_load_eerstejaars(code_naam, eigen)
     if eerstejaars:
         result["eerstejaars"] = eerstejaars
         _met_onderdrukt(result, "eerstejaars", leeg_ej)
 
     if ctx:
-        result["benchmark"] = _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, inst_col)
+        result["benchmark"] = _mbo_regio_benchmark(ctx, df_mbo, instroom, df_dipl_mbo, code_naam, eigen)
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
@@ -1415,45 +1441,30 @@ def _rendement_ho(instelling: str) -> dict | None:
     return result
 
 
-def _mbo_peer_rendement_for_code(df_instromende_all, df_mbo, df_dipl_mbo, code, code_col, inst_col):
-    p_instroom, _ = _mbo_eerstejaars_from_df(df_instromende_all, code)
-    p_dipl = _mbo_dipl_per_jaar(df_dipl_mbo, "INSTELLINGSCODE", code) if df_dipl_mbo is not None else {}
-    peer_rend: dict[int, float] = {}
-    for jaar in p_instroom:
-        iv = p_instroom[jaar]
-        dt3 = p_dipl.get(jaar + 3, 0)
-        if iv > 0 and dt3 > 0:
-            peer_rend[jaar] = round(dt3 / iv, 4)
-    if not peer_rend:
-        return None, None
-    p_rows = df_mbo[df_mbo[code_col] == code]
-    peer_naam = p_rows[inst_col].iloc[0] if not p_rows.empty else code
-    return peer_naam, peer_rend
+def _mbo_peer_rendement(instroom: dict[int, int], dipl: dict[int, int]) -> dict[int, float]:
+    """{instroomjaar: gediplomeerden drie jaar later / eerstejaars} van één peer."""
+    return {
+        jaar: round(dipl[jaar + 3] / iv, 4) for jaar, iv in instroom.items() if iv > 0 and dipl.get(jaar + 3, 0) > 0
+    }
 
 
-def _mbo_peers_rendement(ctx, df_mbo, df_dipl_mbo, inst_col, code_col):
+def _mbo_peers_rendement(ctx, df_dipl_mbo, code_naam: dict[str, str], eigen: str) -> dict[str, dict[int, float]]:
+    """Het rendement per peer, op naam en over al zijn codes (#923)."""
     if not ctx:
-        return {}, []
+        return {}
     try:
-        df_instromende_all = _load_instromende_mbo_historisch()
+        instroom = _mbo_instroom(_load_instromende_mbo_historisch(), code_naam)
     except Exception as e:
         _niet_beschikbaar(e, "rendement-mbo: peer rendement niet beschikbaar", onderdeel=_ONDERDEEL_RENDEMENT_REGIO)
-        return {}, []
+        return {}
+    dipl = _mbo_per_instelling(df_dipl_mbo, code_naam) if df_dipl_mbo is not None else None
     peers_rendement: dict[str, dict[int, float]] = {}
-    peer_rend_lists: list[dict[int, float]] = []
-    for code in ctx.peer_codes:
-        peer_naam, peer_rend = _mbo_peer_rendement_for_code(
-            df_instromende_all,
-            df_mbo,
-            df_dipl_mbo,
-            code,
-            code_col,
-            inst_col,
-        )
-        if peer_rend:
-            peers_rendement[peer_naam] = peer_rend
-            peer_rend_lists.append(peer_rend)
-    return peers_rendement, peer_rend_lists
+    for naam in sorted(_mbo_peernamen(ctx, code_naam, eigen)):
+        p_instroom, _ = _mbo_eerstejaars(instroom, naam)
+        p_dipl = _mbo_dipl_per_jaar(dipl, _INSTELLING, naam) if dipl is not None else {}
+        if rend := _mbo_peer_rendement(p_instroom, p_dipl):
+            peers_rendement[naam] = rend
+    return peers_rendement
 
 
 def _rendement_mbo(instelling: str) -> dict | None:
@@ -1465,19 +1476,19 @@ def _rendement_mbo(instelling: str) -> dict | None:
         return None
 
     inst_col = "INSTELLINGSNAAM"
-    code_col = "INSTELLINGSCODE"
     rows = df_mbo[df_mbo[inst_col].str.lower() == instelling.lower()]
     if rows.empty:
         return None
 
     result: dict = {"instelling": instelling, "gevonden": True, "type": "mbo"}
     result["laatste_jaar"] = int(rows["JAAR"].max())
-    self_code = str(rows[code_col].iloc[0])
+    code_naam = _mbo_code_naam(df_mbo)
+    eigen = str(rows[inst_col].iloc[0])
 
-    # instroom
+    # instroom, over alle codes van de instelling (#923)
     instroom_per_jaar: dict[int, int] = {}
     try:
-        instroom_per_jaar, _ = _mbo_eerstejaars_from_df(_load_instromende_mbo_historisch(), self_code)
+        instroom_per_jaar, _ = _mbo_eerstejaars(_mbo_instroom(_load_instromende_mbo_historisch(), code_naam), eigen)
     except Exception as e:
         _niet_beschikbaar(e, "rendement-mbo: instroom per jaar niet beschikbaar", onderdeel=_ONDERDEEL_INSTROOM)
 
@@ -1490,8 +1501,8 @@ def _rendement_mbo(instelling: str) -> dict | None:
 
     # benchmark & peers
     ctx = _build_regio_context(instelling, "mbo")
-    peers_rendement, peer_rend_lists = _mbo_peers_rendement(ctx, df_mbo, df_dipl_mbo, inst_col, code_col)
-    result["benchmark_rendement"] = _benchmark_from_peer_rendements(peer_rend_lists)
+    peers_rendement = _mbo_peers_rendement(ctx, df_dipl_mbo, code_naam, eigen)
+    result["benchmark_rendement"] = _benchmark_from_peer_rendements(list(peers_rendement.values()))
     result["peers_rendement"] = peers_rendement
     return result
 

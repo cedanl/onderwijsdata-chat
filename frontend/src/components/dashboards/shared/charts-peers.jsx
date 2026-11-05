@@ -49,6 +49,10 @@ export function PeersTable({ data, instelling, dark }) {
 
   if (rows.length < 2) return null
   rows.sort((a, b) => b.val - a.val)
+  // Peers zonder één waarde boven 0 tellen niet mee in het gemiddelde, maar horen wel bij de regio (#925).
+  for (const naam of data.benchmark.geen_gegevens?.ingeschrevenen ?? []) {
+    rows.push({ naam, val: null, groei: null, eigen: false })
+  }
 
   const groeiHeader = commonStart != null ? `Groei (${commonStart}–${lastJaar})` : 'Groei'
 
@@ -75,12 +79,12 @@ export function PeersTable({ data, instelling, dark }) {
                 borderBottom: '1px solid var(--gray-100)',
                 background: row.eigen ? 'var(--blue-50)' : 'transparent',
               }}>
-                <td style={{ padding: '9px 16px', color: 'var(--muted-text)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
+                <td style={{ padding: '9px 16px', color: 'var(--muted-text)', fontWeight: row.eigen ? 700 : 400 }}>{row.val == null ? '—' : i + 1}</td>
                 <td style={{ padding: '9px 16px', color: row.eigen ? 'var(--accent-text)' : 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
                   {row.naam}{row.eigen ? ' ★' : ''}
                 </td>
                 <td style={{ padding: '9px 16px', textAlign: 'right', color: 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
-                  {fmt(row.val)}
+                  {row.val == null ? 'geen gegevens' : fmt(row.val)}
                 </td>
                 <td style={{ padding: '9px 16px', textAlign: 'right', fontWeight: row.eigen ? 700 : 400, color: row.groei == null ? 'var(--muted-text)' : oordeelKleur(row.groei >= 0 ? 'goed' : 'slecht', dark) }}>
                   {row.groei == null ? '—' : `${row.groei >= 0 ? '+' : ''}${row.groei}%`}

@@ -42,10 +42,22 @@ MBO = {
     "00GT": "Albeda",
     "25LP": "Zadkine",
     "23JA": "Grafisch Lyceum R'dam",
+    # Curio heeft twee instellingscodes (#923); de regiovergelijking van Curio loopt over de provincie Noord-Brabant,
+    # met BBO de Schalm als peer die elk jaar 0 of een onderdrukte cel heeft (#925).
+    "21CY": "Curio",
+    "25LX": "Curio",
+    "04FO": "Koning Willem I College",
+    "24ZW": "BBO de Schalm",
+    "25LJ": "Ter AA",
+    "25LV": "SG De Rooi Pannen",
+    "25LZ": "Yonder",
+    "25MB": "Summa College",
+    "30BC": "SiNTLUCAS",
 }
 # De grote mbo-bestanden (instroom en diploma's per opleiding) alleen voor de mbo-instellingen
-# waarvan de tests het dashboard openen, met hun regiobuur: anders worden de fixtures megabytes.
-MBO_DASHBOARD = {"27GZ", "00GT", "25LP"}
+# waarvan de tests het dashboard openen, met hun regiobuur: anders worden de fixtures megabytes. Van de peers van Curio
+# alleen BBO de Schalm (geen gegevens) en SiNTLUCAS (wel), voor #923 en #925.
+MBO_DASHBOARD = {"27GZ", "00GT", "25LP", "21CY", "25LX", "24ZW", "30BC"}
 
 # (dataset, resource) → (kolom met de instellingscode, de codes die blijven); None houdt het hele bestand.
 ALLE = set(HO) | set(MBO)
@@ -65,6 +77,7 @@ BESTANDEN: dict[tuple[str, int], tuple[str, set[str]] | None] = {
     ("instromende-mbo-studenten", 3): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 5): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 7): ("INSTELLINGSCODE", MBO_DASHBOARD),
+    ("instromende-mbo-studenten", 9): ("INSTELLINGSCODE", MBO_DASHBOARD),
     # Het opleidingsaanbod per onderwijslocatie (#744): alleen de locaties in Doetinchem en Lochem, de twee plaatsen van
     # Graafschap College (24ZZ, Doetinchem) en Zone.college (31JC, Lochem, met 22 opleidingen in Doetinchem).
     ("mbo_opleidingsaanbod", 0): ("PLAATSNAAM", {"Doetinchem", "Lochem"}),
