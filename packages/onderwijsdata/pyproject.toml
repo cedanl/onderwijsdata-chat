@@ -13,8 +13,8 @@ analyse = ["pandas", "matplotlib"]
 catalogus = ["anthropic>=0.87.0"]
 
 [project.urls]
-Homepage = "https://cedanl.github.io/cbs-onderwijsdata"
-Repository = "https://github.com/cedanl/cbs-onderwijsdata"
+Homepage = "https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/"
+Repository = "https://github.com/cedanl/onderwijsdata-chat"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/onderwijsdata"]

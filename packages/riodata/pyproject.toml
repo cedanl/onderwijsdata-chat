@@ -23,8 +23,8 @@ duo = [
 ]
 
 [project.urls]
-Homepage = "https://cedanl.github.io/rio-onderwijsdata"
-Repository = "https://github.com/cedanl/rio-onderwijsdata"
+Homepage = "https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/"
+Repository = "https://github.com/cedanl/onderwijsdata-chat"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/riodata"]

@@ -34,8 +34,8 @@ export default function DataSourcesModal({ onClose }) {
             </thead>
             <tbody>
               {[
-                ['CBS', withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'cedanl.github.io/cbs-onderwijsdata', 'https://cedanl.github.io/cbs-onderwijsdata'],
-                ['RIO', `Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} resources)` : ''}`, 'cedanl.github.io/rio-onderwijsdata', 'https://cedanl.github.io/rio-onderwijsdata'],
+                ['CBS', withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'catalogus/cbs', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/'],
+                ['RIO', `Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} resources)` : ''}`, 'catalogus/rio', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/'],
                 ['DUO', withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
               ].map(([bron, inhoud, catalogus, href]) => (
                 <tr key={bron}>
