@@ -3,6 +3,7 @@ import { SECTOR_LABELS, darkColors, horizontalBarOpts, sectorKleuren, tellingAs 
 import { ChartCard } from './shell'
 import { OndergrensCategorieen } from './ondergrens'
 import { Grafiek } from './grafiek'
+import { schooljaarLabel } from '../../../schooljaar'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
@@ -119,16 +120,18 @@ export function SectorTrendChart({ data, dark }) {
 }
 
 // Ingeschrevenen per DUO-hoofdgroep: TOTAAL MBO telt wie ingeschreven staat, nieuw of niet; geen eerstejaars en geen
-// gediplomeerden (domeinregel mbo-instroom-totaal-mbo, #899). Het bestand is een ander dan dat van het totaal.
-export function HoofdgroepenChart({ perHoofdgroep, onderdrukt, dark }) {
+// gediplomeerden (domeinregel mbo-instroom-totaal-mbo, #899). Het bestand is een ander dan dat van het totaal. Het jaar
+// staat niet in het bestand: het payload geeft het mee (#934).
+export function HoofdgroepenChart({ perHoofdgroep, jaar, onderdrukt, dark }) {
   if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
   const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
   const h = Math.max(160, entries.length * 36)
   const kleuren = sectorKleuren(entries.map(([k]) => k))
+  const inJaar = jaar ? ` in ${schooljaarLabel(jaar)}` : ''
   return (
     <ChartCard
       title="Ingeschrevenen per hoofdgroep"
-      subtitle="Mbo-studenten ingeschreven op 1 oktober per DUO-hoofdgroep, laatste jaar (DUO instromende-mbo-studenten, TOTAAL MBO). Geen eerstejaars: nieuw of niet. Een ander DUO-bestand dan het totaal ingeschrevenen, dus de som wijkt daarvan af."
+      subtitle={`Mbo-studenten per DUO-hoofdgroep${inJaar}, ingeschreven op 1 oktober (DUO instromende-mbo-studenten, TOTAAL MBO). Geen eerstejaars: nieuw of niet. Een ander DUO-bestand dan het totaal ingeschrevenen, dus de som wijkt daarvan af.`}
     >
       <Grafiek
         soort="bar"

@@ -63,6 +63,13 @@ describe('HoofdgroepenChart (#899)', () => {
     expect(data.datasets[0].label).toBe('Ingeschrevenen')
     expect(data.labels).toEqual(['Zorg en welzijn', 'Entree'])
   })
+
+  it('noemt het schooljaar van het hoofdgroep-bestand, niet "laatste jaar" (#934)', () => {
+    const el = render(createElement(HoofdgroepenChart, { perHoofdgroep: { Entree: 300 }, jaar: 2025, dark: false }))
+
+    expect(el.textContent).toContain('2025/26')
+    expect(el.textContent).not.toMatch(/laatste jaar/i)
+  })
 })
 
 describe('ontbrekende waarden blijven een gat (#902)', () => {

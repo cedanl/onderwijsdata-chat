@@ -100,7 +100,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Sectoren" subtitle="Verdeling en trend per onderdeel" />
         <SectorTrendChart data={sectorTrendData} dark={c.dark} />
         <LeerwegenChart data={leerwegenData} dark={c.dark} />
-        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} onderdrukt={od.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
+        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} jaar={data?.ingeschrevenen_per_hoofdgroep_jaar} onderdrukt={od.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
         <OndergrensNoot reeksen={sectorNoot} />
 
         {/* ── Gender & diversiteit ── */}
