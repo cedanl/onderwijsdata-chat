@@ -2,14 +2,434 @@
 
 Alle wijzigingen die voor gebruikers of beheerders van belang zijn. Formaat naar
 [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versienummers volgen de git-tags;
-de laatste tag is 2.5.3. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.5.0 beschrijven de
-GitHub-releases; 2.5.1 (een tag zonder release) en 2.5.2 (een herstelrelease) staan niet apart: wat erin zat, staat onder 2.5.3; wat sinds 1.8.6 is veranderd staat nog onder "Niet uitgebracht" en krijgt bij de volgende release een
-eigen kop (`docs/promoten.md`).
+de laatste tag is 2.6.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.6.0 beschrijven de
+GitHub-releases; 2.5.1 (een tag zonder release) en 2.5.2 (een herstelrelease) staan niet apart: wat erin zat, staat
+onder 2.5.3.
 
 ## Niet uitgebracht
 
 Nieuwe items komen niet hier, maar als fragment in `changelog.d/`: één bestand per MR (`CONTRIBUTING.md`). Bij een
 release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de items die hier nog staan.
+
+## 2.6.0 — 2026-11-05
+
+### Opgelost
+
+- De Python-snippet onder een DUO-antwoord laadt weer hetzelfde bestand als de app. Gaf het model de resource als tekst-getal (`"4"`), dan schreef de snippet `duo.load("p04hogdipl", "4")`, en `riodata` zocht dan een bestandsnaam met "4" erin (`ResourceNietGevonden`, of stil een ander bestand). De snippet zet nu `duo.load("p04hogdipl", 4)`, met dezelfde omzetting als de app (#944).
+
+### Het databronnenvenster en de pakketbeschrijvingen verwijzen naar de actuele catalogussites (#943)
+- In het venster "Databronnen" wijzen de catalogus-links voor CBS en RIO nu naar de catalogussites in de repo van de chat
+  (`catalogus/cbs` en `catalogus/rio`) in plaats van naar de gearchiveerde pakketrepo's. De getallen in het venster
+  (CBS 130, DUO 15, RIO 8) blijven uit de catalogus van de app komen en veranderen niet.
+- De README's en de metadata van `onderwijsdata` en `riodata` noemen de installatie vanaf de chat-repo
+  (`#subdirectory=packages/<pakket>`) in plaats van de oude repo's.
+
+### MCP-SDK in het image, litellm naar 1.108 (#938)
+- `mcp` is een gewone dependency en geen extra meer: het runtime-image heeft hem nu, als voorwaarde voor `/mcp` in de
+  app (#706). `uv sync` installeert hem; `uv sync --extra mcp` bestaat niet meer. De Docker-build faalt als
+  `import mcp.types` niet lukt.
+- De cap `litellm<1.106` is weg; litellm gaat van 1.105.5 naar 1.108.0 (de update van Renovate-MR !801). De cap
+  bestond omdat litellm sinds 1.106 `mcp` importeert bij elke aanroep met tools, en `mcp` niet in het image zat.
+  Gemeten met de tools van de chat: de eerste aanroep met tools per proces duurt eenmalig ±0,65 s langer en het
+  geheugen ligt daarna ±10 MB hoger; volgende aanroepen zijn even snel. Geen threads, bestanden, netwerk of
+  omgevingsvariabelen erbij.
+- `tests/test_litellm_mcp.py` vervangt `tests/test_litellm_zonder_mcp.py`: `mcp` blijft een gewone dependency, een
+  aanroep met tools werkt in een vers proces, en de tools van de chat gaan niet via de MCP-gateway van litellm.
+- filelock blijft 3.32.7: ook litellm 1.108.0 eist `filelock<4.0`, dus de tien filelock-CVE's van #767 blijven open.
+  `mcp` en zijn afhankelijkheden brengen geen nieuwe CVE's mee.
+
+### Ingeschrevenen per hoofdgroep uit het laatste jaar, met het schooljaar erbij (#934)
+- De grafiek "Ingeschrevenen per hoofdgroep" in het mbo-dashboard toonde onder "laatste jaar" de cijfers van 2021: het
+  DUO-bestand heeft geen jaarkolom en het dashboard laadde het eerste bestand van de lijst. Nu komen de cijfers uit het
+  bestand van 2025, en de ondertitel noemt het schooljaar (2025/26); het payload geeft het jaar mee in
+  `ingeschrevenen_per_hoofdgroep_jaar`.
+- De bron-ping `duo-instroom-mbo` wordt ook rood zodra DUO een nieuwer hoofdgroep-bestand publiceert dan het dashboard
+  laadt.
+
+### De kaarten van de vaste dashboards tonen de echte bovenkant van het dashboard (#933)
+- De galerijkaarten van Mijn instelling, Arbeidsmarkt en Landelijk tonen geen getekend plaatje met verzonnen balken meer,
+  maar de bovenste sectie van het dashboard zelf, verkleind, met de cijfers van de gekozen instelling: de kerncijfers,
+  de match score per sector en de positie per sector. Grafieken en de landkaart blijven op het dashboard.
+- Alleen een kaart op of vlak bij het scherm haalt zijn cijfers op, zoals bij rapporten. Het dashboard gebruikt daarna
+  dezelfde lading: openen na de kaart gaat direct, zonder tweede aanvraag.
+- Laden, een onbekende instelling en een mislukte lading hebben elk een eigen staat in de kaart; een mislukte kaart laat
+  de andere kaarten staan. De uitsnede is alleen om naar te kijken: de kaart blijft één link met één naam.
+
+### De chat vraagt weer terug als een vraag niet helemaal duidelijk is (#932)
+- Een telling zonder afbakening ("Hoeveel studenten?") krijgt nu eerst een kaart uit code: landelijk (mbo, hbo en wo
+  samen) of per sector. Een instelling of regio noem je via "Anders formuleren". Een vraag met een instelling, sector,
+  gebied of eigennaam, of een profiel dat de instelling of sector al bepaalt, krijgt geen kaart.
+- Een vraag kan tot drie kaarten achter elkaar krijgen (was één): code leest de vraag samen met de gekozen opties, vraagt
+  een slot nooit twee keer, en het model mag er zelf nog een stellen als er een dimensie openstaat waar het antwoord
+  van afhangt. Daarna gaat het door met aannames die het noemt.
+
+### De genderbalken per sector noemen hun noemer en de onbekenden (#931)
+- Op Mijn instelling stond bij elke genderbalk "… % vrouw — 4.919 totaal", terwijl dat getal alleen vrouw en man telt.
+  Tilburg University heeft in Gedrag en maatschappij 4.927 ingeschrevenen, van wie 8 met geslacht onbekend. Het label
+  zegt nu "4.919 vrouw + man", met "(8 onbekend)" erachter als er onbekenden zijn. Het percentage was al juist.
+
+### Het ongebruikte eindpunt `/api/dashboard/instroom` is weg (#930)
+- Geen dashboard riep het aan, en wat het gaf (ingeschrevenen, sectoren, eerstejaars, gediplomeerden, geslacht) staat
+  ook in `/api/dashboard/regio`, dat de pagina Mijn instelling gebruikt. Elke aanroep laadde wel DUO-bestanden. Ook de
+  MCP-server en de rapporten gebruikten het niet.
+- Weg zijn de route, de lader (`load_dashboard`, `load_dashboard_ho`, `load_dashboard_mbo`), de nepdata in
+  `demo/record.mjs` en de regels in `docs/api.md` en `docs/dashboards.md`. De tests van die lader toetsen nu het
+  regiodashboard.
+
+### Een dashboard vindt een instelling ook op haar instellingscode (#929)
+- `/api/dashboard/regio?instelling=21CY` gaf "niet gevonden" zonder suggesties, terwijl `/api/instellingen` die code
+  zelf meelevert. De dashboards en het instellingsprofiel zoeken nu ook op de instellingscode (BRIN), hoofdletterongevoelig.
+  Een instelling met meer codes in DUO (Curio: 21CY en 25LX) is onder elke code te vinden; het register noemt ze alle
+  in `instellingscodes`.
+- Lijkt een onbekende naam op geen enkele instelling, dan zegt het dashboard waarop je kunt zoeken (naam, afkorting of
+  instellingscode) in plaats van alleen "niet gevonden".
+
+### De ratio diploma/inschrijving deelt één jaar, en de pagina zegt waarom de diplomareeks eerder stopt (#927)
+- Bij hbo en wo publiceert DUO de gediplomeerden een jaar later dan de ingeschrevenen. De vergelijking "Rendement
+  vergelijking" deelde daardoor de gediplomeerden van 2024 door de ingeschrevenen van 2025 (BUas 21 %, Tilburg University
+  37 %) zonder dat te zeggen. Nu delen de eigen instelling en elke peer hetzelfde jaar: het laatste jaar waarin de eigen
+  instelling beide heeft. Het onderschrift noemt dat jaar; een peer zonder cijfers in dat jaar valt weg en wordt genoemd.
+- De KPI "Ratio diploma/inschrijving" verscheen bij hbo en wo niet, omdat de jaren niet gelijk waren. Hij staat er nu,
+  met het jaar in het label en in de toelichting.
+- Loopt de diplomareeks achter op de ingeschrevenen, dan staat er bij de KPI Gediplomeerden en onder de grafiek
+  "Gediplomeerden per jaar": "DUO publiceert de gediplomeerden tot en met 2024; de ingeschrevenen lopen door tot 2025."
+  Het jaar komt uit de data.
+- De staafkleur van de vergelijking schakelde bij 70 % naar groen, een drempel zonder onderbouwing die bij hbo en wo nooit
+  gehaald werd. Die kleurcodering is weg: alleen de eigen instelling heeft een andere kleur.
+
+### Mbo-eerstejaars over alle codes van een instelling, tot en met 2025, en geen nul-peer in het regiogemiddelde (#923, #924, #925)
+- Een mbo-instelling met twee instellingscodes telt nu de eerstejaars van beide: Curio heeft in 2024 ten minste 4.940
+  eerstejaars (21CY en 25LX), niet 244 (alleen 21CY). Dat geldt ook voor de peers in de regiovergelijking (ingeschrevenen,
+  eerstejaars, gediplomeerden en rendement): een peer met twee codes is één peer met beide codes opgeteld.
+- De mbo-eerstejaars lopen tot en met 2025, zoals de ingeschrevenen. De bron-ping (`duo-instroom-mbo`) wordt rood
+  zodra DUO een jaar publiceert dat het dashboard nog niet laadt.
+- Een peer met in elk jaar 0 of een lege cel telt niet mee in het regiogemiddelde en het aantal peers, voor
+  ingeschrevenen, eerstejaars en gediplomeerden, ook bij hbo en wo. Hij staat in de concurrententabel met "geen
+  gegevens". Het provinciegemiddelde van Curio is daardoor 9.469,3 in plaats van 8.116,6.
+
+### De teksten in Mijn instelling volgen het niveau en zeggen waarom een jaar achterloopt (#918, #920)
+- De kaart van Mijn instelling noemt gender alleen bij hbo en wo (het mbo-dashboard heeft die sectie niet), de ondertitel
+  van Instroom ratio zegt alleen bij ho "(HO)", en bij een nationaal benchmark (wo) heet de totaal-KPI "Landelijk totaal"
+  zonder "instellingen in regio".
+- Loopt het laatste jaar van de Eerstejaars-KPI achter op dat van de ingeschrevenen (mbo: 2024/25 tegen 2025/26), dan staat
+  er een noot met dat schooljaar en de bron; lopen ze gelijk (hbo, wo), dan staat er niets. De Eerstejaars-KPI schrijft het
+  schooljaar nu als 2024/25, zoals chat en rapport.
+
+### De bronvermelding van Arbeidsmarkt en Landelijk klopt met wat het dashboard gebruikt (#917, #919)
+- Arbeidsmarkt noemt in de footer de DUO-gediplomeerden van het niveau van de instelling (`p04hogdipl` voor ho,
+  `gediplomeerde-mbo-studenten` voor mbo), met link, naast UWV en ROA. De badge ("DUO, UWV & ROA") is afgeleid van
+  dezelfde lijst, zodat die niet meer kan beloven wat de footer niet toont.
+- ROA heet overal "AIS tot 2030, incl. SIS 2024", zoals de DOI-pagina, zonder vaste editie (die komt uit de data, #904); de teksten bij de ROA-grafieken
+  gebruiken dezelfde aanduidingen in plaats van "AIS 2024" en "AIS2030" naast elkaar.
+- Landelijk noemt in de ondertitels de populatie: "alle HO-instellingen (hbo + wo)" bij ho (de ranking is de gemengde
+  top van hbo en wo) en "alle MBO-instellingen" bij mbo. De footer toont per niveau één bron, met dataset-ID in het
+  label, ook voor mbo (`mbo-studenten-per-instelling`).
+
+### De dashboardgalerij noemt de vaste dashboards geen "Voorbeeld" meer, en de titel en bronlinks zijn toegankelijker (#916, #921)
+- De drie vaste dashboards dragen op hun kaart het label "Vast dashboard" in plaats van "Voorbeeld": de cijfers zijn live
+  DUO-, UWV- en ROA-data, en "Voorbeeld" deed nep vermoeden.
+- De titel van de galerij is een kop (`h1`) die de focus houdt, zodat een schermlezer er met de kopnavigatie naartoe springt.
+- De bronlinks onder een dashboard hebben een pijltje als zichtbare cue en een toegankelijke naam die zegt dat ze in een
+  nieuw tabblad openen.
+
+### Tests gaan niet meer stil het netwerk op (#915)
+- De CI-pytest haalde UWV Open Match live op in `test_dashboard_arbeidsmarktmatch` en faalde op runners zonder route
+  naar data.overheid.nl. De dashboardtests in `tests/test_instellingen.py` draaien nu op de fixture
+  `arbeidsmarkt_fixtures`: de bevroren ROA-snapshot van de gouden tests en een UWV-frame met elk beroepencluster in
+  elke provincie.
+- Uitgaand netwerk is dicht voor elke test zonder marker `live`, in de chattests en in de pakkettests: een DNS-vraag
+  of verbinding naar buiten faalt met de host erbij en "markeer de test als live of gebruik een fixture", ook als de
+  code de fout opving en terugviel. Localhost en Unix-sockets blijven open. `tests/test_netwerkblok.py` bewaakt het.
+- Met het blok aan vielen 33 tests op die stil DUO, CBS, UWV, ROA of RIO ophaalden: alle op fixtures of mocks gezet,
+  geen enkele als `live` gemarkeerd. Het instellingsregister staat in unittests standaard leeg en vers klaar
+  (`geen_registerdownload`); welke test het eerder live downloadde, hing af van de volgorde.
+
+### Nulmeting vóór de overgang naar onderwijsbronnen: opgeslagen ID-vormen als fixture, eval met de bron per vraag (#909)
+- Nieuwe fixture `tests/fixtures/bron_id_vormen.json`: welke tool-namen, dataset-ID's, DUO-bestanden, store-keys en
+  snippetregels in de opgeslagen recepten, gesprekken en rapporten van test en playground staan, met aantallen en alleen
+  publieke ID's. `tests/test_bron_id_vormen.py` haalt elke vorm door de herleiding van nu (`bron_id`, `cbs_bron_id`,
+  de scopegrens, de DUO-bestandskeuze, `bron_van` en het herladen van recepten op de bevroren bronnen van de gouden
+  tests). Dat is het referentiepunt voor #910 en #912.
+- `eval:bronwaarheid` legt per vraag de tools en de bron vast (`tools` en `bronnen` per run in
+  `eval_results/runs.jsonl`): tool, `dataset_id`, `resource` of `maat` per aanroep. Zo is een latere run per vraag
+  tegen de nulmeting te leggen, niet alleen op geslaagd of niet.
+- De eval-runner wacht op de berichtlimiet (30 verzoeken per 10 minuten per account) en de inloglimiet (5 per minuut)
+  van de app, in plaats van te falen. De run van 04-11 op test (pipeline 792771) faalde vanaf de tiende minuut op elke
+  vraag, eerst met "Te veel verzoeken in korte tijd" en daarna, na een mislukte test, met een lege token.
+
+### Kies bij Genereer rapport welke vragen met data in het rapport komen (#908)
+- Bij "Genereer rapport" staat boven het veld met de onderzoeksvraag een checklist van de vragen met data uit het
+  gesprek: per vraag de vraag zelf (ingekort) en de bron van de data. Alles staat standaard aan, dus de gewone weg blijft
+  één klik. Zet een zijsprong of een verkeerde dataset uit en het rapport rust alleen op de rest.
+- Wat je uitzet komt nergens terug: niet in de figuren en tabellen, de bronnen, de definities of de dataversie, en het
+  telt ook niet mee als bewijs voor een getal of percentage in het rapport. Het veld met de onderzoeksvraag blijft van
+  jou; de app past het niet aan op je keuze.
+- Bouwt een vraag voort op de data van een vraag die je uitzet, dan staat dat erbij. De bron van die data blijft dan
+  vermeld, want het rapport rust erop.
+- Alles uitzetten kan niet: de melding zegt dat het rapport minstens één vraag met data nodig heeft.
+- Gesprekken van vóór de opslag van het bewijs per antwoord (#875), en gesprekken met één vraag met data, tonen geen
+  checklist: daar rust het rapport op het hele gesprek, zoals voorheen. Een heropend gesprek toont dezelfde lijst als een
+  levend gesprek.
+- Op een telefoon (390 px) begint de checklist ingeklapt, zodat het veld in beeld blijft. De keuze wordt nergens
+  bewaard; ze gaat mee met het verzoek om het rapport.
+
+### Dashboardcode opgeruimd: lazy geladen, één legenda, geen instellingsnaam op WARNING (#907)
+- Een rapport openen laadt de dashboards en Chart.js niet meer mee: de rapportenroute ging van 106 kB naar 23 kB (gzip).
+- Een klik op de legenda zet een reeks bij de eerste klik aan of uit, ook bij de peers in "Diplomarendement over tijd"
+  die verborgen beginnen; die hadden er twee klikken voor nodig.
+- Het log noemt de gevraagde instelling op WARNING alleen nog als lengte en hash; de naam staat op DEBUG.
+- `docs/dashboards.md` beschrijft de drie dashboards, hun eindpunten, bronnen (DUO, UWV, ROA; geen CBS) en Chart.js.
+
+### De kaart in het dashboard Mijn instelling tekent weer, ook op een telefoon (#906)
+- De kaart met de instellingen in de regio bleef leeg op de legenda na: de basiskaart kwam van een externe server, en
+  het beveiligingsbeleid van de app houdt die tegen. De basiskaart zit nu in de app zelf.
+- Tekent de kaart toch niet, dan staan er een melding en een tabel met de instellingen. Ook bij een getekende kaart staan
+  de instellingen in een ingeklapte tabel onder de kaart.
+- Een instelling in een plaats waarvan de app de ligging niet kent, valt van de kaart; dat staat er nu onder, met de
+  naam. De punten staan op benaderde plaatscoördinaten, en dat staat erbij.
+- Op een telefoon kun je over de kaart en de grafieken heen scrollen, en de kaart wordt niet meer afgesneden.
+- In de grafieken hoef je niet meer precies op een punt te tikken: het dichtstbijzijnde punt toont zijn waarde.
+
+### De dashboards zijn toegankelijk zoals de chat (#905)
+- Elke grafiek in de dashboards heeft een tekstalternatief: een zin met titel, assen en per reeks de eerste en laatste
+  waarde, zoals de figuren in de chat. Onder elke grafiek staan de waarden als ingeklapte tabel ("Toon de waarden").
+- Kleuren halen de normen in licht en donker: staven en lijnen 3:1 tegen de achtergrond, tekst 4,5:1. De dashboards
+  hebben één palet, en een sector houdt in elke grafiek dezelfde kleur. De lichtgrijze staven van concurrenten, de
+  lichtrode staven voor een daling en de groene trendpijlen waren te licht.
+- Kleine tekst is minstens 12,5 px, ook in de grafieken (labels, legenda's, assen) en de badges.
+- Tabellen zijn met het toetsenbord te verschuiven, hebben een onderschrift en kolomkoppen; de kopjes lopen van de titel
+  naar de secties en de grafieken zonder sprong. De laadweergave meldt zich als status, en de grafieken animeren niet
+  als je systeem minder beweging vraagt.
+- De knop om een sectorgrafiek in procenten te tonen heet nu "Toon als %", zegt of hij aan staat en is groter.
+- De inhoud van een dashboard heet voor een schermlezer "Dashboardinhoud", niet "Rapportinhoud".
+
+### Landelijk zegt wat het telt, groei heeft één basis en het regiogemiddelde zijn aantal (#903)
+- Het landelijke dashboard zegt nu dat "landelijk" de som van het DUO-bestand per instelling is, met onderdrukte cellen
+  als ondergrens, en dat de chat het landelijke aantal uit een CBS-tabel geeft (85354NED voor het mbo, 85423NED voor het
+  ho), dat ervan kan afwijken. Het dashboard rangschikt instellingen en rekent aandelen per sector, wat CBS niet kent;
+  daarom blijft het de DUO-som. De API geeft dit in `landelijk`.
+- Een test legt de verbinding met de vaste maten van de chat vast: voor een mbo-instelling geven dashboard en
+  `get_maat` hetzelfde aantal; voor een ho-instelling wijken ze alleen af in jaren die het dashboard als ondergrens meldt
+  (het dashboard en de chat lezen een ander DUO-bestand, dat andere cellen onderdrukt).
+- Groei op Mijn instelling heeft één regel: vanaf hetzelfde startjaar voor alle instellingen tot het laatste jaar, in de
+  lijngrafieken, de groeiranking en de tabel concurrenten. Het startjaar staat in de kop ("Groei ingeschrevenen
+  2022–2025", "% verandering t.o.v. 2022"). Eerder nam elke lijn haar eigen eerste jaar en de ranking per instelling
+  haar eerste tot laatste jaar, zodat één instelling op één pagina twee groeicijfers had.
+- Het regiogemiddelde noemt het aantal instellingen waarover het in dat jaar gemiddeld is (`benchmark.n_per_jaar`);
+  `n_instellingen` telt de peers met data in het laatste jaar, niet alle instellingen van de regio in het register.
+
+### De dashboards houden een onderdrukte of ontbrekende cel gescheiden van 0 (#902)
+- Een totaal, gemiddelde of regiototaal waarin een onderdrukte DUO-cel valt (DUO publiceert kleine aantallen niet),
+  zegt nu "ten minste": in de kerncijfers van Mijn instelling, in de landelijke ranking en in een noot onder de
+  kerncijfers per reeks, met de jaren. De API geeft per reeks het aantal lege cellen per jaar in `onderdrukt`, ook voor
+  het regiogemiddelde (`benchmark.onderdrukt`).
+- Een jaar of sector zonder waarde is een gat in de grafiek, geen val naar 0: in de sectortrend, de leerweggrafiek, de
+  eigen sectoren op het landelijke dashboard en het aandeel vrouw. Een jaar met alleen onderdrukte cellen krijgt geen
+  waarde meer in plaats van 0. Een pseudocohort zonder diplomajaar heeft `null`, geen 0.
+- Een positie landelijk waarin een onderdrukte cel meetelt, heet "indicatief"; een sector zonder eigen ingeschrevenen
+  krijgt geen positie en wordt genoemd (`positie_weggelaten`).
+- Wat een grafiek of tabel weglaat, staat eronder: de sectoren zonder gediplomeerden in "Gediplomeerden vs. vacatures"
+  (nu aflopend op gediplomeerden), de sectoren zonder waarde in "Marktaandeel per sector" en de pseudocohorten met meer
+  gediplomeerden dan instroom of zonder diplomajaar.
+- Het regio- en het instroomdashboard rekenen hun reeksen met dezelfde functies (`_ho_kern`, `_mbo_kern`), en het
+  landelijke dashboard rekent ho en mbo met één functie (`_nationaal_cijfers`).
+
+### Een dashboard zegt het als een bron niet laadde, biedt een nieuwe poging en toont geen verouderde data meer (#901)
+- Ligt DUO eruit, dan meldt een dashboard dat de DUO-data nu niet beschikbaar is, met "Opnieuw proberen". Eerder las je
+  "'X' niet gevonden in DUO-data … Pas de naam aan", alsof de instelling niet bestond. Een netwerk- of serverfout geeft
+  ook een gewone zin met een nieuwe poging, niet meer "API 500" of "Failed to fetch".
+- Een onderdeel dat niet laadde (de kaart, de sectorkamers, eerstejaars, gediplomeerden, de vacatures van UWV, de
+  cijfers van ROA) staat bovenaan het dashboard met de reden, in plaats van stil weg te vallen.
+- Op het arbeidsmarktdashboard en bij het diplomarendement van mijn instelling staat een laadvlak zolang die gegevens
+  binnenkomen, en een melding met een nieuwe poging als ze niet kwamen. "Geen vacaturegegevens beschikbaar" staat er
+  alleen nog als er echt geen vacatures zijn.
+- Bij een onbekende naam noemt het dashboard de vijf namen die erop lijken, niet de eerste namen van het alfabet.
+- De DUO-, UWV- en ROA-data van de dashboards en de adressen van de instellingen worden na 24 uur opnieuw opgehaald,
+  zoals de rest van de app (#864, #873); eerder bleven ze tot een herstart van de server staan. Een mislukte of
+  onvolledige lading wordt niet meer bewaard: de volgende poging haalt opnieuw op.
+- Het laden van een dashboard heeft een tijdsgrens (90 s) en een limiet op wat er tegelijk laadt, zoals de chat
+  (`DASHBOARD_TIMEOUT_S`, `MAX_DASHBOARD_LOADS`, `DASHBOARD_QUEUE_TIMEOUT_S`). Vragen meer dashboards tegelijk om
+  dezelfde DUO-bestanden, dan worden die één keer opgehaald.
+
+### De mbo-cijfers in de dashboards heten wat ze tellen (#899)
+- "Studenten per SBB-sectorkamer" in Mijn instelling heet nu "Ingeschrevenen per hoofdgroep". Het getal is `TOTAAL MBO`
+  uit DUO's instromende mbo-studenten: ingeschrevenen, nieuw of niet (domeinregel `mbo-instroom-totaal-mbo`). De
+  ondertitel noemde het eerstejaars, en het zijn DUO-hoofdgroepen, geen SBB-sectorkamers. Het veld heet
+  `ingeschrevenen_per_hoofdgroep` (was `sectorkamers`).
+- De arbeidsmarktmatch van een mbo-instelling zet nu gediplomeerden per hoofdgroep tegenover de vacatures, gemiddeld
+  over de laatste drie diplomajaren, zoals bij het ho. Tot nu toe stonden er ingeschrevenen in het veld
+  `gediplomeerden_per_sector`, in de testdata drie tot vier keer zoveel als de gediplomeerden.
+- De leerwegverdeling van het regiodashboard telt Extraneus mee, net als het instroomdashboard: de leerwegen tellen nu
+  in beide op tot het totaal ingeschrevenen. De grafiek "Leerweg-verdeling over tijd" toont Extraneus als vierde laag.
+
+### Volledige categorienamen en een waarde die niet meer scheef in een smalle staaf staat (#895)
+- Het CBS kapt zelf de naam van veel categorieën af op circa 40 tekens ("04 Recht, administratie, handel en za…").
+  De app zet nu de volledige naam terug uit de omschrijving die het CBS erbij geeft, in grafieken, tabellen en
+  `get_cbs_dimension`. Een naam die niet bij de omschrijving past, blijft zoals het CBS hem geeft.
+- In een staafgrafiek blijft een naam tot 60 tekens voluit; een langere naam wordt op een woordgrens afgekapt, met de
+  volledige naam en de waarde in de hover. Twee namen die daardoor gelijk zouden worden, blijven voluit.
+- Een korte staaf toont zijn waarde horizontaal, in de staaf als hij past en anders erachter, niet meer gedraaid.
+
+### Een staafgrafiek van een ranglijst staat op waarde en tekent geen lege categorie (#894)
+- Bij "welke sector is het grootst" staat de grootste staaf nu bovenaan (of links), niet meer in de volgorde van de
+  CBS-codes. Een categorie met waarde 0 of zonder waarde krijgt geen lege rij; de uitkomst van de grafiektool noemt
+  welke categorieën zijn weggelaten, en ze staan wel in de data en de CSV-export.
+- Categorieën met een eigen volgorde houden die: een tijdas, schooljaren, leeftijdsgroepen en getallen. Gegroepeerde
+  staven (meerdere reeksen) blijven zoals ze waren.
+
+### De rapporttitel noemt het schooljaar en is geen afgebroken opdracht (#893)
+- De titel van een rapport is nog steeds de vraag van de gebruiker, maar een opdracht als "Maak een grafiek van" valt
+  eraf, "in het meest recente schooljaar" wordt het schooljaar uit de data ("… per sector in 2025/26"), en een vraag
+  zonder jaar krijgt het schooljaar of de periode van de figuren erachter ("(2020/21–2024/25)"). Een lange vraag wordt
+  nog steeds op een woordgrens afgekapt, maar de periode blijft staan. Bevat de vraag persoonsgegevens, dan blijft de
+  vaste titel.
+
+### CBS-tools: `sector` naast `selectie` en de dimensienaam uit dataset_details (#891, #892)
+- `get_cbs_data` neemt een `sector` op het hoogste niveau over in de selectie, zoals het model hem soms meegeeft. Staat
+  hij ook in `selectie`, dan wint die. Eerder gaf dat een TypeError, een kale foutmelding en na drie toolfouten een
+  geblokkeerde tool, zonder getal.
+- Een argument dat een tool niet kent, geeft nu een melding met de naam van het argument, waar het hoort (bijvoorbeeld
+  `periode` hoort binnen `selectie`) en welke argumenten wel mogen, in plaats van "faalde (TypeError)". De waarde komt
+  niet in de melding.
+- `get_cbs_dimension` kent de dimensienaam zoals `dataset_details` hem toont ("Geboorteland (ouders)") en vertaalt hem
+  naar de API-naam (`GeboortelandOuders`). Dat scheelt een toolstap en een model-beurt per vraag over zo'n tabel.
+
+### Versie en installatieregel van de bronpakketten kloppen weer, zonder git-installatie (#888)
+- Een snippet noemt in zijn kop de pakketversie, de appversie en de commit waaruit de app is gebouwd, en de
+  installatieregel haalt de pakketten uit een subdirectory van de publieke GitHub-spiegel op die commit:
+  `pip install "riodata @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/riodata"`.
+  Sinds #885 viel de kop terug op `pip install "riodata==0.7.0"`, en dat is niet installeerbaar: de pakketten staan niet
+  op PyPI. Kent de omgeving haar commit niet (lokaal), dan zegt de kop dat en installeert de regel de nieuwste versie.
+  Snippets van vóór de verhuizing blijven installeren zolang de oude pakketrepo's bestaan.
+- `/version` noemt bij `onderwijsdata` en `riodata` weer een `commit`: de volledige chat-commit waaruit het pakket komt
+  (`null` zonder build-arg). `commit` bovenaan blijft de korte vorm. De docker-build geeft daarvoor de volledige
+  `CI_COMMIT_SHA` mee als `GIT_COMMIT`; de image-tag in de chart (`CI_COMMIT_SHORT_SHA`) verandert niet.
+
+### De geplande taken van de bronpakketten draaien in GitLab, en de catalogussites staan op de site van de chat (#887)
+- De GitHub Actions van de oude pakketrepo's zijn GitLab-jobs met een eigen schema: `cbs:laatste-update` (wekelijks
+  `_laatste_update` per CBS-tabel, met de hele keten tot en met de pakkettests), `catalogus:site` (dagelijks de
+  catalogussites opnieuw uit de catalogus en de voorbeelden), `cbs:discovery` (nieuwe CBS-tabellen) en
+  `rio:broncontrole` (DUO CKAN en de RIO-spec tegen de catalogus). Een geplande pipeline bouwt en rolt niets uit.
+- Wat de Actions op `main` pushten, komt nu als MR van een `bot/`-branch met auto-merge (`scripts/pakketbot.py`): de
+  wijziging doorloopt de volle pipeline en de goedkeuring. Een bevinding komt in één open issue per controle, dat
+  alleen een notitie krijgt als de stand verandert, in plaats van elke week een nieuw issue.
+- Het token staat in de protected, masked CI-variabele `PAKKETBOT_TOKEN`; zonder die variabele faalt de job meteen met
+  een melding die zegt wat er moet gebeuren (`docs/operatie.md`, "Bronpakketten bijhouden").
+- De catalogussites staan op <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
+  `/catalogus/rio/`; de links in README en docs wijzen daarheen. De oude sites verwijzen door na #889.
+- De oude workflows in `packages/*/.github/` (die GitHub in de monorepo nooit uitvoerde) zijn weg; hun tests staan nu
+  in `tests/test_pakketjobs.py`. De RIO-site is opnieuw geëxporteerd: dezelfde gegevens, alleen een andere volgorde van
+  de velden, zodat de eerste geplande run geen MR opent die alleen die volgorde wijzigt.
+
+### De pakkettests draaien in CI en een test bewaakt de grens tussen pakket en chat (#886)
+- De CI-job `pytest` draait nu ook de eigen tests van `onderwijsdata` en `riodata` (`packages/*/tests`), elk pakket in
+  zijn eigen map en vóór de chattests. Tests met netwerk staan achter `RIODATA_LIVE=1`, zoals in de pakketrepo's, en
+  slaan in CI over. Een rode pakkettest blokkeert de MR en de Docker-build net als een rode chattest.
+- Nieuwe test `tests/test_importgrens.py`: niets onder `packages/` importeert de chat (`tools`, `agent`, `core`,
+  `routes`, `persistence`, …), de twee pakketten importeren elkaar niet (nu ook niet), en de chat importeert alleen de
+  publieke API van de pakketten (geen pad met underscore). Een opzettelijke overtreding maakt de job rood, met bestand
+  en regel in de melding.
+- Ruff en ty slaan `packages/` bewust over (248 ruff-bevindingen, 93 bestanden die anders zouden worden opgemaakt, 93
+  ty-diagnostics); de reden en de route om dat per pakket op te ruimen staan in `CONTRIBUTING.md`. `Agents.md` noemt
+  waar broncode hoort: bronlogica in `packages/`, beleid in `tools/`.
+
+### Bronpakketten onderwijsdata en riodata staan in deze repo als uv-workspace (#885)
+- De pakketten `onderwijsdata` (v0.2.2) en `riodata` (0.7.0) staan nu onder `packages/`, met hun git-geschiedenis, als
+  leden van een uv-workspace. De chat installeert ze niet meer van GitHub maar uit dezelfde commit als de app; `uv.lock`
+  en de Docker-build hebben geen git of netwerktoegang tot de pakketrepo's meer nodig. Er verandert niets aan de
+  antwoorden: dezelfde pakketcode, dezelfde catalogus (CBS-catalogusrevisie `076d42ee7c5ec9b8`, 268 tabellen).
+- De Docker-build kopieert `packages/` vóór `uv sync --no-editable`; de catalogusdata (±14 MB) zit in de `.venv` van het
+  image; de venv is even groot (507 MB) en bevat dezelfde pakketbestanden. `git` verdwijnt uit de bouwstap.
+- `/version` noemt bij `onderwijsdata` en `riodata` geen `commit` meer (de pakketten komen uit de app-commit; `commit`
+  bovenaan blijft). `catalogusrevisie` en `aantal` blijven. Wat /version en de installatieregel in snippets daarna
+  per pakket noemen, volgt in #888.
+- Ruff, ty en de dekking van de chat slaan `packages/` over (de pakketten hadden als losse repo's geen lint of
+  typecontrole); hun eigen tests (263 en 277) slagen in de workspace en komen in CI met #886. Na deze wijziging moet
+  elke lokale `.venv` opnieuw `uv sync` draaien.
+
+### Vo-doorstroomtabel vindbaar bij vmbo, havo en vwo (#882)
+- Bij een doorstroomvraag met trefwoorden als "doorstroom vmbo mbo" of "havo doorstroom vervolgonderwijs" vindt de chat
+  nu de CBS-tabel met de doorstroom uit het vo (`85566NED`): vmbo, havo en vwo tellen voor een vo-contextbron als het
+  vo. Een tabel over vo en mbo samen en een vraag zonder doorstroom veranderen niet.
+
+### Inspectieoordelen van vo-scholen als vo-context bij een doorstroomvraag (#881)
+- Een nieuwe tool, `get_inspectieoordeel_vo`, geeft de oordelen van de Onderwijsinspectie per afdeling (vmbo, havo, vwo,
+  pro) van de vo-scholen in één gemeente, uit het maandelijkse peilbestand per school (po/so/vo, CC0 1.0), met een
+  telling per oordeel en de peildatum. Plaats en schoolnaam komen uit DUO's adressen van vo-vestigingen.
+- Alleen bij een vraag over doorstroom naar vervolgonderwijs die zelf het vo noemt ("Hoe beoordeelt de inspectie de
+  havo/vwo-afdelingen van de scholen waar onze eerstejaars hbo vandaan komen in Utrecht?"). Anders weigert de tool met
+  een vaste tekst: bij een mbo-vraag, een hbo-vraag zonder vo-niveau, een losse vo-vraag en buiten de chat. Een vraag
+  over één vo-school krijgt nog steeds het vaste vo-antwoord.
+- Po- en (v)so-rijen staan wel in het bestand, maar nooit in het resultaat. Het etiket "vo-context voor
+  vervolgonderwijs" staat in het resultaat, de bronregel en de Bronnen.
+- Het oordeel geldt per afdeling op een vestiging, niet per school of bestuur. "Geen eindoordeel" (69% van de
+  vo-afdelingen op 1 november 2026) is geen onvoldoende. Een grote gemeente wordt afgekapt op 25 vestigingen; de
+  telling telt alle.
+- `get_inspectieoordeel` (mbo) blijft zoals het was. `bron:ping` meet ook het po-so-vo-bestand.
+
+### Een heropend gesprek geeft hetzelfde rapport als het levende gesprek (#875)
+- Het rapport op een heropend of herverbonden gesprek kent weer waar de data van elk antwoord vandaan kwam, de
+  berekeningen (KPI en eigen analyses) en de kaarten die in het gesprek stonden. Voorheen stond bij zo'n gesprek in de
+  rapportprompt "onbekend (niet vastgelegd in dit gesprek)" en ontbraken de berekeningen en kaarten.
+- De server bewaart daarvoor per afgerond antwoord een rij in de nieuwe tabel `beurtbewijs` (ADR-009): de herkomst van de
+  data, het rekenbewijs en de kaartkolommen, onder een hash van de antwoordtekst. Niet de vraag, het antwoord of de
+  rijen van een kaart. De rij wordt geschreven zodra de browser het gesprek opslaat; bij heropenen of herverbinden
+  vóór die opslag staat ze nog in het geheugen van de server.
+- Een antwoord waarvan de tekst onderweg veranderde, een gestopte beurt en een opslag die met 409 wordt geweigerd
+  krijgen geen rij. Gesprekken van vóór deze wijziging heropenen zoals voorheen.
+- De rijen gaan weg met het gesprek (verwijderen en opschonen; een rij zonder gesprek na 90 dagen) en met "Verwijder al
+  mijn gegevens", en staan in de export (`beurtbewijs`). De privacytekst en `docs/privacy.md` noemen de nieuwe soort.
+- Een rij met een kaart en een berekening is ongeveer 1 kB. De bovengrens volgt uit het rekenbewijs (hoogstens de
+  laatste 30 uitkomsten, elk hoogstens 12.000 tekens).
+
+### `MODELAANROEP` telt ook de aanroepen die de tijdsgrens afbrak (#800)
+- Een modelaanroep die na de harde grens van de run (`RUN_TIMEOUT_S` plus de uitloop) of van het rapport
+  (`GENEREER_TIMEOUT_S`) werd afgebroken, logde `uitkomst=ok`: de afbraak (`CancelledError`) viel buiten de foutafhandeling.
+  Juist de vastzittende aanroepen ontbraken zo in de meting voor `LITELLM_REQUEST_TIMEOUT`.
+- Zo'n aanroep logt nu `uitkomst=afgebroken_runlimiet`, met in `totaal` de duur tot de afbraak. Een annulering van buitenaf
+  (gesloten WebSocket, reset, ander gesprek) logt `uitkomst=geannuleerd`. De annulering gaat daarna gewoon door, en elke
+  aanroep houdt precies één regel.
+- `LITELLM_REQUEST_TIMEOUT` blijft 1200 s; de waarde volgt na de hermeting.
+
+### Een regiovergelijking van mbo-instellingen noemt de nevenlocaties (#744)
+- Een regionaal roc dat alleen een nevenlocatie in de regio heeft, viel weg uit een regiovergelijking: adressen en
+  studentaantallen bestaan bij DUO alleen per instelling, met de plaats van de hoofdvestiging. Zone.college (hoofdvestiging
+  Lochem) biedt 22 opleidingen aan in Doetinchem en kwam daardoor niet voor in een vergelijking van instellingen in
+  Doetinchem. Zone.college is geen vestiging van het Graafschap College.
+- De definitie van `PROVINCIE INSTELLING`, het instellingsprofiel van een mbo-instelling en de systeemprompt zeggen nu dat het
+  adres de hoofdvestiging is, dat `mbo_opleidingsaanbod` de plaats per onderwijslocatie kent (`PLAATSNAAM`), en dat het
+  antwoord moet melden dat studentaantallen per instelling gelden en niet per locatie.
+- Nog niet gebouwd: de instellingen met een locatie in de regio koppelen aan hun studentaantallen. Het aanbod kent geen
+  BRIN; die koppeling hoort bij het BRIN-register (#728).
+
+### Fusies van instellingen: "opgegaan in" bij een oude naam en een vaste regel bij een reeks (#728)
+- Een oude naam of BRIN gaf "niet gevonden": "Friesland College" of `25LG` zegt nu "Regionaal Opleidingen Centrum
+  Friesland College (25LG) is per 1 augustus 2023 opgegaan in Firda (08PG) (volledige overgang)". Helicon Opleidingen
+  meldt de gedeeltelijke overgang naar Yuverta. "Regio College" gaf zonder melding het overzicht van Talland; nu staat
+  erbij dat het roc (25RA) per 1 augustus 2024 in Talland College opging. De zin komt uit code en staat ook onder het
+  antwoord. `get_rio_instelling` neemt ook een BRIN-code aan.
+- DUO rekent een meerjarige reeks per instelling om naar de huidige code: Firda telt in 2021 en 2022 ook Friesland
+  College mee. Valt een fusie binnen de reeks, dan krijgt het Telling-blok de regel "DUO telt de jaren vóór de fusie
+  (datum) bij de huidige instelling (voorgangers: …)". In de reeksen 2021–2025 geldt dat voor Vonk, KW1C, Firda,
+  Drenthe College Terra, Talland en Landstede. De voorgangers komen uit RIO met een dagcache; een storing geeft geen
+  regel en breekt het antwoord niet. De bron-ping `rio-fusies` bewaakt de zes.
+- Een peildatum in het verleden las de RIO-relaties van vandaag: "Friesland College" op 2022-10-01 vond een bestuur
+  "zonder mbo-instelling". `get_rio_instelling` leest relaties en erkenningen nu op de peildatum.
+- `riodata` heeft `opvolgers(brin, peildatum)` en `voorgangers(brin, sinds)` langs `OVERGANG_VOLLEDIG` en
+  `OVERGANG_GEDEELTELIJK`. Het DUO-register "Basisgegevens instellingen" komt er niet bij: RIO heeft bij mbo, hbo en wo
+  dezelfde fusiehistorie.
+  Ze werken ook met een bestuursnummer: besturen fuseren langs dezelfde relaties (Stichting Regio College, 40864, in
+  Stichting Talland College, 40877, per 1 januari 2024).
+
+### De homepage toont een tekst die bij je functie past (#103)
+- De homepage had één tekst. Nu zijn er twee: een voor IR-specialisten (koppelen, reproduceren, zelf analyseren) en een voor
+  bestuurders en directeuren (snel antwoord, onderbouwd, één versie van de cijfers). De gekozen functie in Instellingen bepaalt welke.
+- Nieuw in Instellingen: de functie **IR-specialist**. Die gaat, net als de andere functies, als gebruikersrol mee naar het model.
+- Wie geen functie koos, of Beleidsmedewerker, Onderzoeker, Docent of Anders, ziet de IR-tekst.
+
+### Nieuw welkomstscherm bij de eerste keer inloggen (#103)
+- Het welkomstscherm heet nu "Welkom onderwijsprofessional". De uitleg vraagt waar je werkt en wat je doet, en zegt dat de
+  voorbeeldvragen daarop worden afgestemd. Dat je het later via je gebruikersnaam kunt aanpassen, blijft staan.
 
 ## 2.5.3 — 2026-11-03
 
