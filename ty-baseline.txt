@@ -15,7 +15,6 @@ scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `choice
 tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None) -> CoroutineType[Any, Any, None]`
 tests/test_config_provider_keys.py: warning[invalid-argument-type] Argument to function `get_required_api_key_env_var` is incorrect: Expected `str`, found `None`
 tests/test_controle_melding.py: error[unresolved-attribute] Object of type `str` has no attribute `melding`
-tests/test_dashboard_uwv.py: error[not-subscriptable] Cannot subscript object of type `None` with no `__getitem__` method
 tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `RealDictCursor` on type `ModuleType`
 tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `extras` on type `ModuleType`
 tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[dict[Unknown, Unknown]]`, found `str | list[str] | Unknown`
