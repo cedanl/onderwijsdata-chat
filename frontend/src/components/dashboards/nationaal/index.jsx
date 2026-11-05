@@ -5,6 +5,7 @@ import {
   SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren, buildSectorTrendData,
   DashboardSources, bronnenVan, bronBadge, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
+import { jaarLabel } from '../../../schooljaar'
 
 const sectorNaam = s => SECTOR_LABELS[s] || s
 
@@ -57,9 +58,9 @@ export function LandelijkDefinitie({ landelijk }) {
   )
 }
 
-// {sector: {jaar: n}} als reeksen voor de ondergrensnoot.
-function sectorReeksen(perSector) {
-  return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt }))
+// {sector: {jaar: n}} als reeksen voor de ondergrensnoot; de jaren zijn die van de ingeschrevenen.
+function sectorReeksen(perSector, soort) {
+  return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt, soort }))
 }
 
 function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
@@ -130,8 +131,8 @@ export function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
 
 // De eigen sectoren als lijnen; de reeksen bouwt buildSectorTrendData van Mijn instelling, hier zonder vlakvulling.
 // Een eigen naam: SectorTrendChart in shared/ is de gestapelde grafiek van Mijn instelling (#907).
-export function buildEigenSectorenTrendData(eigenSectoren) {
-  const vlakken = buildSectorTrendData(eigenSectoren)
+export function buildEigenSectorenTrendData(eigenSectoren, soort) {
+  const vlakken = buildSectorTrendData(eigenSectoren, soort)
   if (!vlakken) return null
   return {
     ...vlakken,
@@ -139,8 +140,8 @@ export function buildEigenSectorenTrendData(eigenSectoren) {
   }
 }
 
-function EigenSectorenTrendChart({ eigenSectoren, dark }) {
-  const chartData = useMemo(() => buildEigenSectorenTrendData(eigenSectoren), [eigenSectoren])
+function EigenSectorenTrendChart({ eigenSectoren, soort, dark }) {
+  const chartData = useMemo(() => buildEigenSectorenTrendData(eigenSectoren, soort), [eigenSectoren, soort])
 
   if (!chartData) return null
   const { tick, grid, label } = darkColors(dark)
@@ -163,7 +164,7 @@ function EigenSectorenTrendChart({ eigenSectoren, dark }) {
 }
 
 // Een eigen naam: MarktaandeelChart in shared/ is de marktpositie per instelling in de regio (#907).
-function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, dark }) {
+function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, soort, dark }) {
   const uitkomst = useMemo(
     () => buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk),
     [eigenSectoren, sectorenLandelijk],
@@ -171,16 +172,17 @@ function MarktaandeelPerSectorChart({ eigenSectoren, sectorenLandelijk, dark }) 
   const chartData = uitkomst?.data
   if (!chartData) return null
   const baseOpts = horizontalBarOpts(dark, '%')
+  const jaar = jaarLabel(uitkomst.jaar, soort)
   return (
-    <ChartCard title="Marktaandeel per sector" subtitle="Percentage van landelijk totaal (laatste jaar)">
+    <ChartCard title="Marktaandeel per sector" subtitle={`Percentage van landelijk totaal in ${jaar}`}>
       <Grafiek soort="bar" categorie="Sector" hoogte={Math.max(160, chartData.labels.length * 36)} options={{
           ...baseOpts,
           scales: {
             ...baseOpts.scales,
-            x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${v}%` } },
+            x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${fmt(v)}%` } },
           },
         }} data={chartData} />
-      <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${uitkomst.jaar}`} />
+      <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${jaar}`} />
     </ChartCard>
   )
 }
@@ -205,14 +207,14 @@ export function InlineDashboardNationaal({ instelling }) {
         <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
 
         <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
-        <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} dark={dark} />
+        <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} soort={data?.perioden?.ingeschrevenen} dark={dark} />
         <OndergrensNoot reeksen={[
-          ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
-          ...sectorReeksen(data?.onderdrukt?.eigen_sectoren).map(r => ({ ...r, label: `Eigen ${r.label}` })),
+          ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
+          ...sectorReeksen(data?.onderdrukt?.eigen_sectoren, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Eigen ${r.label}` })),
         ]} />
 
         <SectionHeader title="Trend" subtitle="Ingeschrevenen per sector over tijd" />
-        <EigenSectorenTrendChart eigenSectoren={data?.eigen_sectoren} dark={dark} />
+        <EigenSectorenTrendChart eigenSectoren={data?.eigen_sectoren} soort={data?.perioden?.ingeschrevenen} dark={dark} />
 
         <SectionHeader title="Ranking" subtitle="Top instellingen naar totaal ingeschrevenen" />
         <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} populatie={populatie} dark={dark} />

@@ -15,6 +15,7 @@ import {
   RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
   perJaar, OndergrensNoot,
 } from '../shared/index'
+import { jaarLabel } from '../../../schooljaar'
 
 // Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; UWV en ROA staan op het arbeidsmarktdashboard.
 const REGIO_BRONNEN = ['DUO']
@@ -39,8 +40,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
     marktTrendData: buildMarktaandeelTrendData(data),
     groeiData: buildGroeiRankingData(data, instelling, c.dark),
     ratioData: buildInstroomRatioData(data),
-    sectorTrendData: buildSectorTrendData(data?.sectoren_trend),
-    leerwegenData: buildLeerwegenData(data?.leerwegen),
+    sectorTrendData: buildSectorTrendData(data?.sectoren_trend, data?.perioden?.ingeschrevenen),
+    leerwegenData: buildLeerwegenData(data?.leerwegen, data?.perioden?.ingeschrevenen),
     rendVergData: buildRendementVergelijkingData(data, instelling, c.dark),
     ratio: diplomaRatio(data),
   }), [data, instelling, c.dark])
@@ -51,13 +52,15 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   const od = data?.onderdrukt || {}
   const bmOd = bm.onderdrukt || {}
   // Loopt de diplomareeks achter op de ingeschrevenen (hbo/wo), dan zegt de pagina tot wanneer DUO publiceert (#927).
-  const diplNoot = gediplomeerdenNoot({ diplJaar: c.lastDipl?.[0], ingesJaar: c.lastInges?.[0] })
-  const vanaf = startjaar => (startjaar != null ? `% verandering t.o.v. ${startjaar}` : '% verandering')
+  const { perioden } = c
+  const diplNoot = gediplomeerdenNoot({ diplJaar: c.lastDipl?.[0], ingesJaar: c.lastInges?.[0], perioden })
+  // Het startjaar van de groei als schooljaar of diplomajaar, naar de reeks (#904).
+  const vanaf = sleutel => startjaar => (startjaar != null ? `% verandering t.o.v. ${jaarLabel(startjaar, perioden[sleutel])}` : '% verandering')
   const noot = (sleutel, label) => [
-    { label, onderdrukt: od[sleutel] },
-    { label: `${label} ${bmLabel.toLowerCase()}`, onderdrukt: bmOd[sleutel] },
+    { label, onderdrukt: od[sleutel], soort: perioden[sleutel] },
+    { label: `${label} ${bmLabel.toLowerCase()}`, onderdrukt: bmOd[sleutel], soort: perioden[sleutel] },
   ]
-  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: s, onderdrukt }))
+  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: s, onderdrukt, soort: perioden.ingeschrevenen }))
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -77,14 +80,14 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <PeersTable data={data} instelling={instelling} dark={c.dark} />
         <PeerLinesChart
           title="Ingeschrevenen per jaar"
-          subtitle={start => (c.hasPeers ? `${vanaf(start)} — ${instelling} (dik) vs. concurrenten in de regio` : `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`)}
+          subtitle={start => (c.hasPeers ? `${vanaf('ingeschrevenen')(start)} — ${instelling} (dik) vs. concurrenten in de regio` : `${vanaf('ingeschrevenen')(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`)}
           data={c.ingesLineData}
           opts={c.hasPeers ? c.peerOpts : c.indexOpts}
         />
         <InstroomKpis {...c} type={data?.type} />
         <OndergrensNoot reeksen={noot('eerstejaars', 'Eerstejaars')} />
-        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.ejLineData} indexOpts={c.indexOpts} />
-        <MarktaandeelChart data={marktData} jaar={data?.laatste_jaar} dark={c.dark} />
+        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf('eerstejaars')(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.ejLineData} indexOpts={c.indexOpts} />
+        <MarktaandeelChart data={marktData} dark={c.dark} />
         <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} />
         <GroeiRankingChart data={groeiData} dark={c.dark} />
         <InstroomRatioChart data={ratioData} dark={c.dark} type={data?.type} />
@@ -93,7 +96,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />
         <DiplomeringKpis {...c} ratio={ratio} noot={diplNoot} />
         <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
-        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
+        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf('gediplomeerden')(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
         <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>
@@ -104,7 +107,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Sectoren" subtitle="Verdeling en trend per onderdeel" />
         <SectorTrendChart data={sectorTrendData} dark={c.dark} />
         <LeerwegenChart data={leerwegenData} dark={c.dark} />
-        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} jaar={data?.ingeschrevenen_per_hoofdgroep_jaar} onderdrukt={od.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
+        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} jaar={data?.ingeschrevenen_per_hoofdgroep_jaar} soort={perioden.ingeschrevenen} onderdrukt={od.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
         <OndergrensNoot reeksen={sectorNoot} />
 
         {/* ── Gender & diversiteit ── */}

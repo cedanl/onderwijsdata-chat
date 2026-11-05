@@ -138,9 +138,9 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
     await inBeeld(MIJN)
     const tekst = miniatuur(MIJN).textContent
     expect(tekst).toContain('Kerncijfers')
-    expect(tekst).toContain('Ingeschrevenen 2025')
+    expect(tekst).toContain('Ingeschrevenen 2025/26')
     expect(tekst).toContain('35.058')
-    expect(tekst).toContain('Gediplomeerden 2024')
+    expect(tekst).toContain('Gediplomeerden diplomajaar 2024')
     expect(tekst).toContain('6.438')
   })
 

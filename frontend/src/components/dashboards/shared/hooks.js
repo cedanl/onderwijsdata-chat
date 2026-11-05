@@ -13,11 +13,6 @@ import {
 // Eén implementatie voor de hele app (#834); hier opnieuw geëxporteerd voor de dashboards.
 export { useDarkMode }
 
-export function fmt(n) {
-  if (n == null) return '—'
-  return Number(n).toLocaleString('nl-NL')
-}
-
 // ─── Data hooks ─────────────────────────────────────────────────────────────
 
 // Zo lang wacht een dashboard op de server (#901): ruim boven DASHBOARD_TIMEOUT_S (90 s), zodat de server eerst zijn
@@ -140,6 +135,8 @@ export function useRegioComputed(data, instelling) {
 
   return useMemo(() => {
     const bmColor = benchmarkColor(dark)
+    // Het soort jaar per reeks uit de payload (#904): schooljaar of diplomajaar.
+    const perioden = data?.perioden || {}
     const bm = data?.benchmark || {}
     const bmLabel = bm.label || 'Benchmark'
     const peers = bm.peers || {}
@@ -158,11 +155,11 @@ export function useRegioComputed(data, instelling) {
     const totaalGeslacht = vrouw + man
 
     const ingesLineData = hasPeers
-      ? buildPeerLinesData(data?.ingeschrevenen, peers.ingeschrevenen, instelling, CHART_COLORS[0], bmColor)
-      : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor)
+      ? buildPeerLinesData(data?.ingeschrevenen, peers.ingeschrevenen, instelling, CHART_COLORS[0], bmColor, perioden.ingeschrevenen)
+      : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor, perioden.ingeschrevenen)
 
     return {
-      dark, bmColor, bm, bmLabel, hasPeers,
+      dark, bmColor, bm, bmLabel, hasPeers, perioden,
       indexOpts: buildIndexChartOpts(dark),
       peerOpts: buildPeerLinesOpts(dark, instelling),
       ingesEntries,
@@ -176,11 +173,11 @@ export function useRegioComputed(data, instelling) {
       diplDelta: yearOverYearDelta(diplEntries),
       totaalRegio: totaalRegioEntry?.[1] ?? null,
       totaalRegioJaar: totaalRegioEntry?.[0] ?? data?.laatste_jaar,
-      pctVrouw: totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null,
+      pctVrouw: totaalGeslacht > 0 ? Math.round((vrouw / totaalGeslacht) * 1000) / 10 : null,
       vrouw, man,
       ingesLineData,
-      ejLineData: buildBenchmarkLineData(data?.eerstejaars, bm.eerstejaars, instelling, bmLabel, CHART_COLORS[2], bmColor),
-      diplLineData: buildBenchmarkLineData(data?.gediplomeerden, bm.gediplomeerden, instelling, bmLabel, CHART_COLORS[5], bmColor),
+      ejLineData: buildBenchmarkLineData(data?.eerstejaars, bm.eerstejaars, instelling, bmLabel, CHART_COLORS[2], bmColor, perioden.eerstejaars),
+      diplLineData: buildBenchmarkLineData(data?.gediplomeerden, bm.gediplomeerden, instelling, bmLabel, CHART_COLORS[5], bmColor, perioden.gediplomeerden),
     }
   }, [data, instelling, dark])
 }

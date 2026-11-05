@@ -1,4 +1,5 @@
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
+import { jaarLabel } from '../../../schooljaar'
 import { SectionHeader, fmt, Sparkline, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot, sortedEntries, perJaar, isOndergrens, TenMinste } from '../shared/index'
 
 // De kerncijfers bovenaan "Mijn instelling": de eigen instelling tegenover het gemiddelde van het benchmark. Een eigen
@@ -40,6 +41,7 @@ const iconGender = (color) => (
 export function Kerncijfers({ data, instelling, c }) {
   const bmLabel = c.bmLabel || 'Regio'
   const bm = c.bm || {}
+  const { perioden } = c
   // Onderdrukte cellen per reeks en jaar (#902): een getal daarover is "ten minste".
   const od = data?.onderdrukt || {}
   const bmOd = bm.onderdrukt || {}
@@ -59,7 +61,7 @@ export function Kerncijfers({ data, instelling, c }) {
       <div className="kpi-grid">
         {c.lastInges && (
           <SamenvattingTile
-            label={`Ingeschrevenen ${c.lastInges[0]}`}
+            label={`Ingeschrevenen ${jaarLabel(c.lastInges[0], perioden?.ingeschrevenen)}`}
             eigenWaarde={c.lastInges[1]}
             regioWaarde={bmInges ? Math.round(bmInges) : null}
             regioLabel={gemLabel('ingeschrevenen', bmIngesJaar)}
@@ -72,7 +74,7 @@ export function Kerncijfers({ data, instelling, c }) {
         )}
         {c.lastEj && (
           <SamenvattingTile
-            label={`Eerstejaars ${c.lastEj[0]}`}
+            label={`Eerstejaars ${jaarLabel(c.lastEj[0], perioden?.eerstejaars)}`}
             eigenWaarde={c.lastEj[1]}
             regioWaarde={bmEj ? Math.round(bmEj) : null}
             regioLabel={gemLabel('eerstejaars', bmEjJaar)}
@@ -81,12 +83,12 @@ export function Kerncijfers({ data, instelling, c }) {
             icon={iconChart(COLOR_EERSTEJAARS)}
             ondergrens={isOndergrens(od.eerstejaars, c.lastEj[0])}
             regioOndergrens={isOndergrens(bmOd.eerstejaars, bmEjJaar)}
-            noot={eerstejaarsNoot({ ejJaar: c.lastEj[0], ingesJaar: c.lastInges?.[0], type: data?.type })}
+            noot={eerstejaarsNoot({ ejJaar: c.lastEj[0], ingesJaar: c.lastInges?.[0], type: data?.type, perioden })}
           />
         )}
         {c.lastDipl && (
           <SamenvattingTile
-            label={`Gediplomeerden ${c.lastDipl[0]}`}
+            label={`Gediplomeerden ${jaarLabel(c.lastDipl[0], perioden?.gediplomeerden)}`}
             eigenWaarde={c.lastDipl[1]}
             regioWaarde={bmDipl ? Math.round(bmDipl) : null}
             regioLabel={gemLabel('gediplomeerden', bmDiplJaar)}
@@ -95,13 +97,13 @@ export function Kerncijfers({ data, instelling, c }) {
             icon={iconDiploma(COLOR_DIPLOM)}
             ondergrens={isOndergrens(od.gediplomeerden, c.lastDipl[0])}
             regioOndergrens={isOndergrens(bmOd.gediplomeerden, bmDiplJaar)}
-            noot={gediplomeerdenNoot({ diplJaar: c.lastDipl[0], ingesJaar: c.lastInges?.[0] })}
+            noot={gediplomeerdenNoot({ diplJaar: c.lastDipl[0], ingesJaar: c.lastInges?.[0], perioden })}
             nootId="diplomanoot"
           />
         )}
         {c.pctVrouw != null && (
           <SamenvattingTile
-            label={`Aandeel vrouw ${data?.laatste_jaar}`}
+            label={`Aandeel vrouw ${jaarLabel(data?.laatste_jaar, perioden?.ingeschrevenen)}`}
             eigenWaarde={c.pctVrouw}
             suffix="%"
             regioWaarde={null}

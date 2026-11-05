@@ -1,9 +1,11 @@
 import TabelScroll from '../../TabelScroll'
-import { fmt } from './hooks'
+import { fmt } from './getal'
 import { SectionHeader, ChartCard } from './shell'
 import { groeiStartjaar, groeiPct } from './chart-builders'
 import { Grafiek } from './grafiek'
 import { oordeelKleur } from './chart-opts'
+import { perJaar } from './ondergrens'
+import { jaarLabel } from '../../../schooljaar'
 
 // ─── Peer chart components ────────────────────────────────────────────────────
 
@@ -32,29 +34,33 @@ export function PeersTable({ data, instelling, dark }) {
   if (!data?.benchmark?.peers?.ingeschrevenen) return null
   const peers = data.benchmark.peers.ingeschrevenen
   const lastJaar = data.laatste_jaar
-  const jaarStr = String(lastJaar)
+  const jaar = j => jaarLabel(j, data.perioden?.ingeschrevenen)
 
   // De ene groeiregel van chart-builders (#903): hetzelfde startjaar als de lijnen en de groeiranking.
   const commonStart = groeiStartjaar([data.ingeschrevenen || {}, ...Object.values(peers)])
   const groei = dict => groeiPct(dict, commonStart, lastJaar)
 
+  // Eén jaar voor iedereen (#927, zoals de marktpositie): een peer zonder cijfers in het laatste jaar staat onderaan
+  // zonder getal, in plaats van stil met zijn eigen laatste jaar.
   const rows = []
-  const ownVal = data.ingeschrevenen?.[lastJaar] ?? data.ingeschrevenen?.[jaarStr]
+  const zonderJaar = []
+  const ownVal = perJaar(data.ingeschrevenen, lastJaar)
   if (ownVal) rows.push({ naam: instelling, val: ownVal, groei: groei(data.ingeschrevenen || {}), eigen: true })
 
   for (const [naam, jaarData] of Object.entries(peers)) {
-    const val = jaarData[lastJaar] ?? jaarData[jaarStr] ?? jaarData[Object.keys(jaarData).sort((a, b) => b - a)[0]]
+    const val = perJaar(jaarData, lastJaar)
     if (val) rows.push({ naam, val, groei: groei(jaarData), eigen: false })
+    else zonderJaar.push(naam)
   }
 
   if (rows.length < 2) return null
   rows.sort((a, b) => b.val - a.val)
   // Peers zonder één waarde boven 0 tellen niet mee in het gemiddelde, maar horen wel bij de regio (#925).
-  for (const naam of data.benchmark.geen_gegevens?.ingeschrevenen ?? []) {
+  for (const naam of new Set([...zonderJaar, ...(data.benchmark.geen_gegevens?.ingeschrevenen ?? [])])) {
     rows.push({ naam, val: null, groei: null, eigen: false })
   }
 
-  const groeiHeader = commonStart != null ? `Groei (${commonStart}–${lastJaar})` : 'Groei'
+  const groeiHeader = commonStart != null ? `Groei (${jaar(commonStart)}–${jaar(lastJaar)})` : 'Groei'
 
   return (
     <>
@@ -69,7 +75,7 @@ export function PeersTable({ data, instelling, dark }) {
             <tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--gray-200)' }}>
               <th scope="col" style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>#</th>
               <th scope="col" style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Instelling</th>
-              <th scope="col" style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Ingeschrevenen {lastJaar}</th>
+              <th scope="col" style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Ingeschrevenen {jaar(lastJaar)}</th>
               <th scope="col" style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>{groeiHeader}</th>
             </tr>
           </thead>
@@ -87,7 +93,7 @@ export function PeersTable({ data, instelling, dark }) {
                   {row.val == null ? 'geen gegevens' : fmt(row.val)}
                 </td>
                 <td style={{ padding: '9px 16px', textAlign: 'right', fontWeight: row.eigen ? 700 : 400, color: row.groei == null ? 'var(--muted-text)' : oordeelKleur(row.groei >= 0 ? 'goed' : 'slecht', dark) }}>
-                  {row.groei == null ? '—' : `${row.groei >= 0 ? '+' : ''}${row.groei}%`}
+                  {row.groei == null ? '—' : `${row.groei >= 0 ? '+' : ''}${fmt(row.groei)}%`}
                 </td>
               </tr>
             ))}

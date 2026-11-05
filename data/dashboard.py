@@ -15,6 +15,7 @@ from riodata import duo
 from core import actualiteit, brongebruik
 from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
+from tools import periode
 
 from . import arbeidsmarkt, bronblok
 from .instellingen import get_adres_lookup, resolve_alias
@@ -25,6 +26,17 @@ logger = logging.getLogger(__name__)
 _INSTROOM_MBO = "INSTROOM MBO"
 _BOL_VOLTIJD = "BOL voltijd"
 _BOL_DEELTIJD = "BOL deeltijd"
+
+# Welk soort jaar de reeksen van de dashboards hebben, voor hun labels (#904, #847). Ingeschrevenen en eerstejaars (ho
+# STUDIEJAAR, mbo JAAR) en de cohorten van het rendement (het jaar van de eerstejaars) zijn schooljaren: 2025 is
+# 2025/26. De gediplomeerden (ho DIPLOMAJAAR, mbo de DIP…-kolommen) hebben een diplomajaar: DUO legt niet vast of dat
+# een kalender- of studiejaar is, dus het blijft een jaartal (CH-41, tools/periode.GEEN_SCHOOLJAAR).
+PERIODEN = {
+    "ingeschrevenen": periode.jaarsoort("STUDIEJAAR"),
+    "eerstejaars": periode.jaarsoort("STUDIEJAAR"),
+    "cohorten": periode.jaarsoort("STUDIEJAAR"),
+    "gediplomeerden": periode.jaarsoort("DIPLOMAJAAR"),
+}
 
 
 # ─── Wat er niet laadde (#901) ───────────────────────────────────────────────
@@ -117,7 +129,8 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
 
     - Niet gevonden terwijl een hoofdbron uitviel: BronNietBeschikbaar, geen `gevonden: False` met "pas de naam aan".
     - Gevonden met gaten: `niet_beschikbaar` = [{onderdeel, bron, reden}], in de volgorde waarin ze uitvielen.
-    - Gevonden: `bronnen`, het bronblok van wat de lading gebruikte (#904, data/bronblok.py).
+    - Gevonden: `bronnen`, het bronblok van wat de lading gebruikte (#904, data/bronblok.py), en `perioden`, het
+      soort jaar per reeks (PERIODEN).
     """
 
     @functools.wraps(laad)
@@ -133,6 +146,7 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
             raise BronNietBeschikbaar
         if result.get("gevonden"):
             result["bronnen"] = bronblok.blok(gebruikt)
+            result["perioden"] = dict(PERIODEN)
         if gaten.onderdelen:
             result["niet_beschikbaar"] = [
                 {"onderdeel": o.naam, "bron": o.bron, "reden": r} for o, r in gaten.onderdelen.items()

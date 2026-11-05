@@ -1,6 +1,7 @@
 import TabelScroll from '../../TabelScroll'
 import { COLOR_EIGEN } from '../../../constants'
-import { fmt, useDarkMode } from './hooks'
+import { useDarkMode } from './hooks'
+import { fmt } from './getal'
 import { SectionHeader, ChartCard, ROA_AIS, ROA_SIS, roaPeilmoment } from './shell'
 import { Grafiek } from './grafiek'
 import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks } from './chart-opts'
@@ -47,13 +48,13 @@ export function RoaSection({ data, dark }) {
         display: true, position: 'top',
         labels: { color: label, boxWidth: 14 },
       },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } },
+      tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}%` } },
     },
     scales: {
       x: {
         suggestedMax,
         grid: { color: grid },
-        ticks: { color: tick, callback: v => `${v}%` },
+        ticks: { color: tick, callback: v => `${fmt(v)}%` },
       },
       y: { grid: { display: false }, ticks: categorieTicks(tick) },
     },

@@ -3,11 +3,13 @@ import { SECTOR_LABELS, darkColors, horizontalBarOpts, sectorKleuren, tellingAs 
 import { ChartCard } from './shell'
 import { OndergrensCategorieen } from './ondergrens'
 import { Grafiek } from './grafiek'
-import { schooljaarLabel } from '../../../schooljaar'
+import { asJaar, jaarLabel } from '../../../schooljaar'
+import { fmt } from './getal'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
-export function buildSectorTrendData(sectorenTrend) {
+// `soort`: het soort jaar van de ingeschrevenen uit de payload (#904); de as toont een schooljaar als 2025/26.
+export function buildSectorTrendData(sectorenTrend, soort) {
   if (!sectorenTrend || Object.keys(sectorenTrend).length === 0) return null
   const sectors = Object.keys(sectorenTrend)
   const allJaren = [...new Set(sectors.flatMap(s => Object.keys(sectorenTrend[s]).map(String)))]
@@ -15,7 +17,7 @@ export function buildSectorTrendData(sectorenTrend) {
   if (allJaren.length < 2) return null
   const kleuren = sectorKleuren(sectors)
   return {
-    labels: allJaren,
+    labels: allJaren.map(j => asJaar(j, soort)),
     datasets: sectors.map(sector => ({
       label: SECTOR_LABELS[sector] || sector,
       // Een jaar zonder waarde blijft een gat, geen val naar 0 (#902).
@@ -31,7 +33,7 @@ export function buildSectorTrendData(sectorenTrend) {
 // De vier leerwegen van mbo-studenten-per-instelling: samen het totaal ingeschrevenen, Extraneus inbegrepen (#899).
 export const LEERWEGEN_MBO = ['BBL', 'BOL voltijd', 'BOL deeltijd', 'Extraneus']
 
-export function buildLeerwegenData(leerwegen) {
+export function buildLeerwegenData(leerwegen, soort) {
   if (!leerwegen || Object.keys(leerwegen).length < 2) return null
   const jaren = Object.keys(leerwegen).sort((a, b) => a - b)
   const tracks = LEERWEGEN_MBO
@@ -40,7 +42,7 @@ export function buildLeerwegenData(leerwegen) {
   const hasBblBol = jaren.some(j => tracks.some(t => leerwegen[j]?.[t] > 0))
   if (!hasBblBol) return null
   return {
-    labels: jaren,
+    labels: jaren.map(j => asJaar(j, soort)),
     datasets: tracks.map(track => ({
       label: track,
       data: jaren.map(j => leerwegen[j]?.[track] ?? null),
@@ -79,14 +81,14 @@ function _stackedAreaOpts(dark, proportional = false) {
       tooltip: {
         mode: 'index',
         intersect: false,
-        ...(proportional ? { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } } : {}),
+        ...(proportional ? { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}%` } } : {}),
       },
     },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick }, stacked: true },
       y: tellingAs({
         grid: { color: grid },
-        ticks: { color: tick, ...(proportional ? { callback: v => `${v}%` } : {}) },
+        ticks: { color: tick, ...(proportional ? { callback: v => `${fmt(v)}%` } : {}) },
         stacked: true,
         ...(proportional ? { min: 0, max: 100 } : {}),
       }),
@@ -122,12 +124,12 @@ export function SectorTrendChart({ data, dark }) {
 // Ingeschrevenen per DUO-hoofdgroep: TOTAAL MBO telt wie ingeschreven staat, nieuw of niet; geen eerstejaars en geen
 // gediplomeerden (domeinregel mbo-instroom-totaal-mbo, #899). Het bestand is een ander dan dat van het totaal. Het jaar
 // staat niet in het bestand: het payload geeft het mee (#934).
-export function HoofdgroepenChart({ perHoofdgroep, jaar, onderdrukt, dark }) {
+export function HoofdgroepenChart({ perHoofdgroep, jaar, soort, onderdrukt, dark }) {
   if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
   const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
   const h = Math.max(160, entries.length * 36)
   const kleuren = sectorKleuren(entries.map(([k]) => k))
-  const inJaar = jaar ? ` in ${schooljaarLabel(jaar)}` : ''
+  const inJaar = jaar ? ` in ${jaarLabel(jaar, soort)}` : ''
   return (
     <ChartCard
       title="Ingeschrevenen per hoofdgroep"

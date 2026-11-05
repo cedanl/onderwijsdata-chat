@@ -3,6 +3,7 @@ import { COLOR_EIGEN } from '../../../constants'
 import { ChartCard } from './shell'
 import { Grafiek } from './grafiek'
 import { ratioJaar, ratioPercentage } from './diploma-ratio'
+import { jaarLabel } from '../../../schooljaar'
 
 // ─── Rendement vergelijking ───────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export function buildRendementVergelijkingData(data, instelling, dark) {
 
   return {
     jaar,
+    perioden: data.perioden,
     weggelaten,
     labels: entries.map(e => e.naam),
     datasets: [{
@@ -41,16 +43,20 @@ export function buildRendementVergelijkingData(data, instelling, dark) {
   }
 }
 
+// De teller is een diplomajaar, de noemer een schooljaar met hetzelfde jaartal: de ondertitel noemt beide (#904).
 export function RendementVergelijkingChart({ data, dark }) {
   if (!data) return null
-  const h = Math.max(200, data.labels.length * 34 + 40)
-  const zonder = data.weggelaten?.length ? ` Zonder cijfers over ${data.jaar}: ${data.weggelaten.join(', ')}.` : ''
+  const { jaar, perioden, weggelaten, ...barData } = data
+  const h = Math.max(200, barData.labels.length * 34 + 40)
+  const dipl = jaarLabel(jaar, perioden?.gediplomeerden)
+  const inges = jaarLabel(jaar, perioden?.ingeschrevenen)
+  const zonder = weggelaten?.length ? ` Zonder cijfers over ${dipl} en ${inges}: ${weggelaten.join(', ')}.` : ''
   return (
     <ChartCard
       title="Rendement vergelijking"
-      subtitle={`Gediplomeerden / ingeschrevenen van ${data.jaar} per instelling, het laatste jaar waarin beide bekend zijn — proxy, geen cohortanalyse.${zonder}`}
+      subtitle={`Gediplomeerden ${dipl} / ingeschrevenen ${inges} per instelling, het laatste jaar waarin beide bekend zijn — proxy, geen cohortanalyse.${zonder}`}
     >
-      <Grafiek soort="bar" data={data} options={horizontalBarOpts(dark, '%')} hoogte={h} categorie="Instelling" />
+      <Grafiek soort="bar" data={barData} options={horizontalBarOpts(dark, '%')} hoogte={h} categorie="Instelling" />
     </ChartCard>
   )
 }

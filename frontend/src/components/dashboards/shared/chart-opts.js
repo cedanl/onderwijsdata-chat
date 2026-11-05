@@ -1,5 +1,6 @@
 import { Chart as ChartJS } from 'chart.js'
 import { CHART_COLORS } from '../../../constants'
+import { fmt } from './getal'
 
 // ─── Chart options & constants ───────────────────────────────────────────────
 
@@ -9,7 +10,8 @@ import { CHART_COLORS } from '../../../constants'
 //   grafiek telt, waar je ook tikt. Het tikdoel is daarmee de hele grafiek, ruim boven de 40 px van HOVER_DISTANCE in
 //   de chat (#614). Chart.js luistert passief naar touch, dus een veeg over een grafiek scrolt de pagina;
 // - geen animatie bij prefers-reduced-motion (WCAG 2.3.3), en die keuze volgt een wijziging in het systeem;
-// - getallen op de assen en in de tooltips in Nederlandse notatie (10.000), zoals fmt() in de tegels.
+// - getallen op de assen en in de tooltips in Nederlandse notatie (10.000; 52,3): de locale voor de ticks zonder eigen
+//   callback, fmt() in elke callback (#904).
 // Een klik op de legenda zet een reeks aan of uit met de standaard van Chart.js; geen eigen onClick (#907): de zes
 // kopieën die er waren, lieten een reeks met `hidden: true` bij de eerste klik verborgen.
 export const FONT_GROOTTE = 13
@@ -70,7 +72,7 @@ export function buildIndexChartOpts(dark) {
         callbacks: {
           label: (ctx) => {
             const v = ctx.parsed.y
-            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
+            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${fmt(v)}%`
           },
         },
       },
@@ -79,7 +81,7 @@ export function buildIndexChartOpts(dark) {
       x: { grid: { display: false }, ticks: { color: tick } },
       y: {
         grid: { color: grid },
-        ticks: { color: tick, callback: (v) => `${v}%` },
+        ticks: { color: tick, callback: (v) => `${fmt(v)}%` },
         title: { display: true, text: '% verandering t.o.v. het startjaar', color: tick },
       },
     },
@@ -162,7 +164,7 @@ export function horizontalBarOpts(dark, tooltipSuffix = '') {
         display: false,
       },
       tooltip: {
-        callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('nl-NL')}${tooltipSuffix}` },
+        callbacks: { label: ctx => ` ${fmt(ctx.raw)}${tooltipSuffix}` },
       },
     },
     scales: {

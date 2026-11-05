@@ -30,6 +30,22 @@ GEEN_SCHOOLJAAR = {
 }
 
 
+SCHOOLJAAR = "schooljaar"
+
+
+def jaarsoort(kolom: str) -> str:
+    """Wat een jaar in deze DUO-jaarkolom is, als woord voor een label (#904).
+
+    'schooljaar' voor STUDIEJAAR en JAAR (peildatum 1 oktober: 2025 is 2025/26); voor een kolom uit GEEN_SCHOOLJAAR
+    de naam van die kolom ('diplomajaar'), want dat jaar blijft een jaartal (CH-41).
+    """
+    if kolom in GEEN_SCHOOLJAAR:
+        return kolom.lower()
+    if kolom in _DUO_PERIODEKOLOMMEN:
+        return SCHOOLJAAR
+    raise ValueError(f"onbekende jaarkolom: {kolom}")
+
+
 def jaarnoten(kolommen) -> list[str]:
     """Wat een antwoord moet zeggen over de jaarkolommen van deze data die geen schooljaar zijn."""
     return [noot for kolom, noot in GEEN_SCHOOLJAAR.items() if kolom in kolommen]

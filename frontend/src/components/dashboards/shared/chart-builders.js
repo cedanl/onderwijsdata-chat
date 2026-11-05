@@ -5,6 +5,7 @@ import {
 } from 'chart.js'
 import { SECTOR_LABELS, buildIndexChartOpts } from './chart-opts'
 import { CHART_COLORS } from '../../../constants'
+import { asJaar } from '../../../schooljaar'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend, Filler)
 
@@ -75,7 +76,9 @@ function _index(dict, labels, startjaar) {
   })
 }
 
-export function buildPeerLinesData(ownDict, peersDict, ownLabel, ownColor, peerColor) {
+// `soort`: het soort jaar van de reeks uit de payload (#904); de as toont een schooljaar als 2025/26. De berekening en
+// `startjaar` blijven bij de jaartallen.
+export function buildPeerLinesData(ownDict, peersDict, ownLabel, ownColor, peerColor, soort) {
   if (!ownDict) return null
   const allYears = new Set(Object.keys(ownDict).map(String))
   for (const d of Object.values(peersDict || {})) Object.keys(d).forEach(y => allYears.add(String(y)))
@@ -109,7 +112,7 @@ export function buildPeerLinesData(ownDict, peersDict, ownLabel, ownColor, peerC
     fill: false,
     pointHoverRadius: 6,
   })
-  return { labels, datasets, startjaar }
+  return { labels: labels.map(j => asJaar(j, soort)), datasets, startjaar }
 }
 
 export function buildPeerLinesOpts(dark, ownLabel) {
@@ -129,7 +132,7 @@ export function buildPeerLinesOpts(dark, ownLabel) {
   }
 }
 
-export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownColor, benchColor) {
+export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownColor, benchColor, soort) {
   if (!ownDict) return null
   const labels = Object.keys(ownDict).sort((a, b) => a - b).map(String)
   // Eigen instelling en benchmark t.o.v. hetzelfde startjaar (#903); eerder nam elke reeks haar eigen eerste jaar.
@@ -161,5 +164,5 @@ export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel,
       fill: false,
     })
   }
-  return { labels, datasets, startjaar }
+  return { labels: labels.map(j => asJaar(j, soort)), datasets, startjaar }
 }
