@@ -5,7 +5,7 @@ import {
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
-  DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData, WeggelatenNoot,
+  DashboardSources, bronnenArbeidsmarkt, bronBadge, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
 
@@ -111,11 +111,12 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
   const dark = useDarkMode()
   const gaten = gatenVan([matchData, { niet_beschikbaar: gatenVan([regioData], REGIO_BRONNEN) }])
   const allesOpnieuw = () => { opnieuw(); regio.opnieuw() }
+  const bronnen = bronnenArbeidsmarkt(matchData?.type)
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error} onOpnieuw={opnieuw}>
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron="DUO, UWV &amp; ROA" />
+        <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
         <MatchScoreSection matchScore={matchData?.match_score} dark={dark} />
@@ -136,7 +137,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
           <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} />
         </DeelLading>
 
-        <DashboardSources sources={BRONNEN_ARBEIDSMARKT} />
+        <DashboardSources sources={bronnen} />
       </div>
     </DashboardShell>
   )

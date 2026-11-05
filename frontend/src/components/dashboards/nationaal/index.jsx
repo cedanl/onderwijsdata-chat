@@ -3,7 +3,7 @@ import TabelScroll from '../../TabelScroll'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
   SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard, Grafiek, sectorKleuren,
-  DashboardSources, BRONNEN_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
+  DashboardSources, BRONNEN_NATIONAAL, POPULATIE_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
 
 const sectorNaam = s => SECTOR_LABELS[s] || s
@@ -62,12 +62,12 @@ function sectorReeksen(perSector) {
   return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt }))
 }
 
-function RankingTable({ alleInstellingen, instelling, dark }) {
+function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
   if (!alleInstellingen?.length) return null
   const eigenIdx = alleInstellingen.findIndex(i => i.naam.toLowerCase() === instelling.toLowerCase())
   const { label: tick } = darkColors(dark)
   return (
-    <ChartCard title="Nationale ranking" subtitle="Totaal ingeschrevenen — alle instellingen">
+    <ChartCard title="Nationale ranking" subtitle={`Totaal ingeschrevenen — ${populatie}`}>
       <TabelScroll label="Nationale ranking" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
         <caption className="sr-only">Nationale ranking naar totaal ingeschrevenen</caption>
         <thead>
@@ -201,6 +201,7 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
 export function InlineDashboardNationaal({ instelling }) {
   const { data, loading, error, opnieuw } = useNationaalDashboardData(instelling)
   const dark = useDarkMode()
+  const populatie = POPULATIE_NATIONAAL[data?.type] || 'alle instellingen'
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -212,7 +213,7 @@ export function InlineDashboardNationaal({ instelling }) {
         </div>
         <LandelijkDefinitie landelijk={data?.landelijk} />
 
-        <SectionHeader title="Positie per sector" subtitle="Ranking binnen alle instellingen per sector/leerweg" />
+        <SectionHeader title="Positie per sector" subtitle={`Ranking binnen ${populatie} per sector/leerweg`} />
         <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
 
         <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
@@ -226,9 +227,9 @@ export function InlineDashboardNationaal({ instelling }) {
         <SectorTrendChart eigenSectoren={data?.eigen_sectoren} dark={dark} />
 
         <SectionHeader title="Ranking" subtitle="Top instellingen naar totaal ingeschrevenen" />
-        <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} dark={dark} />
+        <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} populatie={populatie} dark={dark} />
 
-        <DashboardSources sources={BRONNEN_NATIONAAL} />
+        <DashboardSources sources={BRONNEN_NATIONAAL[data?.type] || []} />
       </div>
     </DashboardShell>
   )
