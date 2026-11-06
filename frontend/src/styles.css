@@ -1265,13 +1265,20 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .kpi-card {
   background: var(--white); border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm);
+  container-type: inline-size; min-width: 0;
 }
+/* Op een telefoon staan twee tegels van 163 px naast elkaar, met 113 px tekstruimte (#973): de inhoud stak tot 26 px
+   buiten .dashboard-content, dat daardoor zijwaarts scrolde. Daarom is de tegel een container, breekt de regel onder
+   het getal af (.kpi-trend), mag "ten minste" boven het getal staan en wijkt in een smalle tegel het decoratieve icoon
+   voor het label. */
+.kpi-ondergrens { display: inline-block; }
+@container (max-width: 150px) { .kpi-icon { display: none; } }
 .kpi-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .kpi-label { font-size: 12.5px; color: var(--gray-500); font-weight: 500; }
 .kpi-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
 .kpi-icon svg { width: 18px; height: 18px; }
 .kpi-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
-.kpi-trend { font-size: 12.5px; display: flex; align-items: center; gap: 4px; }
+.kpi-trend { font-size: 12.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 /* Tekst, dus 4,5:1 (#905): --green-500 en --red-500 haalden op wit 2,3:1 en 3,8:1. */
 .kpi-trend.up { color: #047857; }
 .kpi-trend.down { color: #B91C1C; }
