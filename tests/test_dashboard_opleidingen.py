@@ -81,7 +81,9 @@ def test_per_opleiding_en_vorm_de_kerncijfers_uit_het_pakket():
         assert ict[veld] == ict_pakket[veld], veld
     assert (ict["croho"], ict["graad"], ict["plaats"]) == (30020, "Bachelor", "Utrecht")
     assert (ict["nse_oordeel"], ict["nse_respondenten"], ict["nse_oordeel_landelijk"]) == (3.61, 120, 3.53)
-    assert (ict["studenten"], ict["eerstejaars"], ict["doorstroom_jaar2_pct"]) == (900, 250, 70.0)
+    assert ict["doorstroom_jaar2_pct"] == 70.0
+    # Aantallen studenten en eerstejaars: DUO is leidend, het dashboard toont ze niet (#878).
+    assert "studenten" not in ict and "eerstejaars" not in ict
 
 
 def test_op_naam_en_niet_op_een_cijfer():
@@ -149,7 +151,8 @@ def test_arbeidsmarkt_per_opleiding_landelijk_per_rubriek():
     markt = {r["opleiding"]: r for r in uit["arbeidsmarkt"]}
     assert list(markt) == ["ICT", "Verpleegkunde"]  # per opleiding, niet per vorm
     ict = markt["ICT"]
-    assert (ict["croho"], ict["soi_rubriek"], ict["aansluiting_studie_baan"]) == (30020, "informatica", "goede")
+    assert (ict["croho"], ict["soi_rubriek"], ict["roa_opleidingstype"]) == (30020, "informatica", "hbo - ict")
+    assert "aansluiting_studie_baan" not in ict  # uit ROA-AIS, niet uit SKDB (#878)
     assert (ict["salaris_mediaan_bruto_maand"], ict["werkloos_pct"], ict["baan_op_niveau_pct"]) == (3295, 2.5, 80.0)
     assert ict["reden_leeg"] is None
     assert markt["Verpleegkunde"]["salaris_mediaan_bruto_maand"] == 3100.5
@@ -168,7 +171,6 @@ def test_een_wo_bachelor_heeft_geen_arbeidsmarktcijfers_en_zegt_waarom():
 
     psy = next(r for r in uit["arbeidsmarkt"] if r["opleiding"] == "Psychologie")
     assert psy["salaris_mediaan_bruto_maand"] is None and psy["werkloos_pct"] is None
-    assert psy["aansluiting_studie_baan"] is None  # "(missing, …)" van LCSK is geen waarde
     assert psy["reden_leeg"] == opleidingen.GEEN_ARBEIDSMARKT_WO_BACHELOR
 
 
@@ -180,7 +182,8 @@ def test_de_uitleg_zegt_dat_het_landelijke_cijfers_per_rubriek_zijn():
     assert studiekeuze.DIPLOMARENDEMENT in uitleg["diplomarendement"]
     assert studiekeuze.DOORSTROOM_JAAR2 in uitleg["doorstroom"]
     assert "Nationale Studenten Enquête 2026" in uitleg["nse"] and "30" in uitleg["nse"]
-    assert "2025/26" in uitleg["aantallen"]
+    assert "2025/26" in uitleg["diplomarendement"] and "1cijferHO" in uitleg["diplomarendement"]
+    assert "DUO" in uitleg["aantallen"] and "onbekend" in uitleg["themas"]
     assert "geen 0" in uitleg["leeg"]
     assert "rangschikt" in uitleg["volgorde"]
 
@@ -282,11 +285,14 @@ def test_het_bronblok_noemt_versie_jaren_en_de_verplichte_zin_van_lcsk():
     (bron,) = uit["bronnen"]
     assert (bron["bron"], bron["dataset"]) == ("LCSK", "studiekeuzedatabase")
     assert bron["titel"] == "Studiekeuzedatabase (hbo en wo)"
-    assert bron["url"] == skdb.DOCUMENTATIE == "https://www.studiekeuze123.nl/studiekeuzedata"
+    assert bron["url"] == skdb.DOCUMENTATIE == "https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/"
     assert bron["editie"] == "26.6"
     assert bron["peilmoment"] == "versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26"
     herkomst = skdb.herkomst(*proefbestand.standaard()[:1], proefbestand.BESTAND)
-    assert bron["vermelding"] == studiekeuze.bronregel(herkomst)
+    assert bron["vermelding"] == studiekeuze.bronregel(
+        herkomst, skdb.jaren(skdb.lees(*proefbestand.standaard())), "studie"
+    )
+    assert "NSE 2026" in bron["vermelding"] and "CBS-microdata" in bron["vermelding"]
     assert skdb.VERPLICHTE_ZIN in bron["vermelding"]
     assert bron["voorlopig"] is False
     assert uit["jaren"] == {"nse": 2026, "1cijferho": 2025}

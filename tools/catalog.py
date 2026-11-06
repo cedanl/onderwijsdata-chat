@@ -862,11 +862,11 @@ def _buiten_profiel(query: str) -> bool:
     agent/po_vraag.py.
 
     "so" en "bo" beslissen niet: dat zijn ook Engels en namen. Een vraag over vervolgonderwijs met vo-context blijft
-    erbinnen (#877).
+    erbinnen (#877), en zo ook een toelatingsvraag over een ho-opleiding (#957).
     """
     if all(m.group().lower() in {"so", "bo"} for m in scopeprofiel.PO_SO_VO.finditer(query)):
         return False
-    return not (ho_markers.opent_vo_context(query) or ho_markers.HO_MBO_CONTEXT.search(query))
+    return not ho_markers.vervolgcontext(query)
 
 
 def _no_match(query: str, termen: list[str], zwak: list, geo_niveau: str | None) -> str:

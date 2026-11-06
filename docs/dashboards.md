@@ -15,7 +15,7 @@ op `true` staat (standaard uit in de code, #765; op test en playground staat hij
 | **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement`, `/api/dashboard/financien`, `/api/dashboard/personeel` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep, en diploma's na 3 jaar per eerstejaars; hbo en wo: een noot waarom daar geen rendement staat; de financiën van het bestuur; wo met `ENABLE_WO_PERSONEEL`: het personeel uit WOPI |
 | **Arbeidsmarkt** | `/api/dashboard/arbeidsmarktmatch`, `/api/dashboard/regio` | Gediplomeerden tegen vacatures per sector, de matchscore, ROA (schoolverlaters en prognoses per opleidingsniveau) en de vacatures in de provincie |
 | **Landelijk** | `/api/dashboard/nationaal` | Positie per sector, marktaandeel, trend van de eigen sectoren en de ranking van alle instellingen van hetzelfde type |
-| **Opleidingen** (alleen met de sleutel van LCSK) | `/api/dashboard/opleidingen` | Hbo en wo: per opleiding en vorm het NSE-oordeel, studenten, eerstejaars, doorstroom, diplomarendement en numerus fixus naast het landelijke cijfer van LCSK, de NSE-thema's, de arbeidsmarkt van de opleidingsrichting en de numerus-fixuslijst; zie [Opleidingen](#opleidingen-studiekeuzedatabase) |
+| **Opleidingen** (alleen met de sleutel van LCSK) | `/api/dashboard/opleidingen` | Hbo en wo: per opleiding en vorm het NSE-oordeel, doorstroom, diplomarendement en numerus fixus naast het landelijke cijfer van LCSK, de NSE-thema's, de arbeidsmarkt van de opleidingsrichting met het ROA-opleidingstype en de numerus-fixuslijst; zie [Opleidingen](#opleidingen-studiekeuzedatabase) |
 
 **Bronnen.** De dashboards rekenen met DUO (open onderwijsdata per instelling, en de financiële verantwoording per
 bestuur), UWV (vacatures per provincie, een momentopname van mei 2023), ROA (schoolverlaters en prognoses, landelijk per
@@ -92,8 +92,9 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   `unl:wopi`, bron `DUO` en `UNL`.
 - **LCSK** (Opleidingen): `editie` is het versienummer van de export (26.6), `peilmoment` versie, exportdatum, NSE-jaar
   en 1cijferHO-jaar ("versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26"), en `vermelding` de bronregel
-  van de chat met de zin die LCSK verplicht stelt. De footer toont die zin letterlijk, met de link naar
-  studiekeuze123.nl/studiekeuzedata.
+  van de chat (die van de weergave `studie`: NSE-jaar, studieverloop uit 1cijferHO en arbeidsmarkt uit CBS-microdata
+  en de NAE/HBO-monitor) met de zin die LCSK verplicht stelt. De footer toont die zin letterlijk, met de link naar
+  lcsk.nl/over-ons/studiekeuzedata-raadplegen.
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 
@@ -351,14 +352,18 @@ hieronder wat voor het dashboard geldt.
 
 **Wat het toont:**
 
-- **Opleidingen** (tabel): naam, CROHO, graad, vorm, plaats, studenten, eerstejaars, het NSE-oordeel met het aantal
+- **Opleidingen** (tabel): naam, CROHO, graad, vorm, plaats, het NSE-oordeel met het aantal
   respondenten, het landelijke NSE-oordeel, doorstroom naar jaar 2, diplomarendement, het landelijke rendement en
   numerus fixus (capaciteit van het nieuwste studiejaar). Landelijk is het cijfer dat LCSK berekent voor dezelfde
   landelijke studie in dezelfde vorm over alle instellingen (`studievormen`), geen gemiddelde van de rijen; is de
-  instelling de enige aanbieder (`aanbieders_landelijk` 1), dan staat dat erbij.
-- **NSE-thema's** per vorm, achter een uitklap: de tien thema's van `skdb.NSE_THEMAS`, met het aantal respondenten.
+  instelling de enige aanbieder (`aanbieders_landelijk` 1), dan staat dat erbij. Aantallen studenten en eerstejaars
+  staan er niet in: daarvoor is DUO leidend (afspraken #878), en die staan op Mijn instelling; de uitleg `aantallen`
+  zegt dat.
+- **NSE-thema's** per vorm, achter een uitklap: de tien thema's van `skdb.NSE_THEMAS`, met het aantal respondenten van
+  het algemeen oordeel. Het aantal per thema is onbekend; de uitleg `themas` zegt dat.
 - **Arbeidsmarkt van de opleidingsrichting**: per opleiding (CROHO-code) de SOI-rubriek, het mediane bruto
-  maandsalaris, het percentage werklozen, het percentage met een baan op niveau en de aansluiting studie-baan. Het
+  maandsalaris, het percentage werklozen, het percentage met een baan op niveau en het ROA-opleidingstype: de sleutel
+  naar de ROA-cijfers. De aansluiting studie-baan zelf staat er niet in, want die komt uit ROA-AIS (#878). Het
   zijn landelijke cijfers per rubriek van voltijdafgestudeerden (LCSK geeft ze alleen voor voltijd), niet over de eigen
   afgestudeerden van de instelling; de tabel zegt dat erbij. Een wo-bachelor heeft ze niet (ze staan bij de master) en
   krijgt die uitleg in de rij.
@@ -384,11 +389,12 @@ hieronder wat voor het dashboard geldt.
 - **Definities:** doorstroom jaar 2 is het aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat
   ingeschreven; diplomarendement het aandeel eerstejaars dat het diploma haalt binnen de nominale duur plus 1 jaar
   (voltijd en duaal) of plus 2 jaar (deeltijd). Het cohortjaar en de omvang van het cohort staan niet in de bron, dus
-  er is geen gemiddelde over de instelling. Studenten en eerstejaars komen uit 1cijferHO en kunnen afwijken van de
-  DUO-tellingen op Mijn instelling. De payload draagt deze teksten (`uitleg`), dezelfde definities als de chat.
-- **Bronvermelding:** het bronblok noemt versie, exportdatum, NSE-jaar en 1cijferHO-jaar, de link naar
-  studiekeuze123.nl/studiekeuzedata en de zin "Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
-  (art. 4); ook op een afdruk.
+  er is geen gemiddelde over de instelling. LCSK berekent beide uit 1cijferHO (niet openbaar). De payload draagt deze
+  teksten (`uitleg`), dezelfde definities als de chat.
+- **Bronvermelding:** het bronblok noemt versie, exportdatum, NSE-jaar en 1cijferHO-jaar en de herkomst van
+  studieverloop en arbeidsmarkt, de link naar lcsk.nl/over-ons/studiekeuzedata-raadplegen en de zin "Er is gebruik
+  gemaakt van de data van Landelijk Centrum Studiekeuze." (art. 4.1 en 4.2 van de leveringsvoorwaarden v25.1); ook op
+  een afdruk.
 
 **Payload** (`/api/dashboard/opleidingen`): `instelling`, `gevonden`, `type` (hbo, wo of mbo), `brin`, `melding` (mbo,
 of niet in de export), `jaren` (`nse`, `1cijferho`), `min_respondenten`, `themas` (veld en naam), `uitleg`,

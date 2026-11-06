@@ -8,8 +8,10 @@ zonder treffers leidde tot "geen geschikte DUO-bron", terwijl het bestand er was
 import json
 from unittest.mock import patch
 
+import pytest
+
 from tests.zoekuitkomst import envelop
-from tools import dispatch
+from tools import catalog, dispatch
 from tools.catalog import _rio_duo, _rio_duo_alles, dataset_counts, dataset_details, search_catalog
 
 _CBS = [{"_cbs_id": "a", "bron": "x"}, {"_cbs_id": "b", "bron": "y", "_archief": True}]
@@ -91,3 +93,16 @@ def test_een_dataset_buiten_scope_is_voor_de_chat_onzichtbaar():
         finally:
             _rio_duo_alles.cache_clear()
             _rio_duo.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Welk profiel heb ik met havo nodig voor Verpleegkunde?",
+        "Kan ik met een vwo-diploma naar de bachelor Psychologie?",
+    ],
+)
+def test_een_toelatingsvraag_over_een_ho_opleiding_is_niet_buiten_het_profiel(vraag):
+    """Dezelfde regel als de vaste scope-uitleg (ho_markers.vervolgcontext, #957): havo/vwo is hier de vooropleiding."""
+    assert catalog._buiten_profiel(vraag) is False
+    assert catalog._buiten_profiel("Hoeveel leerlingen zitten er op het vwo?") is True

@@ -21,8 +21,15 @@ INSTELLINGEN = [
 ]
 
 
-def _opleiding(skdb, brin, inst, code, studiecode, naam, graad, soort, stad):
+# Vooropleidingseisen (RATHO) zoals in de export: havo, vwo, mbo.
+_ICT_EISEN = ("Havo met profiel EM, CM, NG, NT.", "Vwo met profiel EM, CM, NG, NT.", "Direct toelaatbaar")
+_WO_EISEN = ("Niet toelaatbaar", "Vwo met profiel EM, CM, NG, NT.", "Niet toelaatbaar")
+
+
+def _opleiding(skdb, brin, inst, code, studiecode, naam, graad, soort, stad, eisen=_ICT_EISEN):
     return {
+        "wettelijkeVooropleidingEisenHavo": eisen[0], "wettelijkeVooropleidingEisenVwo": eisen[1],
+        "toelatingsEisenMbo": eisen[2],
         "opleidingSkdb": skdb, "instellingCode": brin, "instellingSkdb": inst, "opleidingCode": code,
         "studieOpleidingCodeSkdb": studiecode, "opleidingNaam": naam, "rioNaam": naam, "hoviOpleidingNaam": naam,
         "graad": graad, "soortHo": soort, "bezoekAdresStad": stad, "opleidingBekostiging": "Bekostigd",
@@ -32,8 +39,8 @@ def _opleiding(skdb, brin, inst, code, studiecode, naam, graad, soort, stad):
 OPLEIDINGEN = [
     _opleiding(11, "25DW", 1, 30020, 30020, "ICT", "Bachelor", "HBO", "UTRECHT"),
     _opleiding(12, "25DW", 1, 34560, 34560, "Verpleegkunde", "Bachelor", "HBO", "UTRECHT"),
-    _opleiding(21, "21PB", 2, 56604, 56604, "Psychologie", "Bachelor", "WO", "LEIDEN"),
-    _opleiding(22, "21PB", 2, 56990, 56990, "Biomedische Wetenschappen", "Bachelor", "WO", "LEIDEN"),
+    _opleiding(21, "21PB", 2, 56604, 56604, "Psychologie", "Bachelor", "WO", "LEIDEN", _WO_EISEN),
+    _opleiding(22, "21PB", 2, 56990, 56990, "Biomedische Wetenschappen", "Bachelor", "WO", "LEIDEN", _WO_EISEN),
     _opleiding(31, "99XX", 3, 30020, 30020, "ICT", "Bachelor", "HBO", "'S-HERTOGENBOSCH"),
 ]
 
@@ -60,7 +67,7 @@ OPLEIDINGVORMEN = [
 ]
 
 STUDIES = [
-    {"studieOpleidingCodeSkdb": 30020, "studieNaam": "ICT", "graad": "Bachelor", "soortHo": "HBO", "aansluitingStudieBaan": "goede"},
+    {"studieOpleidingCodeSkdb": 30020, "studieNaam": "ICT", "graad": "Bachelor", "soortHo": "HBO", "aansluitingStudieBaan": "goede", "opleidingType": "hbo - ict"},
     {"studieOpleidingCodeSkdb": 34560, "studieNaam": "Opleiding tot Verpleegkundige", "graad": "Bachelor", "soortHo": "HBO", "aansluitingStudieBaan": "zeer goede"},
     {"studieOpleidingCodeSkdb": 56604, "studieNaam": "Psychologie", "graad": "Bachelor", "soortHo": "WO", "aansluitingStudieBaan": "(missing, data wordt op dit niveau niet getoond)"},
     {"studieOpleidingCodeSkdb": 56990, "studieNaam": "Biomedische Wetenschappen", "graad": "Bachelor", "soortHo": "WO"},
@@ -108,12 +115,6 @@ LOTING = [
     {"instellingCode": "21PB", "opleidingCode": 56990, "opleidingNaam": "Biomedische Wetenschappen", "opleidingVorm": "Voltijd", "voerTaal": "Voertaal-overstijgend", "studieJaar": 2027, "capaciteit": 71, "kerenMeedoenAantal": 2, "aanmeldDatumUiterlijk": "15 januari", "lotingUrl": "https://example.org/bmw"},
 ]
 
-COLLEGEGELDEN = [
-    {"opleidingSkdb": 11, "opleidingVormId": 1, "collegeJaar": 2026, "collegeGeldBedrag": 2601},
-    {"opleidingSkdb": 11, "opleidingVormId": 1, "collegeJaar": 2027, "collegeGeldBedrag": 2694},
-    {"opleidingSkdb": 21, "opleidingVormId": 1, "collegeJaar": 2027, "collegeGeldBedrag": None},
-]
-
 TABELLEN = {
     "instellingen": INSTELLINGEN,
     "opleidingen": OPLEIDINGEN,
@@ -124,7 +125,6 @@ TABELLEN = {
     "doorstroombachelormaster": DOORSTROOM_BM,
     "doorstroommbohbo": DOORSTROOM_MBO,
     "lotingopleidingendecentralesele": LOTING,  # zoals in de echte export: de naam is ingekort
-    "collegegelden": COLLEGEGELDEN,
 }
 
 

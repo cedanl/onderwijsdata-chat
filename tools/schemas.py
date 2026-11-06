@@ -907,13 +907,14 @@ SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
         "description": (
             "Opleidingen van hogescholen en universiteiten (hbo en wo) uit de Studiekeuzedatabase van het Landelijk "
             "Centrum Studiekeuze (de data achter Studiekeuze123). Gebruik dit bij vragen naar het oordeel van "
-            "studenten (NSE) over een opleiding, studenten en eerstejaars per opleiding, doorstroom naar jaar 2, "
-            "diplomarendement, numerus fixus en capaciteit, het salaris en de baankansen van afgestudeerden van een "
-            "studie, en de doorstroom van mbo-4 naar hbo of van bachelor naar master. Weergaven: 'opleidingen' (per "
-            "opleiding van een instelling en per vorm, met het landelijke oordeel van dezelfde studie ernaast), "
-            "'studie' (één landelijke studie, met arbeidsmarkt), 'numerus_fixus', 'doorstroom_mbo_hbo', "
-            "'doorstroom_bachelor_master'. Geen mbo-opleidingen. Neem de getallen en de voorbehouden letterlijk over, "
-            "reken niet zelf, en noem de bronregel: die vermelding van LCSK is verplicht."
+            "studenten (NSE) over een opleiding, doorstroom naar jaar 2, diplomarendement, numerus fixus en "
+            "capaciteit, de toelatingseisen (welk havo- of vwo-profiel, mbo), het salaris en de baankansen van "
+            "afgestudeerden van een studie, en de doorstroom van mbo-4 naar hbo of van bachelor naar master. "
+            "Weergaven: 'opleidingen' (per opleiding van een instelling en per vorm, met het landelijke oordeel van "
+            "dezelfde studie ernaast), 'studie' (één landelijke studie, met arbeidsmarkt), 'toelating', "
+            "'numerus_fixus', 'doorstroom_mbo_hbo', 'doorstroom_bachelor_master'. Niet voor aantallen studenten of "
+            "eerstejaars (DUO), collegegeld of accreditatie. Geen mbo-opleidingen. Neem de getallen en de voorbehouden "
+            "letterlijk over, reken niet zelf, en noem de bronregel: die vermelding van LCSK is verplicht."
         ),
         "parameters": {
             "type": "object",
@@ -923,11 +924,15 @@ SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
                     "enum": [
                         "opleidingen",
                         "studie",
+                        "toelating",
                         "numerus_fixus",
                         "doorstroom_mbo_hbo",
                         "doorstroom_bachelor_master",
                     ],
-                    "description": "opleidingen (standaard), studie, numerus_fixus, doorstroom_mbo_hbo of doorstroom_bachelor_master.",
+                    "description": (
+                        "opleidingen (standaard), studie, toelating, numerus_fixus, doorstroom_mbo_hbo of "
+                        "doorstroom_bachelor_master."
+                    ),
                 },
                 "instelling": {
                     "type": "string",
@@ -962,7 +967,7 @@ SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
                 },
                 "sorteer": {
                     "type": "string",
-                    "enum": ["naam", "oordeel", "studenten", "eerstejaars", "doorstroom_jaar2"],
+                    "enum": ["naam", "oordeel", "doorstroom_jaar2"],
                     "description": "Bij opleidingen: op naam (standaard) of aflopend op dit cijfer (een rangorde).",
                 },
             },

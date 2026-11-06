@@ -13,7 +13,7 @@ const EIGEN_TOOL = [
   ['UWV', 'Vacatures per provincie of gemeente (momentopname mei 2023)', 'data.overheid.nl', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
   ['ROA', 'Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'doi.org', 'https://doi.org/10.34894/DVQTOG'],
   ['UNL', 'Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'universiteitenvannederland.nl', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
-  ['LCSK', 'Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'studiekeuze123.nl', 'https://www.studiekeuze123.nl/studiekeuzedata'],
+  ['LCSK', 'Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'lcsk.nl', 'https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/'],
 ]
 
 export default function DataSourcesModal({ onClose }) {
