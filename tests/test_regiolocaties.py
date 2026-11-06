@@ -260,7 +260,9 @@ def test_een_cbs_tabel_kent_geen_regio_via_locaties(rio):
 # --- storing en cache ---
 
 
-def test_een_rio_storing_geeft_geen_regel_een_warning_en_niets_in_de_cache(rio, studenten, monkeypatch, caplog):
+def test_een_rio_storing_geeft_een_vaste_regel_een_warning_en_niets_in_de_cache(rio, studenten, monkeypatch, caplog):
+    """Geen stille uitval (#970): de toolresponse zegt welk deel van de regiovergelijking ontbreekt en waarom."""
+
     def kapot(brin, peildatum=None):
         raise httpx.ConnectError("geen netwerk")
 
@@ -269,7 +271,10 @@ def test_een_rio_storing_geeft_geen_regel_een_warning_en_niets_in_de_cache(rio, 
         uit = _selectie({"PLAATSNAAM INSTELLING": "DOETINCHEM"})
 
     assert _codes(uit) == {"24ZZ"}
-    assert "RIO" not in _blok(uit)
+    assert "Mee via een onderwijslocatie" not in _blok(uit)
+    [regel] = [n for n in uit["databewerking"] if n.startswith("Onderwijslocaties niet nagegaan")]
+    assert "in de plaats Doetinchem: RIO gaf een storing voor " in regel
+    assert "Zone.college (31JC)" in regel and "kan in deze uitkomst ontbreken" in regel
     assert any("REGIOLOCATIES_ONBEKEND" in r.getMessage() for r in caplog.records)
     assert "geen netwerk" not in caplog.text
 
@@ -322,3 +327,36 @@ def test_de_snippet_neemt_dezelfde_instellingen_mee(rio, studenten):
     plaats = {"df": pd.DataFrame(_RIJEN, columns=_KOLOMMEN), "pd": pd}
     exec("\n".join(regels[begin : begin + 4]), plaats)
     assert set(plaats["df"]["INSTELLINGSCODE"]) == {"24ZZ", "31JC"}
+
+
+def test_een_falende_brin_haalt_de_rest_niet_weg(rio, studenten, monkeypatch):
+    """Eén BRIN waarvoor RIO faalt, zette de hele verbreding uit (pool.map gaf de fout door). Nu doet de rest mee, noemt
+    de regel wie niet is nagegaan, en komt de deellading niet in de cache (#970)."""
+
+    def half(brin, peildatum=None):
+        if brin == "25PM":  # ROC A12, Ede: geen locatie in Doetinchem, maar RIO faalt
+            raise httpx.ReadTimeout("te laat")
+        return _aanbieders(brin)
+
+    monkeypatch.setattr(regiolocaties, "onderwijsaanbieders", half)
+    uit = _selectie({"PLAATSNAAM INSTELLING": "DOETINCHEM"})
+
+    assert _codes(uit) == {"24ZZ", "31JC"}
+    assert f"in de plaats Doetinchem (RIO): {_ZONE}." in _blok(uit)
+    [regel] = [n for n in uit["databewerking"] if n.startswith("Onderwijslocaties niet nagegaan")]
+    assert "RIO gaf een storing voor ROC A12 (25PM)" in regel and "Zone" not in regel
+
+    monkeypatch.setattr(regiolocaties, "onderwijsaanbieders", _aanbieders)
+    uit = _selectie({"PLAATSNAAM INSTELLING": "DOETINCHEM"})
+    assert not [n for n in uit["databewerking"] if n.startswith("Onderwijslocaties niet nagegaan")]
+
+
+def test_een_storing_van_duo_geeft_ook_de_regel(rio, studenten, monkeypatch):
+    def kapot():
+        raise httpx.ConnectError("geen netwerk")
+
+    monkeypatch.setattr(regiolocaties, "_laad_aanbod", kapot)
+    uit = _selectie({"PROVINCIE INSTELLING": "Overijssel"})
+
+    [regel] = [n for n in uit["databewerking"] if n.startswith("Onderwijslocaties niet nagegaan")]
+    assert "in de provincie Overijssel: het aanbod per onderwijslocatie (DUO)" in regel

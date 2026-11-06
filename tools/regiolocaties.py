@@ -20,8 +20,11 @@ De bronnen:
   uit de CBS-indeling van `data/arbeidsmarktregio.py`. Een woonplaatsnaam in meer gemeenten
   (Velp) krijgt geen gemeente: de locatie telt dan alleen op plaatsniveau, de code raadt niet.
 
-Beide bronnen staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in de cache; een storing geeft
-geen extra instellingen, geen regel en een WARNING, en breekt het antwoord niet.
+Beide bronnen staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in de cache en breekt het
+antwoord niet, maar is geen stilte (#970): de toolresponse krijgt een vaste regel welk deel ontbreekt en waarom
+(`Verbreding.voorbehoud`), naast een WARNING in het log. Een BRIN waarvoor RIO faalt, haalt de rest niet weg: de
+andere instellingen doen gewoon mee, en de regel noemt de instellingen die niet zijn nagegaan. Zo'n deellading komt
+niet in de cache.
 """
 
 from __future__ import annotations
@@ -58,6 +61,24 @@ AANBOD = ("mbo_opleidingsaanbod", 0)
 # Zoveel RIO-aanroepen tegelijk, zoals tools/rio_instelling.py.
 _PARALLEL = 8
 _TOEVOEGING = re.compile(r"\s*\([^)]*\)\s*$")  # 'hengelo (o)' → 'hengelo'
+
+
+@dataclass(frozen=True)
+class Verbreding:
+    """Wat een regiofilter erbij neemt: de instellingen met een onderwijslocatie in het gebied, en bij een storing de
+    vaste regel welk deel niet is nagegaan (#970)."""
+
+    codes: frozenset[str] = frozenset()
+    voorbehoud: str | None = None
+
+
+class _Deellading(Exception):
+    """RIO gaf de aanbieders van een deel van de instellingen niet: wat wel kwam, gaat mee, maar niet in de cache."""
+
+    def __init__(self, per_code: dict[str, frozenset[str]], mislukt: list[str]) -> None:
+        super().__init__(f"{len(mislukt)} instellingen zonder aanbieders")
+        self.per_code = per_code
+        self.mislukt = mislukt
 
 
 @dataclass(frozen=True)
@@ -161,11 +182,25 @@ def _locaties() -> tuple[tuple[str, str], ...]:
     return tuple(sorted((str(a), str(p)) for a, p in paren.itertuples(index=False)))
 
 
+def _aanbieders_van(code: str) -> frozenset[str] | None:
+    """De aanbieders van één instelling; None bij een storing, zodat één BRIN de rest niet wegvaagt."""
+    try:
+        return frozenset(onderwijsaanbieders(code))
+    except Exception as e:
+        logger.warning("REGIOLOCATIES_ONBEKEND code=%s fout=%s", code, type(e).__name__)
+        return None
+
+
 @actualiteit.Lading
 def _aanbieders(codes: tuple[str, ...]) -> dict[str, frozenset[str]]:
-    """Per instelling haar onderwijsaanbieders in RIO; alle codes van een bestand in één lading."""
+    """Per instelling haar onderwijsaanbieders in RIO; alle codes van een bestand in één lading. Faalt RIO voor een
+    deel, dan `_Deellading`: geen fout voor de rest, wel buiten de cache, zodat de volgende aanroep het opnieuw vraagt."""
     with ThreadPoolExecutor(_PARALLEL) as pool:
-        return dict(zip(codes, (frozenset(a) for a in pool.map(onderwijsaanbieders, codes)), strict=True))
+        uitkomst = dict(zip(codes, pool.map(_aanbieders_van, codes), strict=True))
+    per_code = {code: a for code, a in uitkomst.items() if a is not None}
+    if mislukt := sorted(code for code, a in uitkomst.items() if a is None):
+        raise _Deellading(per_code, mislukt)
+    return per_code
 
 
 def wis_caches() -> None:
@@ -180,23 +215,49 @@ def _van_toepassing(df: pd.DataFrame, kolom: str, known) -> bool:
     return known is not None and known.bron == "duo" and kolom in KOLOMMEN and CODEKOLOM in df.columns
 
 
-def erbij(df: pd.DataFrame, kolom: str, waarden: list, gekozen: pd.Series, known) -> frozenset[str]:
+def _niet_nagegaan(kolom: str, waarden: list, wat: str) -> str:
+    """De vaste regel bij een storing: welk deel van de regiovergelijking ontbreekt en waarom."""
+    return (
+        f"Onderwijslocaties niet nagegaan in de {_gebied(kolom, waarden)}: {wat}. Een instelling met alleen een "
+        "onderwijslocatie daar (hoofdvestiging elders) kan in deze uitkomst ontbreken; zeg dat erbij."
+    )
+
+
+# Zoveel instellingen noemt de regel bij naam; de rest als aantal.
+_MAX_NAMEN = 5
+
+
+def _namen(df: pd.DataFrame, codes: list[str]) -> str:
+    namen = instelling.namen(df, CODEKOLOM) if instelling.codekolom(df.columns) == CODEKOLOM else {}
+    genoemd = [f"{namen[c]} ({c})" if namen.get(c) else c for c in codes[:_MAX_NAMEN]]
+    rest = len(codes) - len(genoemd)
+    return ", ".join(genoemd) + (f" en {rest} andere" if rest else "")
+
+
+def erbij(df: pd.DataFrame, kolom: str, waarden: list, gekozen: pd.Series, known) -> Verbreding:
     """De instellingen die het filter op `kolom` niet kiest (`gekozen`) maar die een onderwijslocatie hebben in het
-    gebied van `waarden`; leeg bij een ander bestand of een andere kolom, en bij een storing (met een WARNING)."""
+    gebied van `waarden`; leeg bij een ander bestand of een andere kolom. Bij een storing een vaste regel (#970): DUO's
+    aanbod of RIO helemaal niet, dan niemand erbij; RIO niet voor een deel van de instellingen, dan de rest wel."""
     if not _van_toepassing(df, kolom, known):
-        return frozenset()
+        return Verbreding()
     niveau = KOLOMMEN[kolom]
     codes = df[CODEKOLOM].astype(str).str.strip()
     kandidaten = set(codes[~gekozen]) - set(codes[gekozen])
     if not kandidaten or not (doelen := _doelen(niveau, waarden)):
-        return frozenset()
+        return Verbreding()
+    voorbehoud = None
     try:
         in_gebied = {aanbieder for aanbieder, plaats in _locaties() if _ligt_in(niveau, plaats, doelen)}
         per_code = _aanbieders(tuple(sorted(set(codes)))) if in_gebied else {}
-    except Exception as e:  # een storing bij DUO of RIO breekt het antwoord niet: niemand erbij, geen regel
+    except _Deellading as deel:  # één BRIN zonder antwoord van RIO: de rest doet mee, de regel noemt wie niet
+        per_code = deel.per_code
+        if mislukt := [c for c in deel.mislukt if c in kandidaten]:
+            voorbehoud = _niet_nagegaan(kolom, waarden, f"RIO gaf een storing voor {_namen(df, mislukt)}")
+    except Exception as e:  # een storing bij DUO of RIO breekt het antwoord niet: niemand erbij, wel een regel
         logger.warning("REGIOLOCATIES_ONBEKEND kolom=%s fout=%s", kolom, type(e).__name__)
-        return frozenset()
-    return frozenset(c for c in kandidaten if per_code.get(c, frozenset()) & in_gebied)
+        wat = "het aanbod per onderwijslocatie (DUO) of de aanbieders per instelling (RIO) gaf een storing"
+        return Verbreding(voorbehoud=_niet_nagegaan(kolom, waarden, wat))
+    return Verbreding(frozenset(c for c in kandidaten if per_code.get(c, frozenset()) & in_gebied), voorbehoud)
 
 
 def _gebied(kolom: str, waarden: list) -> str:
