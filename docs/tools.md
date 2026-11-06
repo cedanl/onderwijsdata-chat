@@ -653,12 +653,12 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 |-----------|------|-------------|
 | `weergave` | enum, optioneel | `opleidingen` (standaard), `studie`, `toelating`, `numerus_fixus`, `doorstroom_mbo_hbo`, `doorstroom_bachelor_master` |
 | `instelling` | string, optioneel | Naam, afkorting of BRIN-code van een hogeschool of universiteit |
-| `opleiding` | string, optioneel | Naam (of deel) of CROHO-code; bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
+| `opleiding` | string, optioneel | Naam of CROHO-code; een naam zoekt op woordbegin (`ict` vindt `HBO-ICT`, niet `Conflict`); bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
 | `soort_ho` | enum, optioneel | `hbo` of `wo` |
 | `graad` | enum, optioneel | `bachelor`, `master` of `associate degree` |
 | `vorm` | enum, optioneel | `voltijd`, `deeltijd` of `duaal`; weglaten geeft elke vorm een eigen rij |
 | `plaats` | string, optioneel | Plaats van het bezoekadres |
-| `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (of deel) of beroep_id van de mbo-4-opleiding |
+| `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (op woordbegin) of beroep_id van de mbo-4-opleiding |
 | `alleen_numerus_fixus` | boolean, optioneel | Bij `opleidingen`: alleen opleidingen met een numerus fixus |
 | `sorteer` | enum, optioneel | Bij `opleidingen`: `naam` (standaard) of aflopend op `oordeel` of `doorstroom_jaar2` |
 

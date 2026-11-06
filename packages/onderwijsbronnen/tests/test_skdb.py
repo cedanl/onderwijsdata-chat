@@ -120,7 +120,7 @@ def test_numerus_fixus_neemt_het_nieuwste_studiejaar(export):
 def test_sorteren_op_oordeel_zet_lege_waarden_achteraan(export):
     rijen = skdb.opleidingen(export, vorm="voltijd", sorteer="oordeel", themas=False)
     oordelen = [r["nse_oordeel"] for r in rijen]
-    assert oordelen == [4.2, 4.05, 3.9, 3.61, None]
+    assert oordelen == [4.2, 4.05, 3.9, 3.61, None, None]
     assert "nse_docenten" not in rijen[0]
 
 
@@ -128,7 +128,22 @@ def test_filters_op_naam_plaats_soort_en_graad(export):
     assert {r["instelling"] for r in skdb.opleidingen(export, naam="ict")} == {"Hogeschool Utrecht", "Proefhogeschool Particulier"}
     assert [r["plaats"] for r in skdb.opleidingen(export, plaats="hertogenbosch")] == ["'s-Hertogenbosch"]
     assert {r["soort_ho"] for r in skdb.opleidingen(export, soort_ho="wo")} == {"WO"}
-    assert skdb.opleidingen(export, graad="master") == []
+    assert [r["opleiding"] for r in skdb.opleidingen(export, graad="master")] == ["Conflict Resolution and Governance"]
+    assert skdb.opleidingen(export, graad="associate degree") == []
+
+
+def test_een_naam_zoekt_op_woordbegin_niet_midden_in_een_woord(export):
+    """#960: "ict" vond ook "Conflict Resolution" (en in de echte export "International Crimes"): een substring."""
+    assert {r["opleiding"] for r in skdb.opleidingen(export, naam="ict")} == {"ICT"}
+    assert {r["opleiding"] for r in skdb.opleidingen(export, naam="ICT", vorm="voltijd")} == {"ICT"}
+    assert [r["opleiding"] for r in skdb.toelating(export, naam="ict")] == ["ICT"]
+    assert [r["studie"] for r in skdb.zoek_studies(export, "ict")] == ["ICT"]
+    # Het begin van elk woord telt, ook na een koppelteken of halverwege de naam.
+    assert [r["studie"] for r in skdb.zoek_studies(export, "resolution")] == ["Conflict Resolution and Governance"]
+    assert [r["studie"] for r in skdb.zoek_studies(export, "verpleeg")] == ["Opleiding tot Verpleegkundige"]
+    assert [r["mbo_opleiding"] for r in skdb.doorstroom_mbo_hbo(export, mbo="verpleeg")] == ["Mbo-Verpleegkundige"] * 2
+    assert skdb.numerus_fixus(export, naam="wetenschap") and not skdb.numerus_fixus(export, naam="medische")
+    assert [r["plaats"] for r in skdb.opleidingen(export, plaats="'s-hertogenbosch")] == ["'s-Hertogenbosch"]
 
 
 def test_studie_met_arbeidsmarkt_van_de_soi_rubriek(export):
@@ -180,7 +195,7 @@ def test_jaren_van_nse_en_1cijferho(export):
 
 
 def test_instellingen(export):
-    assert [r["brin"] for r in skdb.instellingen(export)] == ["25DW", "99XX", "21PB"]
+    assert [r["brin"] for r in skdb.instellingen(export)] == ["25DW", "99XX", "98ZZ", "21PB"]
 
 
 def test_de_bron_staat_in_de_catalogus_buiten_all():

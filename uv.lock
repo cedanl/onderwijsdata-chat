@@ -2587,7 +2587,7 @@ wheels = [
 
 [[package]]
 name = "onderwijsbronnen"
-version = "0.11.0"
+version = "0.11.1"
 source = { editable = "packages/onderwijsbronnen" }
 dependencies = [
     { name = "defusedxml" },

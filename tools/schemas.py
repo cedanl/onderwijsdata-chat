@@ -941,8 +941,8 @@ SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
                 "opleiding": {
                     "type": "string",
                     "description": (
-                        "Naam (of deel van de naam) of CROHO-code van de opleiding; bij 'studie' en de doorstroom de "
-                        "naam of studiecode van de landelijke studie."
+                        "Naam of CROHO-code van de opleiding; een naam zoekt op woordbegin ('ict' vindt 'HBO-ICT', "
+                        "niet 'Conflict'). Bij 'studie' en de doorstroom de naam of studiecode van de landelijke studie."
                     ),
                 },
                 "soort_ho": {"type": "string", "enum": ["hbo", "wo"], "description": "Alleen hbo of alleen wo."},
@@ -959,7 +959,7 @@ SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
                 "plaats": {"type": "string", "description": "Alleen opleidingen in deze plaats (bezoekadres)."},
                 "mbo_opleiding": {
                     "type": "string",
-                    "description": "Bij doorstroom_mbo_hbo: naam (of deel) of beroep_id van de mbo-4-opleiding.",
+                    "description": "Bij doorstroom_mbo_hbo: naam (op woordbegin) of beroep_id van de mbo-4-opleiding.",
                 },
                 "alleen_numerus_fixus": {
                     "type": "boolean",

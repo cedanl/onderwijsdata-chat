@@ -20,6 +20,7 @@ studie-baan (ROA-AIS, nieuwere editie). De ruwe tabellen blijven met `load`/`Exp
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 
 from .export import Export
@@ -86,7 +87,9 @@ def _plaats(waarde: str | None) -> str | None:
 
 
 def _bevat(tekst: str | None, zoek: str) -> bool:
-    return bool(tekst) and zoek in str(tekst).lower()
+    """Of de tekst de zoekterm bevat aan het begin van een woord: "ict" vindt "ICT" en "HBO-ICT", niet "Conflict"
+    (#960). Geen woordteken ervoor, in plaats van `\\b`, zodat ook "'s-hertogenbosch" aan het begin past."""
+    return bool(tekst) and re.search(r"(?<!\w)" + re.escape(zoek), str(tekst).lower()) is not None
 
 
 def _per(rijen: Iterable[dict], *sleutels: str) -> dict:
@@ -224,7 +227,7 @@ def opleidingen(
 
 
 def zoek_studies(export: Export, tekst: str, *, soort_ho: str | None = None, graad: str | None = None) -> list[dict]:
-    """Landelijke studies waarvan de naam de tekst bevat (of de code is), op naam; voor het kiezen van één studie."""
+    """Landelijke studies met een woord in de naam dat met de tekst begint (of met die code), op naam; om één studie te kiezen."""
     zoek = str(tekst).lower().strip()
     code = _code(zoek)
     uit = []
