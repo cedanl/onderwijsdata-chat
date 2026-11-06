@@ -255,3 +255,29 @@ def test_connector_kolommen_zijn_hoofdletterongevoelig_en_uniek_per_naam():
     namen = [kolom for c in rel.CONNECTOREN for kolom in c.kolommen]
     assert len(namen) == len({n.upper() for n in namen})
     assert rel.connector_van("studiejaar", pd.Series([2021])) is rel.connector_van("STUDIEJAAR", pd.Series([2021]))
+
+
+def test_een_skdb_tabel_koppelt_op_brin_en_croho_aan_duo():
+    """De Studiekeuzedatabase (#957): `brin` en `croho` uit get_studiekeuze zijn dezelfde sleutels als de DUO-kolommen;
+    een CROHO-code die als getal met lege cellen is gelezen (30020.0) telt als 30020."""
+    _put(
+        "skdb:opleidingen:x",
+        pd.DataFrame(
+            {"brin": ["25DW", "21PB"], "croho": [30020, 56604], "studiecode": [30020, 56604], "nse": [3.6, 4.0]}
+        ),
+    )
+    _put(
+        "duo:ho",
+        pd.DataFrame(
+            {
+                "INSTELLINGSCODE_ACTUEEL": ["25DW", "25DW", "30GB"],
+                "OPLEIDINGSCODE_ACTUEEL": [30020.0, None, 34139.0],
+                "AANTAL": [10, 20, 30],
+            }
+        ),
+    )
+    uit = json.loads(relatie("skdb:opleidingen:x", andere_key="duo:ho"))
+    per = {(k["links"]["kolom"], k["rechts"]["kolom"]): k for k in uit["koppelingen"]}
+    assert per[("brin", "INSTELLINGSCODE_ACTUEEL")]["overlap"]["gedeeld"] == 1
+    assert per[("croho", "OPLEIDINGSCODE_ACTUEEL")]["overlap"]["gedeeld"] == 1
+    assert "studiecode" in uit["zonder_sleutel"]

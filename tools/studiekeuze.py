@@ -93,7 +93,8 @@ DOORSTROOM_MASTER = (
 )
 KOPPELEN = (
     "brin en croho zijn de codes van RIO en DUO: met BRIN-code en opleidingscode vind je dezelfde opleiding in de "
-    "DUO-bestanden (inschrijvingen, diploma's) en in RIO. studiecode is een code van LCSK en niet altijd een CROHO-code."
+    "DUO-bestanden (inschrijvingen, diploma's) en in RIO; relatie(data_key, andere_key) toont de koppelkandidaten. "
+    "studiecode is een code van LCSK en niet altijd een CROHO-code."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "

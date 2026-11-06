@@ -23,6 +23,10 @@ Zo ook de vaste DUO-bestanden achter de mbo-eerstejaars (#924) en de ingeschreve
 dashboards (data/dashboard.py): de ping duo-instroom-mbo wordt rood zodra DUO een jaar publiceert dat er niet in staat,
 of de volgorde verschuift. Een vaste lijst houdt de pytest-job zonder netwerk; deze ping is de live controle erop.
 
+De Studiekeuzedatabase van LCSK (#957) vraagt een sleutel: haar ping draait alleen als `STUDIEKEUZEDATABASE_API_KEY` in
+de omgeving staat (in CI een gemaskeerde projectvariabele). Zonder sleutel staat ze niet in de lijst, zoals de bron in
+de chat dan ook niet bestaat.
+
 Met --sweep volgt een goedkope controle van elke dataset die de chat kan opvragen (scripts/bronsweep.py, #869): een
 afwijking daar is een waarschuwing in de log en het rapport, de exitcode blijft die van de pings.
 """
@@ -31,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections.abc import Callable
@@ -40,6 +45,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from onderwijsbronnen import skdb
 from onderwijsbronnen.duo import financien as xbrl
 
 from data import dashboard
@@ -200,6 +206,27 @@ def _financien_bewijs(uitkomst: dict) -> str | None:
     return f"te weinig eenheden in het laatste verslagjaar: {', '.join(te_weinig)}" if te_weinig else None
 
 
+# De export 26.6 (06-11-2026) had 109 instellingen en 3312 opleidingen; minder dan dit is een kapotte of halve export.
+_MIN_SKDB = {"instellingen": 100, "opleidingen": 3000}
+
+
+def _skdb() -> dict:
+    # Dezelfde weg als get_studiekeuze: de dagexport met de sleutel uit de omgeving, gecontroleerd op de vereiste tabellen.
+    export = skdb.lees(*skdb.haal_op())
+    return {
+        "versie": export.herkomst.versie,
+        "jaren": skdb.jaren(export),
+        **{tabel: len(export.rijen(tabel)) for tabel in _MIN_SKDB},
+    }
+
+
+def _skdb_bewijs(uitkomst: dict) -> str | None:
+    if not uitkomst.get("versie"):
+        return "geen versienummer in de bestandsnaam van de export (bronvermelding van LCSK)"
+    te_weinig = [f"{t} {uitkomst.get(t)}" for t, n in _MIN_SKDB.items() if (uitkomst.get(t) or 0) < n]
+    return f"te weinig records in de export: {', '.join(te_weinig)}" if te_weinig else None
+
+
 def _instroom_mbo() -> dict:
     # De vaste bestanden van de mbo-eerstejaars en -hoofdgroepen in de dashboards tegen wat DUO nu publiceert (#924, #934).
     return {"afwijkingen": dashboard.instromende_mbo_afwijkingen()}
@@ -285,6 +312,18 @@ PINGS: tuple[Ping, ...] = (
         _kaart_bewijs,
     ),
 )
+
+
+if os.environ.get(skdb.SLEUTEL_ENV):
+    PINGS += (
+        Ping(
+            "skdb-export",
+            "skdb",
+            "dagexport van de Studiekeuzedatabase, versie en aantallen (get_studiekeuze)",
+            _skdb,
+            _skdb_bewijs,
+        ),
+    )
 
 
 def _kort(tekst: str) -> str:
