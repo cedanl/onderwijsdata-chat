@@ -32,6 +32,7 @@ from core import actualiteit, brongebruik
 from data import instellingen
 
 from . import fouten, store
+from .buiten_de_bron import ALLEEN_AANBIEDEN
 from .schemas import TOOL_GET_WO_PERSONEEL
 
 BRONNAAM = "Universiteiten van Nederland"
@@ -128,7 +129,7 @@ LANDELIJK_UITLEG = (
 GEEN_OPEN_BRON_HO_MBO = (
     "Voor hogescholen (hbo) en mbo-instellingen is er geen open bron met personeel per instelling: de Vereniging "
     "Hogescholen publiceert alleen een dashboard, en voor het mbo bestaat niets vergelijkbaars. Noem geen cijfers, "
-    "schat er geen en vul niet aan met cijfers van universiteiten."
+    f"schat er geen en vul niet aan met cijfers van universiteiten. {ALLEEN_AANBIEDEN}"
 )
 # De vaste voorbehouden bij fte zonder GEZO zoals een lezer ze ziet, zonder de aanwijzingen aan het model: voor het
 # dashboard Mijn instelling (#936). Dezelfde zinnen als hierboven.
