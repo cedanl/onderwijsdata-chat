@@ -57,9 +57,11 @@ _DOORSTROOM = re.compile(
     r"|na\s+(?:het|de|hun)\s+(?:vmbo|havo|vwo|vo|vavo|middelbare\s+school))\b",
     re.IGNORECASE,
 )
-# Doorstroom binnen het vo ("van het vmbo naar de havo", "door naar de bovenbouw") is geen vervolgonderwijs.
+# Doorstroom binnen het vo ("van het vmbo naar de havo", "door naar de bovenbouw", "toegelaten tot het vwo") is geen
+# vervolgonderwijs.
 _VO_DOEL = re.compile(
-    r"\bnaar\s+(?:het\s+|de\s+|een\s+)?(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|voortgezet\s+onderwijs)\b", re.IGNORECASE
+    r"\b(?:naar|tot)\s+(?:het\s+|de\s+|een\s+)?(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|voortgezet\s+onderwijs)\b",
+    re.IGNORECASE,
 )
 # Voortijdig schoolverlaters die terugkeren in het onderwijs (#877).
 _VSV = re.compile(r"\b(?:vsv\w*|voortijdig(?:e)?\s+schoolverlat\w*)", re.IGNORECASE)
@@ -78,11 +80,14 @@ _PO_SO = re.compile(
 # Een toelatingsvraag over een ho-opleiding (#878, #957): "Welk profiel heb ik met havo nodig voor Verpleegkunde?",
 # "Kan ik met een havo-diploma naar Geneeskunde?", "Welke vakken moet ik met vwo hebben voor de bachelor Psychologie?".
 # Het vo-niveau is dan de vooropleiding, geen vo-data; de Studiekeuzedatabase heeft de eisen (weergave toelating).
-# Smal gehouden: alleen toelatingswoorden, een ho-graad, of "met havo/vwo ... nodig/naar/toegelaten/studeren".
+# Smal (#968): een los toelatingswoord of een losse graad telt niet ("toegelaten tot het vwo", "de toelatingstoets",
+# "leraren met een master"). Wel: havo of vwo als vooropleiding met een doel, een opleiding of studie als doel,
+# een toelatingseis voor iets anders dan een vo-niveau, en de twee termen die alleen het ho kent. Een vo-doel ("naar het vwo") sluit uit.
 TOELATING_HO = re.compile(
-    r"\b(?:toelat\w*|toegelaten|vooropleidingseis\w*|bachelor(?:s|opleiding\w*)?|master(?:s|opleiding\w*)?"
-    r"|associate\s+degree|numerus\s+fixus)\b"
-    r"|\bmet\s+(?:een\s+)?(?:havo|vwo)\S*\b[^.?!]*\b(?:nodig|naar|toegelaten|toelaatbaar|studeren)\b",
+    r"\bmet\s+(?:een\s+)?(?:havo|vwo)(?:-diploma)?(?![-\w])[^.?!]*\b(?:nodig|naar|toegelaten|toelaatbaar|studeren)\b"
+    r"|\bvoor\s+(?:de\s+|een\s+)?(?:bachelor|master|opleiding|studie)\b"
+    r"|\b(?:toelatings|vooropleidings)eis\w*[^.?!]*\bvoor\s+(?!(?:het\s+|de\s+)?(?:vo|vmbo|havo|vwo|gymnasium)\b)\w"
+    r"|\b(?:numerus\s+fixus|associate\s+degree)\b",
     re.IGNORECASE,
 )
 
@@ -96,7 +101,8 @@ def vervolgcontext(tekst: str) -> bool:
     """Noemt de tekst het ho, het mbo, studenten, eerstejaars, doorstroom uit het vo of de toelating tot een
     ho-opleiding? Dan is een po/so/vo-woord vo-context of vooropleiding, geen po/so/vo-vraag. Eén regel voor de vaste
     scope-uitleg (agent/po_vraag.py) en de zoekpoort (tools/catalog.py), alleen woorden, zonder register."""
-    return opent_vo_context(tekst) or bool(HO_MBO_CONTEXT.search(tekst) or TOELATING_HO.search(tekst))
+    toelating = TOELATING_HO.search(tekst) and not _VO_DOEL.search(tekst)
+    return opent_vo_context(tekst) or bool(HO_MBO_CONTEXT.search(tekst) or toelating)
 
 
 # De vraag van de gebruiker in deze beurt; taken en threads van de beurt erven hem (asyncio.to_thread).

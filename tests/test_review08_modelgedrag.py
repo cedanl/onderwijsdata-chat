@@ -21,7 +21,7 @@ import pytest
 from onderwijsbronnen import skdb
 from onderwijsbronnen.skdb import proefbestand
 
-from agent.codeverzoek import CODEKOP, is_codeverzoek, met_code
+from agent.codeverzoek import CODEKOP, codeblok, is_codeverzoek, met_code, onthoud
 from agent.controles import antwoordcontrole
 from agent.ongekozen import ongekozen_studies
 from agent.stream import StreamResult
@@ -84,7 +84,9 @@ def test_een_vraag_naar_een_code_of_gewone_vraag_is_geen_codeverzoek(vraag):
 
 def test_met_code_zet_de_snippet_onder_het_antwoord_in_een_codeblok():
     snippet = "from onderwijsbronnen import skdb\nexport = skdb.lees(*skdb.haal_op())"
-    tekst = met_code("Hieronder staat de code.", snippet)
+    session: dict = {}
+    onthoud(session, {"type": "tool_end", "name": TOOL_GET_STUDIEKEUZE, "snippet": snippet})
+    tekst = met_code("Hieronder staat de code.", codeblok(session))
     assert tekst.startswith("Hieronder staat de code.")
     assert f"{CODEKOP}" in tekst and f"```python\n{snippet}\n```" in tekst
 

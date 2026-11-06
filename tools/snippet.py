@@ -61,7 +61,9 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
+    TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
@@ -864,14 +866,17 @@ def _get_maat_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
 
 
 def _alleen_met_tabel(args: dict, recept_van: Receptbron | None = None) -> None:
-    """get_wo_personeel, get_bestuursfinancien en get_studiekeuze (#935, #936, #957) zetten hun tabel met laadaanroep in
-    de store (#956): hun
-    snippet komt uit `_LAADREGELS`, met de keuze van de app (BRIN, jaar, bestuurssleutel). Zonder tabel (een melding of
+    """get_wo_personeel, get_bestuursfinancien, get_studiekeuze (#935, #936, #957), get_uwv_vacatures en
+    get_roa_benchmark (#577, #969) zetten hun tabel met laadaanroep in de store (#956): hun snippet komt uit
+    `_LAADREGELS`, met de keuze van de app (BRIN, jaar, bestuurssleutel, plaats). Zonder tabel (een melding of
     weigering) is er geen snippet."""
     return None
 
 
+# Een tool zonder generator maakt geen snippet: `generate` stopt hier, vóór `_LAADREGELS`.
 _GENERATORS = {
+    TOOL_GET_UWV_VACATURES: _alleen_met_tabel,
+    TOOL_GET_ROA_BENCHMARK: _alleen_met_tabel,
     TOOL_GET_WO_PERSONEEL: _alleen_met_tabel,
     TOOL_GET_STUDIEKEUZE: _alleen_met_tabel,
     TOOL_GET_MAAT: _get_maat_snippet,

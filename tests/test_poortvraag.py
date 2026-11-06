@@ -8,7 +8,8 @@ import importlib
 from unittest.mock import patch
 
 from agent.loop import LoopResult
-from tools import ho_markers
+from agent.scopevraag import afbakeningsvraag
+from tools import ho_markers, instelling
 
 run_module = importlib.import_module("agent.run")  # agent.run is ook de naam van de functie
 
@@ -91,6 +92,28 @@ def test_een_keuze_na_een_doorstroomvraag_telt_met_die_vraag():
         {"role": "user", "content": "2023/24"},
     ]
     assert _poort_tijdens_de_loop(messages, session={"clarify_rondes": 1}, zoekterm="vmbo")["poort"] is True
+
+
+def test_een_keuze_op_een_kaart_uit_code_opent_de_poort_niet(monkeypatch):
+    """Het label "Landelijk: mbo, hbo en wo samen" van de afbakeningskaart uit code noemt het hbo, maar de
+    vraag gaat niet over vervolgonderwijs (#968). Met het label opende de poort en vond "aantal leerlingen" vo-tabellen."""
+    monkeypatch.setattr(instelling, "get_all", lambda: [])
+    session: dict = {"clarify_rondes": 0}
+    messages = [{"role": "user", "content": "Hoeveel leerlingen?"}]
+    kaart = afbakeningsvraag("Hoeveel leerlingen?")
+    assert kaart is not None
+
+    async def emit(ev):
+        pass
+
+    asyncio.run(run_module._vaste_verduidelijking(kaart, messages, session, emit))
+    session["clarify_rondes"] = 1
+    messages.append({"role": "user", "content": kaart.opties[0]["label"]})
+    assert ho_markers.opent_vo_context(f"Hoeveel leerlingen? {kaart.opties[0]['label']}")
+
+    gezien = _poort_tijdens_de_loop(messages, session=session, zoekterm="aantal leerlingen")
+
+    assert gezien == {"poort": False, "vraag": "Hoeveel leerlingen?"}
 
 
 def test_na_de_beurt_is_er_geen_beurtvraag_meer():
