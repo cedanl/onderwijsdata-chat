@@ -2,9 +2,9 @@
 
 De store leeft in het geheugen. Per key bewaart de database daarom hoe hij ontstond: de
 laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_uwv_vacatures, get_roa_benchmark,
-get_bestuursfinancien, get_wo_personeel) of de selectie (query_data) op een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste
-keer: scopegrens, sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug.
-Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
+get_bestuursfinancien, get_wo_personeel, get_studiekeuze), de vaste maat (get_maat) of de selectie (query_data) op
+een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste keer: scopegrens,
+sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug. Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
 geëvalueerd. Een eigen berekening (run_analysis) wordt niet opnieuw uitgevoerd: van die
 stap wordt geen script bewaard.
 """

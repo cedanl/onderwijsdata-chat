@@ -867,8 +867,8 @@ def _no_match(query: str, termen: list[str], zwak: list, geo_niveau: str | None)
     """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168).
 
     Met zwakke suggesties is het `needs_clarification`, anders `no_match`; een vraag over po, so of vo is
-    `out_of_scope`. Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py), dus de tekst dekt beide
-    gevallen.
+    `out_of_scope`. Na drie scopevragen voor één vraag is clarify_scope weg (`_MAX_CLARIFY_RONDES` in agent/run.py),
+    dus de tekst dekt beide gevallen.
     """
     if _buiten_profiel(query):
         return _envelop(
