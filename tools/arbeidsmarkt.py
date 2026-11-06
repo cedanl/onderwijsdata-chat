@@ -268,7 +268,9 @@ def roa_blokken(resultaat: dict) -> list[dict]:
 
 def _regio_label(regionaam: str) -> str:
     """'provincie Utrecht' blijft zo; een arbeidsmarktregio krijgt dat woord ervoor."""
-    return regionaam if arbeidsmarkt.roa_regiotype(regionaam) != "arbeidsmarktregio" else f"arbeidsmarktregio {regionaam}"
+    return (
+        regionaam if arbeidsmarkt.roa_regiotype(regionaam) != "arbeidsmarktregio" else f"arbeidsmarktregio {regionaam}"
+    )
 
 
 def _regio_aanname(regio: str, gekozen: str, andere: list[str]) -> str:

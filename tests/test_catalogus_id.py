@@ -22,7 +22,9 @@ def test_het_id_van_elk_record_is_dat_van_het_broncontract(bron):
 
 
 def test_geen_record_van_de_chatcatalogus_heeft_vraagteken_als_id():
-    zonder = [r.get("bron") for r in [*catalog._cbs_alles(), *catalog._rio_duo_alles()] if catalog._dataset_id(r) == "?"]
+    zonder = [
+        r.get("bron") for r in [*catalog._cbs_alles(), *catalog._rio_duo_alles()] if catalog._dataset_id(r) == "?"
+    ]
     assert zonder == []
 
 

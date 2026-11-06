@@ -102,7 +102,8 @@ def test_de_algemene_personeelsvraag_geeft_wp_en_obp_naast_het_totaal(uitsplitsi
     assert set(_rij(instelling="UU", uitsplitsing="geen")) == {"jaar", "peildatum", "totaal"}
     assert _uit(eenheid="personen")["uitsplitsing"] == "geen"
     # De herlaadaanroep in de store en de snippet noemen de uitsplitsing die de app koos.
-    assert store.meta(standaard["data_key"]).laad[1]["uitsplitsing"] == "wp_obp"
+    meta = store.meta(standaard["data_key"])
+    assert meta is not None and meta.laad is not None and meta.laad[1]["uitsplitsing"] == "wp_obp"
 
 
 def test_het_schema_noemt_wp_obp_als_standaard():
