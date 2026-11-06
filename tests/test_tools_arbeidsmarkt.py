@@ -124,6 +124,65 @@ def test_roa_provincie_op_haar_eigen_naam(bronnen):
     assert uit["prognose_tot_2030"] == {"Mbo4": {_ITA: {"typering": "redelijk"}}}
 
 
+def test_roa_utrecht_kiest_de_provincie_en_noemt_de_arbeidsmarktregio(bronnen):
+    """#966: "regio Utrecht" werd stil de provincie, en het antwoord zei dat ROA de arbeidsmarktregio niet had."""
+    uit = json.loads(get_roa_benchmark(regio="Utrecht"))
+
+    assert uit["regio"] == "provincie Utrecht"
+    assert uit["aanname"] == (
+        "'Utrecht' is gelezen als provincie Utrecht. Onder die naam heeft ROA ook de arbeidsmarktregio "
+        "Midden-Utrecht (regio='Midden-Utrecht'). Zeg in het antwoord welke regio je toont en welke er onder die naam "
+        "nog meer is; zeg niet dat ROA daarvoor geen cijfers heeft."
+    )
+
+
+@pytest.mark.parametrize("regio", ["Midden-Utrecht", "provincie Utrecht", None])
+def test_roa_een_eenduidige_regio_heeft_geen_aanname(bronnen, regio):
+    assert "aanname" not in json.loads(get_roa_benchmark(regio=regio))
+
+
+# De regionamen van ROA AIS 2030 (v20251218), zoals arbeidsmarkt.roa_regios() ze geeft.
+_ROA_REGIOS = [
+    "Achterhoek", "Amersfoort", "Drechtsteden", "Drenthe", "Flevoland", "FoodValley", "Friesland",
+    "Gooi en Vechtstreek", "Gorinchem", "Groningen", "Groot Amsterdam", "Haaglanden", "Helmond-De Peel",
+    "Holland Rijnland", "Midden-Brabant", "Midden-Gelderland", "Midden-Holland", "Midden-Limburg", "Midden-Utrecht",
+    "Nederland", "Noord-Holland Noord", "Noord-Limburg", "Noordoost-Brabant", "Regio Zwolle", "Rijk van Nijmegen",
+    "Rijnmond", "Rivierenland", "Twente", "Veluwe Stedendriehoek", "West-Brabant", "Zaanstreek/Waterland", "Zeeland",
+    "Zuid-Holland Centraal", "Zuid-Kennemerland en IJmond", "Zuid-Limburg", "Zuidoost-Brabant", "provincie Drenthe",
+    "provincie Flevoland", "provincie Fryslân", "provincie Gelderland", "provincie Groningen", "provincie Limburg",
+    "provincie Noord-Brabant", "provincie Noord-Holland", "provincie Overijssel", "provincie Utrecht",
+    "provincie Zeeland", "provincie Zuid-Holland",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("naam", "gekozen", "andere"),
+    [
+        ("Utrecht", "provincie Utrecht", ["Midden-Utrecht"]),
+        ("utrecht", "provincie Utrecht", ["Midden-Utrecht"]),
+        ("Gelderland", "provincie Gelderland", ["Midden-Gelderland"]),
+        ("Limburg", "provincie Limburg", ["Midden-Limburg", "Noord-Limburg", "Zuid-Limburg"]),
+        ("Noord-Holland", "provincie Noord-Holland", ["Noord-Holland Noord"]),
+        ("Zuid-Holland", "provincie Zuid-Holland", ["Zuid-Holland Centraal"]),
+        # Een arbeidsmarktregio met de naam van haar provincie wint (zelfde gebied); de provincie staat ernaast.
+        ("Groningen", "Groningen", ["provincie Groningen"]),
+        ("Drenthe", "Drenthe", ["provincie Drenthe"]),
+        ("Flevoland", "Flevoland", ["provincie Flevoland"]),
+        ("Zeeland", "Zeeland", ["provincie Zeeland"]),
+        # Eenduidig: een volledige naam, een provincie zonder gelijknamige regio, of een deel van een woord.
+        ("Midden-Utrecht", "Midden-Utrecht", []),
+        ("provincie Utrecht", "provincie Utrecht", []),
+        ("Overijssel", "provincie Overijssel", []),
+        ("Noord-Brabant", "provincie Noord-Brabant", []),
+        ("Twente", "Twente", []),
+    ],
+)
+def test_roa_andere_regios_met_dezelfde_naam(naam, gekozen, andere):
+    with patch.object(arbeidsmarkt, "roa_regios", return_value=_ROA_REGIOS):
+        assert arbeidsmarkt.roa_regio(naam) == gekozen
+        assert arbeidsmarkt.roa_regio_alternatieven(naam, gekozen) == andere
+
+
 def test_roa_regio_zonder_cijfers_voor_de_sector_valt_terug_op_landelijk(bronnen):
     with patch.object(arbeidsmarkt, "roa_sectoren", return_value=["Mbo4 - techniek en ict"]):
         uit = json.loads(get_roa_benchmark("Mbo4 - techniek en ict", regio="Midden-Utrecht"))

@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from fractions import Fraction
@@ -291,6 +292,22 @@ def roa_regio(naam: str) -> str | None:
     namen = {r.lower(): r for r in roa_regios()}
     sleutel = naam.strip().lower()
     return namen.get(sleutel) or namen.get(_ROA_PROVINCIE + sleutel)
+
+
+def roa_regio_alternatieven(naam: str, gekozen: str) -> list[str]:
+    """De andere ROA-regio's die de opgegeven naam als heel woord dragen, naast de gekozen (#966).
+
+    'Utrecht' wordt 'provincie Utrecht', maar 'Midden-Utrecht' is ook een arbeidsmarktregio; 'Groningen' wordt de
+    arbeidsmarktregio, en 'provincie Groningen' bestaat ook. Een volledige naam ('Midden-Utrecht', 'provincie Utrecht')
+    is eenduidig. Zonder voorvoegsel 'provincie ' vergeleken, hoofdletterongevoelig.
+    """
+    sleutel = " ".join(naam.split()).lower()
+    heel_woord = re.compile(r"(?<!\w)" + re.escape(sleutel) + r"(?!\w)")
+    return [
+        r
+        for r in roa_regios()
+        if r not in (gekozen, ROA_LANDELIJK) and heel_woord.search(r.removeprefix(_ROA_PROVINCIE).lower())
+    ]
 
 
 def roa_regiotype(regionaam: str) -> str:

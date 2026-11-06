@@ -702,6 +702,11 @@ opleidingssector; niet per instelling.
 - **Resultaat:** `versie`, `regio`, `schoolverlaters_sis_2024` en `prognose_tot_2030`.
 - **Met een regio** ook `regiotype` en per onderdeel `herkomst`. Heeft ROA voor die regio geen cijfers voor een
   onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat.
+- **Een naam voor meer regio's** (#966): een provincie op haar eigen naam wordt de provincie (`Utrecht` →
+  `provincie Utrecht`), een naam die ook een arbeidsmarktregio is wordt die regio (`Groningen`). Draagt een andere
+  ROA-regio dezelfde naam als heel woord (`Midden-Utrecht`, `provincie Groningen`, `Noord-/Midden-/Zuid-Limburg`), dan
+  noemt `aanname` de gekozen regio en de andere, met het argument om die op te vragen. Een volledige naam
+  (`Midden-Utrecht`, `provincie Utrecht`) is eenduidig.
 - **`data_key`:** de tabel met elk cijfer als rij (`ONDERDEEL`, `REGIO`, `OPLEIDING`, `INDICATOR`, `PERCENTAGE`,
   `AANTAL`, `TYPERING`), voor `query_data` en `create_plot` (#577).
 - Een onbekende sector of regio geeft een melding met de keuzes die wel bestaan.
