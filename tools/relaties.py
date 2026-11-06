@@ -51,6 +51,13 @@ PROVINCIES = {
 }
 _PROVINCIE_NAAR_CODE = {naam.lower(): code for code, naam in PROVINCIES.items()}
 _PROVINCIE_NAAR_CODE["fryslân"] = "PV21"
+# Hoe een koppeling rijen bewaart (#962): review 08-C1/C4 verloor instellingen en opleidingen zonder match door een
+# inner join en dropna. Bij elke uitkomst met koppelkandidaten, zodat het model de regel ziet op het moment dat hij koppelt.
+KOPPELREGEL = (
+    'Koppel met how="left" vanuit de tabel van de vraag (links) op de kolommen van één kandidaat, zodat elke rij blijft. '
+    "Een rij zonder match houdt een leeg veld: noem welke rijen geen match hebben en waarom (andere bron, andere "
+    "afbakening), vul nooit 0 in, en gooi geen rijen weg met dropna of een inner join op de koppelkolommen."
+)
 _GEMEENTECODE = re.compile(r"^GM(\d{4})$")
 _PROVINCIECODE = re.compile(r"^PV\d{2}$")
 
@@ -370,7 +377,9 @@ def relatie(data_key: str, andere_key: str | None = None) -> str:
             return ander
         kandidaten = koppelingen(data_key, eigen, andere_key, sleutels(ander))
         uit["koppelingen"] = kandidaten
-        if not kandidaten:
+        if kandidaten:
+            uit["koppelregel"] = KOPPELREGEL
+        else:
             uit["melding_koppeling"] = (
                 "Geen gedeelde sleutel tussen de twee tabellen. Koppel niet op een kolom die alleen op naam lijkt; "
                 "zoek een tabel met een gedeelde sleutel of vraag per bron apart."

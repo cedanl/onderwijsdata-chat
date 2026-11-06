@@ -111,10 +111,19 @@ DOORSTROOM_MASTER = (
     "Doorstroom bachelor-master: het aantal en aandeel afgestudeerden van de bachelor dat naar een master gaat, met "
     "rang 1 voor de grootste stroom."
 )
+# Review 08-C1/C4 (#962): een inner join en dropna lieten opleidingen zonder match verdwijnen (161 rijen werden 68).
 KOPPELEN = (
     "brin en croho zijn de codes van RIO en DUO: met BRIN-code en opleidingscode vind je dezelfde opleiding in de "
-    "DUO-bestanden (inschrijvingen, diploma's) en in RIO; relatie(data_key, andere_key) toont de koppelkandidaten. "
-    "studiecode is een code van LCSK en niet altijd een CROHO-code."
+    "DUO-bestanden (inschrijvingen, diploma's) en in RIO. Koppel zo: eerst relatie(data_key, andere_key) voor de "
+    'koppelkolommen en de overlap; dan how="left" vanuit de tabel van de vraag, zodat elke rij blijft. Een rij zonder '
+    "match houdt een leeg veld: zeg welke en waarom (andere bron, andere afbakening), vul nooit 0 in, en gooi geen rijen "
+    "weg met dropna of een inner join op de koppelkolommen. studiecode is een code van LCSK en niet altijd een "
+    "CROHO-code."
+)
+# Review 08-B5 (#961): na "Meer studies passen …" haalde het model zelf drie studies op en beantwoordde ze allemaal.
+KIES_EERST = (
+    "Stel de gebruiker deze keuze met clarify_scope en wacht op het antwoord: haal geen studie of instelling op die de "
+    "gebruiker niet koos, en geef nog geen cijfers."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "
@@ -236,7 +245,7 @@ def _instelling(tekst, export: skdb.Export) -> tuple[str, str] | str | None:
         return treffers[0]
     if treffers:
         opties = "; ".join(f"{n} ({b})" for b, n in treffers[:MAX_OPTIES])
-        return f"Meer instellingen passen bij {schoon!r}: {opties}. Vraag welke, of geef de BRIN-code. Geen gok."
+        return f"Meer instellingen passen bij {schoon!r}: {opties}. Geef de BRIN-code als je hem weet. {KIES_EERST} Geen gok."
     return (
         f"Onbekende instelling {schoon!r} in de Studiekeuzedatabase (109 hogescholen en universiteiten, ook "
         "niet-bekostigde). Geef de naam of BRIN-code. Geen gok."
@@ -258,8 +267,8 @@ def _studie(tekst, export: skdb.Export, soort_ho, graad) -> int | str:
     )
     meer = f" (en {len(treffers) - MAX_OPTIES} meer)" if len(treffers) > MAX_OPTIES else ""
     return (
-        f"Meer studies passen bij {tekst!r}: {opties}{meer}. Kies er een (studiecode als opleiding) of geef soort_ho en "
-        "graad mee. Geen gok."
+        f"Meer studies passen bij {tekst!r}: {opties}{meer}. {KIES_EERST} Na de keuze: de studiecode als opleiding, of "
+        "soort_ho en graad. Geen gok."
     )
 
 
