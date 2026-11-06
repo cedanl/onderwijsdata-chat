@@ -28,7 +28,7 @@ from dataclasses import dataclass
 import pandas as pd
 from onderwijsbronnen import unl
 
-from core import actualiteit
+from core import actualiteit, brongebruik
 from data import instellingen
 
 from . import fouten, store
@@ -84,10 +84,8 @@ PEILDATUM = (
     "Peildatum 31 december van elk jaar: personeel in dienst op die dag. Een editie verschijnt tussen mei en november "
     "van het jaar erna."
 )
-FTE_GEEN_PERSONEN = (
-    "fte is geen aantal personen: 1 fte is een volledige werkweek (38 uur). Schrijf 'fte', nooit 'medewerkers' of "
-    "'mensen'."
-)
+FTE = "fte is geen aantal personen: 1 fte is een volledige werkweek (38 uur)."
+FTE_GEEN_PERSONEN = f"{FTE} Schrijf 'fte', nooit 'medewerkers' of 'mensen'."
 PERSONEN = (
     "Personen: elke medewerker telt één keer per universiteit (de hoofdaanstelling). Landelijk is dat de som over de "
     "universiteiten; iemand met een aanstelling bij twee universiteiten telt twee keer."
@@ -97,16 +95,18 @@ UITGESLOTEN = (
     "gastmedewerkers en personeel van de umc's; promovendi alleen als ze in dienst zijn (geen beurs- of buiten-"
     "promovendi)."
 )
-JAARVERSLAG = (
+ANDER_GETAL = (
     "Een jaarverslag van een universiteit noemt vaak een ander getal (eigen afbakening, met of zonder GEZO, personen in "
-    "plaats van fte). Zeg dat bij een vergelijking."
+    "plaats van fte)."
+)
+JAARVERSLAG = f"{ANDER_GETAL} Zeg dat bij een vergelijking."
+ZONDER_GEZO = (
+    "Zonder het HOOP-gebied Gezondheid (GEZO): personeel van de geneeskunde, diergeneeskunde en tandheelkunde dat bij de "
+    "universiteit in dienst is, telt niet mee. Zo blijft de reeks vergelijkbaar over de tijd. Het kopcijfer van UNL is "
+    "mét GEZO"
 )
 GEZO_UITLEG = {
-    "excl": (
-        "Zonder het HOOP-gebied Gezondheid (GEZO): personeel van de geneeskunde, diergeneeskunde en tandheelkunde dat "
-        "bij de universiteit in dienst is, telt niet mee. Zo blijft de reeks vergelijkbaar over de tijd. Het kopcijfer "
-        "van UNL is mét GEZO; die variant alleen als de gebruiker er uitdrukkelijk om vraagt."
-    ),
+    "excl": f"{ZONDER_GEZO}; die variant alleen als de gebruiker er uitdrukkelijk om vraagt.",
     "incl": (
         "Met het HOOP-gebied Gezondheid (GEZO), zoals het kopcijfer van UNL. Vóór 2006 is deze variant niet "
         "vergelijkbaar: toen ging het medische personeel over naar de umc's."
@@ -127,6 +127,10 @@ GEEN_OPEN_BRON_HO_MBO = (
     "Hogescholen publiceert alleen een dashboard, en voor het mbo bestaat niets vergelijkbaars. Noem geen cijfers, "
     "schat er geen en vul niet aan met cijfers van universiteiten."
 )
+# De vaste voorbehouden bij fte zonder GEZO zoals een lezer ze ziet, zonder de aanwijzingen aan het model: voor het
+# dashboard Mijn instelling (#936). Dezelfde zinnen als hierboven.
+VOORBEHOUDEN_FTE_ZONDER_GEZO = (PEILDATUM, FTE, UITGESLOTEN, f"{ZONDER_GEZO}.", ANDER_GETAL)
+GEEN_GETAL = "Noem geen getal, ook geen 0."
 OVERNEMEN = (
     "Neem in het antwoord over: de eenheid, de peildatum, de GEZO-variant en de voorbehouden. Reken niet zelf: elk "
     "getal staat in `cijfers`."
@@ -189,8 +193,21 @@ class Keuze:
 
 @actualiteit.Lading
 def _wopi() -> unl.Wopi:
-    """De nieuwste editie, één keer per TTL opgehaald en gelezen (core/actualiteit.py)."""
-    return unl.lees(*unl.haal_op())
+    """De nieuwste editie, één keer per TTL opgehaald en gelezen (core/actualiteit.py). De editie meldt zich voor het
+    bronblok van een dashboard (core/brongebruik.py); in de chat gaat de melding nergens heen."""
+    wopi = unl.lees(*unl.haal_op())
+    brongebruik.meld(
+        {
+            "bron": "UNL",
+            "dataset": DATASET,
+            "titel": f"{BRONNAAM}, {BRONTITEL}",
+            "url": unl.PAGINA,
+            "editie": str(wopi.herkomst.editiejaar),
+            "peildatum": wopi.herkomst.peildatum,
+            "opgehaald_op": actualiteit.nu().isoformat(),
+        }
+    )
+    return wopi
 
 
 # --- rekenen ---------------------------------------------------------------------------------------------------
@@ -239,6 +256,20 @@ def _wopi_namen(wopi: unl.Wopi) -> dict[str, str]:
     return {r["brin"]: r["instelling"] for r in rijen if r["jaar"] == jongste}
 
 
+def _buiten_wopi(brin: str, naam: str | None) -> str:
+    """Waarom een wo-instelling geen cijfers heeft: geen lid van UNL, of niet in het bestand. Een feit, zonder
+    aanwijzing aan het model."""
+    if brin in NIET_IN_WOPI:
+        return (
+            f"{naam or NIET_IN_WOPI[brin]} ({brin}) is een wo-instelling, maar geen lid van Universiteiten van Nederland "
+            "en staat niet in het WOPI-bestand: er zijn geen personeelscijfers."
+        )
+    return (
+        f"{naam or brin} ({brin}) staat niet in het WOPI-bestand: dat heeft alleen de 14 universiteiten van "
+        "Universiteiten van Nederland."
+    )
+
+
 def _instelling(tekst: str, wopi: unl.Wopi) -> tuple[str | None, str] | str:
     """(BRIN, naam), (None, "landelijk"), of een vaste melding zonder cijfers."""
     schoon = " ".join(str(tekst or "").split())
@@ -260,18 +291,10 @@ def _instelling(tekst: str, wopi: unl.Wopi) -> tuple[str | None, str] | str:
     else:
         brin = next((b for b, n in {**namen, **NIET_IN_WOPI}.items() if n.lower() == sleutel), None)
         naam = None
-    if brin in NIET_IN_WOPI:
-        return (
-            f"{naam or NIET_IN_WOPI[brin]} ({brin}) is een wo-instelling, maar geen lid van Universiteiten van Nederland "
-            "en staat niet in het WOPI-bestand: er zijn geen personeelscijfers. Noem geen getal, ook geen 0."
-        )
     if brin in namen:
         return brin, namen[brin]
     if brin is not None:
-        return (
-            f"{naam or brin} ({brin}) staat niet in het WOPI-bestand: dat heeft alleen de 14 universiteiten van "
-            "Universiteiten van Nederland. Noem geen getal, ook geen 0."
-        )
+        return f"{_buiten_wopi(brin, naam)} {GEEN_GETAL}"
     return (
         f"Onbekende instelling {schoon!r}. Geef de naam of BRIN-code van een van de 14 universiteiten: "
         f"{', '.join(sorted(namen.values()))}; of 'landelijk'. Geen gok."
@@ -472,3 +495,48 @@ def get_wo_personeel(
     vrouwen = wopi.frame(keuze.tabel, keuze.gezo, "vrouwen") if keuze.uitsplitsing == "geslacht" else None
     df = reken(wopi.frame(keuze.tabel, keuze.gezo, "totaal"), vrouwen, keuze)
     return json.dumps(_uitkomst(df, keuze, wopi.herkomst), ensure_ascii=False, separators=(",", ":"))
+
+
+# --- het dashboard ---------------------------------------------------------------------------------------------
+
+
+def reeks_van(brin: str, naam: str) -> dict | str:
+    """Fte zonder GEZO per jaar van één universiteit, naar wetenschappelijk personeel en OBP en naar vast en tijdelijk,
+    voor het dashboard Mijn instelling (#936).
+
+    Dezelfde rekenstappen als de tool (`reken`), over de hele reeks: WP en OBP vanaf het eerste jaar, vast en tijdelijk
+    vanaf 2003; een jaar zonder vast/tijdelijk heeft daar null, geen 0. Zonder store en zonder aanwijzingen aan het
+    model. Een wo-instelling die niet in WOPI staat, krijgt de vaste melding; een fout van de bron gaat door.
+    """
+    wopi = _wopi()
+    namen = _wopi_namen(wopi)
+    if brin not in namen:
+        return _buiten_wopi(brin, naam)
+    totaal = wopi.frame("functie", "excl", "totaal")
+    beschikbaar = _beschikbaar(wopi, "functie", "excl")
+
+    def keuze(uitsplitsing: str) -> Keuze:
+        jaren = _jaren(None, True, uitsplitsing, "excl", beschikbaar)
+        assert not isinstance(jaren, str)  # een reeks geeft altijd jaren
+        return Keuze(brin, namen[brin], "fte", uitsplitsing, "excl", jaren, reeks=True)
+
+    vast_tijdelijk = keuze("vast_tijdelijk")
+    per_soort = reken(totaal, None, vast_tijdelijk).drop(columns="totaal")
+    df = reken(totaal, None, keuze("wp_obp")).merge(per_soort, on="jaar", how="left")
+    regel = bronregel(wopi.herkomst.editiejaar, "excl")
+    return {
+        "dataset": DATASET,
+        "instelling": {"naam": naam, "brin": brin},
+        "eenheid": "fte",
+        "gezo": "excl",
+        "cijfers": _cijfers(df),
+        "definitie": WP,
+        "voorbehouden": list(VOORBEHOUDEN_FTE_ZONDER_GEZO),
+        "noot": " ".join(_noten(vast_tijdelijk)),
+        "bron": {
+            "naam": f"{BRONNAAM}, {BRONTITEL}",
+            "regel": regel,
+            "url": unl.PAGINA,
+            "editie": str(wopi.herkomst.editiejaar),
+        },
+    }
