@@ -1344,6 +1344,15 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
   .dashboard-content button, .db-afdrukbalk { display: none !important; }
   .dashboard-content .chart-card, .dashboard-content .kpi-card, .dashboard-sources { break-inside: avoid; }
   .dashboard-sources a[href]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; }
+  /* Een brede tabel scrolt op het scherm zijwaarts; op papier kan dat niet, dus hij past in de breedte (#973): geen
+     scrollbox, kleinere letter, cellen die mogen afbreken. Een lange tabel loopt over meer pagina's (de kaart eromheen
+     mag dan breken), met de kolomkoppen op elke pagina en zonder een rij te halveren. */
+  .dashboard-content .tabel-scroll { overflow: visible; }
+  .dashboard-content .tabel-scroll table { font-size: 8pt !important; }
+  .dashboard-content .tabel-scroll :is(th, td) { white-space: normal !important; padding: 3px 4px !important; }
+  .dashboard-content .tabel-scroll thead { display: table-header-group; }
+  .dashboard-content .tabel-scroll tr { break-inside: avoid; }
+  .dashboard-content .chart-card:has(.tabel-scroll) { break-inside: auto; }
 }
 .kaart-zonder-locatie { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 0; }
 

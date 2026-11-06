@@ -136,7 +136,7 @@ function Voorbehouden({ fin }) {
     <div className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 16px' }}>
       <p style={{ margin: '0 0 4px' }}><strong>Voorbehouden</strong></p>
       <ul style={{ margin: '0 0 8px', paddingLeft: 18 }}>{(fin.voorbehouden || []).map(v => <li key={v}>{v}</li>)}</ul>
-      <details>
+      <details data-afdruk-open="">
         <summary>Wat de kengetallen meten</summary>
         <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{Object.entries(fin.definities || {}).map(([k, d]) => <li key={k}>{d}</li>)}</ul>
       </details>
