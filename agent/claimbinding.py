@@ -37,6 +37,14 @@ def _noemt(zin: str, kenmerk: str) -> bool:
     return re.search(rf"(?<!\w){re.escape(kenmerk)}(?!\w)", zin, re.IGNORECASE) is not None
 
 
+def noemt_selectie(zin: str, waarde: Meetwaarde) -> bool:
+    """Noemt de zin een cel van de rij van deze meetwaarde in woorden (instelling, opleiding, bestuur)?
+
+    Een jaar of peildatum telt niet: dat zegt welke rij het is, niet waarover de zin gaat."""
+    cellen = {cel.split(": ", 1)[-1].strip() for cel in waarde.selectie}
+    return any(_noemt(zin, cel) for cel in cellen if re.search(r"[^\W\d_]", cel))
+
+
 def kies(
     kandidaten: Sequence[T],
     sleutel: Callable[[T], Hashable],

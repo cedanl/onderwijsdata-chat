@@ -70,6 +70,8 @@ Een controle die iets mist is dus mogelijk. Daarom is elk antwoord herleidbaar: 
 
 Ook een los getal is herleidbaar: een gecontroleerd getal in een dataantwoord opent een citatie met bron, selectie, maat en stap in woorden. De `data_key` (bijv. `duo:p01hoinges:3:a31654ba`) staat daaronder, dichtgeklapt achter "Technische details" (CH-30r, #471). Hij blijft erin omdat hij het enige spoor is van het getal naar zijn toolstap en de data in de store, voor support, audit en reproduceerbaarheid. In de gewone leesregel is hij jargon; weglaten zou dat spoor kosten zonder iets op te leveren.
 
+Een getal onder 1.000 valt buiten de getalcontrole, maar kan wel een citatie krijgen bij een bron die haar waarden exact meegeeft: de financiën, WOPI en de Studiekeuzedatabase (#963, numerus-fixuscapaciteit 71). Drie voorwaarden, omdat een klein getal vaak toeval is ("2 opleidingen", "15 januari"): het getal is exact de waarde van een meetwaarde (niet afgerond of afgekapt), de zin of tabelrij noemt haar selectie in woorden (opleiding, instelling, bestuur; een jaartal telt niet) en twijfel gaat alleen tussen rijen van dezelfde maat. Bindt één voorkomen van zo'n getal niet, dan krijgt geen enkel voorkomen een citatie, want de frontend koppelt het k-de voorkomen aan de k-de citatie met dat getal. Codes, rangnummers en jaartallen zijn geen meetwaarde (`agent/meetwaarden.py`). UWV en ROA geven hun waarden niet exact mee; daar blijft de grens van vier cijfers.
+
 ## Tests
 
 - `tests/test_grounding.py`, `tests/test_selectie.py`, `tests/test_labels.py`, `tests/test_binding.py`: de controles per module.

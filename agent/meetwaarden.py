@@ -48,7 +48,8 @@ class Meetwaarde:
     bron: str | None = None
     rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
     # De waarde zonder teken, voor een getal met decimale komma in de tekst (0,69; 2,0 %; `schrijft`): alleen van een
-    # bron die afgeronde decimalen geeft (financien, WOPI; #956). Een getal met komma krijgt alleen zo een citatie.
+    # bron die afgeronde decimalen geeft (financien, WOPI; #956). Een getal met komma krijgt alleen zo een citatie, en een
+    # geheel getal onder 1.000 alleen als het deze waarde exact is (SKDB-capaciteit 71, #963).
     decimaal: Decimal | None = None
 
 
