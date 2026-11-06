@@ -47,7 +47,8 @@ git add manifests/development/secret.yaml
 
 De app leest uit de secret `onderwijsdata-chat-secrets` de sleutels die `manifests/<omgeving>/values.yaml` met
 `secretKeyRef` noemt: overal `CHAT_SECRET`, `CHAT_USERS`, `WILLMA_API_KEY`, `AZURE_AI_API_KEY` en `AZURE_AI_API_BASE`;
-op test en playground ook `OIDC_CLIENT_ID` en `OIDC_CLIENT_SECRET`, op test ook `LOG_HASH_SECRET`. `POSTGRES_URI`
+op test en playground ook `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` en `STUDIEKEUZEDATABASE_API_KEY` (bearer-sleutel van
+de Studiekeuzedatabase, `optional`), op test ook `LOG_HASH_SECRET`. `POSTGRES_URI`
 komt uit de secret `onderwijsdata-chat-app` van het platform (zie hierboven).
 
 ### 4. GitLab CI/CD Variables
