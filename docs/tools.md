@@ -506,6 +506,12 @@ verantwoording uit XBRL (#935, besluit op #725; `tools/financien.py`, bron en re
     € 25 mln, daarboven). Rentabiliteit heeft er geen.
   - **Bestuur 40833** heeft drie eenheden (`40833-25LR`, `-25PZ`, `-30RM`): ROC van Amsterdam krijgt alleen 25PZ, het
     bestuur alle drie, nooit een som.
+  - **Over meerdere jaren** (#964): per eenheid `ten_opzichte_van_sector`, per kengetal de verslagjaren `onder`,
+    `gelijk` en `boven` het sectorcijfer (uit het `verschil`; `zonder_vergelijking` bij een lege waarde), en
+    `onder_signaleringswaarde`, per kengetal de jaren met een signalering. Boven of onder, geen beter of slechter. De
+    noot staat een uitspraak als "in alle jaren" alleen toe als dit veld dat zegt; een signalering is een berekend
+    signaal tegen de drempel van de Inspectie, geen oordeel van de Inspectie, en geen signalering is geen
+    "financieel sterk".
   - Een `melding` per eenheid bij een wissel van variant of een reeks die later begint of eerder stopt; een `noot` bij
     `null` (leeg in de bron, geen 0), bij een bestuur dat DUO aan een andere sector toerekent (Aeres Hogeschool: mbo),
     en bij een bestuursfusie binnen de reeks (RIO-overgangen, `fusies.bestuur_in_reeks`).
