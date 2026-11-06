@@ -178,6 +178,70 @@ def test_signalering_onder_de_waarden_van_de_inspectie():
     assert liq["waarde"] == 0.6 and liq["trede"] == "totale baten van € 3 tot en met € 12 miljoen"
 
 
+# --- over meerdere jaren (#964) ----------------------------------------------------------------------------------
+
+
+def test_per_kengetal_de_jaren_onder_en_boven_het_sectorcijfer():
+    """Review 08-D1: "in alle jaren gelijk aan of beter dan de sector" terwijl één jaar onder lag. De code noemt per
+    kengetal de jaren onder, gelijk aan en boven het sectorcijfer; het model hoeft niets over jaren heen af te leiden.
+    Firda ligt in 2024 met solvabiliteit I 0,50 onder het sectorcijfer 0,57 en in 2025 erboven, met liquiditeit in
+    beide jaren erboven."""
+    [eenheid] = _uit("Firda")["eenheden"]
+    assert _jaar_van(_uit("Firda"), 2024)["solvabiliteit_1"] == {"bestuur": 0.5, "sector": 0.57, "verschil": -0.07}
+    tov = eenheid["ten_opzichte_van_sector"]
+    assert list(tov) == ["solvabiliteit_1", "solvabiliteit_2", "liquiditeit", "rentabiliteit_procent"]
+    assert tov["solvabiliteit_1"] == {"onder": [2024], "gelijk": [], "boven": [2025]}
+    assert tov["solvabiliteit_2"] == {"onder": [2024], "gelijk": [], "boven": [2025]}
+    assert tov["liquiditeit"] == {"onder": [], "gelijk": [], "boven": [2024, 2025]}
+    assert eenheid["onder_signaleringswaarde"] == {"solvabiliteit_2": [], "liquiditeit": []}
+
+
+@pytest.mark.parametrize("vraag", ["40597", "40833", "30932", "30000", "40295", "00009"])
+def test_de_jaren_volgen_uit_het_verschil_per_jaar(vraag):
+    """Boven of onder, nooit beter of slechter: een hoge solvabiliteit of liquiditeit is niet vanzelf beter. Een jaar
+    zonder verschil (een lege waarde) valt onder `zonder_vergelijking`, niet onder gelijk."""
+    for eenheid in _uit(vraag)["eenheden"]:
+        for kengetal, delen in eenheid["ten_opzichte_van_sector"].items():
+            for jaar in eenheid["reeks"]:
+                verschil = jaar[kengetal].get("verschil")
+                deel = (
+                    "zonder_vergelijking"
+                    if verschil is None
+                    else "onder"
+                    if verschil < 0
+                    else "gelijk"
+                    if verschil == 0
+                    else "boven"
+                )
+                assert [d for d, jaren in delen.items() if jaar["verslagjaar"] in jaren] == [deel]
+        signalen = eenheid["onder_signaleringswaarde"]
+        for jaar in eenheid["reeks"]:
+            for s in jaar["signaleringen"]:
+                assert jaar["verslagjaar"] in signalen[s["kengetal"]]
+
+
+def test_een_lege_waarde_staat_apart_en_een_signalering_per_jaar():
+    [eenheid] = _uit("30000")["eenheden"]
+    assert eenheid["ten_opzichte_van_sector"]["rentabiliteit_procent"] == {
+        "onder": [],
+        "gelijk": [],
+        "boven": [],
+        "zonder_vergelijking": [2025],
+    }
+    assert eenheid["onder_signaleringswaarde"] == {"solvabiliteit_2": [2025], "liquiditeit": [2025]}
+
+
+def test_een_drempelsignaal_is_geen_oordeel_en_geen_signaal_is_geen_sterk():
+    """Review 08-D1: "staat er financieel sterk voor" en "geen enkele signalering van de Inspectie". De voorbehouden en
+    de noot onderscheiden een berekend drempelsignaal van een oordeel van de Inspectie."""
+    uit = _uit("ROC Midden Nederland")
+    voorbehouden = " ".join(uit["voorbehouden"])
+    assert "berekend" in voorbehouden and "geen oordeel van de Inspectie" in voorbehouden
+    assert "geen kengetal onder een signaleringswaarde" in voorbehouden
+    assert "`ten_opzichte_van_sector`" in uit["noot"] and "beter" in uit["noot"]
+    assert "financieel sterk" in uit["noot"]
+
+
 def test_werkplaatsfunctie_apart_bij_een_universiteit_met_umc():
     j = _jaar_van(_uit("00009"), 2025)
     assert (j["rijksbijdragen_eur"], j["werkplaatsfunctie_eur"]) == (700_000_000, 115_000_000)

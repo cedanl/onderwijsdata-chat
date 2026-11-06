@@ -38,6 +38,9 @@ _HEADERS = {"User-Agent": "openEDUdata+ (onderwijsdata-chat)"}
 _SECTOREN = {"MBO": "mbo", "HBO": "hbo", "WO": "wo"}
 # De velden van een jaar waarvan een lege waarde een noot krijgt: leeg is geen nul.
 _GECONTROLEERD = (*(k.sleutel for k in financien.KENGETALLEN), "rijksbijdragen")
+# De kengetallen van een jaar in de reeks, in de volgorde van de reeks; de sleutels van `ten_opzichte_van_sector`.
+_VERGELEKEN = ("solvabiliteit_1", "solvabiliteit_2", "liquiditeit", "rentabiliteit_procent")
+_SIGNALEERBAAR = ("solvabiliteit_2", "liquiditeit")
 _TWEE = Decimal("0.01")
 _EEN = Decimal("0.1")
 
@@ -62,13 +65,22 @@ VOORBEHOUDEN = (
     "jaarrekening.",
     "Eén variant: standaard, dus geconsolideerd waar het bestuur dat aanleverde en anders enkelvoudig, met de variant "
     "per jaar. Varianten zijn nooit opgeteld.",
-    "Een signaleringswaarde van de Inspectie is een signaal, geen oordeel. Een negatieve rentabiliteit is op zichzelf "
-    "geen signaal.",
+    "Een signalering is een berekend signaal, geen oordeel: deze app toetst of een kengetal onder een "
+    "signaleringswaarde van de Inspectie valt; het is geen oordeel van de Inspectie over het bestuur. Geen "
+    "signalering betekent alleen dat geen kengetal onder een signaleringswaarde valt, niet dat het bestuur er "
+    "financieel goed of sterk voor staat. Een negatieve rentabiliteit is op zichzelf geen signaal.",
+    "Boven of onder het sectorcijfer is geen beter of slechter: een hoge solvabiliteit of liquiditeit is niet vanzelf "
+    "beter.",
 )
 _NOOT = (
     "Neem de voorbehouden op in het antwoord, met het verslagjaar en de variant. Reken niets zelf: gebruik alleen de "
     "getallen, verschillen en signaleringen hieronder. Het sectorcijfer is het gewogen cijfer van de Inspectie, geen "
-    "mediaan."
+    'mediaan. Een uitspraak over meerdere jaren naast het sectorcijfer ("in alle jaren", "steeds boven") alleen '
+    "als `ten_opzichte_van_sector` van de eenheid dat per kengetal zegt; noem de jaren onder het sectorcijfer. Zeg "
+    "boven of onder het sectorcijfer, niet beter of slechter. Noem een signalering een berekend signaal tegen een "
+    "signaleringswaarde van de Inspectie, geen oordeel of signalering van de Inspectie; zonder signalering zeg je "
+    'alleen dat geen kengetal onder een signaleringswaarde valt, geen oordeel als "financieel sterk" of '
+    '"gezond".'
 )
 NIET_BESCHIKBAAR = (
     "De financiële verantwoording van DUO is in deze omgeving nog niet beschikbaar: DUO moet de licentie nog "
@@ -155,6 +167,36 @@ def _jaar(regel: dict) -> dict:
     return uit
 
 
+def _deel(verschil: float | None) -> str:
+    if verschil is None:
+        return "zonder_vergelijking"
+    return "onder" if verschil < 0 else "boven" if verschil > 0 else "gelijk"
+
+
+def _ten_opzichte_van_sector(reeks: list[dict]) -> dict[str, dict[str, list[int]]]:
+    """Per kengetal de verslagjaren onder, gelijk aan en boven het sectorcijfer, uit het verschil van de afgeronde
+    waarden (#964); een jaar zonder verschil (lege waarde) apart. Zo leidt het model geen "alle jaren" af dat niet klopt.
+    Boven en onder, geen beter en slechter: bij solvabiliteit en liquiditeit is hoger niet vanzelf beter."""
+    uit: dict[str, dict[str, list[int]]] = {}
+    for kengetal in _VERGELEKEN:
+        delen: dict[str, list[int]] = {"onder": [], "gelijk": [], "boven": [], "zonder_vergelijking": []}
+        for jaar in reeks:
+            verschil = jaar[kengetal].get("verschil")
+            delen[_deel(verschil)].append(jaar["verslagjaar"])
+        if not delen["zonder_vergelijking"]:
+            del delen["zonder_vergelijking"]
+        uit[kengetal] = delen
+    return uit
+
+
+def _onder_signaleringswaarde(reeks: list[dict]) -> dict[str, list[int]]:
+    """Per signaleerbaar kengetal de verslagjaren met een berekende signalering (#964)."""
+    return {
+        kengetal: [j["verslagjaar"] for j in reeks if any(s["kengetal"] == kengetal for s in j["signaleringen"])]
+        for kengetal in _SIGNALEERBAAR
+    }
+
+
 def _variantwissel(regels: list[dict]) -> str | None:
     """De melding bij een reeks die van variant wisselt: een verschil rond de wissel kan door de variant komen."""
     if len({r["variant"] for r in regels}) < 2:
@@ -183,7 +225,14 @@ def _reeksgrenzen(regels: list[dict], editie: financien.Editie) -> str | None:
 
 
 def _eenheid(regels: list[dict], editie: financien.Editie) -> dict:
-    uit: dict = {"eenheid": regels[0]["eenheid"], "naam": regels[0]["naam"], "reeks": [_jaar(r) for r in regels]}
+    reeks = [_jaar(r) for r in regels]
+    uit: dict = {
+        "eenheid": regels[0]["eenheid"],
+        "naam": regels[0]["naam"],
+        "reeks": reeks,
+        "ten_opzichte_van_sector": _ten_opzichte_van_sector(reeks),
+        "onder_signaleringswaarde": _onder_signaleringswaarde(reeks),
+    }
     meldingen = [m for m in (_variantwissel(regels), _reeksgrenzen(regels, editie)) if m]
     if meldingen:
         uit["melding"] = " ".join(meldingen)
