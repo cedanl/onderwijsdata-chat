@@ -303,6 +303,22 @@ def test_de_docs_noemen_dezelfde_dashboard_eindpunten_als_de_api():
     assert in_dashboards - {"/api/dashboard/instroom"} == set(DASHBOARDS)
 
 
+def test_docs_api_noemt_elk_veld_van_api_config(database):
+    # #972: de regel noemde "o.a." vier velden en miste `bronnen` (#956). Een nieuw veld hoort erbij.
+    import asyncio
+    import re
+    from pathlib import Path
+
+    from routes.config import get_config
+
+    tekst = (Path(__file__).parent.parent / "docs" / "api.md").read_text()
+    gevonden = re.search(r"^\| `GET` \| `/api/config` \|(.*)$", tekst, flags=re.MULTILINE)
+    assert gevonden
+    regel = gevonden.group(1)
+
+    assert {veld for veld in asyncio.run(get_config()) if f"`{veld}`" not in regel} == set()
+
+
 @pytest.mark.parametrize("met_spa", [False, True])
 @pytest.mark.parametrize("login", [True, False])
 def test_de_oude_instroom_geeft_410_met_waar_de_cijfers_staan(database, monkeypatch, loaders, tmp_path, login, met_spa):
