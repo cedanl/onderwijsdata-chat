@@ -41,6 +41,8 @@ WEERGAVEN = ("opleidingen", "studie", "numerus_fixus", "doorstroom_mbo_hbo", "do
 MAX_RIJEN = 15  # rijen in het toolresultaat; de hele tabel staat in de store (data_key)
 MAX_THEMARIJEN = 3  # de NSE-thema's alleen bij zo weinig rijen, anders wordt het resultaat te lang
 MAX_OPTIES = 15
+# Onder dit aantal respondenten markeert de tool een NSE-oordeel als onzeker (zie NSE en docs/databronnen.md).
+MIN_RESPONDENTEN = 30
 _BRIN = re.compile(r"^\d{2}[A-Z]{2}$")
 _CODE = re.compile(r"^\d{5}$")
 _MBO = ("mbo", "roc", "mbo-instelling", "mbo-instellingen")
@@ -54,7 +56,8 @@ ALLEEN_HO = (
 NSE = (
     "NSE-oordelen zijn gewogen gemiddelden op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de "
     "Nationale Studenten Enquête {nse}; nse_respondenten is het aantal antwoorden. Een verschil van een paar "
-    "honderdsten is geen verschil, en bij weinig respondenten (onder de 30) is een oordeel onzeker: zeg dat."
+    "honderdsten is geen verschil. Een rij met nse_onzeker: true heeft minder dan 30 respondenten: noem dat oordeel "
+    "onzeker."
 )
 LANDELIJK = (
     "nse_oordeel_landelijk is het oordeel over dezelfde studie in dezelfde vorm over alle instellingen samen, zoals LCSK "
@@ -358,12 +361,23 @@ def _voorbehouden(keuze: Keuze, export: skdb.Export) -> list[str]:
     return per_weergave
 
 
+def _met_onzekerheid(rij: dict) -> dict:
+    """Een NSE-oordeel op minder dan MIN_RESPONDENTEN antwoorden krijgt `nse_onzeker: true`: de code markeert het, het
+    model hoeft niet zelf te tellen. Alleen in het toolresultaat, niet in de tabel in de store (die is gelijk aan de
+    snippet)."""
+    n = rij.get("nse_respondenten")
+    if rij.get("nse_oordeel") is not None and isinstance(n, int) and n < MIN_RESPONDENTEN:
+        return {**rij, "nse_onzeker": True}
+    return rij
+
+
 def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
     herkomst = export.herkomst
     df = pd.DataFrame(alle)
     getoond = alle[:MAX_RIJEN]
     if len(alle) > min(MAX_THEMARIJEN, MAX_RIJEN):  # thema's alleen als alles getoond wordt en het weinig is
         getoond = [{k: v for k, v in r.items() if not k.startswith("nse_") or k in _NSE_KERN} for r in getoond]
+    getoond = [_met_onzekerheid(r) for r in getoond]
     uit: dict = {
         "dataset": DATASET,
         "data_key": _bewaar(df, keuze, herkomst) if alle else None,

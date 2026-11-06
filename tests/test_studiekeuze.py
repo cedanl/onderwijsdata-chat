@@ -78,6 +78,14 @@ def test_een_niet_bekostigde_hogeschool_staat_alleen_in_de_export():
     assert uit["instelling"]["brin"] == "99XX" and uit["rijen"][0]["plaats"] == "'s-Hertogenbosch"
 
 
+def test_een_oordeel_op_weinig_respondenten_markeert_de_code_als_onzeker():
+    (onzeker,) = _uit(instelling="Proefhogeschool", opleiding="ICT")["rijen"]  # 15 respondenten
+    assert onzeker["nse_onzeker"] is True
+    (zeker,) = _uit(instelling="HU", opleiding="ICT", vorm="voltijd")["rijen"]  # 120 respondenten
+    assert "nse_onzeker" not in zeker
+    assert "nse_onzeker" not in store.get(_uit(instelling="Proefhogeschool", opleiding="ICT")["data_key"]).columns
+
+
 def test_studie_met_arbeidsmarkt():
     uit = _uit(weergave="studie", opleiding="ICT")
     assert [(r["vorm"], r["salaris_mediaan_bruto_maand"]) for r in uit["rijen"]] == [

@@ -567,8 +567,8 @@ doet de code, en het model neemt de getallen letterlijk over.
 - **Landelijk oordeel:** naast het NSE-oordeel van een opleiding staat `nse_oordeel_landelijk`, het oordeel over
   dezelfde landelijke studie in dezelfde vorm over alle instellingen samen, zoals LCSK het berekent (tabel
   `studievormen`). Het is geen gemiddelde van de getoonde rijen.
-- **Onzekerheid:** het antwoord noemt het aantal respondenten. Bij minder dan 30 respondenten zegt het dat het oordeel
-  onzeker is, en een verschil van een paar honderdsten heet geen verschil.
+- **Onzekerheid:** het antwoord noemt het aantal respondenten. Een oordeel op minder dan 30 respondenten markeert de
+  code zelf als onzeker (`nse_onzeker`), en een verschil van een paar honderdsten heet geen verschil.
 - **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
   zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
 
