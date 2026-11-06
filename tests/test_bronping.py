@@ -206,8 +206,8 @@ def test_de_skdb_ping_staat_er_alleen_met_sleutel_en_toetst_versie_en_aantallen(
     """#957: zonder STUDIEKEUZEDATABASE_API_KEY (CI zonder variabele) geen ping; met sleutel een eigen proces."""
     assert all(p.bron != "skdb" for p in bronping.PINGS)
     assert bronping._skdb_bewijs({"versie": "26.6", "instellingen": 109, "opleidingen": 3312}) is None
-    assert "versienummer" in bronping._skdb_bewijs({"versie": None, "instellingen": 109, "opleidingen": 3312})
-    assert "opleidingen 12" in bronping._skdb_bewijs({"versie": "26.6", "instellingen": 109, "opleidingen": 12})
+    assert "versienummer" in str(bronping._skdb_bewijs({"versie": None, "instellingen": 109, "opleidingen": 3312}))
+    assert "opleidingen 12" in str(bronping._skdb_bewijs({"versie": "26.6", "instellingen": 109, "opleidingen": 12}))
     code = "from scripts import bronping; print([p.id for p in bronping.PINGS if p.bron == 'skdb'])"
     uit = subprocess.run(
         [sys.executable, "-c", code],
