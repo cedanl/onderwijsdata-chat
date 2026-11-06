@@ -447,12 +447,20 @@ audit:python:
     # de PyPI-advisorydatabase en gaan er daarom uit (--no-emit-workspace; anders staan er `-e ./packages/…`-regels in
     # die pip-audit niet leest). Hun eigen afhankelijkheden (httpx, pandas, …) zitten wel in de export: dezelfde 92 als vóór #885.
     - uv export --frozen --no-dev --no-emit-project --no-emit-workspace --no-hashes --extra postgres -o requirements-pypi.txt
-    # Bewust genegeerd (SECURITY.md, S12): filelock 3.32.7, fix in 4.2.1, maar litellm (ook 1.108.0) eist filelock<4.0.
-    # 112913 en 112907 gelden alleen op Windows; 112940 zit in ReadWriteLock, dat geen pakket hier gebruikt
-    # (huggingface_hub gebruikt FileLock/SoftFileLock, litellm alleen in zijn proxy-CLI). Weg zodra filelock>=4.2.1 kan.
+    # Bewust genegeerd (SECURITY.md, S12; herzien uiterlijk 06-12-2026): filelock 3.32.7, fix in 4.2.1, maar litellm
+    # (ook 1.108.1) eist filelock<4.0. Weg zodra filelock>=4.2.1 kan.
+    # - 112907, 112910, 112913: alleen op Windows.
+    # - 112915, 112936, 112940 (ReadWriteLock) en 112908, 112911, 112938 (StrictSoftFileLock/SoftReadWriteLock):
+    #   geen pakket hier gebruikt die klassen.
+    # - 112909 (UnixFileLock) en 112912, 112935, 112939 (SoftFileLock): vragen een tweede lokale gebruiker; de pod draait
+    #   één uid, en huggingface_hub neemt die locks alleen bij een HF-download, die de app niet doet.
     - >-
       uvx pip-audit==2.10.1 -r requirements-pypi.txt --no-deps --disable-pip --progress-spinner off
-      --ignore-vuln CVE-2026-112913 --ignore-vuln CVE-2026-112907 --ignore-vuln CVE-2026-112940
+      --ignore-vuln CVE-2026-112907 --ignore-vuln CVE-2026-112910 --ignore-vuln CVE-2026-112913
+      --ignore-vuln CVE-2026-112915 --ignore-vuln CVE-2026-112936 --ignore-vuln CVE-2026-112940
+      --ignore-vuln CVE-2026-112908 --ignore-vuln CVE-2026-112911 --ignore-vuln CVE-2026-112938
+      --ignore-vuln CVE-2026-112909 --ignore-vuln CVE-2026-112912 --ignore-vuln CVE-2026-112935
+      --ignore-vuln CVE-2026-112939
 
 audit:npm:
   stage: test

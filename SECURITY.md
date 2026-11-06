@@ -181,12 +181,32 @@ Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blo
 
 **Bewust genegeerd** (`--ignore-vuln` in `audit:python`), zodat de job groen is en een nieuwe CVE opvalt:
 
-| CVE | Pakket | Waarom niet van toepassing | Weg wanneer |
-|---|---|---|---|
-| CVE-2026-112913, CVE-2026-112907 | filelock 3.32.7 (fix 4.2.1) | Alleen op Windows (SQLite-zijbestanden van `ReadWriteLock`; oplocks bij soft locks); het image draait Linux | filelock ≥ 4.2.1 mag: litellm eist tot en met 1.108.0 `filelock<4.0` (1.109.0rc1 laat `<5` toe, #767) |
-| CVE-2026-112940 | filelock 3.32.7 (fix 4.2.1) | Zit in `ReadWriteLock`/`AsyncReadWriteLock`; geen pakket in de image gebruikt die. huggingface_hub gebruikt `FileLock`/`SoftFileLock` (alleen bij downloads naar de HF-cache, die de app niet doet), litellm alleen in zijn proxy-CLI | idem |
+Alle dertien zitten in filelock 3.32.7 (fix in 4.2.1, voor CVE-2026-112936 al in 4.0.9). filelock komt alleen binnen
+via litellm en huggingface_hub (`uv tree --invert --package filelock`), en litellm eist `filelock<4.0`: in 1.108.0 (de
+pin in `pyproject.toml`) en ook in de nieuwste release 1.108.1. Alleen 1.109.0rc1 laat `<5` toe. Wie filelock in de
+image aanroept: huggingface_hub met `FileLock` (op Linux `UnixFileLock`) en, als terugval, `SoftFileLock`
+(`huggingface_hub/utils/_fixes.py`), alleen bij een download naar de HF-cache of het opslaan van een HF-token. Dat doet
+de app niet: in litellm roept alleen de tokenteller voor Kimi op Bedrock `hf_hub_download` aan, en de app kent geen
+Bedrock-provider (`core/config.py`). Verder gebruikt alleen de proxy-CLI van litellm filelock, en die draait hier niet.
+Geen pakket in de image gebruikt `ReadWriteLock`, `AsyncReadWriteLock`, `SoftReadWriteLock` of `StrictSoftFileLock`
+(gegrept in `site-packages`, 06-11-2026).
 
-Gezien op 27-10-2026: de job was op `main` rood op deze drie (allow_failure, dus onopgemerkt).
+| CVE | Getroffen deel | Waarom niet van toepassing |
+|---|---|---|
+| CVE-2026-112907, CVE-2026-112910, CVE-2026-112913 | oplocks bij `SoftFileLock`; `WindowsFileLock` negeert `mode`; SQLite-zijbestanden van `ReadWriteLock` | Alleen op Windows; het image draait Linux |
+| CVE-2026-112915, CVE-2026-112936, CVE-2026-112940 | `ReadWriteLock`/`AsyncReadWriteLock` (lockdatabase, symlink naar SQLite, heropenen op naam) | Geen pakket in de image gebruikt die klasse |
+| CVE-2026-112908, CVE-2026-112911, CVE-2026-112938 | `StrictSoftFileLock` en `SoftReadWriteLock` (claimmappen, protocolmap, symlink op `<pad>.filelock`) | Geen pakket in de image gebruikt die klassen |
+| CVE-2026-112909 | `UnixFileLock` kort en chmodt een bestand dat een andere gebruiker op het lockpad zet | Vraagt een tweede lokale gebruiker met schrijfrecht in de lockmap. De pod draait één uid (1000) met `readOnlyRootFilesystem` (`charts/onderwijsdata-chat/values.yaml`), en de app neemt dit lock niet (geen HF-download) |
+| CVE-2026-112912, CVE-2026-112935, CVE-2026-112939 | `SoftFileLock`: symlinkwissel bij de schrijfcontrole, stale-break op hergebruikt inode, vervalste PID in de marker | idem: een tweede lokale gebruiker, en `SoftFileLock` is in huggingface_hub alleen de terugval als `FileLock` niet kan |
+
+**Weg wanneer:** filelock ≥ 4.2.1 kan, dus zodra een litellm-release `filelock<4.0` loslaat (1.109.0 als 1.109.0rc1
+zo blijft; Renovate meldt hem, #656). Haal dan de hele lijst uit `audit:python` en deze tabel. **Herzien uiterlijk
+06-12-2026**, ook als er dan nog geen litellm-release is: kijk of een van deze CVE's de app alsnog raakt (een nieuwe
+aanroeper van filelock in `uv tree --invert --package filelock`, een HF-download, een tweede gebruiker in de pod).
+
+Gezien op 27-10-2026: de job was op `main` rood op de eerste drie (112907, 112913, 112940; allow_failure, dus
+onopgemerkt). Vanaf 26-10 kwamen de andere tien erbij; besluit 29-10 was wachten op litellm (#767), op 06-11 bewust
+geaccepteerd en in #972 per CVE beoordeeld en op de lijst gezet, zodat de job weer groen is en een nieuwe CVE opvalt.
 
 ---
 
