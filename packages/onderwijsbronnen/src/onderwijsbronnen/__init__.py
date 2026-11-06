@@ -1,6 +1,6 @@
 """Open Nederlandse onderwijs- en arbeidsmarktbronnen in één pakket (#890, #910).
 
-Per bron een subpakket: `cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb` en `unl`; wat ze delen staat in
+Per bron een subpakket: `cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`, `unl` en `skdb`; wat ze delen staat in
 `_kern`. Elk
 bron-subpakket heeft dezelfde interface (`BRON`, `catalogusrecords()`, `laad`, `metadata()`, zie
 `_kern.broncontract`). Een bron importeert alleen `_kern`, nooit een andere bron. Deze bovenlaag (dit bestand,
@@ -15,7 +15,7 @@ De oude namen `riodata` en `onderwijsdata` (tot #910) bestaan sinds 0.9.0 niet m
 
 from functools import cache
 
-from . import cbs, duo, inspectie, rio, roa, sbb, unl, uwv
+from . import cbs, duo, inspectie, rio, roa, sbb, skdb, unl, uwv
 from . import contract, scope
 from ._kern.bestuur import Bestuurssleutel
 from ._kern.bron_id import BRONNEN, AmbigueBronId, BronId, BronIdFout, OnbekendBronId, Register, bron_van_sleutel
@@ -24,15 +24,16 @@ from ._kern.versie import VERSIE as __version__
 
 # De volgorde van catalog(source="all") (zonder CBS: die catalogus staat apart in `cbs`). Zonder UNL (#936): dat is
 # geen datasetcatalogus maar één bestand achter een eigen lader (`unl.load`), dat de chat alleen via een eigen tool en
-# achter een vlag gebruikt; het datasetcontract (`contract`) en de telling van "all" kennen het niet.
+# achter een vlag gebruikt; het datasetcontract (`contract`) en de telling van "all" kennen het niet. Zo ook de
+# Studiekeuzedatabase (#957): één export achter een sleutel (`skdb.load`), alleen via een eigen tool.
 _CATALOGUS_ALLES = ("rio", "duo", "roa", "uwv", "inspectie", "sbb")
-_BRON = {"cbs": cbs, "rio": rio, "duo": duo, "roa": roa, "uwv": uwv, "inspectie": inspectie, "sbb": sbb, "unl": unl}
+_BRON = {"cbs": cbs, "rio": rio, "duo": duo, "roa": roa, "uwv": uwv, "inspectie": inspectie, "sbb": sbb, "unl": unl, "skdb": skdb}
 
 
 def catalogus() -> dict[str, list[dict]]:
     """De samengevoegde catalogus (#912): per bron, in de volgorde van `BRONNEN`, haar catalogusrecords.
 
-    Eén aanroep voor alle acht bronnen, zodat een gebruiker (de chat) niet zelf twee catalogi samenvoegt. De records
+    Eén aanroep voor alle negen bronnen, zodat een gebruiker (de chat) niet zelf twee catalogi samenvoegt. De records
     zijn die van `<bron>.catalogusrecords()`, ongewijzigd; elke aanroep geeft nieuwe lijsten.
     """
     return {bron: _BRON[bron].catalogusrecords() for bron in BRONNEN}
@@ -65,6 +66,7 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
                 "inspectie" — alleen Inspectie van het Onderwijs datasets
                 "sbb"       — alleen SBB kwalificatiestructuur datasets
                 "unl"       — alleen het WOPI-personeelsbestand van UNL (niet in "all")
+                "skdb"      — alleen de Studiekeuzedatabase van LCSK (niet in "all")
                 "all"       — alles gecombineerd, zonder UNL
         ai:     Bij source="rio"/"all": gebruik AI-verrijkte beschrijvingen (default True).
         live:   Bij source="duo"/"all": haal DUO-records live op van CKAN i.p.v. lokale
@@ -78,6 +80,7 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
         "inspectie": inspectie.catalogusrecords,
         "sbb": sbb.catalogusrecords,
         "unl": unl.catalogusrecords,
+        "skdb": skdb.catalogusrecords,
     }
     if source == "all":
         return [record for bron in _CATALOGUS_ALLES for record in lezers[bron]()]
@@ -85,10 +88,10 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
         return lezers[source]()
     raise ValueError(
         f"Ongeldige source '{source}'. "
-        f"Kies 'rio', 'duo', 'roa', 'uwv', 'inspectie', 'sbb', 'unl' of 'all'."
+        f"Kies 'rio', 'duo', 'roa', 'uwv', 'inspectie', 'sbb', 'unl', 'skdb' of 'all'."
     )
 
 
 __all__ = ["BRONNEN", "Bestuurssleutel", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
            "BronId", "BronIdFout", "OnbekendBronId", "AmbigueBronId", "Register", "cbs", "duo", "rio", "roa", "uwv",
-           "inspectie", "sbb", "unl", "contract", "scope", "AmbigueResource", "ResourceNietGevonden", "__version__"]
+           "inspectie", "sbb", "unl", "skdb", "contract", "scope", "AmbigueResource", "ResourceNietGevonden", "__version__"]

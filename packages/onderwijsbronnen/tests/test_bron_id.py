@@ -63,6 +63,8 @@ def test_heen_en_terug_geeft_hetzelfde_id():
         ("unl:wopi", "unl:wopi"),
         ("unl/WOPI", "unl:wopi"),
         ("wopi", "unl:wopi"),
+        ("skdb:studiekeuzedatabase", "skdb:studiekeuzedatabase"),
+        ("studiekeuzedatabase", "skdb:studiekeuzedatabase"),
     ],
 )
 def test_elke_vorm_normaliseert_naar_bron_en_catalogusspelling(invoer, verwacht):

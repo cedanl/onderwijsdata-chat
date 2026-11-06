@@ -1,0 +1,46 @@
+[
+  {
+    "leverancier": "Landelijk Centrum Studiekeuze",
+    "bron": "Studiekeuzedatabase (hbo en wo)",
+    "beschrijving": "De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (LCSK), de data achter Studiekeuze123: per opleiding van een hogeschool of universiteit (CROHO-code × BRIN × vestiging, voltijd/deeltijd/duaal) de oordelen van studenten uit de Nationale Studenten Enquête (algemeen oordeel en thema's), studenten en eerstejaars (1cijferHO), doorstroom naar jaar 2 en diplomarendement, numerus fixus met capaciteit, wettelijk collegegeld en accreditatie; per landelijke studie de arbeidsmarktpositie van afgestudeerden per SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau); en de doorstroom van mbo-4-kwalificaties naar hbo-studies en van bachelors naar masters.",
+    "periode": "Dagelijkse export; NSE van het lopende jaar, studenten en eerstejaars uit het meest recente 1cijferHO-jaar, numerus fixus en collegegeld voor het komende studiejaar",
+    "onderwijstype": ["HBO", "WO"],
+    "doel": "Opleidingen in het hoger onderwijs vergelijken zoals een aankomende student dat doet: oordeel van studenten, studiesucces, toelating en arbeidsmarkt, per instelling en landelijk.",
+    "niet_geschikt_voor": [
+      "Mbo-opleidingen: de Studiekeuzedatabase heeft alleen hbo en wo. Van het mbo staat er alleen in waar mbo-4-gediplomeerden in het hbo naartoe gaan.",
+      "Reeksen over meerdere jaren: de export geeft alleen de stand van nu (één NSE-jaar, één 1cijferHO-jaar).",
+      "Officiële inschrijvingstellingen van DUO: gebruik daarvoor de DUO-bestanden (de aantallen in de Studiekeuzedatabase komen uit 1cijferHO en kunnen afwijken)."
+    ],
+    "frequentie": "Dagelijks",
+    "categorie": "Studiekeuze",
+    "sectie": "Landelijk Centrum Studiekeuze",
+    "documentatie": {
+      "tekst": "Studiekeuzedata — Studiekeuze123 (Landelijk Centrum Studiekeuze)",
+      "url": "https://www.studiekeuze123.nl/studiekeuzedata"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Hoe tevreden zijn studenten over HBO-ICT bij de Hogeschool Utrecht, vergeleken met landelijk?",
+      "Welke opleidingen van de Universiteit Leiden hebben een numerus fixus en hoeveel plaatsen zijn er?",
+      "Wat verdienen afgestudeerden Psychologie en hoe vaak hebben ze een baan op niveau?",
+      "Naar welke hbo-opleidingen stromen mbo-studenten Verpleegkunde door?"
+    ],
+    "tags": [
+      "studiekeuze", "studiekeuze123", "lcsk", "nse", "nationale studenten enquete", "studenttevredenheid", "oordeel",
+      "numerus fixus", "capaciteit", "loting", "selectie", "collegegeld", "doorstroom", "uitval", "rendement",
+      "eerstejaars", "studenten", "salaris", "werkloosheid", "arbeidsmarkt", "baan op niveau", "hbo", "wo",
+      "bachelor", "master", "associate degree", "mbo-hbo", "bachelor-master", "accreditatie", "opleidingen"
+    ],
+    "combineerbaar_met": [
+      "DUO-inschrijvingen en -diploma's per opleiding (via BRIN-code en CROHO-code)",
+      "RIO-register van instellingen en opleidingen (via BRIN-code en CROHO-code)",
+      "NVAO-accreditaties (via CROHO-code)",
+      "ROA-arbeidsmarktprognoses (via de sector van de opleiding)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_skdb_id": "studiekeuzedatabase",
+    "_resources": []
+  }
+]
