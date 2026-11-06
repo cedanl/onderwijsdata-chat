@@ -6,12 +6,14 @@ pagina gebruikte.
 
 from datetime import UTC, datetime
 
+import onderwijsbronnen
 import pytest
 from onderwijsbronnen import duo
 
 import data.dashboard as dashboard
 from core import actualiteit
-from data import arbeidsmarkt
+from data import arbeidsmarkt, bronblok
+from tools import scopeprofiel
 
 pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
@@ -155,3 +157,12 @@ def test_een_onbekende_instelling_heeft_geen_bronblok():
 
     assert result["gevonden"] is False
     assert "bronnen" not in result
+
+
+def test_het_bronblok_leest_het_dataset_id_zoals_de_rest_van_de_chat():
+    """#971: het bronblok had een derde lijst ID-velden (`_ckan_id`, `_roa_id`, `_skdb_id`), zonder SBB, RIO en de
+    Inspectie; die kregen geen titel en geen link. Nu leest het `scopeprofiel.dataset_id`, de ene lijst van #967."""
+    records = [*onderwijsbronnen.catalog(source="all"), *onderwijsbronnen.catalog(source="skdb")]
+
+    assert set(bronblok._catalogus()) == {scopeprofiel.dataset_id(r) for r in records} - {None}
+    assert bronblok._catalogus()["crebolijst"]["_sbb_id"] == "crebolijst"

@@ -1,7 +1,7 @@
 [project]
 name = "onderwijsbronnen"
 # Gaat verder waar riodata (0.7.0) en onderwijsdata (0.2.2) ophielden: een versievergelijking loopt nooit terug.
-version = "0.11.1"
+version = "0.11.2"
 description = "Python client voor open Nederlandse onderwijs- en arbeidsmarktdata: CBS, DUO, RIO, ROA, UWV, Inspectie, SBB, UNL en de Studiekeuzedatabase"
 readme = "README.md"
 license = { text = "MIT" }

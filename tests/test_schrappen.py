@@ -64,6 +64,23 @@ def test_een_tabelrij_met_een_ongedekt_getal_vervalt_met_zijn_regel():
     assert "| 2024 | 5.943 |\n| 2026 | 6.100 |" in resultaat.text
 
 
+def test_een_tabel_die_meer_rijen_verliest_dan_ze_houdt_houdt_het_antwoord_in():
+    """C1 (#976): elf van twaalf rijen vielen weg onder een conclusie "bij 12 hogescholen". Een restant van een tabel
+    spreekt de rest van het antwoord tegen; dan inhouden, met de meldingen."""
+    tekst = (
+        "Bij vier hogescholen daalde het aantal ingeschrevenen. Een sterk verband met het oordeel is er niet.\n\n"
+        "| hogeschool | 2021 | 2025 |\n|---|---|---|\n"
+        "| A | 5.943 | 6.100 |\n| B | 7.777 | 6.100 |\n| C | 8.888 | 5.943 |\n| D | 9.999 | 5.943 |\n\n"
+        "### Wat valt op\nDe verschillen zijn klein. Het oordeel komt uit 2026. De aantallen zijn alle vormen samen. "
+        "De koppeling is op BRIN. Twee hogescholen ontbreken. Kleine aantallen spelen geen rol."
+    )
+
+    resultaat = _schrap(tekst)
+
+    assert harde(resultaat.problems)
+    assert resultaat.text == tekst
+
+
 def test_een_antwoord_dat_bijna_helemaal_uit_ongedekte_zinnen_bestaat_blijft_ingehouden():
     tekst = "In 2024 waren er 6.340 eerstejaars. Dat is 11.111 meer dan in 2023."
 

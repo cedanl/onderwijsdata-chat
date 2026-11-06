@@ -8,6 +8,10 @@ gebouwd (`GIT_COMMIT`, #231).
 Installeren kan alleen uit die repo. De publieke GitHub-spiegel heeft dezelfde commits als GitLab `main` (Agents.md),
 dus `pip install "<pakket> @ git+<spiegel>@<commit>#subdirectory=packages/<pakket>"` geeft precies de pakketcode waarop
 de app draaide (besluit #884). Dit is de enige plek die dat adres en die map kent.
+
+Het pakket zelf vraagt alleen httpx en defusedxml; pandas en openpyxl zijn extras. Een snippet leest elke lading als
+DataFrame, en de financiën van DUO (#935) en de crebolijst van SBB lezen Excel: zonder extras faalde de regel bij de
+eerste `load` (#971). Wie de regel maakt, noemt daarom de extras die de code ernaast nodig heeft.
 """
 
 from importlib import metadata
@@ -25,7 +29,9 @@ def pakketversie(naam: str) -> str | None:
         return None
 
 
-def installatiespec(naam: str, commit: str | None) -> str:
-    """PEP 508-regel die het pakket uit de spiegel installeert, op `commit` (zonder commit: de nieuwste main)."""
+def installatiespec(naam: str, commit: str | None, extras: tuple[str, ...] = ()) -> str:
+    """PEP 508-regel die het pakket met `extras` uit de spiegel installeert, op `commit` (zonder commit: de nieuwste
+    main)."""
     revisie = f"@{commit}" if commit else ""
-    return f"{naam} @ git+{SPIEGEL_URL}{revisie}#subdirectory={PAKKETMAP}/{naam}"
+    met = f"[{','.join(extras)}]" if extras else ""
+    return f"{naam}{met} @ git+{SPIEGEL_URL}{revisie}#subdirectory={PAKKETMAP}/{naam}"

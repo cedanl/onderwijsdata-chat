@@ -30,6 +30,25 @@ def test_een_mislukte_verstoringsproef_is_niet_vast_te_stellen_en_telt_niet():
     assert uitkomst.constanten == (987654,)  # 1200 staat in de invoer en blijft bewijs
 
 
+def test_een_filter_op_het_schooljaar_laat_de_proef_draaien():
+    """C1 (#976): een som per instelling over 2021 en 2025. De proef vermenigvuldigde ook STUDIEJAAR, het filter gaf
+    een lege selectie, de proef een fout, en 2.325 gold als constante: elf van de twaalf tabelrijen vielen weg."""
+    df = pd.DataFrame({"STUDIEJAAR": [2021, 2021, 2025, 2025], "BRIN": ["01VU"] * 4, "N": [1200, 1125, 1000, 897]})
+    code = (
+        "d = df[df.STUDIEJAAR.isin([2021, 2025])].groupby(['BRIN', 'STUDIEJAAR'])['N'].sum().unstack()\n"
+        "d.columns = ['n2021', 'n2025']\n"
+        "result = d.reset_index()"
+    )
+    uitkomst = toets(code, df, {}, [{"BRIN": "01VU", "n2021": 2325, "n2025": 1897}])
+    assert (uitkomst.soort, uitkomst.constanten) == (AFHANKELIJK, ())
+
+
+def test_wat_alleen_van_het_jaar_afhangt_blijft_onafhankelijk():
+    df = pd.DataFrame({"STUDIEJAAR": [2021, 2025], "N": [1200, 1897]})
+    uitkomst = toets("result = int(df['STUDIEJAAR'].max()) * 7 + 12345", df, {}, 26520)
+    assert uitkomst.constanten == (26520,)
+
+
 def test_een_geerfde_constante_blijft_onafhankelijk():
     """Een waarde die een eerdere stap afkeurde, staat nu in de invoer; dat maakt haar geen bewijs."""
     df = pd.DataFrame({"T": [987654], "n": [2]})

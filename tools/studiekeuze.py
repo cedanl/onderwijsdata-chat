@@ -123,9 +123,11 @@ KOPPELEN = (
     "CROHO-code."
 )
 # Review 08-B5 (#961): na "Meer studies passen …" haalde het model zelf drie studies op en beantwoordde ze allemaal.
+# Na drie keuzevragen is clarify_scope niet meer in de toolset (agent/run.py); dan stelt het model de keuze in tekst (#970).
 KIES_EERST = (
-    "Stel de gebruiker deze keuze met clarify_scope en wacht op het antwoord: haal geen studie of instelling op die de "
-    "gebruiker niet koos, en geef nog geen cijfers."
+    "Stel de gebruiker deze keuze met clarify_scope (is clarify_scope er niet meer, stel de keuze dan als vraag met "
+    "deze opties in je antwoord) en wacht op het antwoord: haal geen studie of instelling op die de gebruiker niet "
+    "koos, en geef nog geen cijfers."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "
@@ -242,7 +244,8 @@ def _instelling(tekst, export: skdb.Export) -> tuple[str, str] | str | None:
         return (
             f"BRIN-code {schoon.upper()} staat niet in de Studiekeuzedatabase (alleen hogescholen en universiteiten)."
         )
-    treffers = sorted((b, n) for b, n in namen.items() if schoon.lower() in str(n).lower())
+    # Op woordbegin, zoals de opleidingen (#960, #971): "school" vond als substring ook "Hogeschool Utrecht".
+    treffers = sorted((r["brin"], r["naam"]) for r in skdb.instellingen(export, naam=schoon))
     if len(treffers) == 1:
         return treffers[0]
     if treffers:

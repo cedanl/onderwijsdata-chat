@@ -56,7 +56,24 @@ def groot(extra=(), **kw):
 
 @pytest.fixture(autouse=True)
 def cache(tmp_path, monkeypatch):
-    monkeypatch.setenv("RIODATA_CACHE", str(tmp_path))
+    monkeypatch.delenv("RIODATA_CACHE", raising=False)
+    monkeypatch.setenv("ONDERWIJSBRONNEN_CACHE", str(tmp_path))
+
+
+def test_de_cachemap_heet_naar_het_pakket_met_de_oude_namen_als_terugval(tmp_path, monkeypatch):
+    """#971: de cache heette nog naar riodata; de oude variabele en map blijven werken."""
+    assert crebo.cache_dir() == tmp_path / "crebo"
+    monkeypatch.delenv("ONDERWIJSBRONNEN_CACHE")
+    monkeypatch.setenv("RIODATA_CACHE", str(tmp_path / "oud"))
+    assert crebo.cache_dir() == tmp_path / "oud" / "crebo"
+
+    monkeypatch.delenv("RIODATA_CACHE")
+    monkeypatch.setenv("HOME", str(tmp_path / "thuis"))
+    assert crebo.cache_dir() == tmp_path / "thuis" / ".cache" / "onderwijsbronnen" / "crebo"
+    (tmp_path / "thuis" / ".cache" / "riodata" / "crebo").mkdir(parents=True)
+    assert crebo.cache_dir() == tmp_path / "thuis" / ".cache" / "riodata" / "crebo"
+    (tmp_path / "thuis" / ".cache" / "onderwijsbronnen" / "crebo").mkdir(parents=True)
+    assert crebo.cache_dir() == tmp_path / "thuis" / ".cache" / "onderwijsbronnen" / "crebo"
 
 
 class FakeClient:

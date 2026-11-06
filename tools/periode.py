@@ -29,6 +29,9 @@ GEEN_SCHOOLJAAR = {
     ),
 }
 
+# Elke DUO-kolom met een jaar erin, schooljaar of niet: een selectie-as, geen meetwaarde (#976).
+JAARKOLOMMEN = frozenset({*_DUO_PERIODEKOLOMMEN, *GEEN_SCHOOLJAAR})
+
 
 SCHOOLJAAR = "schooljaar"
 

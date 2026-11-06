@@ -21,9 +21,11 @@ import tools
 from agent.bronvermelding import bronlinks_van, bronnen_van
 from agent.grounding import bewijs_getallen
 from agent.meetwaarden import meetwaarden
+from agent.selectie import ontbrekende_instellingen
 from core import config
 from data import instellingen
 from tools import beschikbaarheid, catalog, snippet, store, studiekeuze
+from tools.query import query_data
 from tools.schemas import SCHEMA_GET_STUDIEKEUZE, TOOL_GET_STUDIEKEUZE, TOOL_SCHEMAS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,6 +73,21 @@ def test_opleidingen_van_een_instelling_met_het_landelijke_oordeel_ernaast():
 
 def test_een_afkorting_en_een_brin_code_geven_dezelfde_instelling():
     assert _uit(instelling="HU", opleiding="30020")["rijen"] == _uit(instelling="25dw", opleiding="30020")["rijen"]
+
+
+def test_een_instellingsnaam_zoekt_op_woordbegin(monkeypatch):
+    """#971: de naam zocht op substring, zodat "Hogeschool" ook "Proefhogeschool Particulier" vond en "school" elke
+    hogeschool; nu op woordbegin, zoals de opleidingen (#960)."""
+    fontys = {**proefbestand.INSTELLINGEN[0], "instellingCode": "30GB", "instellingNaam": "Fontys Hogescholen"}
+    tabellen = {**proefbestand.TABELLEN, "instellingen": [*proefbestand.INSTELLINGEN, fontys]}
+    inhoud = proefbestand.zip_bytes(tabellen)
+    monkeypatch.setattr(skdb, "haal_op", lambda *a, **k: (inhoud, skdb.herkomst(inhoud, proefbestand.BESTAND)))
+    studiekeuze._export.cache_clear()
+
+    assert studiekeuze._instelling("Fontys", studiekeuze._export()) == ("30GB", "Fontys Hogescholen")
+    assert studiekeuze._instelling("Hogeschool", studiekeuze._export()) == ("25DW", "Hogeschool Utrecht")
+    melding = studiekeuze._instelling("school", studiekeuze._export())
+    assert isinstance(melding, str) and "Onbekende instelling" in melding
 
 
 def test_een_niet_bekostigde_hogeschool_staat_alleen_in_de_export():
@@ -149,7 +166,8 @@ def test_veel_rijen_worden_afgekapt_met_de_hele_tabel_in_de_store(monkeypatch):
         ({"soort_ho": "mbo", "opleiding": "ICT"}, "alleen opleidingen van hogescholen en universiteiten"),
         ({"instelling": "Universiteit Utrecht"}, "staat niet in de Studiekeuzedatabase"),
         ({"instelling": "12AB"}, "staat niet in de Studiekeuzedatabase"),
-        ({"instelling": "Hogeschool"}, "Meer instellingen passen"),
+        ({"instelling": "Proef"}, "Meer instellingen passen"),
+        ({"instelling": "school"}, "Onbekende instelling"),
         ({"instelling": "Nergenshogeschool"}, "Onbekende instelling"),
         ({}, "Geef een instelling, een opleiding of een plaats"),
         ({"weergave": "ranglijst"}, "bestaat niet"),
@@ -227,6 +245,24 @@ def test_elk_getal_is_een_citatie_met_instelling_opleiding_en_vorm():
     assert oordeel.bron is not None and oordeel.bron.endswith(skdb.VERPLICHTE_ZIN)
     assert waarden["doorstroom_jaar2_pct"].eenheid == "%"
     assert "croho" not in waarden and "studiecode" not in waarden  # een code is geen maat
+
+
+def test_een_selectie_op_een_hogeschool_noemt_haar_naam_naast_de_brin():
+    """query_data zet bij een paar instellingen de naam naast de code; op een SKDB-tabel viel dat om op 'brin' (#976)."""
+    key = _uit(opleiding="ICT", soort_ho="HBO")["data_key"]
+    uit = json.loads(query_data(key, filters={"brin": "25DW"}))
+    assert uit["totaal_rijen"] == 2
+    assert "Hogeschool Utrecht" in json.dumps(uit, ensure_ascii=False)
+
+
+def test_de_instellingencontrole_draait_op_een_studiekeuzeselectie():
+    """C1 van de her-audit (#976): 'een controle kon niet draaien' was ontbrekende_instellingen met KeyError 'brin'."""
+    key = _uit(opleiding="ICT", soort_ho="HBO")["data_key"]
+    andere = query_data(key, filters={"brin": "99XX"})
+
+    assert ontbrekende_instellingen("Vergelijk per hogeschool het oordeel over ICT.", [andere]) == []
+    (probleem,) = ontbrekende_instellingen("Hoe oordelen studenten ICT bij Hogeschool Utrecht?", [andere])
+    assert "Hogeschool Utrecht (25DW)" in probleem and "Filter op brin=25DW" in probleem
 
 
 def test_de_tabel_staat_met_haar_laadaanroep_in_de_store():

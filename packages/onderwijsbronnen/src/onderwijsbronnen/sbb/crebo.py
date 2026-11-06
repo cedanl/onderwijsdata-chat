@@ -8,7 +8,8 @@ Bouwt voort op ``sbb.resources("crebolijst")``; de bestaande ``sbb.load()`` blij
     r = crebo.zoek("25604")                    # 'latest' = nieuwste gevalideerde editie in de cache
     r["status"]                                # "found" | "not_found" | "ambiguous"
 
-Vereist ``openpyxl`` (``pip install 'onderwijsbronnen[sbb]'``).
+Vereist ``openpyxl`` (``pip install 'onderwijsbronnen[sbb]'``). De editie-cache staat in
+``~/.cache/onderwijsbronnen/crebo``, of onder ``$ONDERWIJSBRONNEN_CACHE`` (``cache_dir()``).
 
 Ontwerpkeuzes:
 - CREBO-codes blijven strings. In het echte bestand zijn ze deels getal en deels tekst met
@@ -296,8 +297,19 @@ def valideer_download(content: bytes, content_type: str | None, lijst: CreboLijs
 
 # ── editie-cache ─────────────────────────────────────────────────────────────
 
+# De cachemap heet naar het pakket (#971). De namen van vóór #910 (RIODATA_CACHE, ~/.cache/riodata) blijven een
+# terugval, zodat een bestaande cache met gevalideerde edities niet ongemerkt leeg lijkt.
+CACHE_ENV = "ONDERWIJSBRONNEN_CACHE"
+_OUDE_CACHE_ENV = "RIODATA_CACHE"
+
+
 def cache_dir() -> Path:
-    return Path(os.environ.get("RIODATA_CACHE", Path.home() / ".cache" / "riodata")) / "crebo"
+    """``$ONDERWIJSBRONNEN_CACHE/crebo``, anders ``$RIODATA_CACHE/crebo``, anders ``~/.cache/onderwijsbronnen/crebo``
+    (of ``~/.cache/riodata/crebo`` zolang alleen die bestaat)."""
+    if basis := os.environ.get(CACHE_ENV) or os.environ.get(_OUDE_CACHE_ENV):
+        return Path(basis) / "crebo"
+    nieuw, oud = (Path.home() / ".cache" / naam / "crebo" for naam in ("onderwijsbronnen", "riodata"))
+    return oud if oud.is_dir() and not nieuw.exists() else nieuw
 
 
 def _manifest_pad() -> Path:
