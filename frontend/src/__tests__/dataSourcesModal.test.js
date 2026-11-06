@@ -69,4 +69,18 @@ describe('DataSourcesModal', () => {
     await render({ CBS: 130, DUO: 15, RIO: 8, UWV: 1, ROA: 1 })
     expect(rows().map(r => r.bron)).not.toContain('UNL')
   })
+
+  // #957: the Studiekeuzedatabase of LCSK only where its key is set (test, playground), with the documentation page of
+  // LCSK that the licence asks for.
+  it('lists LCSK only where the Studiekeuzedatabase answers here', async () => {
+    await render({ CBS: 130, DUO: 16, RIO: 8, UWV: 1, ROA: 1, LCSK: 1 })
+    const lcsk = rows().find(r => r.bron === 'LCSK')
+    expect(lcsk.inhoud).toContain('Studiekeuzedatabase')
+    expect(lcsk.link.getAttribute('href')).toBe('https://www.studiekeuze123.nl/studiekeuzedata')
+    expect(rows().map(r => r.bron)).toEqual(['CBS', 'RIO', 'DUO', 'UWV', 'ROA', 'LCSK'])
+    act(() => root.unmount())
+    host.remove()
+    await render({ CBS: 130, DUO: 16, RIO: 8, UWV: 1, ROA: 1, UNL: 1 })
+    expect(rows().map(r => r.bron)).not.toContain('LCSK')
+  })
 })

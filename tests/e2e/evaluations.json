@@ -511,6 +511,16 @@
       }
     },
     {
+      "label": "studiekeuze-nse-hbo",
+      "message": "Hoe tevreden zijn studenten over ICT bij de Hogeschool Utrecht, vergeleken met landelijk?",
+      "description": "#957: het NSE-oordeel per opleiding en vorm naast het landelijke oordeel van LCSK over dezelfde studie, met respondenten, NSE-jaar en de verplichte bronvermelding van LCSK (get_studiekeuze); alleen waar STUDIEKEUZEDATABASE_API_KEY staat (test, playground)",
+      "expected": {
+        "must_contain_tools": ["get_studiekeuze"],
+        "max_search_catalog": 1,
+        "must_mention": ["Hogeschool Utrecht", "ICT", "NSE|Studenten Enqu[eê]te", "landelijk", "respondent|antwoorden", "Landelijk Centrum Studiekeuze|LCSK"]
+      }
+    },
+    {
       "label": "inspectie-oordeel-hbo",
       "message": "Wat is het inspectieoordeel van Hogeschool Utrecht?",
       "description": "#749: de Inspectie geeft het hoger onderwijs geen oordeel per bestuur; dat is de NVAO",

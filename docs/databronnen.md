@@ -497,6 +497,92 @@ bestaat geen open personeelsbestand per instelling, en de tool zegt dat bij zo'n
 
 ---
 
+## Studiekeuzedatabase — Landelijk Centrum Studiekeuze (LCSK; alleen test en playground)
+
+De Studiekeuzedatabase (SKDB) van het Landelijk Centrum Studiekeuze is de data achter Studiekeuze123
+([studiekeuzedata](https://www.studiekeuze123.nl/studiekeuzedata)). Het pakket leest haar in `onderwijsbronnen.skdb`,
+de chat via `get_studiekeuze` (#957). Alleen hbo en wo: 109 hogescholen en universiteiten (ook niet-bekostigde) en
+3.312 opleidingen, waarbij een opleiding één CROHO-code bij één BRIN op één vestiging is; per vorm (voltijd, deeltijd,
+duaal) zijn het er ruim 4.400.
+- **Alleen met een sleutel:** de API (`https://api.skdb.nl/v1`) vraagt een eigen Bearer-sleutel van LCSK,
+  `STUDIEKEUZEDATABASE_API_KEY`. Die staat als secret op test en playground; development en productie hebben hem niet.
+  Zonder sleutel staat `get_studiekeuze` niet in de toolset, staat het record niet in de zoekcatalogus, toont het
+  startscherm geen studiekeuzevragen en het databronnenvenster geen rij LCSK (`tools/beschikbaarheid.py`, bron
+  `studiekeuze`).
+- **Dagexport:** de lader haalt in één request `/export/json` op, een ZIP van ongeveer 18 MB met één JSON-bestand per
+  tabel (`instellingen`, `opleidingen`, `opleidingvormen`, `studies`, `studievormen`, `standaardonderwijsindelingvorm`,
+  `doorstroombachelormaster`, `doorstroommbohbo`, `lotingopleidingendecentraleselecties`, `collegegelden`). Ontbreekt er
+  een tabel, dan is de vorm veranderd en geeft de tool een bronfout, geen cijfer. De bestandsnaam geeft het
+  versienummer van de data (`export-skdb-26.6-…`) en de exportdatum; de app laadt de export één keer per 24 uur
+  (`core/actualiteit.py`, in het geheugen) en bewaart haar niet op schijf.
+- **Jaren uit de export:** het NSE-jaar (`enqueteJaar`) en het 1cijferHO-jaar (`eenCijferHoMeestRecenteJaar`, begin van
+  het collegejaar) zijn de hoogste waarde in `opleidingvormen`. De tool noemt ze in de voorbehouden bij opleidingen en
+  studies; ze staan niet vast in de code of de catalogus.
+- **Inhoud:** per opleiding en vorm het NSE-oordeel (algemeen en tien thema's, schaal 1-5) met het aantal
+  respondenten, studenten en eerstejaars (1cijferHO), doorstroom naar jaar 2, diplomarendement, numerus fixus met
+  capaciteit, wettelijk collegegeld en accreditatiedatum; per landelijke studie de arbeidsmarkt van afgestudeerden per
+  SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau); de doorstroom van mbo-4-kwalificaties naar hbo-studies en
+  van bachelors naar masters.
+- **Wat er niet in staat:** mbo-opleidingen (van het mbo alleen waar mbo-4-gediplomeerden in het hbo naartoe gaan);
+  een vraag over een mbo-instelling krijgt een vaste melding. Reeksen: de export is de stand van nu, één NSE-jaar en
+  één 1cijferHO-jaar. Officiële inschrijvingstellingen: de aantallen komen uit 1cijferHO en kunnen afwijken van de
+  DUO-bestanden; voor een telling blijft DUO de bron. Arbeidsmarktcijfers bestaan alleen voor voltijd hbo-bachelor,
+  associate degree en wo-master, en gaan over een SOI-rubriek, niet over één studie.
+- **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
+  dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
+  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`.
+- **Licentie:** de Algemene Leveringsvoorwaarden Data van LCSK, versie 23.2.
+  - *Bronvermelding (art. 4):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data van
+    Landelijk Centrum Studiekeuze.", met een link naar de pagina studiekeuzedata en het versienummer van de data. De
+    bronregel onder elk antwoord met de tool bevat alle drie (zie [Bronnen onder een antwoord](#bronnen-onder-een-antwoord)).
+  - *Geen doorlevering:* er staat geen data van LCSK in de repo en het pakket levert er geen mee. De tests gebruiken
+    een synthetische export met dezelfde vorm (`onderwijsbronnen.skdb.proefbestand`, verzonnen getallen). Een snippet
+    haalt de export zelf op, met de eigen sleutel van wie hem draait.
+  - *Publieke verantwoording bij selectie en ranking (art. 5):* zie hieronder.
+
+### Verantwoording: hoe de app selecteert, sorteert en afrondt
+
+Artikel 5 van de leveringsvoorwaarden vraagt dat wie uit de data een selectie of rangorde maakt, publiek uitlegt hoe.
+Dit is die uitleg voor `get_studiekeuze` (`tools/studiekeuze.py`, rekenen in `onderwijsbronnen.skdb.overzicht`). Het
+taalmodel kiest alleen de weergave en de filters uit de vraag; selecteren, sorteren, afronden en het landelijke oordeel
+doet de code, en het model neemt de getallen letterlijk over.
+
+- **Selectie:** een opleiding komt in de uitkomst als ze aan alle opgegeven filters voldoet: instelling (BRIN-code;
+  een naam wordt een BRIN via de export of het register van de chat), opleiding (CROHO-code, of een deel van de naam
+  van de opleiding), hbo of wo, graad, vorm, plaats van het bezoekadres en "alleen met numerus fixus". Passen er meer
+  instellingen of landelijke studies bij een naam, dan kiest de gebruiker; de app gokt niet. Zonder instelling,
+  opleiding, plaats of numerus fixus geeft de weergave `opleidingen` geen lijst (te veel om zinnig te tonen). Er wordt
+  geen opleiding weggelaten om haar cijfers, en er wordt niets geschat of aangevuld.
+- **Volgorde:** standaard alfabetisch op instelling, opleiding, plaats en vorm: geen rangorde. Alleen als de vraag
+  erom vraagt, sorteert de tool aflopend op één cijfer: het NSE-oordeel, het aantal studenten, het aantal eerstejaars
+  of de doorstroom naar jaar 2. Opleidingen zonder dat cijfer komen achteraan, gelijke waarden op naam. Elke rangorde
+  krijgt het vaste voorbehoud dat het een rangorde op één cijfer is, dat het aantal respondenten erbij hoort, en dat
+  het geen oordeel over de kwaliteit van een opleiding is. De app maakt geen samengestelde score en geen top-lijst
+  over meer cijfers.
+- **Doorstroom:** de rang (1 is de grootste stroom) is die van LCSK; de app rekent hem niet opnieuw uit. Het aandeel
+  is van alle gediplomeerden van de mbo-opleiding of bachelor, niet van wie doorstroomt.
+- **Afronding:** NSE-oordelen op twee decimalen, percentages op één decimaal, aantallen en bedragen zoals LCSK ze
+  levert. Een leeg veld blijft leeg: de app noemt dan geen getal, ook geen 0. Numerus fixus is de capaciteit van het
+  nieuwste studiejaar, opgeteld over de taaltrajecten van dezelfde opleiding en vorm.
+- **Landelijk oordeel:** naast het NSE-oordeel van een opleiding staat `nse_oordeel_landelijk`, het oordeel over
+  dezelfde landelijke studie in dezelfde vorm over alle instellingen samen, zoals LCSK het berekent (tabel
+  `studievormen`). Het is geen gemiddelde van de getoonde rijen.
+- **Onzekerheid:** het antwoord noemt het aantal respondenten. Bij minder dan 30 respondenten zegt het dat het oordeel
+  onzeker is, en een verschil van een paar honderdsten heet geen verschil.
+- **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
+  zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | api.skdb.nl, Bearer-sleutel van LCSK (`STUDIEKEUZEDATABASE_API_KEY`); alleen test en playground |
+| Inhoud | NSE, studenten, eerstejaars, doorstroom, rendement, numerus fixus, collegegeld per hbo- en wo-opleiding en vorm; arbeidsmarkt per SOI-rubriek; doorstroom mbo-hbo en bachelor-master |
+| Formaat | dagelijkse JSON-export als ZIP (`/export/json`, ongeveer 18 MB); runtime-cache van 24 uur, geen opslag |
+| Koppeling | `brin` = BRIN-code van RIO en DUO, `croho` = CROHO-code; `studiecode` is van LCSK en niet altijd een CROHO-code |
+| Licentie | Algemene Leveringsvoorwaarden Data van LCSK (v23.2): verplichte bronvermelding met link en versie, geen doorlevering, publieke verantwoording bij selectie en ranking (hierboven) |
+| ID | `skdb:studiekeuzedatabase`; in de zoekcatalogus van de chat alleen waar de sleutel staat, als `via_tool` naar `get_studiekeuze` |
+
+---
+
 ## ID's: één contract `bron:id`
 
 Elke dataset heeft één getypeerde sleutel `bron:id`, bijvoorbeeld `cbs:85423NED`, `duo:p01hoinges`,
@@ -529,6 +615,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | Onderwijsinspectie (bg en po-so-vo), DUO-indicatoren mbo | het gelezen bestand zelf (#749, #881, #727) |
 | Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
 | UNL, WOPI | de downloadpagina van UNL; de regel is vast: "WOPI {jaar}, Universiteiten van Nederland, peildatum 31-12-{jaar}, excl. sector Gezondheid" (of incl., #936) |
+| LCSK, Studiekeuzedatabase | de pagina [studiekeuzedata](https://www.studiekeuze123.nl/studiekeuzedata) van LCSK; de regel is vast: "Studiekeuzedatabase {versie}, Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze." (verplicht volgens de leveringsvoorwaarden, #957) |
 
 Een regel heeft bewust geen link:
 
