@@ -9,7 +9,7 @@ runbook staan in [`docs/operatie.md`](../docs/operatie.md); deze tabel is het ov
 
 | Omgeving | Ingress Class | Replicas | Limits (CPU / RAM) | Chartversie | URL |
 |----------|---------------|----------|--------------------|-------------|-----|
-| **development** | traefik-external | 1 | 500m / 1Gi | open range, doet niet mee aan de ladder | `onderwijsdata-chat.dev.sdp.surf.nl` |
+| **development** | traefik-external | 1 | 500m / 1Gi | open range `>=0.0.1-0.0`, volgt `main` zoals test; geen sport van de ladder | `onderwijsdata-chat.dev.sdp.surf.nl` |
 | **test** | traefik-external | 1 | 900m / 3Gi | open range `>=0.0.1-0.0`, volgt `main` | `onderwijsdata-chat.test.sdp.surf.nl` |
 | **playground** | traefik-external | 1 | 900m / 2Gi | vaste release-pin via promotie-MR | `onderwijsdata-chat.playground.sdp.surf.nl` |
 | **production** | traefik-external | 1 | 2000m / 4Gi | **niet uitrolbaar** (#674) | `onderwijsdata-chat.sdp.surf.nl` (resolvet niet) |

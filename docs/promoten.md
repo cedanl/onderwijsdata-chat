@@ -1,7 +1,8 @@
 # Promoten naar playground
 
-De ladder heeft twee sporten: **test** en **playground**. `development` en
-`production` doen er niet aan mee (geen live URL, respectievelijk nog niet live).
+De ladder heeft twee sporten: **test** en **playground**. `development` volgt net als test elke main-build (open
+range `>=0.0.1-0.0` in `manifests/development/helmrelease.yaml`), maar is geen sport: er is geen bereikbare URL en
+niemand promoveert ernaartoe. `production` doet niet mee (nog niet uitrolbaar, #674).
 
 | Omgeving | Beweegt wanneer | Pin in `helmrelease.yaml` |
 |---|---|---|

@@ -10,7 +10,7 @@ Stand: release 2.5.0 (22-10-2026).
 |---|---|---|
 | **test** | de laatste groene `main` | Flux volgt de open chartrange `>=0.0.1-0.0`; elke merge naar `main` rolt uit, `kubernetes:verify-up` controleert het |
 | **playground** | een gepinde release (`manifests/playground/helmrelease.yaml`) | alleen via een MR `chore/promote-playground` (`docs/promoten.md`); de CI-poort `env:promotion-ladder` bewaakt de pin |
-| **development** | — | doet niet mee aan de ladder |
+| **development** | de laatste `main`-build, zoals test | Flux volgt dezelfde open range `>=0.0.1-0.0`; geen sport van de ladder: geen bereikbare URL, niemand promoveert ernaartoe |
 | **production** | — | **niet uitrolbaar**: geen secret, open chartrange, geen tenant en geen CI-pad (#674) |
 
 Flux volgt **chartversies** in Harbor, geen image-tags. Een tag `X.Y.Z` (zonder `v`) publiceert alleen de chart en de
