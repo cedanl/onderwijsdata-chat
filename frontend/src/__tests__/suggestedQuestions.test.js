@@ -56,18 +56,32 @@ describe('SuggestedQuestions', () => {
     expect(shown.filter(q => /personeel|financieel/.test(q))).toEqual([])
   })
 
-  // #957: the Studiekeuzedatabase questions follow `bronnen.studiekeuze` from /api/config, with or without a profile.
+  // #957: the Studiekeuzedatabase questions follow `bronnen.studiekeuze` from /api/config. A hogeschool or
+  // universiteit sees its own programmes named, an mbo institution the doorstroom to the hbo, no profile the general ones.
   it('shows the Studiekeuzedatabase questions only where that source answers', async () => {
-    const vraag = 'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?'
-    expect(await shownQuestions({ instelling: 'ROC Midden Nederland', sector: 'mbo', bronnen: { studiekeuze: true } })).toContain(vraag)
+    const hbo = await shownQuestions({ instelling: 'Hogeschool Utrecht', sector: 'hbo', bronnen: { studiekeuze: true } })
+    expect(hbo).toContain('Hoe tevreden zijn studenten over de opleidingen van Hogeschool Utrecht, vergeleken met landelijk?')
+    expect(hbo).toContain('Welke vooropleidingen (havo, vwo of mbo) geven toegang tot de opleidingen van Hogeschool Utrecht?')
     act(() => root.unmount())
     container.remove()
-    expect(await shownQuestions({ instelling: '', sector: null, bronnen: { studiekeuze: true } })).toContain(vraag)
+    const wo = await shownQuestions({ instelling: 'Universiteit Leiden', sector: 'wo', bronnen: { studiekeuze: true } })
+    expect(wo).toContain('Welke opleidingen van Universiteit Leiden hebben een numerus fixus, en hoeveel plaatsen zijn er?')
+    expect(wo).toContain('Welke vwo-profielen geven toegang tot de opleidingen van Universiteit Leiden?')
+    act(() => root.unmount())
+    container.remove()
+    const mbo = await shownQuestions({ instelling: 'ROC Midden Nederland', sector: 'mbo', bronnen: { studiekeuze: true } })
+    expect(mbo).toContain('Naar welke hbo-opleidingen stromen gediplomeerden van de mbo-opleiding Software Developer het vaakst door?')
+    expect(mbo.filter(q => /numerus fixus|tevreden|toegang/.test(q))).toEqual([])
+    act(() => root.unmount())
+    container.remove()
+    const algemeen = await shownQuestions({ instelling: '', sector: null, bronnen: { studiekeuze: true } })
+    expect(algemeen).toContain('Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?')
+    expect(algemeen).toContain('Welk profiel heb ik met havo nodig voor Verpleegkunde?')
     act(() => root.unmount())
     container.remove()
     const zonder = await shownQuestions({ instelling: 'Hogeschool Utrecht', sector: 'hbo', bronnen: { financien: true } })
     expect(zonder.length).toBeGreaterThan(0)
-    expect(zonder.filter(q => /numerus fixus|oordeel van studenten|stromen mbo|tevreden/.test(q))).toEqual([])
+    expect(zonder.filter(q => /numerus fixus|oordeel van studenten|stromen|tevreden|toegang/.test(q))).toEqual([])
   })
 
   // CH-42 (#465): a demo without a profile clicked "onze instelling" into a scope refusal.

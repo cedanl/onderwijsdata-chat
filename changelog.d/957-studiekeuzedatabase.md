@@ -17,9 +17,12 @@
 - Elke uitkomst noemt onder het antwoord de verplichte bronvermelding van LCSK (leveringsvoorwaarden v25.1), met het
   versienummer van de export, het NSE-jaar, de oorspronkelijke bron van de cijfers (zoals 1cijferHO, CBS-microdata,
   RATHO of Studielink) en een link naar lcsk.nl/over-ons/studiekeuzedata-raadplegen.
-- Alleen waar de sleutel `STUDIEKEUZEDATABASE_API_KEY` staat (test en playground); daar ook vier suggestievragen op het
+- Alleen waar de sleutel `STUDIEKEUZEDATABASE_API_KEY` staat (test en playground); daar ook suggestievragen op het
   startscherm (categorie Studiekeuze) en een rij LCSK in het databronnenvenster. Development en productie zien de bron
-  niet.
+  niet. De suggestievragen volgen het profiel, zoals de andere: een hogeschool of universiteit vraagt naar het oordeel
+  van studenten naast landelijk, de numerus fixus en de toelating van haar eigen opleidingen; een mbo-instelling naar de
+  doorstroom van een mbo-opleiding naar het hbo (de bron heeft geen mbo-instellingen); zonder profiel staan er algemene
+  vragen zonder vaste instellingsnaam.
 - Pakket `onderwijsbronnen`: nieuwe bron `skdb` (`skdb.load`, `skdb.lees`, `skdb.haal_op` en de overzichten, waaronder
   `skdb.toelating`) die de dagexport met de eigen sleutel van de gebruiker ophaalt; er staat geen data van LCSK in de
   repo of het pakket. Het ID `skdb:studiekeuzedatabase` staat in het ID-contract en, waar de sleutel staat, in de

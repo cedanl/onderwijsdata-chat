@@ -180,42 +180,76 @@ describe('suggestions about a source that depends on the environment', () => {
   })
 })
 
-// #957: the Studiekeuzedatabase of LCSK answers only where its key is set (test, playground). Its questions name a
-// hogeschool or universiteit themselves, so they hold for every sector, with and without a profile.
+// #957: the Studiekeuzedatabase of LCSK answers only where its key is set (test, playground). It has only hogescholen
+// and universiteiten: with a profile they ask about their own programmes, an mbo institution about doorstroom to the
+// hbo; without a profile general questions, for every sector. No question names a fixed institution.
 const STUDIEKEUZE = 'Studiekeuze'
 describe('suggestions about the Studiekeuzedatabase', () => {
-  const skdb = SUGGESTED.find(c => c.category === STUDIEKEUZE).questions.map(q => q.tekst)
   const vragen = (sector, profiel, bronnen) => suggestionsFor(sector, { profiel, bronnen }).flatMap(c => c.questions)
+  const skdb = (sector, profiel) =>
+    suggestionsFor(sector, { profiel, bronnen: { studiekeuze: true } }).find(c => c.category === STUDIEKEUZE)?.questions ?? []
+  const ALGEMEEN = [
+    'Welke voltijd ICT-opleiding heeft het hoogste oordeel van studenten?',
+    'Welk profiel heb ik met havo nodig voor Verpleegkunde?',
+    'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?',
+  ]
+  const DOORSTROOM_MBO = 'Naar welke hbo-opleidingen stromen gediplomeerden van de mbo-opleiding Software Developer het vaakst door?'
 
   it('are all tagged with the source name of tools/beschikbaarheid.py', () => {
-    expect(SUGGESTED.find(c => c.category === STUDIEKEUZE).questions.map(q => q.bron)).toEqual(skdb.map(() => 'studiekeuze'))
-    expect(skdb.length).toBeGreaterThanOrEqual(3)
-    expect(skdb.length).toBeLessThanOrEqual(4)
+    const questions = SUGGESTED.find(c => c.category === STUDIEKEUZE).questions
+    expect(questions.map(q => q.bron)).toEqual(questions.map(() => 'studiekeuze'))
   })
 
   it('are not shown without studiekeuze: true', () => {
     for (const sector of [...SECTOREN, null]) {
       for (const profiel of [true, false]) {
         for (const bronnen of [undefined, {}, { studiekeuze: false }, { financien: true, wo_personeel: true }]) {
-          expect(vragen(sector, profiel, bronnen).filter(q => skdb.includes(q))).toEqual([])
           expect(suggestionsFor(sector, { profiel, bronnen }).map(c => c.category)).not.toContain(STUDIEKEUZE)
+          expect(vragen(sector, profiel, bronnen).filter(q => [...ALGEMEEN, DOORSTROOM_MBO].includes(q) || /numerus fixus/.test(q))).toEqual([])
         }
       }
     }
   })
 
-  it('are shown with studiekeuze: true, for every sector and without a profile too', () => {
-    for (const sector of [...SECTOREN, null]) {
-      for (const profiel of [true, false]) {
-        expect(vragen(sector, profiel, { studiekeuze: true }).filter(q => skdb.includes(q))).toEqual(skdb)
-      }
+  it('ask a hogeschool or universiteit about its own programmes', () => {
+    for (const sector of ['hbo', 'wo']) {
+      const shown = skdb(sector, true)
+      expect(shown).toHaveLength(3)
+      expect(shown.every(q => q.includes('onze instelling'))).toBe(true)
+      expect(shown.some(q => /tevreden.*landelijk/.test(q))).toBe(true)
+      expect(shown.some(q => /numerus fixus/.test(q))).toBe(true)
+      expect(shown.some(q => /toegang/.test(q))).toBe(true)
     }
+    expect(skdb('hbo', true)).toContain('Welke vooropleidingen (havo, vwo of mbo) geven toegang tot de opleidingen van onze instelling?')
+    expect(skdb('wo', true)).toContain('Welke vwo-profielen geven toegang tot de opleidingen van onze instelling?')
   })
 
-  it('name the institution themselves and need no personalisation', () => {
-    for (const q of skdb) {
-      expect(q).not.toMatch(FIRST_PERSON)
-      expect(personalizeQuestion(q, 'ROC Midden Nederland')).toBe(q)
+  it('name the institution of the profile', () => {
+    expect(skdb('hbo', true).map(q => personalizeQuestion(q, 'Hogeschool Utrecht')))
+      .toContain('Hoe tevreden zijn studenten over de opleidingen van Hogeschool Utrecht, vergeleken met landelijk?')
+    expect(skdb('wo', true).map(q => personalizeQuestion(q, 'Universiteit Leiden')))
+      .toContain('Welke opleidingen van Universiteit Leiden hebben een numerus fixus, en hoeveel plaatsen zijn er?')
+  })
+
+  // The source has no mbo institutions: an mbo profile gets the doorstroom of an mbo programme, not "onze instelling".
+  it('ask an mbo institution about doorstroom to the hbo', () => {
+    expect(skdb('mbo', true)).toEqual([DOORSTROOM_MBO])
+  })
+
+  it('ask general questions without a profile, for every sector', () => {
+    for (const sector of [...SECTOREN, null]) expect(skdb(sector, false)).toEqual(ALGEMEEN)
+  })
+
+  it('leave the category out for an unknown sector with a profile', () => {
+    expect(skdb(null, true)).toEqual([])
+  })
+
+  it('name no fixed institution, and at most four per view', () => {
+    for (const q of SUGGESTED.find(c => c.category === STUDIEKEUZE).questions) {
+      expect(q.tekst).not.toMatch(/Hogeschool|Universiteit/)
+    }
+    for (const sector of [...SECTOREN, null]) {
+      for (const profiel of [true, false]) expect(skdb(sector, profiel).length).toBeLessThanOrEqual(4)
     }
   })
 
