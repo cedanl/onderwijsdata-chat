@@ -121,9 +121,11 @@ KOPPELEN = (
     "CROHO-code."
 )
 # Review 08-B5 (#961): na "Meer studies passen …" haalde het model zelf drie studies op en beantwoordde ze allemaal.
+# Na drie keuzevragen is clarify_scope niet meer in de toolset (agent/run.py); dan stelt het model de keuze in tekst (#970).
 KIES_EERST = (
-    "Stel de gebruiker deze keuze met clarify_scope en wacht op het antwoord: haal geen studie of instelling op die de "
-    "gebruiker niet koos, en geef nog geen cijfers."
+    "Stel de gebruiker deze keuze met clarify_scope (is clarify_scope er niet meer, stel de keuze dan als vraag met "
+    "deze opties in je antwoord) en wacht op het antwoord: haal geen studie of instelling op die de gebruiker niet "
+    "koos, en geef nog geen cijfers."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "

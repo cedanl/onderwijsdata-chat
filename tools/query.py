@@ -23,6 +23,7 @@ from . import (
     dekking,
     duo,
     fouten,
+    fusies,
     instelling,
     kleine_aantallen,
     optelbaar,
@@ -143,11 +144,14 @@ def _apply_filters(df, filters: dict, known=None, per_instelling: bool = False):
             masker, gelezen = _codemasker(series, waarden)
             if gelezen:
                 lezingen.append(_lezing(col, gelezen))
-            if (erbij := regiolocaties.erbij(df, col, waarden, masker, known)) and per_instelling:
+            verbreding = regiolocaties.erbij(df, col, waarden, masker, known)
+            if (erbij := verbreding.codes) and per_instelling:
                 masker = masker | df[regiolocaties.CODEKOLOM].astype(str).str.strip().isin(erbij)
                 verbreed.append((col, waarden, erbij))
             elif erbij:
                 lezingen.append(regiolocaties.niet_in_totaal(col, waarden, len(erbij)))
+            if verbreding.voorbehoud:  # een storing bij DUO of RIO is geen stilte (#970)
+                lezingen.append(verbreding.voorbehoud)
             df = df[masker]
         elif op == "gte":
             df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] >= _coerce_pair(v, t)[1])]
@@ -513,6 +517,8 @@ def query_data(
 
     # Wat de selectie bevat, vóór kolomkeuze en aggregatie (#187, #143).
     gedekt = dekking.van(df, known)
+    # Gaf RIO de fusies niet, dan ziet ook het model dat, niet alleen het Telling-blok (#970).
+    lezingen += fusies.niet_nagegaan(gedekt.get("fusies", ()))
     if nevenlocaties:
         # De vaste regel van #744: in de toolresponse voor het model, op de selectie voor het Telling-blok.
         gedekt["nevenlocaties"] = tuple(dict.fromkeys((*gedekt["nevenlocaties"], *nevenlocaties)))

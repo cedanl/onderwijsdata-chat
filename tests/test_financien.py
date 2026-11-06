@@ -124,7 +124,7 @@ def test_acceptatie_hoe_staat_roc_midden_nederland_er_financieel_voor():
     assert uit["sectorcijfer"]["eenheden_per_jaar"]["2025"] == 8  # 40833 telt als drie eenheden
     assert j["rentabiliteit_procent"]["bestuur"] == 2.01  # 4,3 / 213,4
     assert (j["rijksbijdragen_eur"], j["rijksbijdragen_mln_eur"]) == (197_021_000, 197.0)
-    assert j["liquiditeit_signaleringswaarde"] == 0.5 and j["signaleringen"] == []
+    assert j["liquiditeit_signaleringswaarde"] == 0.5 and "signaleringen" not in j  # geen lege lijst (#970)
     assert uit["signaleringswaarden"]["solvabiliteit_2"] == "onder 0,30"
     assert uit["signaleringswaarden"]["rentabiliteit"] == "geen signaleringswaarde"
     assert uit["signaleringswaarden"]["jaar"] == 2024 and "Inspectie" in uit["signaleringswaarden"]["bron"]
@@ -190,9 +190,10 @@ def test_per_kengetal_de_jaren_onder_en_boven_het_sectorcijfer():
     assert _jaar_van(_uit("Firda"), 2024)["solvabiliteit_1"] == {"bestuur": 0.5, "sector": 0.57, "verschil": -0.07}
     tov = eenheid["ten_opzichte_van_sector"]
     assert list(tov) == ["solvabiliteit_1", "solvabiliteit_2", "liquiditeit", "rentabiliteit_procent"]
-    assert tov["solvabiliteit_1"] == {"onder": [2024], "gelijk": [], "boven": [2025]}
-    assert tov["solvabiliteit_2"] == {"onder": [2024], "gelijk": [], "boven": [2025]}
-    assert tov["liquiditeit"] == {"onder": [], "gelijk": [], "boven": [2024, 2025]}
+    # Een groep zonder jaren staat er niet in (#970).
+    assert tov["solvabiliteit_1"] == {"onder": [2024], "boven": [2025]}
+    assert tov["solvabiliteit_2"] == {"onder": [2024], "boven": [2025]}
+    assert tov["liquiditeit"] == {"boven": [2024, 2025]}
     assert eenheid["onder_signaleringswaarde"] == {"solvabiliteit_2": [], "liquiditeit": []}
 
 
@@ -216,18 +217,13 @@ def test_de_jaren_volgen_uit_het_verschil_per_jaar(vraag):
                 assert [d for d, jaren in delen.items() if jaar["verslagjaar"] in jaren] == [deel]
         signalen = eenheid["onder_signaleringswaarde"]
         for jaar in eenheid["reeks"]:
-            for s in jaar["signaleringen"]:
+            for s in jaar.get("signaleringen", ()):
                 assert jaar["verslagjaar"] in signalen[s["kengetal"]]
 
 
 def test_een_lege_waarde_staat_apart_en_een_signalering_per_jaar():
     [eenheid] = _uit("30000")["eenheden"]
-    assert eenheid["ten_opzichte_van_sector"]["rentabiliteit_procent"] == {
-        "onder": [],
-        "gelijk": [],
-        "boven": [],
-        "zonder_vergelijking": [2025],
-    }
+    assert eenheid["ten_opzichte_van_sector"]["rentabiliteit_procent"] == {"zonder_vergelijking": [2025]}
     assert eenheid["onder_signaleringswaarde"] == {"solvabiliteit_2": [2025], "liquiditeit": [2025]}
 
 
@@ -289,7 +285,11 @@ def test_een_fusie_voor_de_reeks_telt_niet_en_een_rio_storing_breekt_niets(monke
         raise httpx.ConnectTimeout("te laat")
 
     monkeypatch.setattr(fusies, "_voorgangers", kapot)
-    assert fusies.bestuur_in_reeks(30932, "Firda", (2021, 2025), besturen) == ()
+    # Geen stilte (#970): de vaste regel zegt dat de fusies niet zijn nagegaan, en in de noot van de tool staat hij ook.
+    (regel,) = fusies.bestuur_in_reeks(30932, "Firda", (2021, 2025), besturen)
+    assert regel.startswith(fusies.NIET_NAGEGAAN) and "Firda (30932)" in regel and "2021-2025" in regel
+    assert "RIO gaf een storing" in regel and "zeg dat erbij" in regel
+    assert "Fusies niet nagegaan voor Stg. Firda (30932)" in _uit("Firda")["noot"]
 
 
 # --- scope en meldingen ------------------------------------------------------------------------------------------
@@ -430,3 +430,78 @@ def test_zonder_last_modified_bewaart_de_haler_niets(monkeypatch):
     haler = actualiteit.Voorwaardelijk()
     haler("https://duo.nl/pagina.jsp")
     haler("https://duo.nl/pagina.jsp")
+
+
+# --- binnen de grens van een toolresultaat (#970) ------------------------------------------------------------------
+
+
+def _reeks_40833() -> financien.Financien:
+    """Bestuur 40833 zoals in de echte editie 2021-2025: drie verantwoordingen met elk vijf verslagjaren en een wissel
+    van variant. Zo was het resultaat 12.587 tekens, boven TOOL_RESULT_MAX_CHARS; de noot en de data_key vielen eraf."""
+    eenheden = (
+        ("40833-25PZ", "ROC van Amsterdam", 290, 20, 500, 120, 100, 400, 350.123456),
+        ("40833-25LR", "ROC van Flevoland", 10.3, 1.1, 20.7, 5.3, 4.1, 30.9, 49.472),
+        ("40833-30RM", "ROC TOP", 0.05, 0.01, 0.117, 0.1, 0.05, 2.5, 2.412345),
+    )
+    rijen = [
+        _jaar(sleutel, naam, "MBO", "ROC", jaar, "geconsolideerd" if jaar < 2024 else "enkelvoudig",
+              ev * (1 + i / 37), vz, tp, va * (1 + i / 53), ks, baten, 0.31, ev / (11 + i), rijk * (1 + i / 29))
+        for sleutel, naam, ev, vz, tp, va, ks, baten, rijk in eenheden
+        for i, jaar in enumerate(range(2021, 2026))
+    ]  # fmt: skip
+    return financien.Financien(_EDITIE, tuple(rijen))
+
+
+def _zichtbaar(tekst: str) -> str:
+    """Wat het model van een toolresultaat ziet (agent/loop.py)."""
+    from agent.loop import _truncate
+    from core.config import TOOL_RESULT_MAX_CHARS
+
+    return _truncate(tekst, TOOL_RESULT_MAX_CHARS, tool=TOOL_GET_BESTUURSFINANCIEN)
+
+
+def _ziet_het_model_alles_wat_het_moet_zien(tekst: str) -> None:
+    uit = json.loads(tekst)
+    zichtbaar = _zichtbaar(tekst)
+    assert zichtbaar == tekst, f"afgekapt: {len(tekst)} tekens"
+    # En ook als een resultaat ooit groter wordt: noot, data_key en voorbehouden staan vóór de reeksen.
+    vooraan = json.loads(tekst[: tekst.index(',"eenheden"')] + "}")
+    assert vooraan["noot"] == uit["noot"] and vooraan["data_key"] == uit["data_key"]
+    assert vooraan["voorbehouden"] == uit["voorbehouden"]
+
+
+def test_bestuur_40833_met_vijf_jaren_past_binnen_de_grens(monkeypatch):
+    monkeypatch.setattr(tool, "_bron", _reeks_40833)
+    tekst = tools.dispatch(TOOL_GET_BESTUURSFINANCIEN, {"instelling_of_bestuur": "40833"})[0]
+
+    _ziet_het_model_alles_wat_het_moet_zien(tekst)
+    uit = json.loads(tekst)
+    assert "tel of middel ze nooit" in uit["noot"] and len(uit["eenheden"]) == 3
+    assert all(len(e["reeks"]) == 5 for e in uit["eenheden"])
+
+
+@pytest.mark.parametrize("vraag", sorted({str(r.sleutel) for r in _RIJEN} | {"40833"} | set(_PROFIELEN)))
+def test_elk_bestuur_in_de_testdata_past_binnen_de_grens(vraag):
+    tekst = tools.dispatch(TOOL_GET_BESTUURSFINANCIEN, {"instelling_of_bestuur": vraag})[0]
+    if tekst.startswith("{"):
+        _ziet_het_model_alles_wat_het_moet_zien(tekst)
+
+
+def test_de_methode_van_het_sectorcijfer_staat_er_een_keer_in():
+    tekst = tools.dispatch(TOOL_GET_BESTUURSFINANCIEN, {"instelling_of_bestuur": "40833"})[0]
+    assert tekst.count(financien.SECTORMETHODE) == 1
+
+
+def test_past_het_niet_dan_vallen_de_hele_euros_weg_met_een_noot(monkeypatch):
+    """Drie eenheden met elk een wissel van variant: dan vallen de rijksbijdragen in hele euro's weg, niet het einde."""
+    monkeypatch.setattr(tool, "_bron", _reeks_40833)
+    uit = json.loads(tools.dispatch(TOOL_GET_BESTUURSFINANCIEN, {"instelling_of_bestuur": "40833"})[0])
+
+    jaren = [j for e in uit["eenheden"] for j in e["reeks"]]
+    assert all("rijksbijdragen_eur" not in j and j["rijksbijdragen_mln_eur"] for j in jaren)
+    assert "in hele euro's staan ze in de tabel achter data_key" in uit["noot"]
+    assert "rijksbijdragen_eur" in uit["definities"] and uit["bron"]["editie"]
+
+
+def test_een_bestuur_dat_past_houdt_de_hele_euros():
+    assert all("rijksbijdragen_eur" in j for j in _uit("40833")["eenheden"][0]["reeks"])

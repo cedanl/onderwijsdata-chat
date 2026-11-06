@@ -15,7 +15,10 @@ Twee plekken waar een fusie stil een antwoord kleurde:
   get_bestuursfinancien (#935), met dezelfde RIO-overgangen tussen besturen.
 
 De voorgangers per code komen uit RIO en staan een dag in de cache (`core.actualiteit.Lading`). Een fout komt niet in
-de cache; een storing geeft geen regel en een WARNING, en breekt het antwoord niet.
+de cache en breekt het antwoord niet. Een storing is geen stilte (#970): in plaats van de fusieregel komt een vaste
+regel dat de fusies van die instelling of dat bestuur niet zijn nagegaan (`NIET_NAGEGAAN`), met een WARNING in het log.
+Die regel gaat de weg van een fusieregel (het Telling-blok, de noot van get_bestuursfinancien) en query_data zet hem ook
+in de toolresponse (`niet_nagegaan`).
 """
 
 import logging
@@ -49,6 +52,8 @@ _MAANDEN = (
     "december",
 )
 _OVERGANG = {"volledig": "volledige overgang", "gedeeltelijk": "gedeeltelijke overgang"}
+# Het begin van de vaste regel bij een storing van RIO: zo herkent `niet_nagegaan` hem tussen de fusieregels.
+NIET_NAGEGAAN = "Fusies niet nagegaan"
 
 
 def nl_datum(iso: str) -> str:
@@ -95,6 +100,19 @@ def _regel(code: str, naam: str, stappen: list[Stap]) -> str:
     return f"Fusie bij {wie}: " + "; ".join(delen) + "."
 
 
+def _niet_nagegaan(wie: list[str], reeks: str) -> str:
+    """De vaste regel als RIO de voorgangers niet gaf: welk deel ontbreekt en wat dat voor de reeks betekent."""
+    return (
+        f"{NIET_NAGEGAAN} voor {', '.join(wie)}: RIO gaf een storing, dus een fusie binnen {reeks} staat hier niet "
+        "bij. Een sprong in de reeks kan door een fusie komen; zeg dat erbij."
+    )
+
+
+def niet_nagegaan(regels) -> list[str]:
+    """De vaste regels over een storing tussen de fusieregels, voor de toolresponse."""
+    return [r for r in regels if r.startswith(NIET_NAGEGAAN)]
+
+
 def in_reeks(namen: dict[str, str], schooljaren: tuple[int, ...] | None) -> tuple[str, ...]:
     """De vaste regel per instelling (code → naam) met een fusie binnen de reeks van `schooljaren`.
 
@@ -104,15 +122,18 @@ def in_reeks(namen: dict[str, str], schooljaren: tuple[int, ...] | None) -> tupl
     if not namen or len(namen) > MAX_INSTELLINGEN or not schooljaren or len(schooljaren) < 2:
         return ()
     begin, eind = (date(jaar, *_TELDAG).isoformat() for jaar in (min(schooljaren), max(schooljaren)))
-    regels = []
+    regels, onbekend = [], []
     for code in sorted(namen):
         try:
             stappen = _voorgangers(code, begin)
-        except Exception as e:  # een storing bij RIO breekt het antwoord niet: geen regel
+        except Exception as e:  # een storing bij RIO breekt het antwoord niet: een vaste regel in plaats van stilte
             logger.warning("FUSIES_ONBEKEND code=%s fout=%s", code, type(e).__name__)
+            onbekend.append(_wie(namen[code], code) if namen[code] != code else code)
             continue
         if binnen := [s for s in stappen if begin < s.datum <= eind and not wet_buiten_scope(s.wet)]:
             regels.append(_regel(code, namen[code], binnen))
+    if onbekend:
+        regels.append(_niet_nagegaan(onbekend, f"de reeks {min(schooljaren)}-{max(schooljaren)}"))
     return tuple(regels)
 
 
@@ -125,7 +146,7 @@ def bestuur_in_reeks(
     tot zijn laatste verslagjaar, en de reeks van het bestuur maakt in het jaar van de fusie een sprong. `besturen` zijn
     de besturen in de verantwoording (nummer → naam en laatste verslagjaar). Alleen een voorganger die daar zelf staat,
     telt: dat is ook de typecontrole op de RIO-code (`00009` is in RIO de A&O groep, niet een bestuur; #725) en het
-    laat een voorganger uit po of vo weg (#937). Een storing bij RIO geeft geen regel en een WARNING.
+    laat een voorganger uit po of vo weg (#937). Een storing bij RIO geeft de vaste regel `NIET_NAGEGAAN` (#970).
     """
     eerste, laatste = verslagjaren
     if eerste >= laatste:
@@ -134,9 +155,9 @@ def bestuur_in_reeks(
     code = Bestuurssleutel(nummer).rio_code
     try:
         stappen = _voorgangers(code, begin)
-    except Exception as e:  # een storing bij RIO breekt het antwoord niet: geen regel
+    except Exception as e:  # een storing bij RIO breekt het antwoord niet: een vaste regel in plaats van stilte
         logger.warning("FUSIES_ONBEKEND bestuur=%s fout=%s", code, type(e).__name__)
-        return ()
+        return (_niet_nagegaan([_wie(naam, code)], f"de verslagjaren {eerste}-{laatste}"),)
     regels = []
     for stap in stappen:
         voorganger = Bestuurssleutel.parse(stap.code)

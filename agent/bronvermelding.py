@@ -155,8 +155,10 @@ def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     datasets = [] if bestand else [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
-    # peildatum of versie, al in `datasets`.
-    buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron and not w.data_key]
+    # peildatum of versie, al in `datasets`. Een tool met een eigen bronregel (het collegegeld, #970) heeft die al.
+    buiten_de_store = [
+        (w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron and not w.data_key and not bestand
+    ]
     return datasets + buiten_de_store + _registerbron(tool, result) + bestand
 
 

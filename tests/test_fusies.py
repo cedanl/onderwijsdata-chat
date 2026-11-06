@@ -165,7 +165,8 @@ def test_de_voorgangers_staan_een_dag_in_de_cache(rio, monkeypatch):
     assert len(rio) == 2
 
 
-def test_een_storing_geeft_geen_regel_en_een_warning_en_komt_niet_in_de_cache(monkeypatch, caplog):
+def test_een_storing_geeft_een_vaste_regel_en_een_warning_en_komt_niet_in_de_cache(monkeypatch, caplog):
+    """Geen stille uitval (#970): de regel zegt welk deel ontbreekt en waarom, de WARNING blijft."""
     pogingen = []
 
     def kapot(code, sinds=None, peildatum=None):
@@ -176,7 +177,12 @@ def test_een_storing_geeft_geen_regel_en_een_warning_en_komt_niet_in_de_cache(mo
     fusies._voorgangers.cache_clear()
 
     with caplog.at_level(logging.WARNING, logger="tools.fusies"):
-        assert fusies.in_reeks({"08PG": "Firda"}, (2021, 2025)) == ()
+        (regel,) = fusies.in_reeks({"08PG": "Firda"}, (2021, 2025))
+    assert regel == (
+        "Fusies niet nagegaan voor Firda (08PG): RIO gaf een storing, dus een fusie binnen de reeks 2021-2025 staat "
+        "hier niet bij. Een sprong in de reeks kan door een fusie komen; zeg dat erbij."
+    )
+    assert fusies.niet_nagegaan((regel, "Fusie bij X: ...")) == [regel]
     assert any("FUSIES_ONBEKEND" in r.getMessage() and "08PG" in r.getMessage() for r in caplog.records)
     assert "geen netwerk" not in caplog.text
 
@@ -262,3 +268,24 @@ def test_een_selectie_erft_haar_fusieregels(rio):
     som, sel = store.meta("duo:som"), store.meta("duo:sel")
     assert som is not None and sel is not None
     assert som.fusies == sel.fusies != ()
+
+
+def test_een_rio_storing_staat_in_de_toolresponse_en_het_telling_blok(monkeypatch):
+    """Geen stille uitval (#970): het model ziet dat de fusies niet zijn nagegaan, en de lezer ook."""
+
+    def kapot(code, sinds=None, peildatum=None):
+        raise httpx.ConnectError("geen netwerk")
+
+    monkeypatch.setattr(fusies, "voorgangers", kapot)
+    fusies._voorgangers.cache_clear()
+    store.put("duo:mbo:storing", _firda(), _meta())
+
+    uit = json.loads(
+        query.query_data(
+            "duo:mbo:storing", filters={"INSTELLINGSCODE": "08PG"}, group_by=["JAAR"], aggregate={"AANTAL": "sum"}
+        )
+    )
+
+    regel = "Fusies niet nagegaan voor Firda (08PG): RIO gaf een storing"
+    assert any(n.startswith(regel) for n in uit["databewerking"])
+    assert regel in telling_blok([json.dumps({"data_key": uit["data_key"]})])

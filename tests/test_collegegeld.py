@@ -11,7 +11,9 @@ import pytest
 
 import tools
 from agent.bronvermelding import bronlinks_van, bronnen_van
+from agent.citaties import citaties
 from agent.grounding import bewijs_getallen
+from agent.meetwaarden import meetwaarden
 from scripts import bronping
 from tools import collegegeld
 from tools.schemas import TOOL_GET_COLLEGEGELD, TOOL_SCHEMAS
@@ -118,3 +120,66 @@ def test_de_bron_ping_wordt_rood_als_het_lopende_studiejaar_ontbreekt():
     assert bronping.beoordeel(ping, collegegeld.get_collegegeld(vandaag=_VANDAAG)).ok
     rood = bronping.beoordeel(ping, collegegeld.get_collegegeld(vandaag=date(2028, 9, 1)))
     assert not rood.ok and "2028/2029" in rood.detail
+
+
+# --- #970: de bedragen als meetwaarden, met citatie en export ---------------------------------------------------------
+
+# Een beurt die ook andere data laadde: zonder vertaler kregen de bedragen "herkomst niet vastgesteld" en liet de
+# CSV-export van de citaties ze weg (frontend/src/citatieCsv.js neemt alleen vastgestelde citaties).
+_ANDERE_DATA = (
+    "query_data",
+    json.dumps(
+        {"data_key": "duo:p01hoinges:1:abc", "rijen": [{"INSTELLINGSNAAM": "Hogeschool Utrecht", "AANTAL": 37218}]}
+    ),
+)
+
+
+def _stappen(studiejaar: int = 2026) -> list[tuple[str, str]]:
+    return [_ANDERE_DATA, (TOOL_GET_COLLEGEGELD, collegegeld.get_collegegeld(studiejaar=studiejaar, vandaag=_VANDAAG))]
+
+
+def test_de_bedragen_zijn_getypeerde_meetwaarden_met_studiejaar_vorm_en_wettekst():
+    waarden = meetwaarden(collegegeld.get_collegegeld(studiejaar=2026, vandaag=_VANDAAG), TOOL_GET_COLLEGEGELD)
+
+    per_maat = {(w.maat, w.selectie): w for w in waarden}
+    assert len(waarden) == 3
+    voltijd = per_maat[("Volledig wettelijk collegegeld", ("Studiejaar: 2026/2027", "Vorm: voltijd"))]
+    assert "2694" in voltijd.cijfers and voltijd.eenheid == "€"
+    assert (
+        voltijd.bron == "wetten.nl, Regeling financiën hoger onderwijs (BWBR0024005), artikel 9, versie van 18-09-2026"
+    )
+    deeltijd = ("Studiejaar: 2026/2027", "Vorm: deeltijd", "Vorm: duaal")
+    assert "1604" in per_maat[("Gedeeltelijk wettelijk collegegeld", (*deeltijd, "Bedrag: minimum"))].cijfers
+    assert "2694" in per_maat[("Gedeeltelijk wettelijk collegegeld", (*deeltijd, "Bedrag: maximum"))].cijfers
+
+
+def test_de_bedragen_krijgen_een_vastgestelde_citatie_naast_andere_data():
+    tekst = (
+        "Hogeschool Utrecht telt 37.218 studenten.\n"
+        "Het volledig wettelijk collegegeld voor voltijd is in 2026/2027 € 2.694.\n"
+        "Voor deeltijd en duaal ligt het gedeeltelijk wettelijk collegegeld tussen € 1.604 en € 2.694."
+    )
+
+    gevonden = citaties(tekst, _stappen())
+
+    assert [(c["getal"], c["vastgesteld"]) for c in gevonden] == [
+        ("37.218", True),
+        ("2.694", True),
+        ("1.604", True),
+        ("2.694", True),
+    ]
+    _, voltijd, minimum, maximum = gevonden
+    assert voltijd["maat"] == "Volledig wettelijk collegegeld" and "Vorm: voltijd" in voltijd["selectie"]
+    assert "Bedrag: minimum" in minimum["selectie"] and "Bedrag: maximum" in maximum["selectie"]
+    assert all(c["tool"] == TOOL_GET_COLLEGEGELD and "BWBR0024005" in c["bron"] for c in gevonden[1:])
+    assert all(c["eenheid"] == "€" for c in gevonden[1:])
+
+
+def test_een_bedrag_in_een_zin_zonder_vorm_blijft_twijfel():
+    """Het maximum is in de wet het volledige bedrag: zonder voltijd of deeltijd in de zin kiest de code niet."""
+    [citatie] = citaties("Het bedrag is € 2.694.", _stappen())
+    assert citatie == {"getal": "2.694", "vastgesteld": False, "reden": "meerdere"}
+
+
+def test_een_melding_zonder_bedrag_geeft_geen_meetwaarde():
+    assert meetwaarden(collegegeld.get_collegegeld(studiejaar=2019, vandaag=_VANDAAG), TOOL_GET_COLLEGEGELD) == []

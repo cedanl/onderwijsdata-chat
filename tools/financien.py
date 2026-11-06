@@ -23,6 +23,7 @@ from onderwijsbronnen import Bestuurssleutel
 from onderwijsbronnen.duo import financien
 
 from core import actualiteit, brongebruik
+from core.config import TOOL_RESULT_MAX_CHARS
 from data import instellingen
 
 from . import beschikbaarheid, fouten, fusies, store
@@ -163,7 +164,10 @@ def _jaar(regel: dict) -> dict:
     if regel["werkplaatsfunctie"] is not None:
         uit["werkplaatsfunctie_eur"] = round(regel["werkplaatsfunctie"])
     uit["liquiditeit_signaleringswaarde"] = regel["liquiditeit_signaleringswaarde"]
-    uit["signaleringen"] = _signaleringen(regel)
+    # Een jaar zonder signalering heeft geen lege lijst: `onder_signaleringswaarde` van de eenheid noemt de jaren met
+    # een signalering al, en zo past bestuur 40833 (drie eenheden) binnen de grens van een toolresultaat (#970).
+    if signaleringen := _signaleringen(regel):
+        uit["signaleringen"] = signaleringen
     return uit
 
 
@@ -176,23 +180,24 @@ def _deel(verschil: float | None) -> str:
 def _ten_opzichte_van_sector(reeks: list[dict]) -> dict[str, dict[str, list[int]]]:
     """Per kengetal de verslagjaren onder, gelijk aan en boven het sectorcijfer, uit het verschil van de afgeronde
     waarden (#964); een jaar zonder verschil (lege waarde) apart. Zo leidt het model geen "alle jaren" af dat niet klopt.
-    Boven en onder, geen beter en slechter: bij solvabiliteit en liquiditeit is hoger niet vanzelf beter."""
+    Boven en onder, geen beter en slechter: bij solvabiliteit en liquiditeit is hoger niet vanzelf beter. Een groep
+    zonder jaren staat er niet in (#970): elk jaar van de reeks staat in precies één groep."""
     uit: dict[str, dict[str, list[int]]] = {}
     for kengetal in _VERGELEKEN:
         delen: dict[str, list[int]] = {"onder": [], "gelijk": [], "boven": [], "zonder_vergelijking": []}
         for jaar in reeks:
             verschil = jaar[kengetal].get("verschil")
             delen[_deel(verschil)].append(jaar["verslagjaar"])
-        if not delen["zonder_vergelijking"]:
-            del delen["zonder_vergelijking"]
-        uit[kengetal] = delen
+        uit[kengetal] = {deel: jaren for deel, jaren in delen.items() if jaren}
     return uit
 
 
 def _onder_signaleringswaarde(reeks: list[dict]) -> dict[str, list[int]]:
     """Per signaleerbaar kengetal de verslagjaren met een berekende signalering (#964)."""
     return {
-        kengetal: [j["verslagjaar"] for j in reeks if any(s["kengetal"] == kengetal for s in j["signaleringen"])]
+        kengetal: [
+            j["verslagjaar"] for j in reeks if any(s["kengetal"] == kengetal for s in j.get("signaleringen", ()))
+        ]
         for kengetal in _SIGNALEERBAAR
     }
 
@@ -379,10 +384,10 @@ def _kern(sleutel: Bestuurssleutel, profiel: dict | None, regels: list[dict], ed
         "definities": DEFINITIES,
         "signaleringswaarden": _signaleringswaarden(),
         "voorbehouden": list(VOORBEHOUDEN),
+        # De methode van het sectorcijfer staat in `sectorcijfer`, niet nog eens hier (#970).
         "databewerking": [
             "Kengetallen afgerond op twee decimalen, rentabiliteit in procent; het verschil is dat van de afgeronde "
             "waarden.",
-            f"Sectorcijfer: {financien.SECTORMETHODE}",
         ],
         "bron": _bronblok(editie),
     }
@@ -414,9 +419,19 @@ def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Fi
     fusieregels = fusies.bestuur_in_reeks(
         sleutel.nummer, uit["bestuur"]["naam"], (editie.eerste_jaar, editie.laatste_jaar), besturen
     )
-    uit["noot"] = " ".join([*noten, *fusieregels])
-    uit["data_key"] = _bewaar(sleutel, regels, editie, _telregel(uit["sectorcijfer"]), fusieregels)
-    return uit
+    data_key = _bewaar(sleutel, regels, editie, _telregel(uit["sectorcijfer"]), fusieregels)
+    return _vooraan(uit, " ".join([*noten, *fusieregels]), data_key)
+
+
+# Wat het model altijd moet zien, vooraan in het toolresultaat: agent/loop.py kapt een resultaat boven
+# TOOL_RESULT_MAX_CHARS af, en dan valt het einde weg, niet de noot ("tel of middel ze nooit") of de data_key (#970).
+_VOORAAN = ("sleutel", "dataset", "data_key", "noot", "voorbehouden", "bestuur", "instelling")
+
+
+def _vooraan(uit: dict, noot: str, data_key: str) -> dict:
+    """De uitkomst met noot, data_key, voorbehouden, bestuur en instelling vóór de reeksen; de rest in haar volgorde."""
+    alles = {**uit, "noot": noot, "data_key": data_key}
+    return {k: alles[k] for k in _VOORAAN if k in alles} | {k: v for k, v in alles.items() if k not in _VOORAAN}
 
 
 def get_bestuursfinancien(instelling_of_bestuur: str) -> str:
@@ -444,7 +459,28 @@ def get_bestuursfinancien(instelling_of_bestuur: str) -> str:
             f"{_buiten_verantwoording(sleutel, data.editie)} Deze app geeft geen financiën van besturen in po of vo. "
             "Noem geen cijfers en schat er geen."
         )
-    return json.dumps(_uitkomst(sleutel, profiel, data), ensure_ascii=False, separators=(",", ":"))
+    return _binnen_de_grens(_uitkomst(sleutel, profiel, data))
+
+
+def _tekst(uit: dict) -> str:
+    return json.dumps(uit, ensure_ascii=False, separators=(",", ":"))
+
+
+def _binnen_de_grens(uit: dict) -> str:
+    """Het toolresultaat binnen TOOL_RESULT_MAX_CHARS (#970). Past het niet (bestuur 40833: drie eenheden met elk een
+    reeks), dan vallen de rijksbijdragen in hele euro's weg: die in miljoen euro blijven, en de hele euro's staan in de
+    tabel achter data_key. Zo kapt agent/loop.py de reeksen niet af."""
+    tekst = _tekst(uit)
+    if len(tekst) <= TOOL_RESULT_MAX_CHARS:
+        return tekst
+    for eenheid in uit["eenheden"]:
+        for jaar in eenheid["reeks"]:
+            jaar.pop("rijksbijdragen_eur", None)
+    uit["noot"] += (
+        " De rijksbijdragen staan hier alleen in miljoen euro (rijksbijdragen_mln_eur); in hele euro's staan ze in de "
+        "tabel achter data_key."
+    )
+    return _tekst(uit)
 
 
 def _gedeeld_bestuur(sleutel: Bestuurssleutel, profiel: dict) -> str | None:
