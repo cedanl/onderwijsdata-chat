@@ -46,12 +46,13 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
   })
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
+  // Het niveau (mbo, hbo, wo) uit de lijst van /api/instellingen, of null voor vrije tekst die er niet in staat.
+  const sector = useMemo(() => instellingType(instelling, instellingen), [instelling, instellingen])
   // De kaarten van Mijn instelling en Opleidingen beloven alleen wat het dashboard van dit niveau toont (#918, #957).
   const dashboards = useMemo(() => {
-    const sector = instellingType(instelling, instellingen)
     const beschrijving = { [BUILTIN_MIJN_INSTELLING.id]: mijnInstellingBeschrijving, [BUILTIN_OPLEIDINGEN.id]: opleidingenBeschrijving }
     return builtins.map(b => (beschrijving[b.id] ? { ...b, description: beschrijving[b.id](sector) } : b))
-  }, [builtins, instelling, instellingen])
+  }, [builtins, sector])
 
   // De galerij en het dashboard delen hun ladingen (#933): de miniatuur van een kaart en het dashboard erachter
   // vragen de server één keer. Beide takken beginnen met dezelfde provider, dus React houdt hem (en wat hij bewaart)
@@ -62,6 +63,7 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
         <WorkbookViewer
           workbook={selected}
           instelling={instelling}
+          sector={sector}
           gekozenInstelling={settings?.instelling?.trim() || ''}
           onBack={() => setSearchParams({}, { replace: true })}
           onUpdate={() => {}}

@@ -1265,13 +1265,20 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .kpi-card {
   background: var(--white); border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm);
+  container-type: inline-size; min-width: 0;
 }
+/* Op een telefoon staan twee tegels van 163 px naast elkaar, met 113 px tekstruimte (#973): de inhoud stak tot 26 px
+   buiten .dashboard-content, dat daardoor zijwaarts scrolde. Daarom is de tegel een container, breekt de regel onder
+   het getal af (.kpi-trend), mag "ten minste" boven het getal staan en wijkt in een smalle tegel het decoratieve icoon
+   voor het label. */
+.kpi-ondergrens { display: inline-block; }
+@container (max-width: 150px) { .kpi-icon { display: none; } }
 .kpi-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .kpi-label { font-size: 12.5px; color: var(--gray-500); font-weight: 500; }
 .kpi-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
 .kpi-icon svg { width: 18px; height: 18px; }
 .kpi-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
-.kpi-trend { font-size: 12.5px; display: flex; align-items: center; gap: 4px; }
+.kpi-trend { font-size: 12.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 /* Tekst, dus 4,5:1 (#905): --green-500 en --red-500 haalden op wit 2,3:1 en 3,8:1. */
 .kpi-trend.up { color: #047857; }
 .kpi-trend.down { color: #B91C1C; }
@@ -1344,6 +1351,15 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
   .dashboard-content button, .db-afdrukbalk { display: none !important; }
   .dashboard-content .chart-card, .dashboard-content .kpi-card, .dashboard-sources { break-inside: avoid; }
   .dashboard-sources a[href]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; }
+  /* Een brede tabel scrolt op het scherm zijwaarts; op papier kan dat niet, dus hij past in de breedte (#973): geen
+     scrollbox, kleinere letter, cellen die mogen afbreken. Een lange tabel loopt over meer pagina's (de kaart eromheen
+     mag dan breken), met de kolomkoppen op elke pagina en zonder een rij te halveren. */
+  .dashboard-content .tabel-scroll { overflow: visible; }
+  .dashboard-content .tabel-scroll table { font-size: 8pt !important; }
+  .dashboard-content .tabel-scroll :is(th, td) { white-space: normal !important; padding: 3px 4px !important; }
+  .dashboard-content .tabel-scroll thead { display: table-header-group; }
+  .dashboard-content .tabel-scroll tr { break-inside: avoid; }
+  .dashboard-content .chart-card:has(.tabel-scroll) { break-inside: auto; }
 }
 .kaart-zonder-locatie { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 0; }
 

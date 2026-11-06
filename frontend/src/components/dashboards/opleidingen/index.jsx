@@ -178,7 +178,7 @@ function ThemaTabel({ rijen, themas }) {
   const metOordeel = (rijen || []).filter(r => themas.some(t => r[t.veld] != null))
   if (!metOordeel.length || !themas.length) return null
   return (
-    <details className="chart-card db-uitklap">
+    <details className="chart-card db-uitklap" data-afdruk-open="">
       <summary>NSE-thema&apos;s per opleidingsvorm ({fmt(metOordeel.length)})</summary>
       <TabelScroll label="NSE-thema's per opleidingsvorm" style={TABEL}>
         <caption className="sr-only">Gemiddeld oordeel per NSE-thema, schaal 1 tot 5</caption>

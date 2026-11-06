@@ -43,3 +43,24 @@ describe('de kaarten van de galerij', () => {
     expect(regel[1]).toMatch(/grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(min\(280px,\s*100%\),\s*1fr\)\)/)
   })
 })
+
+// #973: op 390 px staan twee kerncijfertegels van 163 px naast elkaar (113 px tekstruimte); hun inhoud stak tot 26 px
+// buiten .dashboard-content (gemeten met Playwright op Hogeschool Utrecht, Universiteit Utrecht en ROC Midden
+// Nederland, zie de MR). De tegel is een container, de inhoud past zich aan zijn breedte aan.
+describe('de kerncijfertegels', () => {
+  const regel = kiezer => new RegExp(`(?:^|})\\s*${kiezer.replace(/[.*]/g, '\\$&')}\\s*{([^}]*)}`).exec(css)?.[1] ?? ''
+
+  it('zijn een container die niet breder wordt dan zijn kolom', () => {
+    expect(regel('.kpi-card')).toMatch(/container-type:\s*inline-size/)
+    expect(regel('.kpi-card')).toMatch(/min-width:\s*0/)
+  })
+
+  it('laten de regel onder het getal en "ten minste" afbreken', () => {
+    expect(regel('.kpi-trend')).toMatch(/flex-wrap:\s*wrap/)
+    expect(regel('.kpi-ondergrens')).toMatch(/display:\s*inline-block/)
+  })
+
+  it('laten het icoon weg in een smalle tegel', () => {
+    expect(blok('@container (max-width: 150px)')).toMatch(/\.kpi-icon\s*{\s*display:\s*none;?\s*}/)
+  })
+})
