@@ -28,6 +28,14 @@ RANGE_RE = re.compile(r"^>=\d+\.\d+\.\d+-\d+(\.\d+)?$")
 VERSION_LINE_RE = re.compile(r"(?P<head>  chart:\n    spec:\n(?:.*\n)*?)(?P<line>      version:[^\n]*)\n")
 # Release-tags die wel bestaan maar geen chart hebben: een pin erop laat Flux falen (Agents.md, #844).
 ZONDER_CHART = frozenset({"2.0.0"})
+# De laatste release zonder de Studiekeuzedatabase (#957). Een promotie van hier of eerder naar een latere release zet
+# hem op playground aan (de sleutel staat al in manifests/playground), en dan moet LCSK het weten (#972).
+LAATSTE_ZONDER_SKDB = "2.8.0"
+LCSK_MELDING = (
+    "LET OP: met deze promotie gaat de Studiekeuzedatabase van LCSK op playground live (tool get_studiekeuze, "
+    "suggestievragen, dashboard Opleidingen). Stuur binnen drie weken na de merge een link of pdf naar info@lcsk.nl "
+    "(art. 4.6 Algemene Leveringsvoorwaarden Data v25.1, docs/databronnen.md) en zet in de MR wie dat doet."
+)
 
 
 def helmrelease(env: str) -> Path:
@@ -50,10 +58,22 @@ def schrijf_pin(env: str, versie: str) -> None:
     pad.write_text(nieuw)
 
 
+def _volgorde(release: str) -> tuple[int, ...]:
+    return tuple(int(d) for d in release.split("."))
+
+
 def release_tags(tags: list[str]) -> list[str]:
     """Kale X.Y.Z-tags, oplopend. Alleen die publiceert SDP als schone chart."""
     gevonden = [t for t in tags if RELEASE_RE.match(t)]
-    return sorted(gevonden, key=lambda t: tuple(int(d) for d in t.split(".")))
+    return sorted(gevonden, key=_volgorde)
+
+
+def lcsk_melding(huidig: str, nieuw: str) -> str | None:
+    """De melding aan LCSK als deze promotie de Studiekeuzedatabase voor het eerst naar playground brengt. Een pin
+    die geen release is (een range) telt als zonder SKDB: dan weet het script niet wat er draaide."""
+    voor = _volgorde(huidig) if RELEASE_RE.match(huidig) else (0,)
+    grens = _volgorde(LAATSTE_ZONDER_SKDB)
+    return LCSK_MELDING if voor <= grens < _volgorde(nieuw) else None
 
 
 def remote_tags() -> list[str]:
@@ -96,6 +116,8 @@ def promote(versie: str | None) -> int:
         return 0
     schrijf_pin("playground", versie)
     print(f"playground: {huidig} -> {versie}")
+    if melding := lcsk_melding(huidig, versie):
+        print(melding)
     print("Volgende stap: branch chore/promote-playground, commit, MR; na merge `mark`.")
     return 0
 

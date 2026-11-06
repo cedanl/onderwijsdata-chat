@@ -76,7 +76,7 @@ kubectl logs -n services-onderwijsdata-chat -l app.kubernetes.io/name=onderwijsd
 
 ## Relationship to Environments
 
-- **Development** → doet niet mee aan de ladder
+- **Development** → volgt `main` zoals test (open range), maar is geen sport van de ladder: geen bereikbare URL
 - **Test** → auto from `main` push (CI-verified)
 - **Playground** → vaste release-pin, alleen via de promotie-MR (`docs/promoten.md`)
 - **Production** → nog niet uitrolbaar (#674)

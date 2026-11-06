@@ -384,4 +384,8 @@ def test_de_vlag_staat_alleen_op_test_aan():
         return None
 
     assert vlag("test") == "true"
-    assert vlag("playground") is None and vlag("production") is None
+    # Elke andere omgeving, ook development (#972), en de base die ze allemaal delen.
+    anderen = {p.parent.name for p in (ROOT / "manifests").glob("*/values.yaml")} - {"test"}
+    assert anderen >= {"playground", "production", "development"}
+    assert {omgeving: vlag(omgeving) for omgeving in anderen} == dict.fromkeys(anderen)
+    assert "ENABLE_WO_PERSONEEL" not in (ROOT / "manifests/base/values-base.yaml").read_text(encoding="utf-8")

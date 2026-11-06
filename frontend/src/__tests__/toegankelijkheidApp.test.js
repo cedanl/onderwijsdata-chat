@@ -7,8 +7,10 @@ import { createRoot } from 'react-dom/client'
 import axe from 'axe-core'
 import App from '../App'
 import { STORAGE_TOKEN, STORAGE_USERINFO } from '../constants'
-import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN } from '../workbooks'
 import DASHBOARDS from './fixtures/dashboards.json'
+import OPLEIDINGEN from './fixtures/dashboardOpleidingen.json'
+import { FIN, PERS, FIN_BRON, WOPI_BRON } from './fixtures/bestuurEnPersoneel'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 // jsdom heeft geen canvas; react-chartjs-2 zoals het tekent: een canvas met role="img" en de overige props (#905).
@@ -26,13 +28,18 @@ let root
 let container
 
 // Met de dashboards (#905) antwoordt de server op de config en de dashboarddata (echte antwoorden van 04-11, ingekort);
-// de rest gaat mis zoals zonder server.
+// de rest gaat mis zoals zonder server. De bronnen met een omgevingsregel staan aan (#973), zodat ook Opleidingen
+// (#957) en de kaarten Financiën (#935) en Personeel (#936) op Mijn instelling getoetst worden. Zonder
+// /api/instellingen kent de pagina het niveau van de instelling niet en vraagt ze het personeel op.
 const DASHBOARD_ANTWOORDEN = {
-  '/api/config': { dashboards_enabled: true },
+  '/api/config': { dashboards_enabled: true, bronnen: { studiekeuze: true, financien: true, wo_personeel: true } },
   '/api/dashboard/regio': DASHBOARDS.regio,
   '/api/dashboard/rendement': DASHBOARDS.rendement,
   '/api/dashboard/nationaal': DASHBOARDS.nationaal,
   '/api/dashboard/arbeidsmarktmatch': DASHBOARDS.arbeidsmarktmatch,
+  '/api/dashboard/opleidingen': OPLEIDINGEN.hbo,
+  '/api/dashboard/financien': { ...FIN, bronnen: [FIN_BRON] },
+  '/api/dashboard/personeel': { ...PERS, bronnen: [WOPI_BRON] },
 }
 const metDashboards = async url => {
   const antwoord = DASHBOARD_ANTWOORDEN[String(url).split('?')[0]]
@@ -116,27 +123,33 @@ describe('axe-poort (#687)', () => {
   })
 
   // #905: de dashboards zelf, met data en zonder ze weg te mocken. Wacht tot het dashboard getekend is (de laadstatus
-  // is weg en er staat een grafiek of tabel).
+  // en de laadvlakken van de kaarten zijn weg en er staat een grafiek of tabel). `kaarten`: wat er dan moet staan.
+  // Een uitklap gaat open (#973), zodat axe ook de tabel erachter ziet (NSE-thema's, kengetaldefinities).
   it.each([
-    ['/dashboards', null],
-    ['/dashboards (mijn instelling)', BUILTIN_MIJN_INSTELLING.id],
-    ['/dashboards (arbeidsmarkt)', BUILTIN_ARBEIDSMARKT.id],
-    ['/dashboards (landelijk)', BUILTIN_NATIONAAL.id],
-  ])('%s heeft geen ernstige bevindingen', APP_TEST, async (_, id) => {
+    ['/dashboards', null, []],
+    ['/dashboards (mijn instelling)', BUILTIN_MIJN_INSTELLING.id, ['Kengetallen per verslagjaar', 'Personeel (wo)']],
+    ['/dashboards (arbeidsmarkt)', BUILTIN_ARBEIDSMARKT.id, []],
+    ['/dashboards (landelijk)', BUILTIN_NATIONAAL.id, []],
+    ['/dashboards (opleidingen)', BUILTIN_OPLEIDINGEN.id, ["NSE-thema's per opleidingsvorm", 'Numerus fixus en decentrale selectie']],
+  ])('%s heeft geen ernstige bevindingen', APP_TEST, async (_, id, kaarten) => {
     await render(id ? `/dashboards?id=${id}` : '/dashboards', { ingelogd: true, server: metDashboards })
     if (id) {
-      for (let i = 0; i < 200 && !container.querySelector('.dashboard-content canvas, .dashboard-content table'); i++) {
+      const getekend = () => container.querySelector('.dashboard-content canvas, .dashboard-content table')
+        && !container.querySelector('.db-skeleton-grid, .db-skeleton-chart')
+      for (let i = 0; i < 200 && !getekend(); i++) {
         await act(async () => { await new Promise(r => setTimeout(r, 20)) })
       }
-      expect(container.querySelector('.db-skeleton-grid')).toBeNull()
-      expect(container.querySelectorAll('.dashboard-content canvas[role="img"][aria-label]').length).toBeGreaterThan(0)
+      expect(getekend()).toBeTruthy()
+      expect(container.querySelectorAll('.dashboard-content :is(canvas[role="img"][aria-label], .tabel-scroll table)').length).toBeGreaterThan(0)
+      for (const kaart of kaarten) expect(container.textContent).toContain(kaart)
+      await act(async () => { for (const d of container.querySelectorAll('.dashboard-content details')) d.open = true })
     } else {
       expect(container.textContent).toContain('Mijn instelling')
       // De miniaturen met hun cijfers (#933): axe moet de kaarten zien zoals ze er geladen uitzien.
       for (let i = 0; i < 200 && container.querySelectorAll('.wb-miniatuur .kpi-card').length === 0; i++) {
         await act(async () => { await new Promise(r => setTimeout(r, 20)) })
       }
-      expect(container.querySelectorAll('.wb-miniatuur-pagina')).toHaveLength(3)
+      expect(container.querySelectorAll('.wb-miniatuur-pagina')).toHaveLength(4)
     }
     expect(await ernstigeBevindingen()).toEqual([])
   })

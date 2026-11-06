@@ -26,7 +26,7 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 - Main push → test auto-deploy via CI (open range `>=0.0.1-0.0`)
 - Tag `X.Y.Z` (zonder `v`) → publiceert alleen chart + GitHub-mirror, deployt niets
 - `chore/promote-playground` MR → pin in `manifests/playground/helmrelease.yaml` → Flux installeert die release
-- development en production doen niet mee
+- development volgt main net als test (open range), maar is geen sport van de ladder (geen bereikbare URL); production doet niet mee (#674)
 
 ## Deploy & Verificatie
 

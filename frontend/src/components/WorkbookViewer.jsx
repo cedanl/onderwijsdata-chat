@@ -31,8 +31,9 @@ function DashboardLaadt() {
 }
 
 // save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
-// frame follows (#568).
-export default function WorkbookViewer({ workbook, instelling, gekozenInstelling = '', onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
+// frame follows (#568). sector: the level (mbo, hbo, wo) of `instelling` when the list knows it, for a dashboard card
+// that only exists for one level (#973).
+export default function WorkbookViewer({ workbook, instelling, sector = null, gekozenInstelling = '', onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
   const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -185,7 +186,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label={rapportWoord(workbook) === 'dashboard' ? 'Dashboardinhoud' : 'Rapportinhoud'}
         aria-busy={reportFrame.loading || undefined}>
         {(() => {
-          if (BuiltinDash) return <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} /></Suspense>
+          if (BuiltinDash) return <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} sector={sector} /></Suspense>
           if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>

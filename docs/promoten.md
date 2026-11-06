@@ -1,7 +1,8 @@
 # Promoten naar playground
 
-De ladder heeft twee sporten: **test** en **playground**. `development` en
-`production` doen er niet aan mee (geen live URL, respectievelijk nog niet live).
+De ladder heeft twee sporten: **test** en **playground**. `development` volgt net als test elke main-build (open
+range `>=0.0.1-0.0` in `manifests/development/helmrelease.yaml`), maar is geen sport: er is geen bereikbare URL en
+niemand promoveert ernaartoe. `production` doet niet mee (nog niet uitrolbaar, #674).
 
 | Omgeving | Beweegt wanneer | Pin in `helmrelease.yaml` |
 |---|---|---|
@@ -60,6 +61,16 @@ glab mr create --fill
 ```
 
 Het diff is één regel. Na de merge pakt Flux de pin binnen ~1 minuut op.
+
+Brengt de promotie een bron voor het eerst naar playground, dan kan de licentie een melding vragen:
+
+- [ ] **Studiekeuzedatabase (LCSK, #957):** de eerste release na 2.8.0 zet hem op playground aan (de sleutel staat al
+  in `manifests/playground`): de tool `get_studiekeuze`, de suggestievragen in de categorie Studiekeuze en het
+  dashboard Opleidingen. Stuur binnen drie weken na de merge een link of pdf naar info@lcsk.nl (art. 4.6 van de
+  Algemene Leveringsvoorwaarden Data v25.1, zie
+  [Databronnen](databronnen.md#studiekeuzedatabase-landelijk-centrum-studiekeuze-lcsk-alleen-test-en-playground)) en
+  zet in de promotie-MR wie dat doet. `promotie.py promote` toont deze melding zelf bij die promotie
+  (`LAATSTE_ZONDER_SKDB`).
 
 Controleer daarna of het cluster echt is verplaatst:
 

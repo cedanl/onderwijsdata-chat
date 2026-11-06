@@ -28,14 +28,17 @@ import { Kerncijfers } from './kerncijfers'
 import { FinancienSection } from './financien-section'
 import { PersoneelSection } from './personeel-section'
 
-export function InlineDashboardMijnInstelling({ instelling }) {
+// `sector`: het niveau van de instelling uit /api/instellingen (DashboardPage), of null als de lijst haar niet kent.
+export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
   const { data, loading, error, opnieuw } = useRegioDashboardData(instelling)
   const rendement = useRendementDashboardData(instelling)
   const rendData = rendement.data
   // De financiën en het personeel alleen waar hun bron hier antwoord geeft (/api/config, #935, #936): anders bestaat
   // het eindpunt niet en vraagt de pagina niets op.
   const financienAan = useBronAan('financien')
-  const personeelAan = useBronAan('wo_personeel')
+  // Het personeel bestaat alleen voor wo (#973): bij een bekende hogeschool of mbo-instelling geen verzoek en geen
+  // laadvlak. Kent de lijst de instelling niet, dan beslist de server, en verdwijnt de kaart na het antwoord.
+  const personeelAan = useBronAan('wo_personeel') && (sector == null || sector === 'wo')
   const financien = useFinancienDashboardData(financienAan ? instelling : null)
   const personeel = usePersoneelDashboardData(personeelAan ? instelling : null)
   const ladingen = [data, rendData, financien.data, personeel.data]

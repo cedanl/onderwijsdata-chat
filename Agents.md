@@ -79,7 +79,8 @@ Aparte, kleine commits houden de geschiedenis leesbaar en een revert eenvoudig.
 
 ## Deployment & versioning
 
-**Ladder: test → playground** (development en production doen niet mee):
+**Ladder: test → playground** (development volgt main net als test, open range, maar is geen sport: geen bereikbare
+URL; production doet niet mee, #674):
 
 | Trigger | Environment | Mechanism |
 |---|---|---|

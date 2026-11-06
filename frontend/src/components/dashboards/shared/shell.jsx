@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { COLOR_EIGEN } from '../../../constants'
+import { openUitklappenBijAfdrukken } from '../../../afdrukUitklap'
 import { korteDatum } from '../../../relatieveDatum'
 import { GrafiekTitel } from './grafiek'
 
@@ -11,6 +13,8 @@ function OpnieuwKnop({ onOpnieuw }) {
 }
 
 export function DashboardShell({ instelling, children, loading, data, error, onOpnieuw }) {
+  // Op papier staan de uitklappen open (#973).
+  useEffect(() => openUitklappenBijAfdrukken(), [])
   if (loading) {
     return (
       <div className="dashboard-content" style={{ padding: 24 }} role="status" aria-busy="true">
