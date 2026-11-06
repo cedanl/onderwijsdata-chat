@@ -7,17 +7,19 @@ De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arb
 
 ## Vaste dashboards
 
-De frontend toont drie dashboards; ze halen hun cijfers uit vier eindpunten. Beide zijn er zolang `ENABLE_DASHBOARDS`
+De frontend toont drie dashboards; ze halen hun cijfers uit de eindpunten hieronder. Beide zijn er zolang `ENABLE_DASHBOARDS`
 op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit).
 
 | Dashboard in de UI | Eindpunten | Inhoud |
 |--------------------|------------|--------|
-| **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep, en diploma's na 3 jaar per eerstejaars; hbo en wo: een noot waarom daar geen rendement staat |
+| **Mijn instelling** | `/api/dashboard/regio`, `/api/dashboard/rendement`, `/api/dashboard/financien`, `/api/dashboard/personeel` | Kerncijfers, ingeschrevenen, sectoren, eerstejaars, gediplomeerden, bij ho geslacht, de regionale vergelijking en de kaart; mbo: leerwegen en ingeschrevenen per hoofdgroep, en diploma's na 3 jaar per eerstejaars; hbo en wo: een noot waarom daar geen rendement staat; de financiën van het bestuur; wo met `ENABLE_WO_PERSONEEL`: het personeel uit WOPI |
 | **Arbeidsmarkt** | `/api/dashboard/arbeidsmarktmatch`, `/api/dashboard/regio` | Gediplomeerden tegen vacatures per sector, de matchscore, ROA (schoolverlaters en prognoses per opleidingsniveau) en de vacatures in de provincie |
 | **Landelijk** | `/api/dashboard/nationaal` | Positie per sector, marktaandeel, trend van de eigen sectoren en de ranking van alle instellingen van hetzelfde type |
 
-**Bronnen.** De dashboards rekenen met DUO (open onderwijsdata per instelling), UWV (vacatures per provincie, een
-momentopname van mei 2023) en ROA (schoolverlaters en prognoses, landelijk per opleidingsniveau). CBS-data gebruiken
+**Bronnen.** De dashboards rekenen met DUO (open onderwijsdata per instelling, en de financiële verantwoording per
+bestuur), UWV (vacatures per provincie, een momentopname van mei 2023), ROA (schoolverlaters en prognoses, landelijk per
+opleidingsniveau) en, alleen met `ENABLE_WO_PERSONEEL`, WOPI van Universiteiten van Nederland (personeel per
+universiteit). CBS-data gebruiken
 ze niet; alleen de indeling in arbeidsmarktregio's (per gemeente) komt van CBS. Over de landelijke CBS-maat van de chat:
 zie "Landelijk, groei en het regiogemiddelde" hieronder.
 
@@ -34,7 +36,7 @@ laden, lege en mislukte lading, cijfers, toegankelijkheid) en voor de backend in
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen
 (`bronnen`, zie hieronder). De data komt uit `data/dashboard.py`.
 `/api/dashboard/instroom` is weg (#930): geen dashboard gebruikte het, en wat het gaf, staat ook in `regio`. Het pad
-geeft 410 met die uitleg; elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met de vier eindpunten
+geeft 410 met die uitleg; elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met de eindpunten
 erin, geen kale 404 (#954, `routes/instellingen.py`). `tests/test_openbare_oppervlakte.py` houdt de eindpunten in de
 API, in `docs/api.md`, in deze pagina en in de hooks van de frontend gelijk.
 
@@ -83,6 +85,10 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   bronregel in de chat. `peildatum` en `voorlopig_jaren` komen uit de DUO-beschrijving in de catalogus.
 - **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM.
 - **ROA:** `editie` uit het schema van `onderwijsbronnen.roa`, `versie` uit de kolom `versie` van het bestand.
+- **DUO-financiën en WOPI** (#935, #936): één editie per lading, geen versie per bestand. De lader meldt `editie`
+  ("verslagjaren 2021-2025", "2025"), `peildatum` en bij de financiën de publicatiedatum als versie; WOPI noemt titel en
+  link zelf, want de catalogus kent het niet. Dataset-ID `financien` (de CKAN-naam, zoals de andere DUO-regels) en
+  `unl:wopi`, bron `DUO` en `UNL`.
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 
@@ -185,6 +191,34 @@ tegel onder de naam van wat hij telt, hbo en wo krijgen geen tegel tot er een ec
   live kwam de verhouding tot 2,45 en viel elk cohort af. Of de naam in het ho staat, zegt `p01hoinges`; dat bestand
   draagt geen getal en staat niet in het bronblok (`bronnen` is leeg). Het rendement per sector en de ho-peerberekening
   zijn weg.
+
+### Financiën van het bestuur en personeel (Mijn instelling)
+
+Twee kaarten op Mijn instelling, elk met een eigen lading (`DeelLading`): een bron die uitvalt, staat in
+`niet_beschikbaar` en breekt de rest van het dashboard niet. Ze rekenen met de functies van de chat-tools, niet opnieuw,
+en geven hun vaste zinnen zonder de aanwijzingen aan het model ("Zeg dat", "Noem geen getal"); een dashboard bewaart
+niets in de store. De LLM komt er niet aan te pas.
+
+- **Financiën van het bestuur** (`/api/dashboard/financien`, `data/dashboard_financien.py`, #935): voor mbo, hbo en wo,
+  overal waar `beschikbaarheid.financien()` (CC0, geen vlag). De instelling gaat via het register naar haar bestuur in
+  DUO's adressenbestand, of naar haar eigen eenheid als het bestuur er een per BRIN heeft (40833);
+  `tools.financien.voor_instelling` geeft per verslagjaar solvabiliteit I en II, liquiditeit, rentabiliteit en
+  rijksbijdragen, naast het gewogen sectorcijfer van de Inspectie (geen mediaan), met de signaleringen, de
+  signaleringswaarden en de vaste voorbehouden (het cijfer geldt voor het hele bestuur, zegt niets over de kwaliteit van
+  het onderwijs, is niet door een accountant gecontroleerd, één variant per jaar). Een signaal is geen oordeel. In
+  `meldingen` staat als feit dat DUO het bestuur aan een andere sector toerekent (Aeres Hogeschool) en welke andere
+  instellingen uit het register onder hetzelfde bestuur vallen. Geen ranking van besturen en geen gemiddelde over
+  besturen. Zonder bestuur in het adressenbestand (transnationale Universiteit Limburg) geeft de payload `melding` en
+  `financien: null`. Een waarde die in de bron ontbreekt, is `null` en staat er als "—", nooit als 0. Fusies binnen de
+  reeks (RIO) noemt alleen de chat.
+- **Personeel** (`/api/dashboard/personeel`, `data/dashboard_personeel.py`, #936): alleen voor wo en alleen met
+  `ENABLE_WO_PERSONEEL` (nu alleen op test). Zonder vlag geeft het eindpunt 404 en vraagt de frontend het niet op
+  (`bronnen.wo_personeel` uit `/api/config`). `tools.wo_personeel.reeks_van` geeft per jaar de fte zonder GEZO, naar
+  wetenschappelijk personeel en OBP (`reken` met `wp_obp`) en naar vast en tijdelijk (vanaf 2003; daarvoor `null`), met
+  het aandeel tijdelijk over vast plus tijdelijk, de definitie van WP en de vaste zinnen: peildatum 31 december, fte is
+  geen aantal personen, wat niet meetelt, zonder GEZO, en dat een jaarverslag vaak een ander getal noemt. Een hbo- of
+  mbo-instelling laadt WOPI niet en krijgt geen kaart; een universiteit die niet in WOPI staat (de vier niet-leden van
+  UNL, tUL), krijgt de vaste melding uit `wo_personeel`.
 
 ### Onderdrukte en ontbrekende cellen
 

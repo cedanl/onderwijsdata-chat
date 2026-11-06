@@ -127,10 +127,12 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `GET` | `/api/dashboard/nationaal` | Dashboard-nationale gegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/rendement` | Dashboard-rendementsgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/arbeidsmarktmatch` | Dashboard-arbeidsmarktmatch voor een instelling (`instelling` param) |
+| `GET` | `/api/dashboard/financien` | Financiën van het bestuur van een instelling, uit DUO's verantwoording uit XBRL (`instelling` param, #935) |
+| `GET` | `/api/dashboard/personeel` | Personeel (fte zonder GEZO) van een universiteit uit WOPI (`instelling` param, #936); alleen met `ENABLE_WO_PERSONEEL` |
 
-De vier `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636).
+De `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636). `financien` en `personeel` rusten op een bron met een omgevingsregel (`tools/beschikbaarheid.py`): waar die bron geen antwoord geeft (WOPI zonder `ENABLE_WO_PERSONEEL`, de financiën zonder bevestigde licentie) geven ze 404 en laden ze niets.
 
-Er zijn geen andere dashboard-eindpunten (#954). `GET /api/dashboard/instroom` bestond tot versie 2.6.0 (#930) en geeft 410 met `error`: de cijfers van de eigen instelling staan in `regio`. Elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met in `error` de vier eindpunten hierboven. Geen van beide laadt data of vraagt een token.
+Er zijn geen andere dashboard-eindpunten (#954). `GET /api/dashboard/instroom` bestond tot versie 2.6.0 (#930) en geeft 410 met `error`: de cijfers van de eigen instelling staan in `regio`. Elk ander pad onder `/api/dashboard/` of `/api/dashboards` geeft 404 met in `error` de eindpunten hierboven. Geen van beide laadt data of vraagt een token.
 
 ---
 
