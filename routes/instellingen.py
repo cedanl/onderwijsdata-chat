@@ -23,6 +23,7 @@ from data.dashboard import (
     load_dashboard_rendement,
 )
 from data.dashboard_financien import load_dashboard_financien
+from data.dashboard_opleidingen import load_dashboard_opleidingen
 from data.dashboard_personeel import load_dashboard_personeel
 from data.instellingen import get_all as get_all_instellingen
 from tools import beschikbaarheid
@@ -194,12 +195,18 @@ async def dashboard_personeel(instelling: str = Query(...)) -> dict | JSONRespon
     return await _laad_dashboard(load_dashboard_personeel, instelling, beschikbaarheid.wo_personeel)
 
 
+@router.get("/api/dashboard/opleidingen", response_model=None, dependencies=_INGELOGD)
+async def dashboard_opleidingen(instelling: str = Query(...)) -> dict | JSONResponse:
+    # De Studiekeuzedatabase (#957): zonder de sleutel van LCSK bestaat het dashboard hier niet, zoals get_studiekeuze.
+    return await _laad_dashboard(load_dashboard_opleidingen, instelling, beschikbaarheid.studiekeuze)
+
+
 # ─── Wat geen dashboard-eindpunt is (#954) ───────────────────────────────────
 # De eindpunten hierboven, zoals docs/api.md en docs/dashboards.md ze noemen. Een ander pad onder /api/dashboard of
 # /api/dashboards gaf een kale 404; nu zegt het antwoord welke er wel zijn. /api/dashboard/instroom bestond tot 2.6.0
 # (#930) en geeft 410 met waar de cijfers nu staan. Geen login nodig: er wordt niets geladen, en de paden staan in de
 # docs. De routes staan na de eindpunten, zodat die voorgaan.
-DASHBOARD_EINDPUNTEN = ("regio", "nationaal", "rendement", "arbeidsmarktmatch", "financien", "personeel")
+DASHBOARD_EINDPUNTEN = ("regio", "nationaal", "rendement", "arbeidsmarktmatch", "financien", "personeel", "opleidingen")
 _WEL = ", ".join(f"/api/dashboard/{naam}" for naam in DASHBOARD_EINDPUNTEN) + ", elk met ?instelling=<naam>"
 INSTROOM_WEG = (
     "/api/dashboard/instroom bestaat niet meer sinds versie 2.6.0: de cijfers van de eigen instelling staan in "

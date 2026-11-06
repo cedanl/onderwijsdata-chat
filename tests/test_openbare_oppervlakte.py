@@ -152,6 +152,7 @@ DASHBOARDS = {
     "/api/dashboard/arbeidsmarktmatch": "load_dashboard_arbeidsmarktmatch",
     "/api/dashboard/financien": "load_dashboard_financien",
     "/api/dashboard/personeel": "load_dashboard_personeel",
+    "/api/dashboard/opleidingen": "load_dashboard_opleidingen",
 }
 # Eindpunten op een bron met een omgevingsregel (tools/beschikbaarheid.py, #935, #936): pad → de regel die aan moet.
 OP_EEN_BRON = {"/api/dashboard/financien": "financien", "/api/dashboard/personeel": "wo_personeel"}
@@ -159,9 +160,12 @@ OP_EEN_BRON = {"/api/dashboard/financien": "financien", "/api/dashboard/personee
 
 @pytest.fixture
 def loaders(monkeypatch):
-    """Elke dashboardloader nagebootst (geen DUO-download); de lijst zegt welke paden data laadden."""
+    """Elke dashboardloader nagebootst (geen DUO-download); de lijst zegt welke paden data laadden. De sleutel van de
+    Studiekeuzedatabase staat, zodat ook het dashboard Opleidingen er is (#957)."""
     import routes.instellingen
+    from tools import beschikbaarheid
 
+    monkeypatch.setattr(beschikbaarheid, "studiekeuze", lambda: True)
     geladen: list[tuple[str, str]] = []
     for naam in DASHBOARDS.values():
         monkeypatch.setattr(

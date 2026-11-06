@@ -139,6 +139,10 @@ export function usePersoneelDashboardData(instelling) {
   return useDashboardFetch('/api/dashboard/personeel', instelling)
 }
 
+export function useOpleidingenDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/opleidingen', instelling)
+}
+
 export function useRegioComputed(data, instelling) {
   const dark = useDarkMode()
 

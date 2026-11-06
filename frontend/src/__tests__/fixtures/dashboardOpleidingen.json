@@ -1,0 +1,543 @@
+{
+ "hbo": {
+  "instelling": "Hogeschool Utrecht",
+  "gevonden": true,
+  "type": "hbo",
+  "brin": "25DW",
+  "jaren": {
+   "nse": 2026,
+   "1cijferho": 2025
+  },
+  "min_respondenten": 30,
+  "themas": [
+   {
+    "veld": "nse_inhoud_opzet",
+    "naam": "Inhoud en opzet"
+   },
+   {
+    "veld": "nse_docenten",
+    "naam": "Docenten"
+   },
+   {
+    "veld": "nse_toetsing",
+    "naam": "Toetsing en beoordeling"
+   },
+   {
+    "veld": "nse_begeleiding",
+    "naam": "Studiebegeleiding"
+   },
+   {
+    "veld": "nse_betrokkenheid",
+    "naam": "Betrokkenheid en contact"
+   },
+   {
+    "veld": "nse_aansluiting_beroep",
+    "naam": "Aansluiting op het beroep"
+   },
+   {
+    "veld": "nse_faciliteiten",
+    "naam": "Studiefaciliteiten"
+   },
+   {
+    "veld": "nse_sfeer",
+    "naam": "Sfeer"
+   },
+   {
+    "veld": "nse_opnieuw_kiezen",
+    "naam": "Opnieuw kiezen"
+   },
+   {
+    "veld": "nse_studiedruk",
+    "naam": "Studiedruk"
+   }
+  ],
+  "uitleg": {
+   "nse": "Gewogen gemiddelde op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de Nationale Studenten Enquête 2026, met het aantal respondenten. Een oordeel op minder dan 30 respondenten is onzeker. Een verschil van een paar honderdsten is geen verschil.",
+   "landelijk": "Landelijk is het cijfer van LCSK voor dezelfde studie in dezelfde vorm over alle instellingen samen, geen gemiddelde van de rijen in deze tabel. Is de instelling de enige aanbieder, dan is landelijk deze opleiding zelf.",
+   "aantallen": "Studenten en eerstejaars komen uit 1cijferHO (collegejaar 2025/26) en kunnen afwijken van de DUO-tellingen op Mijn instelling.",
+   "doorstroom": "Doorstroom jaar 2: aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat ingeschreven.",
+   "diplomarendement": "Diplomarendement: aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 jaar (voltijd en duaal) of plus 2 jaar (deeltijd). Het cohortjaar en de omvang van het cohort staan niet in de bron.",
+   "leeg": "Een leeg vak is leeg in de bron: geen cijfer, ook geen 0.",
+   "volgorde": "De opleidingen staan op naam: het dashboard rangschikt geen opleidingen of instellingen en geeft geen oordeel boven of onder landelijk.",
+   "arbeidsmarkt": "De arbeidsmarktcijfers (salaris, werkloosheid, baan op niveau) gaan over een SOI-rubriek: een bundel verwante studies, niet deze ene studie. Ze bestaan alleen voor voltijd hbo-bachelor, associate degree en wo-master; voor een wo-bachelor staan ze bij de master waar de meeste afgestudeerden naartoe gaan. Het zijn landelijke cijfers per rubriek van voltijdafgestudeerden, niet over de eigen afgestudeerden van deze instelling.",
+   "numerus_fixus": "Numerus fixus: het aantal plaatsen (capaciteit) per taaltraject en studiejaar, met loting of decentrale selectie. Bij opleidingen staat het nieuwste studiejaar, opgeteld over de taaltrajecten."
+  },
+  "opleidingen": [
+   {
+    "opleiding": "ICT",
+    "croho": 30020,
+    "studiecode": 30020,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "vorm": "deeltijd",
+    "plaats": "Utrecht",
+    "studenten": 120,
+    "eerstejaars": 20,
+    "nse_oordeel": 3.7,
+    "nse_respondenten": 40,
+    "nse_oordeel_landelijk": 3.66,
+    "doorstroom_jaar2_pct": null,
+    "diploma_opleiding_pct": null,
+    "numerus_fixus_capaciteit": null,
+    "numerus_fixus_studiejaar": null,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": 3.8,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 1
+   },
+   {
+    "opleiding": "ICT",
+    "croho": 30020,
+    "studiecode": 30020,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "vorm": "voltijd",
+    "plaats": "Utrecht",
+    "studenten": 900,
+    "eerstejaars": 250,
+    "nse_oordeel": 3.61,
+    "nse_respondenten": 120,
+    "nse_oordeel_landelijk": 3.53,
+    "doorstroom_jaar2_pct": 70.0,
+    "diploma_opleiding_pct": 45.5,
+    "numerus_fixus_capaciteit": null,
+    "numerus_fixus_studiejaar": null,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": 3.8,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 2
+   },
+   {
+    "opleiding": "Verpleegkunde",
+    "croho": 34560,
+    "studiecode": 34560,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "vorm": "voltijd",
+    "plaats": "Utrecht",
+    "studenten": 1500,
+    "eerstejaars": 400,
+    "nse_oordeel": 3.9,
+    "nse_respondenten": 200,
+    "nse_oordeel_landelijk": 3.8,
+    "doorstroom_jaar2_pct": 80.0,
+    "diploma_opleiding_pct": 60.0,
+    "numerus_fixus_capaciteit": null,
+    "numerus_fixus_studiejaar": null,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": 3.8,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 1
+   }
+  ],
+  "arbeidsmarkt": [
+   {
+    "opleiding": "ICT",
+    "croho": 30020,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "soi_rubriek": "informatica",
+    "salaris_mediaan_bruto_maand": 3295,
+    "werkloos_pct": 2.5,
+    "baan_op_niveau_pct": 80.0,
+    "aansluiting_studie_baan": "goede",
+    "reden_leeg": null
+   },
+   {
+    "opleiding": "Verpleegkunde",
+    "croho": 34560,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "soi_rubriek": "verpleegkunde",
+    "salaris_mediaan_bruto_maand": 3100.5,
+    "werkloos_pct": 0.5,
+    "baan_op_niveau_pct": null,
+    "aansluiting_studie_baan": "zeer goede",
+    "reden_leeg": null
+   }
+  ],
+  "numerus_fixus": [],
+  "aantallen": {
+   "opleidingen": 2,
+   "vormen": 3,
+   "met_nse": 3,
+   "numerus_fixus": 0
+  },
+  "bronnen": [
+   {
+    "bron": "LCSK",
+    "dataset": "studiekeuzedatabase",
+    "titel": "Studiekeuzedatabase (hbo en wo)",
+    "url": "https://www.studiekeuze123.nl/studiekeuzedata",
+    "editie": "26.6",
+    "last_modified": null,
+    "peilmoment": "versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26",
+    "peildatum": null,
+    "vermelding": "Studiekeuzedatabase 26.6, Landelijk Centrum Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.",
+    "voorlopig": false,
+    "voorlopig_jaren": [],
+    "opgehaald_op": "2026-11-06T06:00:00+00:00"
+   }
+  ]
+ },
+ "wo": {
+  "instelling": "Universiteit Leiden",
+  "gevonden": true,
+  "type": "wo",
+  "brin": "21PB",
+  "jaren": {
+   "nse": 2026,
+   "1cijferho": 2025
+  },
+  "min_respondenten": 30,
+  "themas": [
+   {
+    "veld": "nse_inhoud_opzet",
+    "naam": "Inhoud en opzet"
+   },
+   {
+    "veld": "nse_docenten",
+    "naam": "Docenten"
+   },
+   {
+    "veld": "nse_toetsing",
+    "naam": "Toetsing en beoordeling"
+   },
+   {
+    "veld": "nse_begeleiding",
+    "naam": "Studiebegeleiding"
+   },
+   {
+    "veld": "nse_betrokkenheid",
+    "naam": "Betrokkenheid en contact"
+   },
+   {
+    "veld": "nse_aansluiting_beroep",
+    "naam": "Aansluiting op het beroep"
+   },
+   {
+    "veld": "nse_faciliteiten",
+    "naam": "Studiefaciliteiten"
+   },
+   {
+    "veld": "nse_sfeer",
+    "naam": "Sfeer"
+   },
+   {
+    "veld": "nse_opnieuw_kiezen",
+    "naam": "Opnieuw kiezen"
+   },
+   {
+    "veld": "nse_studiedruk",
+    "naam": "Studiedruk"
+   }
+  ],
+  "uitleg": {
+   "nse": "Gewogen gemiddelde op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de Nationale Studenten Enquête 2026, met het aantal respondenten. Een oordeel op minder dan 30 respondenten is onzeker. Een verschil van een paar honderdsten is geen verschil.",
+   "landelijk": "Landelijk is het cijfer van LCSK voor dezelfde studie in dezelfde vorm over alle instellingen samen, geen gemiddelde van de rijen in deze tabel. Is de instelling de enige aanbieder, dan is landelijk deze opleiding zelf.",
+   "aantallen": "Studenten en eerstejaars komen uit 1cijferHO (collegejaar 2025/26) en kunnen afwijken van de DUO-tellingen op Mijn instelling.",
+   "doorstroom": "Doorstroom jaar 2: aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat ingeschreven.",
+   "diplomarendement": "Diplomarendement: aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 jaar (voltijd en duaal) of plus 2 jaar (deeltijd). Het cohortjaar en de omvang van het cohort staan niet in de bron.",
+   "leeg": "Een leeg vak is leeg in de bron: geen cijfer, ook geen 0.",
+   "volgorde": "De opleidingen staan op naam: het dashboard rangschikt geen opleidingen of instellingen en geeft geen oordeel boven of onder landelijk.",
+   "arbeidsmarkt": "De arbeidsmarktcijfers (salaris, werkloosheid, baan op niveau) gaan over een SOI-rubriek: een bundel verwante studies, niet deze ene studie. Ze bestaan alleen voor voltijd hbo-bachelor, associate degree en wo-master; voor een wo-bachelor staan ze bij de master waar de meeste afgestudeerden naartoe gaan. Het zijn landelijke cijfers per rubriek van voltijdafgestudeerden, niet over de eigen afgestudeerden van deze instelling.",
+   "numerus_fixus": "Numerus fixus: het aantal plaatsen (capaciteit) per taaltraject en studiejaar, met loting of decentrale selectie. Bij opleidingen staat het nieuwste studiejaar, opgeteld over de taaltrajecten."
+  },
+  "opleidingen": [
+   {
+    "opleiding": "Biomedische Wetenschappen",
+    "croho": 56990,
+    "studiecode": 56990,
+    "graad": "Bachelor",
+    "soort_ho": "WO",
+    "vorm": "voltijd",
+    "plaats": "Leiden",
+    "studenten": 400,
+    "eerstejaars": 71,
+    "nse_oordeel": null,
+    "nse_respondenten": null,
+    "nse_oordeel_landelijk": 4.0,
+    "doorstroom_jaar2_pct": 90.0,
+    "diploma_opleiding_pct": 80.0,
+    "numerus_fixus_capaciteit": 71,
+    "numerus_fixus_studiejaar": 2027,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": null,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 1
+   },
+   {
+    "opleiding": "Psychologie",
+    "croho": 56604,
+    "studiecode": 56604,
+    "graad": "Bachelor",
+    "soort_ho": "WO",
+    "vorm": "voltijd",
+    "plaats": "Leiden",
+    "studenten": 2500,
+    "eerstejaars": 600,
+    "nse_oordeel": 4.05,
+    "nse_respondenten": 500,
+    "nse_oordeel_landelijk": 3.93,
+    "doorstroom_jaar2_pct": 88.3,
+    "diploma_opleiding_pct": 70.1,
+    "numerus_fixus_capaciteit": null,
+    "numerus_fixus_studiejaar": null,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": 3.8,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 1
+   }
+  ],
+  "arbeidsmarkt": [
+   {
+    "opleiding": "Biomedische Wetenschappen",
+    "croho": 56990,
+    "graad": "Bachelor",
+    "soort_ho": "WO",
+    "soi_rubriek": null,
+    "salaris_mediaan_bruto_maand": null,
+    "werkloos_pct": null,
+    "baan_op_niveau_pct": null,
+    "aansluiting_studie_baan": null,
+    "reden_leeg": "Voor een wo-bachelor heeft LCSK geen arbeidsmarktcijfers: die staan bij de master waar de meeste afgestudeerden naartoe gaan."
+   },
+   {
+    "opleiding": "Psychologie",
+    "croho": 56604,
+    "graad": "Bachelor",
+    "soort_ho": "WO",
+    "soi_rubriek": "psychologie",
+    "salaris_mediaan_bruto_maand": null,
+    "werkloos_pct": null,
+    "baan_op_niveau_pct": null,
+    "aansluiting_studie_baan": null,
+    "reden_leeg": "Voor een wo-bachelor heeft LCSK geen arbeidsmarktcijfers: die staan bij de master waar de meeste afgestudeerden naartoe gaan."
+   }
+  ],
+  "numerus_fixus": [
+   {
+    "opleiding": "Biomedische Wetenschappen",
+    "croho": 56990,
+    "vorm": "voltijd",
+    "voertaal": "Voertaal-overstijgend",
+    "studiejaar": 2026,
+    "capaciteit": 60,
+    "aanmelden_uiterlijk": "15 januari"
+   },
+   {
+    "opleiding": "Biomedische Wetenschappen",
+    "croho": 56990,
+    "vorm": "voltijd",
+    "voertaal": "Voertaal-overstijgend",
+    "studiejaar": 2027,
+    "capaciteit": 71,
+    "aanmelden_uiterlijk": "15 januari"
+   }
+  ],
+  "aantallen": {
+   "opleidingen": 2,
+   "vormen": 2,
+   "met_nse": 1,
+   "numerus_fixus": 1
+  },
+  "bronnen": [
+   {
+    "bron": "LCSK",
+    "dataset": "studiekeuzedatabase",
+    "titel": "Studiekeuzedatabase (hbo en wo)",
+    "url": "https://www.studiekeuze123.nl/studiekeuzedata",
+    "editie": "26.6",
+    "last_modified": null,
+    "peilmoment": "versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26",
+    "peildatum": null,
+    "vermelding": "Studiekeuzedatabase 26.6, Landelijk Centrum Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.",
+    "voorlopig": false,
+    "voorlopig_jaren": [],
+    "opgehaald_op": "2026-11-06T06:00:00+00:00"
+   }
+  ]
+ },
+ "onzeker": {
+  "instelling": "Proefhogeschool Particulier",
+  "gevonden": true,
+  "type": "hbo",
+  "brin": "99XX",
+  "jaren": {
+   "nse": 2026,
+   "1cijferho": 2025
+  },
+  "min_respondenten": 30,
+  "themas": [
+   {
+    "veld": "nse_inhoud_opzet",
+    "naam": "Inhoud en opzet"
+   },
+   {
+    "veld": "nse_docenten",
+    "naam": "Docenten"
+   },
+   {
+    "veld": "nse_toetsing",
+    "naam": "Toetsing en beoordeling"
+   },
+   {
+    "veld": "nse_begeleiding",
+    "naam": "Studiebegeleiding"
+   },
+   {
+    "veld": "nse_betrokkenheid",
+    "naam": "Betrokkenheid en contact"
+   },
+   {
+    "veld": "nse_aansluiting_beroep",
+    "naam": "Aansluiting op het beroep"
+   },
+   {
+    "veld": "nse_faciliteiten",
+    "naam": "Studiefaciliteiten"
+   },
+   {
+    "veld": "nse_sfeer",
+    "naam": "Sfeer"
+   },
+   {
+    "veld": "nse_opnieuw_kiezen",
+    "naam": "Opnieuw kiezen"
+   },
+   {
+    "veld": "nse_studiedruk",
+    "naam": "Studiedruk"
+   }
+  ],
+  "uitleg": {
+   "nse": "Gewogen gemiddelde op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de Nationale Studenten Enquête 2026, met het aantal respondenten. Een oordeel op minder dan 30 respondenten is onzeker. Een verschil van een paar honderdsten is geen verschil.",
+   "landelijk": "Landelijk is het cijfer van LCSK voor dezelfde studie in dezelfde vorm over alle instellingen samen, geen gemiddelde van de rijen in deze tabel. Is de instelling de enige aanbieder, dan is landelijk deze opleiding zelf.",
+   "aantallen": "Studenten en eerstejaars komen uit 1cijferHO (collegejaar 2025/26) en kunnen afwijken van de DUO-tellingen op Mijn instelling.",
+   "doorstroom": "Doorstroom jaar 2: aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat ingeschreven.",
+   "diplomarendement": "Diplomarendement: aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 jaar (voltijd en duaal) of plus 2 jaar (deeltijd). Het cohortjaar en de omvang van het cohort staan niet in de bron.",
+   "leeg": "Een leeg vak is leeg in de bron: geen cijfer, ook geen 0.",
+   "volgorde": "De opleidingen staan op naam: het dashboard rangschikt geen opleidingen of instellingen en geeft geen oordeel boven of onder landelijk.",
+   "arbeidsmarkt": "De arbeidsmarktcijfers (salaris, werkloosheid, baan op niveau) gaan over een SOI-rubriek: een bundel verwante studies, niet deze ene studie. Ze bestaan alleen voor voltijd hbo-bachelor, associate degree en wo-master; voor een wo-bachelor staan ze bij de master waar de meeste afgestudeerden naartoe gaan. Het zijn landelijke cijfers per rubriek van voltijdafgestudeerden, niet over de eigen afgestudeerden van deze instelling.",
+   "numerus_fixus": "Numerus fixus: het aantal plaatsen (capaciteit) per taaltraject en studiejaar, met loting of decentrale selectie. Bij opleidingen staat het nieuwste studiejaar, opgeteld over de taaltrajecten."
+  },
+  "opleidingen": [
+   {
+    "opleiding": "ICT",
+    "croho": 30020,
+    "studiecode": 30020,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "vorm": "voltijd",
+    "plaats": "'s-Hertogenbosch",
+    "studenten": 60,
+    "eerstejaars": 12,
+    "nse_oordeel": 4.2,
+    "nse_respondenten": 15,
+    "nse_oordeel_landelijk": 3.53,
+    "doorstroom_jaar2_pct": null,
+    "diploma_opleiding_pct": null,
+    "numerus_fixus_capaciteit": null,
+    "numerus_fixus_studiejaar": null,
+    "nse_inhoud_opzet": null,
+    "nse_docenten": 3.8,
+    "nse_toetsing": null,
+    "nse_begeleiding": null,
+    "nse_betrokkenheid": null,
+    "nse_aansluiting_beroep": null,
+    "nse_faciliteiten": null,
+    "nse_sfeer": null,
+    "nse_opnieuw_kiezen": null,
+    "nse_studiedruk": null,
+    "diploma_opleiding_pct_landelijk": 50.0,
+    "aanbieders_landelijk": 2,
+    "nse_onzeker": true
+   }
+  ],
+  "arbeidsmarkt": [
+   {
+    "opleiding": "ICT",
+    "croho": 30020,
+    "graad": "Bachelor",
+    "soort_ho": "HBO",
+    "soi_rubriek": "informatica",
+    "salaris_mediaan_bruto_maand": 3295,
+    "werkloos_pct": 2.5,
+    "baan_op_niveau_pct": 80.0,
+    "aansluiting_studie_baan": "goede",
+    "reden_leeg": null
+   }
+  ],
+  "numerus_fixus": [],
+  "aantallen": {
+   "opleidingen": 1,
+   "vormen": 1,
+   "met_nse": 1,
+   "numerus_fixus": 0
+  },
+  "bronnen": [
+   {
+    "bron": "LCSK",
+    "dataset": "studiekeuzedatabase",
+    "titel": "Studiekeuzedatabase (hbo en wo)",
+    "url": "https://www.studiekeuze123.nl/studiekeuzedata",
+    "editie": "26.6",
+    "last_modified": null,
+    "peilmoment": "versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26",
+    "peildatum": null,
+    "vermelding": "Studiekeuzedatabase 26.6, Landelijk Centrum Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.",
+    "voorlopig": false,
+    "voorlopig_jaren": [],
+    "opgehaald_op": "2026-11-06T06:00:00+00:00"
+   }
+  ]
+ },
+ "mbo": {
+  "instelling": "ROC Midden Nederland",
+  "gevonden": true,
+  "type": "mbo",
+  "brin": "25PZ",
+  "melding": "De Studiekeuzedatabase heeft alleen opleidingen van hogescholen en universiteiten (hbo en wo). Voor een mbo-instelling staan er geen cijfers in.",
+  "bronnen": []
+ }
+}

@@ -575,6 +575,8 @@ doet de code, en het model neemt de getallen letterlijk over.
   code zelf als onzeker (`nse_onzeker`), en een verschil van een paar honderdsten heet geen verschil.
 - **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
   zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
+- **Dashboard Opleidingen:** dezelfde rijen per opleiding van één instelling, op naam en zonder rangorde; wat het toont
+  en zijn eigen verantwoording staan in [Dashboards](dashboards.md#opleidingen-studiekeuzedatabase).
 
 | Eigenschap | Details |
 |------------|---------|
