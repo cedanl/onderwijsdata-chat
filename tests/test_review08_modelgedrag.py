@@ -181,7 +181,7 @@ def test_de_keuzemelding_zegt_dat_het_model_moet_vragen_en_wachten():
 
 
 def test_ook_bij_meer_instellingen_eerst_de_keuze():
-    assert studiekeuze.KIES_EERST in studiekeuze.get_studiekeuze(instelling="Hogeschool")
+    assert studiekeuze.KIES_EERST in studiekeuze.get_studiekeuze(instelling="Proef")
 
 
 def _studieuitkomst(code: int) -> str:

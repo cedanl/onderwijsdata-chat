@@ -37,8 +37,8 @@ def proefexport(monkeypatch):
 
 
 def _keuzemelding() -> tuple[str, dict[str, str]]:
-    """De melding bij "Hogeschool" en haar opties (BRIN → naam)."""
-    melding = studiekeuze.get_studiekeuze(instelling="Hogeschool")
+    """De melding bij "Proef" (twee instellingen, op woordbegin: #971) en haar opties (BRIN → naam)."""
+    melding = studiekeuze.get_studiekeuze(instelling="Proef")
     assert melding.startswith("Meer instellingen passen")
     opties = {brin: naam.strip() for naam, brin in re.findall(r"([^:;]+?) \((\d{2}[A-Z]{2})\)", melding)}
     assert len(opties) >= 2
