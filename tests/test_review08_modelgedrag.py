@@ -16,6 +16,7 @@ import json
 import re
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from onderwijsbronnen import skdb
 from onderwijsbronnen.skdb import proefbestand
@@ -25,8 +26,9 @@ from agent.controles import antwoordcontrole
 from agent.ongekozen import ongekozen_studies
 from agent.stream import StreamResult
 from data import instellingen
-from tools import studiekeuze
+from tools import relaties, store, studiekeuze
 from tools.schemas import TOOL_GET_STUDIEKEUZE
+from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -225,3 +227,38 @@ def test_de_controle_hoort_bij_de_antwoordcontrole():
 def test_de_systeemprompt_zegt_eerst_kiezen_bij_meer_studies():
     regel = next(r for r in SYSTEM.splitlines() if "Meer studies" in r)
     assert "clarify_scope" in regel and "Geen gok" in regel
+
+
+# --- #962: koppelen zonder rijen te verliezen ---------------------------------------------------------------------
+
+
+def test_de_koppelzin_zegt_eerst_relatie_dan_left_join_zonder_nul_of_dropna():
+    zin = studiekeuze.KOPPELEN
+    assert zin.index("relatie") < zin.index('how="left"')
+    assert "leeg" in zin and "nooit 0" in zin and "dropna" in zin
+
+
+def test_relatie_met_koppelkandidaten_geeft_de_koppelregel(monkeypatch):
+    monkeypatch.setattr(instellingen, "get_all", lambda: [{"instellingscode": "25DW"}, {"instellingscode": "21PD"}])
+    skdb_df = pd.DataFrame({"brin": ["25DW", "30GB", "21PD"], "croho": [30020, 30020, 56604]})
+    duo_df = pd.DataFrame({"INSTELLINGSCODE_ACTUEEL": ["25DW"], "OPLEIDINGSCODE_ACTUEEL": [30020], "AANTAL": [2324]})
+    store.put("skdb:opleidingen:proef962", skdb_df, KeyMeta(bron="skdb", dataset="skdb:studiekeuzedatabase"))
+    store.put("duo:p01hoinges:0:proef962", duo_df, KeyMeta(bron="duo", dataset="duo:p01hoinges"))
+    uit = json.loads(relaties.relatie("skdb:opleidingen:proef962", "duo:p01hoinges:0:proef962"))
+    assert uit["koppelingen"] and uit["koppelregel"] == relaties.KOPPELREGEL
+    assert 'how="left"' in relaties.KOPPELREGEL and "nooit 0" in relaties.KOPPELREGEL
+
+
+def test_relatie_zonder_tweede_tabel_of_zonder_kandidaat_geeft_geen_koppelregel():
+    store.put(
+        "skdb:opleidingen:proef962b", pd.DataFrame({"x": [1]}), KeyMeta(bron="skdb", dataset="skdb:studiekeuzedatabase")
+    )
+    store.put("duo:p01hoinges:0:proef962b", pd.DataFrame({"y": [1]}), KeyMeta(bron="duo", dataset="duo:p01hoinges"))
+    assert "koppelregel" not in json.loads(relaties.relatie("skdb:opleidingen:proef962b"))
+    assert "koppelregel" not in json.loads(relaties.relatie("skdb:opleidingen:proef962b", "duo:p01hoinges:0:proef962b"))
+
+
+def test_de_systeemprompt_zegt_hoe_te_koppelen():
+    regel = next(r for r in SYSTEM.splitlines() if r.startswith("- **Koppelen**"))
+    assert 'how="left"' in regel and "nooit 0" in regel and "dropna" in regel
+    assert regel.index("relatie") < regel.index('how="left"')

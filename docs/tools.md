@@ -775,8 +775,10 @@ Met één key: per sleutelkolom `koppelt_aan` (register, gebiedsindeling, RIO), 
 `confidence` (1.0 voor codes met vaste vertaling, 0.8 voor namen) en `dekking` (hoeveel waarden het
 instellingsregister, de arbeidsmarktregio-indeling of de provinciecodes kennen). Met twee keys ook
 `koppelingen`: de kolomparen met dezelfde sleutel, `type` (one_to_one … many_to_many) en `overlap` van de
-genormaliseerde waarden. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`,
-zonder waarden) en de koppeling zelf is een stap in `query_data` of `run_analysis`.
+genormaliseerde waarden, en bij minstens één kandidaat de vaste `koppelregel` (#962): koppel met `how="left"` vanuit
+de tabel van de vraag, een rij zonder match houdt een leeg veld met uitleg, nooit 0, en geen `dropna` of inner join op
+de koppelkolommen. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`, zonder waarden) en de
+koppeling zelf is een stap in `query_data` of `run_analysis`.
 
 ---
 

@@ -111,10 +111,14 @@ DOORSTROOM_MASTER = (
     "Doorstroom bachelor-master: het aantal en aandeel afgestudeerden van de bachelor dat naar een master gaat, met "
     "rang 1 voor de grootste stroom."
 )
+# Review 08-C1/C4 (#962): een inner join en dropna lieten opleidingen zonder match verdwijnen (161 rijen werden 68).
 KOPPELEN = (
     "brin en croho zijn de codes van RIO en DUO: met BRIN-code en opleidingscode vind je dezelfde opleiding in de "
-    "DUO-bestanden (inschrijvingen, diploma's) en in RIO; relatie(data_key, andere_key) toont de koppelkandidaten. "
-    "studiecode is een code van LCSK en niet altijd een CROHO-code."
+    "DUO-bestanden (inschrijvingen, diploma's) en in RIO. Koppel zo: eerst relatie(data_key, andere_key) voor de "
+    'koppelkolommen en de overlap; dan how="left" vanuit de tabel van de vraag, zodat elke rij blijft. Een rij zonder '
+    "match houdt een leeg veld: zeg welke en waarom (andere bron, andere afbakening), vul nooit 0 in, en gooi geen rijen "
+    "weg met dropna of een inner join op de koppelkolommen. studiecode is een code van LCSK en niet altijd een "
+    "CROHO-code."
 )
 # Review 08-B5 (#961): na "Meer studies passen …" haalde het model zelf drie studies op en beantwoordde ze allemaal.
 KIES_EERST = (
