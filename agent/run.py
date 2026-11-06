@@ -204,6 +204,9 @@ _LAATSTE_CODE = "laatste_code"
 # Hoogstens drie kaarten achter elkaar voor één vraag, uit code of van het model; daarna gaat het model door met aannames.
 _MAX_CLARIFY_RONDES = 3
 
+# De optielabels van de kaarten uit code in deze reeks: een keuze daaruit telt niet voor de zoekpoort (#968).
+_CODE_OPTIES = "clarify_code_opties"
+
 
 async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: dict, emit: Emit) -> str:
     """De verduidelijkingskaart uit code (#348): dezelfde beurt als na clarify_scope, zonder modelronde.
@@ -214,6 +217,7 @@ async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: di
     logger.info("SCOPEVRAAG  slot=%s  opties=%d", kaart.slot, len(kaart.opties))
     messages.append({"role": "assistant", "content": kaart.vraag})
     session.setdefault("clarify_slots", []).append(kaart.slot)
+    session.setdefault(_CODE_OPTIES, []).extend(optie["label"] for optie in kaart.opties)
     session["_clarified"] = True
     session["_last_turn_tool_calls"] = []
     await emit({"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties})
@@ -244,10 +248,19 @@ def _vragen(messages: list[dict]) -> list[str]:
     return [_tekst(m["content"]) for m in messages if m.get("role") == "user"]
 
 
-def _poortvraag(messages: list[dict], session: dict) -> str:
-    """De tekst waarop de zoekpoort voor vo-context beslist (#597): de vraag van de gebruiker, bij een keuze op
-    een verduidelijkingsvraag samen met de vraag die ze afbakent (een keuze als "2023/24" noemt zelf niets)."""
+def _vraag_met_keuzes(messages: list[dict], session: dict) -> str:
+    """De vraag van de gebruiker samen met de keuzes op de verduidelijkingskaarten die erop volgden (een keuze als
+    "2023/24" noemt zelf niets): een gekozen plaats, instelling of jaar hoort bij de vraag."""
     return " ".join(_vragen(messages)[-(session.get("clarify_rondes", 0) + 1) :])
+
+
+def _poortvraag(messages: list[dict], session: dict) -> str:
+    """De tekst waarop de zoekpoort voor vo-context beslist (#597): de vraag met haar keuzes, zonder de keuzes op een
+    kaart uit code (#968). Zo'n label is tekst van code, niet van de gebruiker: "Landelijk: mbo, hbo en wo samen"
+    noemt het hbo zonder dat de vraag over vervolgonderwijs gaat."""
+    vraag, *keuzes = _vragen(messages)[-(session.get("clarify_rondes", 0) + 1) :] or [""]
+    uit_code = set(session.get(_CODE_OPTIES, []))
+    return " ".join([vraag, *(k for k in keuzes if k not in uit_code)])
 
 
 async def _vast_vooraf(vraag: str, messages: list[dict], session: dict) -> str | None:
@@ -277,7 +290,7 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
         return deel + _met_kopregels(tekst.removeprefix(deel), messages, session, steps)
     zin = interpretatie_bij(tekst, _laatste_vraag(messages), steps, session, vervolg=is_vervolgvraag(messages))
     tekst = met_niet_meegeteld(tekst, [result for _, result in steps])
-    tekst = met_uitgangspunt(tekst, _poortvraag(messages, session), steps)
+    tekst = met_uitgangspunt(tekst, _vraag_met_keuzes(messages, session), steps)
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
@@ -536,7 +549,7 @@ async def run(
     if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
         # De vraag samen met de gekozen opties: een eerdere kaart kan een ander slot nog open laten (#348).
         kaart = await asyncio.to_thread(
-            scopevraag, _poortvraag(messages, session), settings, session.get("clarify_slots", [])
+            scopevraag, _vraag_met_keuzes(messages, session), settings, session.get("clarify_slots", [])
         )
         if kaart is not None:
             return await _vaste_verduidelijking(kaart, messages, session, emit)
