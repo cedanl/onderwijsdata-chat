@@ -63,11 +63,16 @@ LANDELIJK = (
     "nse_oordeel_landelijk is het oordeel over dezelfde studie in dezelfde vorm over alle instellingen samen, zoals LCSK "
     "het berekent; geen gemiddelde van de rijen hierboven."
 )
+# De definities van doorstroom en rendement, voor de tool en het dashboard Opleidingen (data/dashboard_opleidingen.py).
+DOORSTROOM_JAAR2 = "aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat ingeschreven"
+DIPLOMARENDEMENT = (
+    "aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 jaar (voltijd en duaal) "
+    "of plus 2 jaar (deeltijd)"
+)
 AANTALLEN = (
     "studenten en eerstejaars komen uit 1cijferHO (collegejaar {jaar}) en kunnen afwijken van de DUO-tellingen. "
-    "doorstroom_jaar2_pct: aandeel eerstejaars dat een jaar later nog aan dezelfde opleiding staat ingeschreven; "
-    "diploma_opleiding_pct: aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 "
-    "jaar (voltijd en duaal) of plus 2 jaar (deeltijd). Een leeg veld is leeg in de bron: noem geen getal, ook geen 0."
+    "doorstroom_jaar2_pct: " + DOORSTROOM_JAAR2 + "; diploma_opleiding_pct: " + DIPLOMARENDEMENT + ". Een leeg veld "
+    "is leeg in de bron: noem geen getal, ook geen 0."
 )
 ARBEIDSMARKT = (
     "De arbeidsmarktcijfers (salaris, werkloosheid, baan op niveau) gaan over een SOI-rubriek: een bundel verwante "
@@ -362,10 +367,10 @@ def _voorbehouden(keuze: Keuze, export: skdb.Export) -> list[str]:
     return per_weergave
 
 
-def _met_onzekerheid(rij: dict) -> dict:
+def met_onzekerheid(rij: dict) -> dict:
     """Een NSE-oordeel op minder dan MIN_RESPONDENTEN antwoorden krijgt `nse_onzeker: true`: de code markeert het, het
-    model hoeft niet zelf te tellen. Alleen in het toolresultaat, niet in de tabel in de store (die is gelijk aan de
-    snippet)."""
+    model hoeft niet zelf te tellen. Alleen in het toolresultaat en op het dashboard Opleidingen, niet in de tabel in de
+    store (die is gelijk aan de snippet)."""
     n = rij.get("nse_respondenten")
     if rij.get("nse_oordeel") is not None and isinstance(n, int) and n < MIN_RESPONDENTEN:
         return {**rij, "nse_onzeker": True}
@@ -378,7 +383,7 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
     getoond = alle[:MAX_RIJEN]
     if len(alle) > min(MAX_THEMARIJEN, MAX_RIJEN):  # thema's alleen als alles getoond wordt en het weinig is
         getoond = [{k: v for k, v in r.items() if not k.startswith("nse_") or k in _NSE_KERN} for r in getoond]
-    getoond = [_met_onzekerheid(r) for r in getoond]
+    getoond = [met_onzekerheid(r) for r in getoond]
     uit: dict = {
         "dataset": DATASET,
         "data_key": _bewaar(df, keuze, herkomst) if alle else None,
