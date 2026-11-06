@@ -75,10 +75,29 @@ _PO_SO = re.compile(
 
 # Een mbo/hbo/wo-instelling ("Erasmus Universiteit Rotterdam", "Hanzehogeschool", "ROC van Twente") of
 # ho-context ("wo-studenten", "eerstejaars", "naar het mbo") in de vraag: die blijft bij het model (epic #554).
+# Een toelatingsvraag over een ho-opleiding (#878, #957): "Welk profiel heb ik met havo nodig voor Verpleegkunde?",
+# "Kan ik met een havo-diploma naar Geneeskunde?", "Welke vakken moet ik met vwo hebben voor de bachelor Psychologie?".
+# Het vo-niveau is dan de vooropleiding, geen vo-data; de Studiekeuzedatabase heeft de eisen (weergave toelating).
+# Smal gehouden: alleen toelatingswoorden, een ho-graad, of "met havo/vwo ... nodig/naar/toegelaten/studeren".
+TOELATING_HO = re.compile(
+    r"\b(?:toelat\w*|toegelaten|vooropleidingseis\w*|bachelor(?:s|opleiding\w*)?|master(?:s|opleiding\w*)?"
+    r"|associate\s+degree|numerus\s+fixus)\b"
+    r"|\bmet\s+(?:een\s+)?(?:havo|vwo)\S*\b[^.?!]*\b(?:nodig|naar|toegelaten|toelaatbaar|studeren)\b",
+    re.IGNORECASE,
+)
+
 HO_MBO_CONTEXT = re.compile(
     r"\b(?:\w*universiteit\w*|\w*hogeschool\w*|university|roc|mbo|hbo|wo|ho|\w*student\w*|eerstejaars)\b",
     re.IGNORECASE,
 )
+
+
+def vervolgcontext(tekst: str) -> bool:
+    """Noemt de tekst het ho, het mbo, studenten, eerstejaars, doorstroom uit het vo of de toelating tot een
+    ho-opleiding? Dan is een po/so/vo-woord vo-context of vooropleiding, geen po/so/vo-vraag. Eén regel voor de vaste
+    scope-uitleg (agent/po_vraag.py) en de zoekpoort (tools/catalog.py), alleen woorden, zonder register."""
+    return opent_vo_context(tekst) or bool(HO_MBO_CONTEXT.search(tekst) or TOELATING_HO.search(tekst))
+
 
 # De vraag van de gebruiker in deze beurt; taken en threads van de beurt erven hem (asyncio.to_thread).
 _beurtvraag: ContextVar[str | None] = ContextVar("beurtvraag", default=None)

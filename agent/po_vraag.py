@@ -21,7 +21,7 @@ een vraag geen registerinstelling (`instelling.noemt_instelling`): dan beslissen
 from __future__ import annotations
 
 from tools import instelling, scopeprofiel
-from tools.ho_markers import HO_MBO_CONTEXT, opent_vo_context
+from tools.ho_markers import vervolgcontext
 
 from .vaste_antwoorden import SCOPE_UITLEG
 
@@ -33,12 +33,6 @@ def _noemt_po_so_vo(vraag: str) -> bool:
     return any(m.group().lower() not in _DUBBELZINNIG for m in scopeprofiel.PO_SO_VO.finditer(vraag))
 
 
-def _vervolgcontext(tekst: str) -> bool:
-    """Noemt de tekst het ho, het mbo, studenten, eerstejaars of doorstroom uit het vo? Alleen woorden, zonder
-    register."""
-    return opent_vo_context(tekst) or bool(HO_MBO_CONTEXT.search(tekst))
-
-
 def po_vraag(vraag: str, vorige_vraag: str = "") -> str | None:
     """De vaste scope-uitleg als de vraag po, so of vo noemt zonder vervolgcontext; anders None.
 
@@ -46,7 +40,7 @@ def po_vraag(vraag: str, vorige_vraag: str = "") -> str | None:
     beslisten, maar dan over het netwerk: roep dit vanuit async code aan via `asyncio.to_thread`.
     """
     teksten = [t for t in (vraag, vorige_vraag) if t]
-    if not _noemt_po_so_vo(vraag) or any(_vervolgcontext(t) for t in teksten):
+    if not _noemt_po_so_vo(vraag) or any(vervolgcontext(t) for t in teksten):
         return None
     if any(instelling.noemt_instelling(t) for t in teksten):
         return None

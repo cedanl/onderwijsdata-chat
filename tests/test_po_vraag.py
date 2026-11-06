@@ -52,6 +52,8 @@ def register(monkeypatch):
         VWO_UTRECHT,
         # Een losse vo-vraag met examen of diploma, maar zonder vervolgdoel (#877).
         "Hoeveel vmbo-leerlingen halen hun diploma?",
+        # Een losse vo-vraag met een woord dat op een ho-graad lijkt, blijft dicht (#957).
+        "Hoeveel vwo-leerlingen volgen een masterclass?",
         # Po blijft dicht, ook met een doorstroomwoord (#877).
         "Wat is de doorstroom van de basisschool naar het vwo?",
     ],
@@ -77,6 +79,11 @@ def test_ook_na_een_vorige_po_vraag():
         # Doorstroom uit het vo zonder mbo- of ho-woord (#877).
         (HAVO_NA_DIPLOMA, ""),
         ("Wat doen vwo-leerlingen na het examen?", ""),
+        # Toelating tot een ho-opleiding: het vo-niveau is de vooropleiding (#878, #957).
+        ("Welk profiel heb ik met havo nodig voor Verpleegkunde?", ""),
+        ("Kan ik met een havo-diploma naar de opleiding Geneeskunde?", ""),
+        ("Welke vakken moet ik met vwo hebben voor de bachelor Psychologie?", ""),
+        ("Wat zijn de toelatingseisen met havo voor Biomedische Wetenschappen?", ""),
         ("Welk vervolgonderwijs kiezen vmbo-leerlingen?", ""),
         ("Hoeveel vavo-deelnemers stromen door naar vervolgonderwijs?", ""),
         ("En de havo?", "Hoeveel vwo-leerlingen stromen door na hun diploma?"),
