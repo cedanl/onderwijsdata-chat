@@ -7,6 +7,9 @@ net als zijn Definities bij een teldefinitie uit de bron (agent/telling.py, #402
 
 Elke regel linkt naar de bronpagina van zijn dataset (#621), met de documentatie-URL uit de
 catalogus: dezelfde link als onder een rapportgrafiek (agent/figuurbron.py, #569).
+
+Een vervolgantwoord zonder toolaanroep heeft geen stappen; noemt het data van de vorige databeurt, dan komen de
+bronregels van die data uit de store (`vervolgbronnen`, #975).
 """
 
 import json
@@ -15,7 +18,7 @@ from collections.abc import Callable
 
 from tools import collegegeld, financien, inspectie, inspectie_vo, mbo_indicatoren, store, studiekeuze, wo_personeel
 from tools.arbeidsmarkt import DATASET
-from tools.catalog import documentatie_url
+from tools.catalog import bron_titel, documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
@@ -193,6 +196,48 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
         if bron and regels and str(bron.get("url") or "").startswith("https://"):
             links.setdefault(regels[0][0], str(bron["url"]))
     return links
+
+
+# --- een vervolgantwoord zonder eigen datastap (#975) ---
+
+# Hoe een antwoord een bron voluit noemt, naast haar label (DUO, CBS, SKDB) en dataset-ID.
+_LEVERANCIERS = {"skdb": (studiekeuze.BRONNAAM, "LCSK"), "unl": (wo_personeel.BRONNAAM, "WOPI")}
+
+
+def _namen(known: KeyMeta) -> list[str]:
+    """Waaraan een antwoord een geladen dataset herkent: bronlabel, dataset-ID, catalogustitel en leverancier."""
+    namen = [known.bron, str(known.dataset).rsplit(":", 1)[-1], *_LEVERANCIERS.get(known.bron, ())]
+    if (titel := bron_titel(str(known.dataset))) != known.dataset:
+        namen.append(titel)
+    return namen
+
+
+def _noemt(tekst: str, naam: str) -> bool:
+    return re.search(rf"(?<!\w){re.escape(naam)}(?!\w)", tekst, re.IGNORECASE) is not None
+
+
+def _eerdere_bronregels(tekst: str, keys: list[str]) -> dict[str, str | None]:
+    regels: dict[str, str | None] = {}
+    for key in keys:
+        known = store.meta(laadkey(key))
+        if known and any(_noemt(tekst, naam) for naam in _namen(known)) and (bron := _datasetbron(key)):
+            regels.setdefault(*bron)
+    return regels
+
+
+def vervolgbronnen(tekst: str, keys: list[str]) -> tuple[list[str], dict[str, str]]:
+    """De bronregels en hun links voor een antwoord zonder eigen datastap: van de eerder geladen datasets die het noemt.
+
+    Review 08-C2: na een koppeling van de Studiekeuzedatabase aan DUO vroeg de gebruiker welke sleutels de koppeling
+    gebruikte. Het antwoord besprak de analyse en noemde LCSK, maar de beurt las niets, dus de bronlijst bleef leeg: geen
+    versie, geen verplichte zin van LCSK. `keys` zijn de keys van de vorige beurt die data laadde
+    (session_data.vorige_databeurt); een dataset telt mee als het antwoord hem noemt, met zijn bronlabel, dataset-ID,
+    catalogustitel of leverancier. Dat vraagt de prompt bij elke claim met data. Een losse vraag die geen bron noemt,
+    krijgt geen bronregel. De regel komt uit de store, dus met de versie en de verplichte zin van LCSK (studiekeuze._bewaar).
+    """
+    regels = _eerdere_bronregels(tekst, keys)
+    links = {regel: url for regel, dataset in regels.items() if dataset and (url := documentatie_url(dataset))}
+    return list(regels), links
 
 
 def zonder_bronnensectie(tekst: str) -> str:

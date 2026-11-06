@@ -23,7 +23,7 @@ from . import manifest, recepten, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
 from .bronkeuze import met_bronregel
-from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
+from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, vervolgbronnen, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .codeverzoek import is_codeverzoek, laatste_snippet, met_code
@@ -43,7 +43,7 @@ from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .schrappen import zonder_ongedekte_zinnen
 from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys
-from .session_data import record_data_key, record_rekenbewijs
+from .session_data import record_data_key, record_rekenbewijs, vorige_databeurt
 from .stream import Emit
 from .tabelnoot import met_tabelnoot
 from .tekens import zonder_citaatkop
@@ -196,6 +196,15 @@ def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
     except Exception as exc:
         log_interne_fout(exc, "bronlinks")
         return {}
+
+
+def _veilige_vervolgbronnen(tekst: str, session: dict) -> tuple[list[str], dict[str, str]]:
+    """De bronregels van eerder geladen data die een antwoord zonder toolaanroep noemt (#975); faalt zacht, als hierboven."""
+    try:
+        return vervolgbronnen(tekst, vorige_databeurt(session))
+    except Exception as exc:
+        log_interne_fout(exc, "vervolgbronnen")
+        return [], {}
 
 
 # De snippet van de laatste datastap in dit gesprek (#959); een nieuw gesprek begint met een lege sessie.
@@ -622,8 +631,11 @@ async def run(
         logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
     bronnen = _veilige_bronnen(result.steps)
     bronlinks = _veilige_bronlinks(result.steps) if bronnen else {}
+    if not result.steps:
+        # Een vervolgantwoord zonder toolaanroep dat data uit een eerdere beurt noemt, houdt haar bronregels (#975).
+        bronnen, bronlinks = _veilige_vervolgbronnen(antwoord, session)
     text_content = _eindtekst(result, antwoord, last_user_msg, earlier, session, chosen_model, bronnen)
-    if bronnen and text_content not in _ZONDER_BRONNEN:
+    if result.steps and bronnen and text_content not in _ZONDER_BRONNEN:
         # Vóór het eerste getal: op welke lezing het antwoord rust (#514) en wat de selectie afbakent (#620).
         text_content = _met_kopregels(text_content, messages, session, result.steps)
     text_content = _met_code_bij_verzoek(text_content, last_user_msg, session)
