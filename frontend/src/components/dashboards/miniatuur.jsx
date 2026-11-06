@@ -1,13 +1,14 @@
 import { useRef } from 'react'
-import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../../workbooks'
+import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN } from '../../workbooks'
 import { useInBeeld, useMiniatuurSchaal, MINIATUUR_BREEDTE, MINIATUUR_HOOGTE } from '../../hooks/useMiniatuur'
 import {
-  useRegioDashboardData, useArbeidsmarktmatchDashboardData, useNationaalDashboardData,
+  useRegioDashboardData, useArbeidsmarktmatchDashboardData, useNationaalDashboardData, useOpleidingenDashboardData,
   useRegioComputed, useDarkMode, SectionHeader,
 } from './shared/index'
 import { Kerncijfers } from './mijn-instelling/kerncijfers'
 import { MatchScoreSection } from './arbeidsmarkt-consolidated/index'
 import { PositieKpis } from './nationaal/index'
+import { OpleidingenKerncijfers } from './opleidingen/index'
 
 // De galerijkaart van een vast dashboard toont de echte bovenkant van dat dashboard (#933): dezelfde sectie, met de
 // cijfers van de gekozen instelling, op een pagina van 960 px verkleind tot de kaart, zoals een rapportkaart (#633).
@@ -25,6 +26,8 @@ function Bovenkant({ instelling, data, error, leeg, schaal, children }) {
   if (error) return <Melding>De cijfers konden nu niet worden geladen. Open het dashboard om het opnieuw te proberen.</Melding>
   if (!data) return <div className="wb-preview-shimmer" />
   if (!data.gevonden) return <Melding>&ldquo;{instelling}&rdquo; niet gevonden in DUO-data. Pas de naam aan via Instellingen.</Melding>
+  // Een vaste melding van het dashboard zelf (Opleidingen bij een mbo-instelling, #957) zegt meer dan "geen cijfers".
+  if (data.melding && leeg) return <Melding>{data.melding}</Melding>
   if (leeg) return <Melding>Geen cijfers voor de bovenkant van dit dashboard. Open het dashboard voor de rest.</Melding>
   return (
     <div
@@ -67,10 +70,21 @@ function LandelijkBoven({ instelling, schaal }) {
   )
 }
 
+function OpleidingenBoven({ instelling, schaal }) {
+  const { data, error } = useOpleidingenDashboardData(instelling)
+  return (
+    <Bovenkant instelling={instelling} data={data} error={error} schaal={schaal} leeg={!data?.aantallen?.vormen}>
+      <SectionHeader title="Overzicht" />
+      <OpleidingenKerncijfers data={data} />
+    </Bovenkant>
+  )
+}
+
 const BOVENKANT = {
   [BUILTIN_MIJN_INSTELLING.id]: MijnInstellingBoven,
   [BUILTIN_ARBEIDSMARKT.id]: ArbeidsmarktBoven,
   [BUILTIN_NATIONAAL.id]: LandelijkBoven,
+  [BUILTIN_OPLEIDINGEN.id]: OpleidingenBoven,
 }
 
 // Alleen om naar te kijken: de kaart eromheen is de link, met haar eigen naam. De uitsnede is verborgen voor

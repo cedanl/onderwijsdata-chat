@@ -303,7 +303,7 @@ function AppShell() {
               <Routes>
                 <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} functie={profiel.functie} />} />
                 <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={profiel} sector={instellingType(profiel.instelling, instellingen)} bronnen={bronnen} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
-                <Route path="/dashboards" element={dashboardsEnabled ? <BronnenAan.Provider value={bronnen}><DashboardPage settings={profiel} instellingen={instellingen} feedbackEnabled={feedbackEnabled} /></BronnenAan.Provider> : <NotFoundPage unavailable />} />
+                <Route path="/dashboards" element={dashboardsEnabled ? <BronnenAan.Provider value={bronnen}><DashboardPage settings={profiel} instellingen={instellingen} bronnen={bronnen} feedbackEnabled={feedbackEnabled} /></BronnenAan.Provider> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={profiel} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="*" element={<NotFoundPage />} />
