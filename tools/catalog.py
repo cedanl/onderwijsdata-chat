@@ -440,14 +440,8 @@ def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
 
 
 def _dataset_id(entry: dict) -> str:
-    return (
-        entry.get("_cbs_id")
-        or entry.get("_ckan_id")
-        or entry.get("_rio_resource")
-        or entry.get("_unl_id")
-        or entry.get("_skdb_id")
-        or "?"
-    )
+    """Het ID uit `scopeprofiel.dataset_id` (één lijst, #967); "?" alleen voor een record zonder ID."""
+    return scopeprofiel.dataset_id(entry) or "?"
 
 
 @cache

@@ -266,6 +266,22 @@ def roa_blokken(resultaat: dict) -> list[dict]:
     return [resultaat, *extra]
 
 
+def _regio_label(regionaam: str) -> str:
+    """'provincie Utrecht' blijft zo; een arbeidsmarktregio krijgt dat woord ervoor."""
+    return (
+        regionaam if arbeidsmarkt.roa_regiotype(regionaam) != "arbeidsmarktregio" else f"arbeidsmarktregio {regionaam}"
+    )
+
+
+def _regio_aanname(regio: str, gekozen: str, andere: list[str]) -> str:
+    """Een naam die bij meer ROA-regio's past, wordt gekozen en niet stil (#966): welke en wat er nog meer is."""
+    opties = ", ".join(f"de {_regio_label(r)} (regio='{r}')" for r in andere)
+    return (
+        f"'{regio}' is gelezen als {_regio_label(gekozen)}. Onder die naam heeft ROA ook {opties}. Zeg in het antwoord "
+        "welke regio je toont en welke er onder die naam nog meer is; zeg niet dat ROA daarvoor geen cijfers heeft."
+    )
+
+
 def get_roa_benchmark(sector: str | None = None, regio: str | None = None, onderdeel: str | None = None) -> str:
     if blokkade := scope_blokkade(ROA_ID):
         return blokkade
@@ -288,6 +304,8 @@ def get_roa_benchmark(sector: str | None = None, regio: str | None = None, onder
         if regionaam is None:
             return f"ROA-regio '{regio}' is onbekend. Kies een arbeidsmarktregio of provincie: {arbeidsmarkt.roa_regios()}."
         resultaat = _roa_onderdelen(categorieen, regionaam)
+        if regio and (andere := arbeidsmarkt.roa_regio_alternatieven(regio, regionaam)):
+            resultaat["aanname"] = _regio_aanname(regio, regionaam, andere)
         if ho:
             resultaat["ho_opleiding"] = _ho_opleiding(ho, regionaam)
         versie = arbeidsmarkt.roa_versie()

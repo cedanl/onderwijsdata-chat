@@ -18,6 +18,7 @@ INSTELLINGEN = [
     {"instellingSkdb": 1, "instellingCode": "25DW", "instellingNaam": "Hogeschool Utrecht", "instellingSoort": "Hogeschool", "instellingBekostiging": "Bekostigd"},
     {"instellingSkdb": 2, "instellingCode": "21PB", "instellingNaam": "Universiteit Leiden", "instellingSoort": "Universiteit", "instellingBekostiging": "Bekostigd"},
     {"instellingSkdb": 3, "instellingCode": "99XX", "instellingNaam": "Proefhogeschool Particulier", "instellingSoort": "Hogeschool", "instellingBekostiging": "Niet bekostigd"},
+    {"instellingSkdb": 4, "instellingCode": "98ZZ", "instellingNaam": "Proefuniversiteit", "instellingSoort": "Universiteit", "instellingBekostiging": "Bekostigd"},
 ]
 
 
@@ -42,6 +43,8 @@ OPLEIDINGEN = [
     _opleiding(21, "21PB", 2, 56604, 56604, "Psychologie", "Bachelor", "WO", "LEIDEN", _WO_EISEN),
     _opleiding(22, "21PB", 2, 56990, 56990, "Biomedische Wetenschappen", "Bachelor", "WO", "LEIDEN", _WO_EISEN),
     _opleiding(31, "99XX", 3, 30020, 30020, "ICT", "Bachelor", "HBO", "'S-HERTOGENBOSCH"),
+    # "ict" staat midden in "Conflict": een naamfilter op woordbegin laat deze opleiding buiten een ICT-vraag (#960).
+    _opleiding(41, "98ZZ", 4, 60999, 60999, "Conflict Resolution and Governance", "Master", "WO", "AMSTERDAM", _WO_EISEN),
 ]
 
 
@@ -64,6 +67,7 @@ OPLEIDINGVORMEN = [
     _vorm(21, 1, 56604, "21PB", 56604, 4.05, 500, 2500, 600, 88.3, 70.1),
     _vorm(22, 1, 56990, "21PB", 56990, None, None, 400, 71, 90.0, 80.0),
     _vorm(31, 1, 30020, "99XX", 30020, 4.2, 15, 60, 12, None, None),
+    _vorm(41, 1, 60999, "98ZZ", 60999, None, None, 80, 30, None, None),
 ]
 
 STUDIES = [
@@ -72,6 +76,7 @@ STUDIES = [
     {"studieOpleidingCodeSkdb": 56604, "studieNaam": "Psychologie", "graad": "Bachelor", "soortHo": "WO", "aansluitingStudieBaan": "(missing, data wordt op dit niveau niet getoond)"},
     {"studieOpleidingCodeSkdb": 56990, "studieNaam": "Biomedische Wetenschappen", "graad": "Bachelor", "soortHo": "WO"},
     {"studieOpleidingCodeSkdb": 60260, "studieNaam": "Psychologie", "graad": "Master", "soortHo": "WO"},
+    {"studieOpleidingCodeSkdb": 60999, "studieNaam": "Conflict Resolution and Governance", "graad": "Master", "soortHo": "WO"},
 ]
 
 

@@ -115,10 +115,10 @@
       "aantal": {"test": 0, "playground": 4}
     },
     {
-      "vorm": "ROA-editie (geen leverancier in de catalogus: de bron volgt uit get_roa_benchmark)",
+      "vorm": "ROA-editie (sinds #967 met leverancier in de catalogus; de data komt uit get_roa_benchmark)",
       "plekken": ["snippet roa.load(<editie>, …)", "KeyMeta.dataset van roa:<regio>"],
       "voorbeelden": [{"invoer": "ais2030", "dataset": "ais2030"}],
-      "leverancier": null,
+      "leverancier": "ROA",
       "binnen_profiel": true,
       "aantal": {"test": 0, "playground": 4}
     },

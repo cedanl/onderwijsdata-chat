@@ -605,7 +605,7 @@ de toolset en geeft de dispatch "Onbekende tool".
 | `instelling` | string, optioneel | Naam, afkorting of BRIN-code, of `landelijk` (standaard) |
 | `jaar` | integer, optioneel | Peiljaar (31 december); standaard het nieuwste |
 | `reeks` | boolean, optioneel | Alle beschikbare jaren |
-| `uitsplitsing` | enum, optioneel | `geen`, `wp_obp`, `functie`, `vast_tijdelijk`, `geslacht`, `leeftijd` (alleen personen) |
+| `uitsplitsing` | enum, optioneel | `wp_obp` (standaard bij fte: WP en OBP naast het totaal, #965), `geen` (alleen het totaal; standaard bij personen), `functie`, `vast_tijdelijk`, `geslacht`, `leeftijd` (alleen personen) |
 | `eenheid` | enum, optioneel | `fte` (standaard) of `personen` |
 | `gezo` | enum, optioneel | `excl` (standaard) of `incl`, nooit gemengd |
 
@@ -659,12 +659,12 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 |-----------|------|-------------|
 | `weergave` | enum, optioneel | `opleidingen` (standaard), `studie`, `toelating`, `numerus_fixus`, `doorstroom_mbo_hbo`, `doorstroom_bachelor_master` |
 | `instelling` | string, optioneel | Naam, afkorting of BRIN-code van een hogeschool of universiteit |
-| `opleiding` | string, optioneel | Naam (of deel) of CROHO-code; bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
+| `opleiding` | string, optioneel | Naam of CROHO-code; een naam zoekt op woordbegin (`ict` vindt `HBO-ICT`, niet `Conflict`); bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
 | `soort_ho` | enum, optioneel | `hbo` of `wo` |
 | `graad` | enum, optioneel | `bachelor`, `master` of `associate degree` |
 | `vorm` | enum, optioneel | `voltijd`, `deeltijd` of `duaal`; weglaten geeft elke vorm een eigen rij |
 | `plaats` | string, optioneel | Plaats van het bezoekadres |
-| `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (of deel) of beroep_id van de mbo-4-opleiding |
+| `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (op woordbegin) of beroep_id van de mbo-4-opleiding |
 | `alleen_numerus_fixus` | boolean, optioneel | Bij `opleidingen`: alleen opleidingen met een numerus fixus |
 | `sorteer` | enum, optioneel | Bij `opleidingen`: `naam` (standaard) of aflopend op `oordeel` of `doorstroom_jaar2` |
 
@@ -708,6 +708,11 @@ opleidingssector; niet per instelling.
 - **Resultaat:** `versie`, `regio`, `schoolverlaters_sis_2024` en `prognose_tot_2030`.
 - **Met een regio** ook `regiotype` en per onderdeel `herkomst`. Heeft ROA voor die regio geen cijfers voor een
   onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat.
+- **Een naam voor meer regio's** (#966): een provincie op haar eigen naam wordt de provincie (`Utrecht` →
+  `provincie Utrecht`), een naam die ook een arbeidsmarktregio is wordt die regio (`Groningen`). Draagt een andere
+  ROA-regio dezelfde naam als heel woord (`Midden-Utrecht`, `provincie Groningen`, `Noord-/Midden-/Zuid-Limburg`), dan
+  noemt `aanname` de gekozen regio en de andere, met het argument om die op te vragen. Een volledige naam
+  (`Midden-Utrecht`, `provincie Utrecht`) is eenduidig.
 - **`data_key`:** de tabel met elk cijfer als rij (`ONDERDEEL`, `REGIO`, `OPLEIDING`, `INDICATOR`, `PERCENTAGE`,
   `AANTAL`, `TYPERING`), voor `query_data` en `create_plot` (#577).
 - Een onbekende sector of regio geeft een melding met de keuzes die wel bestaan.

@@ -2,13 +2,13 @@
   {
     "leverancier": "Landelijk Centrum Studiekeuze",
     "bron": "Studiekeuzedatabase (hbo en wo)",
-    "beschrijving": "De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (LCSK), de data achter Studiekeuze123: per opleiding van een hogeschool of universiteit (CROHO-code × BRIN × vestiging, voltijd/deeltijd/duaal) de oordelen van studenten uit de Nationale Studenten Enquête (algemeen oordeel en thema's), doorstroom naar jaar 2 en diplomarendement (door LCSK berekend uit 1cijferHO), numerus fixus met capaciteit en de wettelijke vooropleidingseisen (havo, vwo, mbo); per landelijke studie de arbeidsmarktpositie van afgestudeerden per SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau; CBS-microdata bewerkt door LCSK) en het ROA-opleidingstype; en de doorstroom van mbo-4-kwalificaties naar hbo-studies en van bachelors naar masters.",
-    "periode": "Dagelijkse export (zeven releases per jaar); NSE van het lopende jaar, studieverloop uit het meest recente 1cijferHO-jaar, numerus fixus voor het komende studiejaar",
+    "beschrijving": "De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (LCSK), de data achter Studiekeuze123: per opleiding van een hogeschool of universiteit (CROHO-code × BRIN × vestiging, voltijd/deeltijd/duaal) de studenttevredenheid uit de NSE (algemeen oordeel en thema's), doorstroom naar jaar 2 en diplomarendement (door LCSK berekend uit 1cijferHO), numerus fixus met capaciteit en de wettelijke vooropleidingseisen (havo, vwo, mbo); per landelijke studie de arbeidsmarktpositie van afgestudeerden per SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau; CBS-microdata bewerkt door LCSK) en het ROA-opleidingstype; en de doorstroom van mbo-4-kwalificaties naar hbo-studies en van bachelors naar masters.",
+    "periode": "Dagelijkse export (zeven releases per jaar); studenttevredenheid (NSE) van het lopende jaar, studieverloop uit het meest recente 1cijferHO-jaar, numerus fixus voor het komende studiejaar",
     "onderwijstype": [
       "HBO",
       "WO"
     ],
-    "doel": "Opleidingen in het hoger onderwijs vergelijken zoals een aankomende student dat doet: oordeel van studenten, studiesucces, toelating en arbeidsmarkt, per instelling en landelijk.",
+    "doel": "Opleidingen in het hoger onderwijs vergelijken zoals een aankomende student dat doet: studenttevredenheid (NSE), studiesucces, toelating en arbeidsmarkt, per instelling en landelijk.",
     "niet_geschikt_voor": [
       "Mbo-opleidingen: de Studiekeuzedatabase heeft alleen hbo en wo. Van het mbo staat er alleen in waar mbo-4-gediplomeerden in het hbo naartoe gaan.",
       "Aantallen studenten of eerstejaars: daarvoor is DUO leidend (de Studiekeuzedatabase telt anders, zonder reeks).",
@@ -17,7 +17,7 @@
       "Reeksen over meerdere jaren: de export geeft alleen de stand van nu (één NSE-jaar, één 1cijferHO-jaar)."
     ],
     "frequentie": "Dagelijks",
-    "categorie": "Studiekeuze",
+    "categorie": "Studiekeuze en studenttevredenheid",
     "sectie": "Landelijk Centrum Studiekeuze",
     "documentatie": {
       "tekst": "Studiekeuzedata raadplegen — Landelijk Centrum Studiekeuze",
@@ -26,7 +26,7 @@
     "filters": [],
     "sub_resources": [],
     "voorbeeldvragen": [
-      "Hoe tevreden zijn studenten over ICT bij de Hogeschool Utrecht, vergeleken met landelijk?",
+      "Wat is de studenttevredenheid (NSE) over ICT bij de Hogeschool Utrecht, vergeleken met landelijk?",
       "Welke opleidingen van de Universiteit Leiden hebben een numerus fixus en hoeveel plaatsen zijn er?",
       "Welk profiel heb ik met havo nodig voor Verpleegkunde?",
       "Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?"
@@ -36,7 +36,8 @@
       "studiekeuze123",
       "lcsk",
       "nse",
-      "nationale studenten enquete",
+      "nse-enquête",
+      "tevredenheid",
       "studenttevredenheid",
       "oordeel",
       "numerus fixus",

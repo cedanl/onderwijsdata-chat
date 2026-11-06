@@ -308,7 +308,7 @@ def test_wopi_komt_alleen_met_de_vlag_terug_uit_zijn_recept(monkeypatch, registe
     assert recept is not None and recept == {
         "laad": [
             TOOL_GET_WO_PERSONEEL,
-            {"instelling": "21PD", "reeks": True, "uitsplitsing": "geen", "eenheid": "fte", "gezo": "excl"},
+            {"instelling": "21PD", "reeks": True, "uitsplitsing": "wp_obp", "eenheid": "fte", "gezo": "excl"},
         ]
     }
     store.clear()
