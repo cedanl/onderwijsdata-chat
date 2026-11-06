@@ -533,8 +533,6 @@ duaal) zijn het er ruim 4.400.
   de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. De tool
   `relatie` kent `brin` en `croho` als de sleutels instellingscode en erkende opleiding, en noemt een SKDB-tabel en een
   DUO-tabel zo als koppelkandidaten.
-- **Bereikbaarheid:** `bron:ping` (`skdb-export`) haalt dagelijks de export en toetst versienummer en aantallen, maar
-  alleen als `STUDIEKEUZEDATABASE_API_KEY` als (gemaskeerde) CI-variabele staat; zonder sleutel draait de ping niet.
 - **Licentie:** de Algemene Leveringsvoorwaarden Data van LCSK, versie 23.2.
   - *Bronvermelding (art. 4):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data van
     Landelijk Centrum Studiekeuze.", met een link naar de pagina studiekeuzedata en het versienummer van de data. De

@@ -5,9 +5,6 @@ bronnen en /health toetst geen bron. Het script en de geplande job maken zo'n ui
 """
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -200,31 +197,3 @@ def test_geen_andere_job_draait_in_een_geplande_pipeline(ci):
                 pytest.fail(f"{naam}: de regel op main sluit een geplande pipeline niet uit: {voorwaarde}")
             if r.get("when") in ("on_failure", "always") and "if" not in r and not sluit_uit:
                 pytest.fail(f"{naam}: '{r['when']}' zonder voorwaarde draait ook in een geplande pipeline")
-
-
-def test_de_skdb_ping_staat_er_alleen_met_sleutel_en_toetst_versie_en_aantallen():
-    """#957: zonder STUDIEKEUZEDATABASE_API_KEY (CI zonder variabele) geen ping; met sleutel een eigen proces."""
-    assert all(p.bron != "skdb" for p in bronping.PINGS)
-    assert bronping._skdb_bewijs({"versie": "26.6", "instellingen": 109, "opleidingen": 3312}) is None
-    assert "versienummer" in str(bronping._skdb_bewijs({"versie": None, "instellingen": 109, "opleidingen": 3312}))
-    assert "opleidingen 12" in str(bronping._skdb_bewijs({"versie": "26.6", "instellingen": 109, "opleidingen": 12}))
-    code = "from scripts import bronping; print([p.id for p in bronping.PINGS if p.bron == 'skdb'])"
-    uit = subprocess.run(
-        [sys.executable, "-c", code],
-        cwd=ROOT,
-        env={**os.environ, "STUDIEKEUZEDATABASE_API_KEY": "proefsleutel"},
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert uit.returncode == 0, uit.stderr[-2000:]
-    assert uit.stdout.strip() == "['skdb-export']"
-
-
-def test_de_skdb_ping_leest_de_export_zoals_de_tool(monkeypatch):
-    from onderwijsbronnen import skdb
-    from onderwijsbronnen.skdb import proefbestand
-
-    monkeypatch.setattr(skdb, "haal_op", lambda *a, **k: proefbestand.standaard())
-    uitkomst = bronping._skdb()
-    assert (uitkomst["versie"], uitkomst["instellingen"], uitkomst["jaren"]["nse"]) == ("26.6", 3, 2026)
