@@ -464,7 +464,7 @@ GEVALLEN = [
             ),
         ),
     ),
-    # UWV en ROA maken zelf geen snippet; de selectie op hun tabel wel (#577).
+    # UWV en ROA: de snippet van de laadstap zelf (#969) en die van de selectie op hun tabel (#577).
     Geval(
         "uwv",
         ((TOOL_GET_UWV_VACATURES, {"provincie": "flevoland"}), (TOOL_QUERY_DATA, {"data_key": Vorige()})),
@@ -478,6 +478,9 @@ GEVALLEN = [
         ),
     ),
     Geval("roa", ((TOOL_GET_ROA_BENCHMARK, {}), (TOOL_QUERY_DATA, {"data_key": Vorige()}))),
+    # Alleen de laadstap, zonder selectie erna: ook die heeft een snippet (#969).
+    Geval("uwv_alleen_laadstap", ((TOOL_GET_UWV_VACATURES, {"provincie": "Flevoland"}),), kolommen=True),
+    Geval("roa_alleen_laadstap", ((TOOL_GET_ROA_BENCHMARK, {"regio": "Groningen"}),)),
     Geval(
         "roa_ho",
         (

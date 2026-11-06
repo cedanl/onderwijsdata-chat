@@ -26,7 +26,7 @@ from .bronkeuze import met_bronregel
 from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
-from .codeverzoek import is_codeverzoek, laatste_snippet, met_code
+from .codeverzoek import codeblok, is_codeverzoek, met_code, onthoud
 from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalcontrole
 from .genoemde_bronnen import genoemde_bronnen
 from .getalnotatie import heeft_tabel, nl_notatie
@@ -198,9 +198,6 @@ def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
         return {}
 
 
-# De snippet van de laatste datastap in dit gesprek (#959); een nieuw gesprek begint met een lege sessie.
-_LAATSTE_CODE = "laatste_code"
-
 # Hoogstens drie kaarten achter elkaar voor één vraag, uit code of van het model; daarna gaat het model door met aannames.
 _MAX_CLARIFY_RONDES = 3
 
@@ -225,8 +222,8 @@ async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: di
 
 
 def tools_for(session: dict) -> list[dict]:
-    """De toolset van deze beurt. Na een beantwoorde scopevraag is clarify_scope er niet meer:
-    nooit twee clarifies achter elkaar voor dezelfde vraag (#75), in code en niet alleen in de prompt."""
+    """De toolset van deze beurt. Na `_MAX_CLARIFY_RONDES` (drie) scopevragen voor één vraag is clarify_scope er niet
+    meer (#75, #932): daarna gaat het model door met aannames, in code en niet alleen in de prompt."""
     if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
         return SCHEMAS
     return [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
@@ -320,25 +317,27 @@ async def _intrekken(emit: Emit, problems: list[str]) -> None:
 
 
 def _onthoudt_code(session: dict, emit: Emit) -> Emit:
-    """`emit` die de snippet van elke datastap in de sessie onthoudt: de code onder een codeverzoek (#959).
+    """`emit` die de laatste datastap in de sessie onthoudt, met of zonder snippet: de code onder een codeverzoek
+    (#959, #969).
 
     Het model ziet de snippet niet; het tool_end-event is de plek waar hij ontstaat (agent/loop.py)."""
 
     async def door(event: dict) -> None:
-        if snippet := laatste_snippet(event):
-            session[_LAATSTE_CODE] = snippet
+        onthoud(session, event)
         await emit(event)
 
     return door
 
 
-def _met_code_bij_verzoek(tekst: str, vraag: str, session: dict) -> str:
-    """Het antwoord met de code van de laatste datastap eronder, als de vraag om code vraagt (#959)."""
-    snippet = session.get(_LAATSTE_CODE)
-    if not snippet or tekst in _ZONDER_BRONNEN or not is_codeverzoek(vraag):
-        return tekst
-    logger.info("CODEVERZOEK  snippet onder het antwoord  %s", tekst_kenmerk(snippet, "code_"))
-    return met_code(tekst, snippet)
+def _codeblok_bij_verzoek(tekst: str, vraag: str, session: dict) -> str:
+    """Het codeblok onder het antwoord als de vraag om code vraagt (#959); anders leeg.
+
+    Apart van de antwoordtekst: een getal in de code is geen bewering, dus de citaties lezen alleen de tekst (#969)."""
+    if tekst in _ZONDER_BRONNEN or not is_codeverzoek(vraag):
+        return ""
+    blok = codeblok(session)
+    logger.info("CODEVERZOEK  onder het antwoord  %s", tekst_kenmerk(blok, "code_"))
+    return blok
 
 
 async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, figure) -> None:
@@ -453,15 +452,17 @@ def _slotbericht(
     bronlinks: dict[str, str] | None = None,
     manifest: dict | None = None,
     vervolgvragen: list[str] | None = None,
+    code: str = "",
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
     `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416).
-    `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord."""
+    `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
+    `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst."""
     vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
     return {
         "type": "message_end",
-        "content": text_content,
+        "content": met_code(text_content, code),
         "actions": [],
         "bronnen": [] if vast_zonder_bronnen else bronnen,
         **({"bronlinks": bronlinks} if bronlinks and not vast_zonder_bronnen else {}),
@@ -545,8 +546,9 @@ async def run(
         return vast
 
     # Een open slot (plaats of instelling, maat, fase, afbakening) krijgt een vaste kaart uit code, vóór het model (#348).
-    # Het register en de catalogus laden over het netwerk: niet op de event loop.
-    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
+    # Het register en de catalogus laden over het netwerk: niet op de event loop. Een codeverzoek vraagt naar een stap die
+    # er al is, niet naar nieuwe data: "Geef de code" kreeg een maatkaart (#969).
+    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES and not is_codeverzoek(last_user_msg):
         # De vraag samen met de gekozen opties: een eerdere kaart kan een ander slot nog open laten (#348).
         kaart = await asyncio.to_thread(
             scopevraag, _vraag_met_keuzes(messages, session), settings, session.get("clarify_slots", [])
@@ -639,7 +641,7 @@ async def run(
     if bronnen and text_content not in _ZONDER_BRONNEN:
         # Vóór het eerste getal: op welke lezing het antwoord rust (#514) en wat de selectie afbakent (#620).
         text_content = _met_kopregels(text_content, messages, session, result.steps)
-    text_content = _met_code_bij_verzoek(text_content, last_user_msg, session)
+    code = _codeblok_bij_verzoek(text_content, last_user_msg, session)
     session["_last_turn_tool_calls"] = result.tool_calls
     _log_export(text_content, result.steps)
     truncated = result.finish_reason == "length"
@@ -653,6 +655,16 @@ async def run(
     if text_content not in _ZONDER_BRONNEN:
         log_publicatie(ANTWOORD, data_keys(result.tool_results), mani, username=session.get("username"))
     await emit(
-        _slotbericht(text_content, result, herzien, truncated, bronnen, bronlinks, manifest=mani, vervolgvragen=gekozen)
+        _slotbericht(
+            text_content,
+            result,
+            herzien,
+            truncated,
+            bronnen,
+            bronlinks,
+            manifest=mani,
+            vervolgvragen=gekozen,
+            code=code,
+        )
     )
-    return text_content
+    return met_code(text_content, code)

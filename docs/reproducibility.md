@@ -31,8 +31,12 @@ code van de stap die je wilt herhalen.
 
 Vraag je in de chat om de code ("Geef de code om dit zelf na te rekenen"), dan zet de app de snippet van de laatste
 datastap van het gesprek onder het antwoord, onder de kop **Code**: dezelfde tekst als bij de stap. Het model schrijft
-geen eigen script; dat las eerder een verzonnen CSV-bestand in (#959, `agent/codeverzoek.py`). Een vraag naar een
-CROHO-, BRIN- of opleidingscode telt niet als codeverzoek.
+geen eigen script; dat las eerder een verzonnen CSV-bestand in (#959, `agent/codeverzoek.py`). Heeft de laatste
+datastap geen snippet (collegegeld, een Inspectie-oordeel, mbo-indicatoren, accreditatie, een instelling uit RIO), dan
+zegt een vaste zin dat er voor die stap geen code is, in plaats van de code van een eerdere stap te tonen; in een
+heropend gesprek zonder nieuwe datastap verwijst die zin naar "Bekijk code" bij het eerdere antwoord (#969). Alleen een
+verzoek om programmacode telt: een vraag naar een CROHO-, BRIN-, ISCED- of opleidingscode, naar "de code van" een
+instelling of naar Python-cursussen niet.
 
 Dit is de snippet die de app voor de `query_data`-stap hierboven maakt; de commentaarkop over de databewerking en de
 pakketversies is weggelaten:

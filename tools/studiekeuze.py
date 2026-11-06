@@ -1,9 +1,9 @@
 """Opleidingen in het hbo en wo uit de Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957).
 
-Eén tool, vijf weergaven: per opleiding van een instelling (NSE naast landelijk, studenten, doorstroom, rendement,
-numerus fixus, collegegeld), per landelijke studie (met de arbeidsmarkt van de SOI-rubriek), de numerus-fixuslijst en
-de doorstroom mbo-4 → hbo en bachelor → master. De bron staat aan waar `STUDIEKEUZEDATABASE_API_KEY` gezet is
-(tools/beschikbaarheid.py): test en playground.
+Eén tool, zes weergaven: per opleiding van een instelling (NSE naast landelijk, doorstroom, rendement, numerus
+fixus), per landelijke studie (met de arbeidsmarkt van de SOI-rubriek en het ROA-opleidingstype), de toelating, de
+numerus-fixuslijst en de doorstroom mbo-4 → hbo en bachelor → master. De bron staat aan waar
+`STUDIEKEUZEDATABASE_API_KEY` gezet is (tools/beschikbaarheid.py): test en playground.
 
 Wat hier in code staat en niet bij het model (ADR-001, epic #191):
 
