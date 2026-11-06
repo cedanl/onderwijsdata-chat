@@ -96,6 +96,18 @@ def getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
     ]
 
 
+def kleine_getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
+    """Elk geheel getal onder 1.000 (minder dan vier cijfers): (zoals geschreven, cijfers, positie in de tekst).
+
+    Buiten de getalcontrole hierboven, net als de decimalen; de citaties gebruiken ze voor een bron die haar waarden
+    exact meegeeft (#963: numerus-fixuscapaciteit 71). Een jaartal heeft vier cijfers en valt er dus buiten."""
+    return [
+        (m.group(0), digits, m.start())
+        for m in _TEXT_NUMBER.finditer(text)
+        if "," not in m.group(0) and len(digits := _digits(m.group(1))) < _MIN_DIGITS
+    ]
+
+
 def decimalen_met_positie(text: str) -> list[tuple[str, Decimal, int]]:
     """Elk getal met een decimale komma: (zoals geschreven, waarde zonder teken, positie in de tekst).
 
