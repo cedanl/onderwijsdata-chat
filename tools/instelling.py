@@ -23,6 +23,12 @@ def codekolom(kolommen) -> str | None:
     return next((code for code, naam in _KOLOMPAREN.items() if code in kolommen and naam in kolommen), None)
 
 
+# De naam naast elke instellingskolom die een bron in haar KeyMeta zet: de DUO-paren en de Studiekeuzedatabase
+# (brin, instelling). Zonder dat paar viel de instellingencontrole en query_data om op een SKDB-selectie (#976).
+# codekolom blijft bij DUO: de binding en het uitgangspunt lezen alleen DUO-reeksen.
+_NAAMKOLOM = {**_KOLOMPAREN, "brin": "instelling"}
+
+
 def dekking(df: pd.DataFrame, kolom: str | None) -> tuple[str, ...] | None:
     """De instellingscodes in `df`; () bij een lege selectie, None als onbekend."""
     if not kolom or kolom not in df.columns:
@@ -32,7 +38,7 @@ def dekking(df: pd.DataFrame, kolom: str | None) -> tuple[str, ...] | None:
 
 def namen(df: pd.DataFrame, kolom: str) -> dict[str, str]:
     """Code → naam zoals de brondata die noemt."""
-    paar = df[[kolom, _KOLOMPAREN[kolom]]].dropna().drop_duplicates(kolom)
+    paar = df[[kolom, _NAAMKOLOM[kolom]]].dropna().drop_duplicates(kolom)
     return {str(code): str(naam) for code, naam in paar.itertuples(index=False)}
 
 

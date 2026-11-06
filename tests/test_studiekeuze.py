@@ -21,9 +21,11 @@ import tools
 from agent.bronvermelding import bronlinks_van, bronnen_van
 from agent.grounding import bewijs_getallen
 from agent.meetwaarden import meetwaarden
+from agent.selectie import ontbrekende_instellingen
 from core import config
 from data import instellingen
 from tools import beschikbaarheid, catalog, snippet, store, studiekeuze
+from tools.query import query_data
 from tools.schemas import SCHEMA_GET_STUDIEKEUZE, TOOL_GET_STUDIEKEUZE, TOOL_SCHEMAS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -243,6 +245,24 @@ def test_elk_getal_is_een_citatie_met_instelling_opleiding_en_vorm():
     assert oordeel.bron is not None and oordeel.bron.endswith(skdb.VERPLICHTE_ZIN)
     assert waarden["doorstroom_jaar2_pct"].eenheid == "%"
     assert "croho" not in waarden and "studiecode" not in waarden  # een code is geen maat
+
+
+def test_een_selectie_op_een_hogeschool_noemt_haar_naam_naast_de_brin():
+    """query_data zet bij een paar instellingen de naam naast de code; op een SKDB-tabel viel dat om op 'brin' (#976)."""
+    key = _uit(opleiding="ICT", soort_ho="HBO")["data_key"]
+    uit = json.loads(query_data(key, filters={"brin": "25DW"}))
+    assert uit["totaal_rijen"] == 2
+    assert "Hogeschool Utrecht" in json.dumps(uit, ensure_ascii=False)
+
+
+def test_de_instellingencontrole_draait_op_een_studiekeuzeselectie():
+    """C1 van de her-audit (#976): 'een controle kon niet draaien' was ontbrekende_instellingen met KeyError 'brin'."""
+    key = _uit(opleiding="ICT", soort_ho="HBO")["data_key"]
+    andere = query_data(key, filters={"brin": "99XX"})
+
+    assert ontbrekende_instellingen("Vergelijk per hogeschool het oordeel over ICT.", [andere]) == []
+    (probleem,) = ontbrekende_instellingen("Hoe oordelen studenten ICT bij Hogeschool Utrecht?", [andere])
+    assert "Hogeschool Utrecht (25DW)" in probleem and "Filter op brin=25DW" in probleem
 
 
 def test_de_tabel_staat_met_haar_laadaanroep_in_de_store():
