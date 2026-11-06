@@ -8,7 +8,7 @@ invoer. Een getal dat in beide herhalingen terugkomt en zelf niet in de invoer s
 niet van de data af en is geen bewijs.
 
 - waarden: elke numerieke cel maal een eigen factor (2, 3, 4, ...), zodat sommen, verschillen
-  en verhoudingen tussen cellen veranderen;
+  en verhoudingen tussen cellen veranderen; een jaarkolom niet, want een jaar is een selectie (#976);
 - rijen: één rij erbij (een kopie van de laatste met gewijzigde tekst), zodat tellingen en
   aantallen unieke waarden veranderen.
 
@@ -41,7 +41,7 @@ import pandas as pd
 
 from core.logging_util import tekst_kenmerk
 
-from . import sandbox
+from . import periode, sandbox
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,18 @@ def _uit_frame(frame: Any) -> set[Decimal]:
 
 
 def _waarden(frame: pd.DataFrame) -> pd.DataFrame:
-    """Elke numerieke cel maal een eigen factor: geen twee cellen met dezelfde."""
+    """Elke numerieke cel maal een eigen factor: geen twee cellen met dezelfde.
+
+    Een jaarkolom blijft staan: een jaar is een selectie, geen meetwaarde. Maal een factor gaf `STUDIEJAAR` 4042
+    in plaats van 2021, elk jaarfilter een lege selectie, de proef een fout en dus elk afgeleid getal geen
+    bewijs, ook een eerlijke som per instelling (#976). Wat alleen van het jaar afhangt, verandert nog steeds
+    niet en blijft dus onafhankelijk."""
     kopie = frame.copy()
-    kolommen = [k for k in kopie.columns if pd.api.types.is_numeric_dtype(kopie[k]) and kopie[k].dtype != bool]
+    kolommen = [
+        k
+        for k in kopie.columns
+        if pd.api.types.is_numeric_dtype(kopie[k]) and kopie[k].dtype != bool and k not in periode.JAARKOLOMMEN
+    ]
     for i, kolom in enumerate(kolommen):
         kopie[kolom] = kopie[kolom] * (np.arange(len(kopie)) + 2 + i * len(kopie))
     return kopie
