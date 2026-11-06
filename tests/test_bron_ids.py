@@ -38,10 +38,9 @@ def test_een_sleutel_zonder_metadata_noemt_zijn_bron_in_het_voorvoegsel(key, bro
 
 
 def test_geen_omgeving_zet_de_vlag_van_voor_914_nog():
-    """De vlag `BRON_ID_CONTRACT` bestaat in de code niet meer. Playground draait tot de eerste promotie na #914 een
-    release die hem nog leest; daar blijft hij staan tot die promotie-MR (docs/promoten.md)."""
+    """De vlag `BRON_ID_CONTRACT` bestaat in de code niet meer; geen omgeving zet hem nog."""
     root = Path(__file__).resolve().parent.parent
-    for omgeving in ("test", "production", "development"):
+    for omgeving in ("test", "playground", "production", "development"):
         pad = root / "manifests" / omgeving / "values.yaml"
         if not pad.is_file():
             continue
