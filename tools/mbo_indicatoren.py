@@ -36,6 +36,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 from data import instellingen
 
 from . import fouten
+from .buiten_de_bron import ALLEEN_AANBIEDEN
 
 BASIS = "https://duo.nl"
 PAGINA = f"{BASIS}/open_onderwijsdata/middelbaar-beroepsonderwijs/indicatoren/indicatoren.jsp"
@@ -378,7 +379,7 @@ def get_mbo_indicatoren(instelling: str) -> str:
         return (
             f"{profiel['naam']} is een {profiel.get('sector')}-instelling. DUO publiceert jaarresultaat, "
             "diplomaresultaat en vsv per instelling alleen voor het mbo; voor het hoger onderwijs zit zo'n bron niet "
-            "in deze app."
+            f"in deze app. {ALLEEN_AANBIEDEN}"
         )
     try:
         gelezen = editie()
@@ -395,6 +396,6 @@ def get_mbo_indicatoren(instelling: str) -> str:
     if inst is None:
         return (
             f"{profiel['naam']} ({profiel['instellingscode']}) staat niet in DUO's indicatoren per instelling, editie "
-            f"{gelezen.jaar}. Noem geen cijfers."
+            f"{gelezen.jaar}. Noem geen cijfers. {ALLEEN_AANBIEDEN}"
         )
     return json.dumps(_uitkomst(profiel, inst, gelezen), ensure_ascii=False, separators=(",", ":"))

@@ -30,6 +30,7 @@ from core import actualiteit, config
 from data import instellingen
 
 from . import fouten, store
+from .buiten_de_bron import ALLEEN_AANBIEDEN
 from .schemas import TOOL_GET_STUDIEKEUZE
 
 BRONNAAM = skdb.LEVERANCIER
@@ -51,7 +52,8 @@ _MBO = ("mbo", "roc", "mbo-instelling", "mbo-instellingen")
 
 ALLEEN_HO = (
     "De Studiekeuzedatabase heeft alleen opleidingen van hogescholen en universiteiten (hbo en wo). Voor mbo-"
-    "opleidingen staat er alleen in waar mbo-4-gediplomeerden in het hbo naartoe gaan (weergave doorstroom_mbo_hbo)."
+    "opleidingen staat er alleen in waar mbo-4-gediplomeerden in het hbo naartoe gaan (weergave doorstroom_mbo_hbo). "
+    f"{ALLEEN_AANBIEDEN}"
 )
 NSE = (
     "NSE-oordelen zijn gewogen gemiddelden op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de "
@@ -235,7 +237,7 @@ def _instelling(tekst, export: skdb.Export) -> tuple[str, str] | str | None:
         brin = str(profiel.get("instellingscode") or "")
         if brin in namen:
             return brin, namen[brin]
-        return f"{profiel['naam']} ({brin}) staat niet in de Studiekeuzedatabase. Noem geen cijfers."
+        return f"{profiel['naam']} ({brin}) staat niet in de Studiekeuzedatabase. Noem geen cijfers. {ALLEEN_AANBIEDEN}"
     if _BRIN.match(schoon.upper()):
         return (
             f"BRIN-code {schoon.upper()} staat niet in de Studiekeuzedatabase (alleen hogescholen en universiteiten)."

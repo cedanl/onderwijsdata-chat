@@ -78,6 +78,17 @@ def gebruikersvragen(session: dict) -> list[str]:
     return [m["content"] for m in session.get("messages") or [] if is_vraag(m)]
 
 
+def vorige_databeurt(session: dict) -> list[str]:
+    """De keys van de laatste eerdere vraag waarbij data ontstond, in volgorde; leeg als er geen was (#975).
+
+    Uit `data_vraag`: ook na heropenen bekend (beurtbewijs.zet_terug). Een key van de huidige vraag telt niet mee.
+    """
+    nu = len(gebruikersvragen(session))
+    eerder = {key: nummer for key, nummer in (session.get("data_vraag") or {}).items() if nummer < nu}
+    laatste = max(eerder.values(), default=None)
+    return [key for key, nummer in eerder.items() if nummer == laatste]
+
+
 def data_lineage(session: dict, key: str) -> list[dict]:
     """The tool calls that produced `key`, from the load call to the last query.
 

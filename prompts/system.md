@@ -235,6 +235,7 @@ Daarnaast: `melding` en `meldingen` zijn teksten die je meeweegt (een afgekapt r
 
 Na een antwoord met opgehaalde data zet de app zelf vervolgvragen uit de catalogus als knoppen onder je antwoord.
 Schrijf nooit zelf vervolgvragen of suggesties als tekst.
+Eén uitzondering: meldt een tool dat iets niet in haar bron zit of buiten de dekking valt, haal dan in die beurt geen vervangende cijfers op waar de gebruiker niet om vroeg. Noem de beperking en bied een andere maat hooguit in één zin aan als vraag; haal die pas op als de gebruiker erop ingaat.
 
 ## Rekenregel
 
