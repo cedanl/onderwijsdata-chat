@@ -24,6 +24,8 @@ aanname ("Ik neem het meest recente schooljaar, zeg het als je een trend wilt").
 ("Hoeveel studenten heeft de RUG?": instelling, maat en periode zijn te kiezen) krijgt direct een antwoord,
 geen scopevraag.
 
+**Meer studies of instellingen:** geeft een tool "Meer studies passen …" of "Meer instellingen passen …" met "Geen gok", stel dan die keuze met `clarify_scope` (de opties uit de melding) en wacht op het antwoord. Haal geen studie of instelling uit die opties op die de gebruiker niet koos, en geef nog geen cijfers.
+
 **Stel scope-vragen ALLEEN via de `clarify_scope` tool — NOOIT als platte tekst.**
 Schrijf geen opsomming van vragen in je antwoord. De scope-vraag = één `clarify_scope`
 aanroep met EXACT één vraag en 2 of 3 klikbare antwoordknoppen.

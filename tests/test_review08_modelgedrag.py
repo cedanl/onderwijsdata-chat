@@ -13,6 +13,7 @@ Er staat geen data van LCSK in de repo: `onderwijsbronnen.skdb.proefbestand` bou
 import asyncio
 import importlib
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,8 @@ from onderwijsbronnen import skdb
 from onderwijsbronnen.skdb import proefbestand
 
 from agent.codeverzoek import CODEKOP, is_codeverzoek, met_code
+from agent.controles import antwoordcontrole
+from agent.ongekozen import ongekozen_studies
 from agent.stream import StreamResult
 from data import instellingen
 from tools import studiekeuze
@@ -163,3 +166,62 @@ def test_de_systeemprompt_verbiedt_een_verzonnen_script_bij_een_codeverzoek():
     assert "Codeverzoek" in SYSTEM
     regel = next(r for r in SYSTEM.splitlines() if "Codeverzoek" in r)
     assert "Bekijk code" in regel and "verzin" in regel.lower()
+
+
+# --- #961: meer studies, eerst de keuze ----------------------------------------------------------------------------
+
+
+def test_de_keuzemelding_zegt_dat_het_model_moet_vragen_en_wachten():
+    melding = studiekeuze.get_studiekeuze(weergave="studie", opleiding="Psychologie")
+    assert melding.startswith("Meer studies passen")
+    assert studiekeuze.KIES_EERST in melding
+    assert "clarify_scope" in studiekeuze.KIES_EERST and "niet" in studiekeuze.KIES_EERST
+
+
+def test_ook_bij_meer_instellingen_eerst_de_keuze():
+    assert studiekeuze.KIES_EERST in studiekeuze.get_studiekeuze(instelling="Hogeschool")
+
+
+def _studieuitkomst(code: int) -> str:
+    return json.dumps(
+        {
+            "dataset": studiekeuze.DATASET,
+            "weergave": "studie",
+            "selectie": {"weergave": "studie", "opleiding": str(code)},
+            "rijen": [{"studiecode": code}],
+        }
+    )
+
+
+def test_een_studie_die_de_gebruiker_niet_koos_geeft_een_probleem():
+    """08-B5: na de keuzemelding haalde het model 56604, 34507 en 60260 zelf op."""
+    melding = studiekeuze.get_studiekeuze(weergave="studie", opleiding="Psychologie")
+    codes = [int(c) for c in re.findall(r"studiecode (\d{5})", melding)][:2]
+    stappen = [melding, *(_studieuitkomst(c) for c in codes)]
+    (probleem,) = ongekozen_studies("Wat verdienen afgestudeerden Psychologie?", stappen)
+    assert all(str(c) in probleem for c in codes)
+    assert "clarify_scope" in probleem
+
+
+def test_een_studie_die_de_vraag_noemt_is_gekozen():
+    melding = studiekeuze.get_studiekeuze(weergave="studie", opleiding="Psychologie")
+    code = re.findall(r"studiecode (\d{5})", melding)[0]
+    stappen = [melding, _studieuitkomst(int(code))]
+    assert ongekozen_studies(f"Wat verdienen afgestudeerden van studiecode {code}?", stappen) == []
+
+
+def test_zonder_keuzemelding_geen_probleem():
+    assert ongekozen_studies("Wat verdienen afgestudeerden Psychologie?", [_studieuitkomst(56604)]) == []
+
+
+def test_de_controle_hoort_bij_de_antwoordcontrole():
+    melding = studiekeuze.get_studiekeuze(weergave="studie", opleiding="Psychologie")
+    code = int(re.findall(r"studiecode (\d{5})", melding)[0])
+    check = antwoordcontrole("Wat verdienen afgestudeerden Psychologie?", [], [], [], [])
+    problemen = check("Psychologen verdienen goed.", [melding, _studieuitkomst(code)])
+    assert any(str(code) in p and "clarify_scope" in p for p in problemen)
+
+
+def test_de_systeemprompt_zegt_eerst_kiezen_bij_meer_studies():
+    regel = next(r for r in SYSTEM.splitlines() if "Meer studies" in r)
+    assert "clarify_scope" in regel and "Geen gok" in regel

@@ -23,6 +23,7 @@ from .kpi_periode import verkeerde_kpi_periodes
 from .kpi_scope import kpi_naast_filter
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from .metatekst import metatekst, zonder_toolnamen
+from .ongekozen import ongekozen_studies
 from .probleem import Probleem, hard, uitkomsten, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .tekens import zonder_citaatkop
@@ -140,6 +141,7 @@ def antwoordcontrole(
             (verkeerde_kpi_periodes, (text, tool_results), True),
             (kpi_naast_filter, (text, tool_results), False),
             (genegeerde_keuze, (clarify_keuzes, text), False),
+            (ongekozen_studies, (vraag, tool_results), False),
             (onbeschikbaar_zonder_zoekpad, (vraag, text, tool_results), False),
             (ongedekte_oorzaak, (text, tool_results), False),
             (ontbrekende_grafiek, (vraag, text, tool_results, data_keys), False),
