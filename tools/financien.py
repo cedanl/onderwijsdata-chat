@@ -22,7 +22,7 @@ import pandas as pd
 from onderwijsbronnen import Bestuurssleutel
 from onderwijsbronnen.duo import financien
 
-from core import actualiteit
+from core import actualiteit, brongebruik
 from data import instellingen
 
 from . import beschikbaarheid, fouten, fusies, store
@@ -79,10 +79,28 @@ NIET_BESCHIKBAAR = (
 _haler = actualiteit.Voorwaardelijk(headers=_HEADERS)
 
 
+# Het dataset-ID in het bronblok van een dashboard (#935): de CKAN-naam in de catalogus, zoals de andere DUO-regels.
+CATALOGUS_ID = "financien"
+
+
 @actualiteit.Lading
 def _bron() -> financien.Financien:
-    """De nieuwste editie, een dag bewaard; daarna met If-Modified-Since opnieuw gevraagd (DUO publiceert jaarlijks)."""
-    return financien.laad(_haler)
+    """De nieuwste editie, een dag bewaard; daarna met If-Modified-Since opnieuw gevraagd (DUO publiceert jaarlijks).
+    De editie meldt zich voor het bronblok van een dashboard (core/brongebruik.py); in de chat gaat de melding nergens
+    heen."""
+    data = financien.laad(_haler)
+    editie = data.editie
+    brongebruik.meld(
+        {
+            "bron": BRONNAAM,
+            "dataset": CATALOGUS_ID,
+            "editie": f"verslagjaren {editie.jaren}",
+            "peildatum": editie.peildatum,
+            "versie": editie.publicatiedatum,
+            "opgehaald_op": actualiteit.nu().isoformat(),
+        }
+    )
+    return data
 
 
 def _rond(waarde: float, stap: Decimal = _TWEE, factor: int = 1) -> Decimal:
@@ -150,7 +168,7 @@ def _variantwissel(regels: list[dict]) -> str | None:
     delen = [f"{v} {a}" if a == b else f"{v} {a}-{b}" for v, a, b in stukken]
     return (
         f"De variant wisselt binnen de reeks ({', '.join(delen)}): een verschil rond de wissel kan door de variant "
-        "komen in plaats van door de financiële positie. Zeg dat."
+        "komen in plaats van door de financiële positie."
     )
 
 
@@ -213,19 +231,37 @@ def _bestuurskop(sleutel: Bestuurssleutel, regels: list[dict]) -> dict:
     }
 
 
+def _geen_bestuur(profiel: dict) -> str:
+    return (
+        f"Voor {profiel['naam']} ({profiel['instellingscode']}) staat geen bestuur in DUO's adressenbestand: er zijn "
+        "geen financiële cijfers aan te koppelen."
+    )
+
+
+def _buiten_verantwoording(sleutel: Bestuurssleutel, editie: financien.Editie) -> str:
+    return (
+        f"Bestuur {sleutel} staat niet bij de besturen die DUO aan mbo, hbo of wo toerekent in de financiële "
+        f"verantwoording (verslagjaren {editie.jaren})."
+    )
+
+
+def _sleutel_van(profiel: dict, data: financien.Financien) -> Bestuurssleutel | None:
+    """Het bestuur van een instelling uit het register, of haar eigen eenheid als het bestuur er een per BRIN heeft
+    (40833); None zonder bestuur in het adressenbestand."""
+    nummer = bestuur_van(profiel["instellingscode"])
+    if nummer is None:
+        return None
+    eenheid = Bestuurssleutel(nummer, profiel["instellingscode"])
+    return eenheid if data.van(eenheid) else Bestuurssleutel(nummer)
+
+
 def _doel(tekst: str, data: financien.Financien) -> tuple[Bestuurssleutel, dict | None] | str:
     """Het bestuur (of de eenheid van 40833) achter een bestuursnummer, instelling of bestuursnaam; anders een melding."""
     if (sleutel := Bestuurssleutel.parse(tekst)) is not None:
         return sleutel, None
     if (profiel := instellingen.instellingsprofiel(tekst)) is not None:
-        nummer = bestuur_van(profiel["instellingscode"])
-        if nummer is None:
-            return (
-                f"Voor {profiel['naam']} ({profiel['instellingscode']}) staat geen bestuur in DUO's adressenbestand: "
-                "er zijn geen financiële cijfers aan te koppelen. Noem geen cijfers."
-            )
-        eenheid = Bestuurssleutel(nummer, profiel["instellingscode"])
-        return (eenheid if data.van(eenheid) else Bestuurssleutel(nummer)), profiel
+        sleutel = _sleutel_van(profiel, data)
+        return (sleutel, profiel) if sleutel is not None else f"{_geen_bestuur(profiel)} Noem geen cijfers."
     naam = " ".join(tekst.split()).casefold()
     if naam and (treffer := next((r for r in data.rijen if r.naam.casefold() == naam), None)):
         return treffer.sleutel, None
@@ -242,7 +278,7 @@ def _sectornoot(profiel: dict | None, sector: str) -> str | None:
     return (
         f"{profiel['naam']} is een {profiel.get('sector')}-instelling, maar DUO rekent het bestuur toe aan het "
         f"{_SECTOREN[sector]}: de cijfers gaan over het hele bestuur en het sectorcijfer is dat van het "
-        f"{_SECTOREN[sector]}. Zeg dat."
+        f"{_SECTOREN[sector]}."
     )
 
 
@@ -279,15 +315,12 @@ def _bewaar(
     return key
 
 
-def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Financien) -> dict:
-    regels = financien.overzicht(data, sleutel)
+def _kern(sleutel: Bestuurssleutel, profiel: dict | None, regels: list[dict], editie: financien.Editie) -> dict:
+    """Wat de chat en het dashboard delen: per eenheid de reeks, het sectorcijfer, de definities, de signaleringswaarden,
+    de voorbehouden en de bron. Een melding bij een eenheid is een feit, zonder aanwijzing aan het model."""
     per_eenheid: dict[str, list[dict]] = {}
     for r in regels:
         per_eenheid.setdefault(r["eenheid"], []).append(r)
-    editie = data.editie
-    besturen = {}
-    for r in data.rijen:
-        besturen[r.sleutel.nummer] = (r.naam, max(r.verslagjaar, besturen.get(r.sleutel.nummer, ("", 0))[1]))
     uit: dict = {
         "sleutel": str(sleutel),
         "dataset": DATASET,
@@ -306,14 +339,27 @@ def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Fi
     }
     if profiel is not None:
         uit["instelling"] = {"naam": profiel["naam"], "instellingscode": profiel["instellingscode"]}
+    return uit
+
+
+def _uitkomst(sleutel: Bestuurssleutel, profiel: dict | None, data: financien.Financien) -> dict:
+    regels = financien.overzicht(data, sleutel)
+    editie = data.editie
+    besturen = {}
+    for r in data.rijen:
+        besturen[r.sleutel.nummer] = (r.naam, max(r.verslagjaar, besturen.get(r.sleutel.nummer, ("", 0))[1]))
+    uit = _kern(sleutel, profiel, regels, editie)
+    for eenheid in uit["eenheden"]:
+        if "melding" in eenheid:
+            eenheid["melding"] += " Zeg dat."
     noten = [_NOOT]
-    if len(per_eenheid) > 1:
+    if len(uit["eenheden"]) > 1:
         noten.append(
             "Dit bestuur staat in de verantwoording als losse eenheden, één per BRIN: geef ze apart en tel of middel "
             "ze nooit."
         )
     if sectornoot := _sectornoot(profiel, regels[0]["sector"]):
-        noten.append(sectornoot)
+        noten.append(f"{sectornoot} Zeg dat.")
     if any(r[k] is None for r in regels for k in _GECONTROLEERD):
         noten.append("Een waarde null ontbreekt in de bron: dat is geen 0. Noem geen getal en schat er geen.")
     fusieregels = fusies.bestuur_in_reeks(
@@ -346,8 +392,48 @@ def get_bestuursfinancien(instelling_of_bestuur: str) -> str:
     sleutel, profiel = doel
     if not data.van(sleutel):
         return (
-            f"Bestuur {sleutel} staat niet bij de besturen die DUO aan mbo, hbo of wo toerekent in de financiële "
-            f"verantwoording (verslagjaren {data.editie.jaren}). Deze app geeft geen financiën van besturen in po of vo. "
+            f"{_buiten_verantwoording(sleutel, data.editie)} Deze app geeft geen financiën van besturen in po of vo. "
             "Noem geen cijfers en schat er geen."
         )
     return json.dumps(_uitkomst(sleutel, profiel, data), ensure_ascii=False, separators=(",", ":"))
+
+
+def _gedeeld_bestuur(sleutel: Bestuurssleutel, profiel: dict) -> str | None:
+    """Welke andere instellingen uit het register onder hetzelfde bestuur vallen (Aeres, Koning Willem I College en
+    BBO de Schalm): hun cijfers zijn dezelfde. Niet bij een eigen eenheid per BRIN (40833)."""
+    if sleutel.brin is not None:
+        return None
+    andere = sorted(
+        i["naam"]
+        for i in instellingen.get_all()
+        if i["naam"] != profiel["naam"] and bestuur_van(i["instellingscode"]) == sleutel.nummer
+    )
+    if not andere:
+        return None
+    namen = andere[0] if len(andere) == 1 else f"{', '.join(andere[:-1])} en {andere[-1]}"
+    werkwoord = "valt" if len(andere) == 1 else "vallen"
+    return f"Ook {namen} {werkwoord} onder dit bestuur: de cijfers gelden voor het hele bestuur, voor elk van zijn instellingen gelijk."
+
+
+def voor_instelling(profiel: dict) -> dict | str:
+    """De financiën van het bestuur van een instelling uit het register, voor het dashboard Mijn instelling (#935).
+
+    Dezelfde uitkomst als de tool, als dict: zonder de noot voor het model en zonder de tabel in de store (een dashboard
+    bewaart niets). `meldingen` zijn feiten voor de lezer: een sector die DUO anders toerekent, andere instellingen
+    onder hetzelfde bestuur. Zonder bestuur of buiten de verantwoording een melding. Een fout van de bron gaat door: het
+    dashboard noemt het onderdeel dat niet laadde. Fusies (RIO) staan er niet in: dat is een aanroep naar een tweede bron.
+    """
+    data = _bron()
+    sleutel = _sleutel_van(profiel, data)
+    if sleutel is None:
+        return _geen_bestuur(profiel)
+    if not data.van(sleutel):
+        return _buiten_verantwoording(sleutel, data.editie)
+    regels = financien.overzicht(data, sleutel)
+    uit = _kern(sleutel, profiel, regels, data.editie)
+    # De grens als getal, voor de stippellijn; die van de liquiditeit staat per jaar in de reeks (hangt af van de baten).
+    uit["solvabiliteit_2_signaleringswaarde"] = financien.SOLVABILITEIT_2_GRENS
+    uit["meldingen"] = [
+        m for m in (_sectornoot(profiel, regels[0]["sector"]), _gedeeld_bestuur(sleutel, profiel)) if m is not None
+    ]
+    return uit

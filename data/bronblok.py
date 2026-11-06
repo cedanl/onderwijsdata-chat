@@ -10,6 +10,9 @@ hij staat in `niet_beschikbaar` (#901). Per dataset één regel, in de volgorde 
   en het peilmoment in de woorden van de bronregel in de chat ("versie van 08-04-2026"). ROA: de editie uit het schema
   van riodata en de kolom `versie` van het bestand. UWV: geen editie; de momentopname heeft een peildatum.
 - `peildatum`: DUO de teldatum uit de DUO-beschrijving ("1 oktober"), UWV de PEILDATUM uit de data.
+- Een bron met een editie in plaats van een versie per bestand (de financiën van DUO, #935; WOPI van UNL, #936): de
+  lader meldt editie, peildatum en versie zelf (`tools/financien._bron`, `tools/wo_personeel._wopi`), en titel en link
+  als de catalogus de bron niet kent.
 - `voorlopig` en `voorlopig_jaren`: de jaren die de DUO-beschrijving voorlopig noemt (gepind met de catalogus).
 - `opgehaald_op`: het vroegste ophaalmoment van de bestanden, ISO met tijdzone.
 """
@@ -62,7 +65,21 @@ def _roa(meldingen: list[Mapping]) -> dict:
     return {"editie": editie, "versie": versie, "peilmoment": ", ".join(d for d in delen if d) or None}
 
 
+def _editie(meldingen: list[Mapping]) -> dict:
+    melding = meldingen[0]
+    editie, versie = melding.get("editie"), melding.get("versie")
+    delen = [f"editie {editie}" if editie else None, f"versie van {versie}" if versie else None]
+    uit = {
+        "editie": editie,
+        "peildatum": melding.get("peildatum"),
+        "peilmoment": ", ".join(d for d in delen if d) or None,
+    }
+    return uit | {k: melding[k] for k in ("titel", "url") if melding.get(k)}
+
+
 _VERSIE: dict[str, Callable[[list[Mapping]], dict]] = {"DUO": _duo, "UWV": _uwv, "ROA": _roa}
+# Per dataset, vóór de regel van de bron: de financiën zijn DUO, maar zonder bestanden met een eigen versie.
+_VERSIE_PER_DATASET: dict[str, Callable[[list[Mapping]], dict]] = {"financien": _editie, "unl:wopi": _editie}
 
 
 def _regel(bron: str, dataset: str, meldingen: list[Mapping]) -> dict:
@@ -78,7 +95,7 @@ def _regel(bron: str, dataset: str, meldingen: list[Mapping]) -> dict:
         "last_modified": None,
         "peilmoment": None,
         "peildatum": tijd.get("peildatum"),
-        **_VERSIE[bron](meldingen),
+        **(_VERSIE_PER_DATASET.get(dataset) or _VERSIE[bron])(meldingen),
         "voorlopig": bool(voorlopig),
         "voorlopig_jaren": voorlopig,
         "opgehaald_op": min(m["opgehaald_op"] for m in meldingen),
