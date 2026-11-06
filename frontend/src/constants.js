@@ -160,14 +160,26 @@ export const SUGGESTED = [
   },
   {
     // De Studiekeuzedatabase van LCSK (#957): alleen waar de sleutel staat (bron `studiekeuze`, test en playground).
-    // De vragen noemen zelf een hogeschool of universiteit, dus ze horen bij elk profiel en elke sector: ook een
-    // mbo-instelling wil weten waar haar gediplomeerden in het hbo naartoe gaan. Elke vraag is op de echte export getoetst.
+    // get_studiekeuze (tools/studiekeuze.py) kent alleen hogescholen en universiteiten en geeft geen aantallen
+    // studenten. Met een profiel vraagt een hogeschool of universiteit naar haar eigen opleidingen (oordeel naast
+    // landelijk, numerus fixus, toelating); de bron heeft geen mbo-instellingen, dus een mbo-instelling krijgt een
+    // doorstroomvraag over een mbo-opleiding, zonder "onze instelling". Zonder profiel algemene vragen zonder vaste
+    // instellingsnaam, voor elke sector.
     category: 'Studiekeuze',
     questions: [
-      { tekst: 'Hoe tevreden zijn studenten over ICT bij de Hogeschool Utrecht, vergeleken met landelijk?', sectoren: SECTOREN, bron: 'studiekeuze' },
-      { tekst: 'Welke opleidingen van de Universiteit Leiden hebben een numerus fixus en hoeveel plaatsen zijn er?', sectoren: SECTOREN, bron: 'studiekeuze' },
-      { tekst: 'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?', sectoren: SECTOREN, bron: 'studiekeuze' },
-      { tekst: 'Welke voltijd ICT-opleiding heeft het hoogste oordeel van studenten?', sectoren: SECTOREN, bron: 'studiekeuze' },
+      { tekst: 'Hoe tevreden zijn studenten over de opleidingen van onze instelling, vergeleken met landelijk?', sectoren: ['hbo', 'wo'], profiel: true, bron: 'studiekeuze' },
+      { tekst: 'Welke opleidingen van onze instelling hebben een numerus fixus, en hoeveel plaatsen zijn er?', sectoren: ['hbo', 'wo'], profiel: true, bron: 'studiekeuze' },
+      {
+        tekst: 'Welke {variant} toegang tot de opleidingen van onze instelling?',
+        sectoren: ['hbo', 'wo'],
+        profiel: true,
+        bron: 'studiekeuze',
+        varianten: { hbo: 'vooropleidingen (havo, vwo of mbo) geven', wo: 'vwo-profielen geven' },
+      },
+      { tekst: 'Naar welke hbo-opleidingen stromen gediplomeerden van de mbo-opleiding Software Developer het vaakst door?', sectoren: ['mbo'], profiel: true, bron: 'studiekeuze' },
+      { tekst: 'Welke voltijd ICT-opleiding heeft het hoogste oordeel van studenten?', sectoren: SECTOREN, profiel: false, bron: 'studiekeuze' },
+      { tekst: 'Welk profiel heb ik met havo nodig voor Verpleegkunde?', sectoren: SECTOREN, profiel: false, bron: 'studiekeuze' },
+      { tekst: 'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?', sectoren: SECTOREN, profiel: false, bron: 'studiekeuze' },
     ],
   },
 ]
