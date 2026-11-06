@@ -130,7 +130,7 @@ function OpleidingenTabel({ rijen, uitleg }) {
   const kop = { sortering, onSorteer: sorteer }
   return (
     <ChartCard title="Opleidingen" subtitle={`${fmt(rijen.length)} opleidingsvormen, op naam`}>
-      <Uitleg uitleg={uitleg} sleutels={['volgorde', 'nse', 'landelijk', 'aantallen', 'doorstroom', 'diplomarendement', 'leeg']} />
+      <Uitleg uitleg={uitleg} sleutels={['volgorde', 'nse', 'themas', 'landelijk', 'doorstroom', 'diplomarendement', 'aantallen', 'leeg']} />
       <TabelScroll label="Opleidingen" style={TABEL}>
         <caption className="sr-only">Opleidingen van de instelling per vorm, met het landelijke cijfer ernaast</caption>
         <thead>
@@ -140,8 +140,6 @@ function OpleidingenTabel({ rijen, uitleg }) {
             <SorteerKop kolom="graad" {...kop} />
             <SorteerKop kolom="vorm" {...kop} />
             <SorteerKop kolom="plaats" {...kop} />
-            <th scope="col" style={KOP_GETAL}>Studenten</th>
-            <th scope="col" style={KOP_GETAL}>Eerstejaars</th>
             <th scope="col" style={KOP_GETAL}>NSE-oordeel</th>
             <th scope="col" style={KOP_GETAL}>NSE landelijk</th>
             <th scope="col" style={KOP_GETAL}>Doorstroom jaar 2</th>
@@ -158,8 +156,6 @@ function OpleidingenTabel({ rijen, uitleg }) {
               <td style={CEL}>{r.graad}</td>
               <td style={CEL}>{r.vorm}</td>
               <td style={CEL}>{r.plaats ?? <GeenCijfer />}</td>
-              <td style={GETAL}><Waarde tekst={r.studenten == null ? null : fmt(r.studenten)} /></td>
-              <td style={GETAL}><Waarde tekst={r.eerstejaars == null ? null : fmt(r.eerstejaars)} /></td>
               <NseCel rij={r} />
               <LandelijkCel waarde={oordeelTekst(r.nse_oordeel_landelijk)} enige={r.aanbieders_landelijk === 1} />
               <td style={GETAL}><Waarde tekst={procentTekst(r.doorstroom_jaar2_pct)} /></td>
@@ -227,7 +223,7 @@ function ArbeidsmarktTabel({ rijen, uitleg }) {
             <th scope="col" style={KOP_GETAL}>Mediaan salaris (bruto per maand)</th>
             <th scope="col" style={KOP_GETAL}>Werkloos</th>
             <th scope="col" style={KOP_GETAL}>Baan op niveau</th>
-            <th scope="col" style={KOP}>Aansluiting studie-baan</th>
+            <th scope="col" style={KOP}>ROA-opleidingstype</th>
           </tr>
         </thead>
         <tbody>
@@ -243,7 +239,7 @@ function ArbeidsmarktTabel({ rijen, uitleg }) {
                     <td style={GETAL}><Waarde tekst={r.salaris_mediaan_bruto_maand == null ? null : `€ ${fmt(r.salaris_mediaan_bruto_maand)}`} /></td>
                     <td style={GETAL}><Waarde tekst={procentTekst(r.werkloos_pct)} /></td>
                     <td style={GETAL}><Waarde tekst={procentTekst(r.baan_op_niveau_pct)} /></td>
-                    <td style={CEL}>{r.aansluiting_studie_baan ?? <GeenCijfer />}</td>
+                    <td style={CEL}>{r.roa_opleidingstype ?? <GeenCijfer />}</td>
                   </>
                 )}
             </tr>

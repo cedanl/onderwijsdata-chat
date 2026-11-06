@@ -198,9 +198,12 @@ synthetisch bestand met dezelfde XML-vorm (`unl.proefbestand`). Het XML gaat doo
 ## SKDB: Studiekeuzedatabase
 
 De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957), de data achter Studiekeuze123: per opleiding van
-een hogeschool of universiteit (CROHO × BRIN × vestiging, per vorm) de NSE-oordelen, studenten en eerstejaars,
-doorstroom naar jaar 2, diplomarendement, numerus fixus, collegegeld en accreditatie; per landelijke studie de
-arbeidsmarkt van de SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor → master. Alleen hbo en wo. De lader haalt de
+een hogeschool of universiteit (CROHO × BRIN × vestiging, per vorm) de NSE-oordelen, doorstroom naar jaar 2,
+diplomarendement en numerus fixus; per opleiding de wettelijke vooropleidingseisen (havo, vwo, mbo; RATHO); per
+landelijke studie het ROA-opleidingstype en de arbeidsmarkt van de SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor
+→ master. Alleen hbo en wo. Wat een andere bron leidend heeft, geven de overzichten niet (#878): aantallen studenten en
+eerstejaars (DUO), wettelijk collegegeld, accreditatie en de aansluiting studie-baan (ROA-AIS); de ruwe tabellen blijven
+met `load` te lezen. De lader haalt de
 dagelijkse export (`/export/json`, één ZIP van ongeveer 18 MB) met een eigen sleutel (`STUDIEKEUZEDATABASE_API_KEY`,
 aan te vragen bij LCSK) en leest een tabel pas als je erom vraagt.
 
@@ -212,13 +215,14 @@ df = skdb.load("opleidingvormen")                    # één tabel van de export
 export = skdb.lees(*skdb.haal_op())                  # alle tabellen, met de herkomst (versie "26.6", exportdatum)
 skdb.opleidingen(export, brin="25DW", croho=30020)   # per opleiding en vorm, met het landelijke NSE-oordeel ernaast
 skdb.studie(export, 56604)                           # een landelijke studie, met de arbeidsmarkt van de SOI-rubriek
+skdb.toelating(export, naam="verpleegkunde")         # de vooropleidingseisen, per gelijke set eisen met de instellingen
 skdb.doorstroom_mbo_hbo(export, mbo="verpleeg")      # waar mbo-4-gediplomeerden in het hbo naartoe gaan
 ```
 
 `brin` en `croho` zijn de codes van RIO en DUO; `studiecode` is een code van LCSK en niet altijd een CROHO-code.
-Licentie: de Algemene Leveringsvoorwaarden Data van LCSK. Bij elke uiting `skdb.VERPLICHTE_ZIN` ("Er is gebruik gemaakt
-van de data van Landelijk Centrum Studiekeuze.") met een link naar `skdb.DOCUMENTATIE` en het versienummer; geen
-doorlevering. Er staat daarom geen data van LCSK in dit pakket; de tests gebruiken een synthetische export
+Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v25.1). Bij elke uiting `skdb.VERPLICHTE_ZIN` ("Er is
+gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.") met een link naar `skdb.DOCUMENTATIE`
+(lcsk.nl/over-ons/studiekeuzedata-raadplegen), het versienummer en bij NSE-cijfers "NSE {jaar}"; geen doorlevering. Er staat daarom geen data van LCSK in dit pakket; de tests gebruiken een synthetische export
 (`skdb.proefbestand`).
 
 ## Broncontrole

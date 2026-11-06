@@ -95,6 +95,24 @@ def test_studie_met_arbeidsmarkt():
     assert studiekeuze.ARBEIDSMARKT in uit["voorbehouden"]
 
 
+def test_toelating_per_opleiding_met_vaste_zin():
+    uit = _uit(weergave="toelating", opleiding="Psychologie")
+    (rij,) = uit["rijen"]
+    assert (rij["havo"], rij["vwo"]) == ("Niet toelaatbaar", "Vwo met profiel EM, CM, NG, NT.")
+    assert uit["voorbehouden"] == [studiekeuze.TOELATING]
+    assert "vraagt een opleiding" in studiekeuze.get_studiekeuze(weergave="toelating")
+
+
+def test_wat_een_andere_bron_leidend_heeft_staat_er_niet_in():
+    """Afspraken #878: aantallen studenten (DUO), collegegeld, accreditatie en de aansluiting studie-baan (ROA)."""
+    uit = _uit(instelling="HU", opleiding="ICT", vorm="voltijd")
+    assert not {"studenten", "eerstejaars", "collegegeld_wettelijk", "accreditatiebesluit"} & set(uit["rijen"][0])
+    assert studiekeuze.ANDERE_BRON in uit["voorbehouden"]
+    studie = _uit(weergave="studie", opleiding="ICT")["rijen"][0]
+    assert "aansluiting_studie_baan" not in studie and studie["roa_opleidingstype"] == "hbo - ict"
+    assert "kan niet" in studiekeuze.get_studiekeuze(opleiding="ICT", sorteer="studenten")
+
+
 def test_numerus_fixus_en_doorstroom():
     nf = _uit(weergave="numerus_fixus", instelling="21PB")
     assert [(r["studiejaar"], r["capaciteit"]) for r in nf["rijen"]] == [(2026, 60), (2027, 71)]
@@ -177,24 +195,38 @@ def test_een_geweigerde_sleutel_is_een_bronfout_zonder_de_sleutel(monkeypatch):
 
 def test_de_bronregel_noemt_versie_en_de_verplichte_zin_van_lcsk():
     stap = (TOOL_GET_STUDIEKEUZE, studiekeuze.get_studiekeuze(instelling="HU", opleiding="ICT"))
+    # Versie en NSE-jaar (art. 4.2), de herkomst van het studieverloop (#878) en de verplichte zin met de link (art. 4.1).
     regel = (
-        "Studiekeuzedatabase 26.6, Landelijk Centrum Studiekeuze, export van 2026-11-06. "
-        "Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
+        "Studiekeuzedatabase 26.6 (NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK), Landelijk Centrum "
+        "Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
     )
     assert bronnen_van([stap]) == [regel]
-    assert bronlinks_van([stap]) == {regel: skdb.DOCUMENTATIE}
+    assert bronlinks_van([stap]) == {regel: "https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/"}
+
+
+@pytest.mark.parametrize(
+    ("args", "herkomst"),
+    [
+        ({"weergave": "studie", "opleiding": "ICT"}, "arbeidsmarkt uit CBS-microdata en de NAE/HBO-monitor"),
+        ({"weergave": "toelating", "opleiding": "ICT"}, "vooropleidingseisen uit de regeling (RATHO)"),
+        ({"weergave": "doorstroom_mbo_hbo", "mbo_opleiding": "verpleeg"}, "doorstroombestand mbo-hbo"),
+    ],
+)
+def test_de_bronregel_noemt_de_oorspronkelijke_bron_van_de_weergave(args, herkomst):
+    regel = _uit(**args)["bron"]["regel"]
+    assert herkomst in regel and regel.endswith(skdb.VERPLICHTE_ZIN)
 
 
 def test_elk_getal_is_een_citatie_met_instelling_opleiding_en_vorm():
     resultaat = studiekeuze.get_studiekeuze(instelling="HU", opleiding="ICT", vorm="voltijd")
-    assert {"900", "250", "2694"} <= bewijs_getallen(resultaat)
+    assert {"70", "45"} <= bewijs_getallen(resultaat)  # doorstroom jaar 2 en diplomarendement
     waarden = {w.maat: w for w in meetwaarden(resultaat, TOOL_GET_STUDIEKEUZE)}
     oordeel = waarden["nse_oordeel"]
     assert oordeel.selectie == ("Instelling: Hogeschool Utrecht", "Opleiding: ICT", "Vorm: voltijd", "Plaats: Utrecht")
     assert oordeel.data_key == json.loads(resultaat)["data_key"]
     assert oordeel.bron is not None and oordeel.bron.endswith(skdb.VERPLICHTE_ZIN)
-    assert waarden["doorstroom_jaar2_pct"].eenheid == "%" and waarden["collegegeld_wettelijk"].eenheid == "€"
-    assert "croho" not in waarden and "collegejaar" not in waarden  # een code of jaar is geen maat
+    assert waarden["doorstroom_jaar2_pct"].eenheid == "%"
+    assert "croho" not in waarden and "studiecode" not in waarden  # een code is geen maat
 
 
 def test_de_tabel_staat_met_haar_laadaanroep_in_de_store():

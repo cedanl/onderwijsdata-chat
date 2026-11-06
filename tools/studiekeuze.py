@@ -37,7 +37,7 @@ BRONTITEL = "Studiekeuzedatabase"
 # Het ID in het bron:id-contract; de tabel achter een uitkomst staat onder dit ID in de store.
 DATASET = "skdb:studiekeuzedatabase"
 
-WEERGAVEN = ("opleidingen", "studie", "numerus_fixus", "doorstroom_mbo_hbo", "doorstroom_bachelor_master")
+WEERGAVEN = ("opleidingen", "studie", "toelating", "numerus_fixus", "doorstroom_mbo_hbo", "doorstroom_bachelor_master")
 MAX_RIJEN = 15  # rijen in het toolresultaat; de hele tabel staat in de store (data_key)
 MAX_THEMARIJEN = 3  # de NSE-thema's alleen bij zo weinig rijen, anders wordt het resultaat te lang
 MAX_OPTIES = 15
@@ -57,7 +57,8 @@ NSE = (
     "NSE-oordelen zijn gewogen gemiddelden op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de "
     "Nationale Studenten Enquête {nse}; nse_respondenten is het aantal antwoorden. Een verschil van een paar "
     "honderdsten is geen verschil. Een rij met nse_onzeker: true heeft minder dan 30 respondenten: noem dat oordeel "
-    "onzeker."
+    "onzeker. Bij de thema's (nse_docenten, nse_toetsing, …) is het aantal respondenten per thema onbekend; het getoonde "
+    "aantal is dat van het algemeen oordeel."
 )
 LANDELIJK = (
     "nse_oordeel_landelijk is het oordeel over dezelfde studie in dezelfde vorm over alle instellingen samen, zoals LCSK "
@@ -69,15 +70,29 @@ DIPLOMARENDEMENT = (
     "aandeel eerstejaars dat het diploma van de opleiding haalt binnen de nominale duur plus 1 jaar (voltijd en duaal) "
     "of plus 2 jaar (deeltijd)"
 )
-AANTALLEN = (
-    "studenten en eerstejaars komen uit 1cijferHO (collegejaar {jaar}) en kunnen afwijken van de DUO-tellingen. "
-    "doorstroom_jaar2_pct: " + DOORSTROOM_JAAR2 + "; diploma_opleiding_pct: " + DIPLOMARENDEMENT + ". Een leeg veld "
-    "is leeg in de bron: noem geen getal, ook geen 0."
+STUDIEVERLOOP = (
+    "doorstroom_jaar2_pct: " + DOORSTROOM_JAAR2 + "; diploma_opleiding_pct: " + DIPLOMARENDEMENT + ". LCSK berekent "
+    "beide uit 1cijferHO (collegejaar {jaar}, niet openbaar); de omvang van het cohort staat niet in de bron. Een leeg "
+    "veld is leeg in de bron: noem geen getal, ook geen 0."
+)
+# Afspraken #878: wat een andere bron leidend heeft, geeft deze tool niet.
+ANDERE_BRON = (
+    "Aantallen studenten en eerstejaars staan hier niet: die komen uit DUO (get_maat of get_duo_data), want de "
+    "Studiekeuzedatabase telt anders. Zo ook het wettelijk collegegeld (get_collegegeld) en de accreditatie "
+    "(get_accreditatie)."
 )
 ARBEIDSMARKT = (
     "De arbeidsmarktcijfers (salaris, werkloosheid, baan op niveau) gaan over een SOI-rubriek: een bundel verwante "
     "studies, niet deze ene studie. Ze bestaan alleen voor voltijd hbo-bachelor, associate degree en wo-master; voor "
-    "een wo-bachelor staan ze bij de master waar de meeste afgestudeerden naartoe gaan."
+    "een wo-bachelor staan ze bij de master waar de meeste afgestudeerden naartoe gaan. Bron: CBS-microdata en de "
+    "NAE/HBO-monitor, bewerkt door LCSK; geen reeks met CBS StatLine. roa_opleidingstype is de sleutel naar de "
+    "ROA-cijfers (get_roa_benchmark); de aansluiting studie-baan komt uit ROA, niet hieruit."
+)
+TOELATING = (
+    "Toelating: de wettelijke vooropleidingseisen (havo, vwo, mbo, aanvullende eisen) zoals LCSK ze uit de regeling "
+    "(RATHO) overneemt, per opleiding, met de instellingen die dezelfde eisen noemen. Een instelling kan meer vragen "
+    "(selectie, numerus fixus, deficiënties): verwijs voor zekerheid naar de instelling. Een profiel als 'EM, CM, NG, NT' "
+    "betekent dat elk van die profielen toegang geeft."
 )
 RANGORDE = (
     "Dit is een rangorde op één cijfer uit de Studiekeuzedatabase. Zeg dat erbij, noem het aantal respondenten, en "
@@ -162,6 +177,15 @@ def pakketaanroep(args: dict) -> tuple[str, dict]:
     if weergave == "numerus_fixus":
         kwargs = {"brin": args.get("instelling"), "croho": code, "naam": naam}
         return "numerus_fixus", {k: v for k, v in kwargs.items() if v is not None}
+    if weergave == "toelating":
+        kwargs = {
+            "brin": args.get("instelling"),
+            "croho": code,
+            "naam": naam,
+            "soort_ho": args.get("soort_ho"),
+            "graad": args.get("graad"),
+        }
+        return "toelating", {k: v for k, v in kwargs.items() if v is not None}
     kwargs = {
         "brin": args.get("instelling"),
         "croho": code,
@@ -301,6 +325,8 @@ def _keuze(
         return Keuze(weergave=weergave, croho=studiecode, mbo=mbo)
     if weergave == "opleidingen" and not (brin or opleiding or _tekst(plaats) or alleen_numerus_fixus):
         return "Geef een instelling, een opleiding of een plaats: alle 4.400 opleidingsvormen tegelijk is te veel."
+    if weergave == "toelating" and not (brin or opleiding):
+        return "Weergave toelating vraagt een opleiding (naam of CROHO-code) of een instelling."
     return Keuze(
         weergave=weergave,
         brin=brin,
@@ -325,11 +351,28 @@ def rijen(export: skdb.Export, args: dict) -> list[dict]:
     return getattr(skdb, functie)(export, **kwargs)
 
 
-def bronregel(herkomst: skdb.Herkomst) -> str:
-    """'Studiekeuzedatabase 26.6, Landelijk Centrum Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt …'."""
+# De oorspronkelijke bron achter een weergave, voor de bronregel (#878): LCSK bewerkt, de herkomst wordt genoemd.
+_HERKOMST = {
+    "opleidingen": "studieverloop uit 1cijferHO{eencijfer}, bewerkt door LCSK",
+    "studie": "studieverloop uit 1cijferHO{eencijfer}; arbeidsmarkt uit CBS-microdata en de NAE/HBO-monitor; bewerkt door LCSK",
+    "toelating": "vooropleidingseisen uit de regeling (RATHO)",
+    "numerus_fixus": "capaciteit uit Studielink",
+    "doorstroom_mbo_hbo": "doorstroombestand mbo-hbo, bewerkt door LCSK",
+}
+
+
+def bronregel(herkomst: skdb.Herkomst, jaren: dict | None = None, weergave: str | None = None) -> str:
+    """'Studiekeuzedatabase 26.6 (NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK), Landelijk Centrum
+    Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt …': versie en NSE-jaar zijn verplicht (art. 4.2)."""
+    jaren = jaren or {}
+    delen = [f"NSE {jaren['nse']}"] if jaren.get("nse") and weergave in (None, "opleidingen", "studie") else []
+    if weergave in _HERKOMST:
+        eencijfer = f" {jaren['1cijferho']}" if jaren.get("1cijferho") else ""
+        delen.append(_HERKOMST[weergave].format(eencijfer=eencijfer))
     versie = f" {herkomst.versie}" if herkomst.versie else ""
+    toelichting = f" ({'; '.join(delen)})" if delen else ""
     datum = f", export van {herkomst.datum}" if herkomst.datum else ""
-    return f"{BRONTITEL}{versie}, {BRONNAAM}{datum}. {skdb.VERPLICHTE_ZIN}"
+    return f"{BRONTITEL}{versie}{toelichting}, {BRONNAAM}{datum}. {skdb.VERPLICHTE_ZIN}"
 
 
 def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: skdb.Herkomst) -> str:
@@ -354,10 +397,11 @@ def _voorbehouden(keuze: Keuze, export: skdb.Export) -> list[str]:
     jaren = skdb.jaren(export)
     nse = NSE.format(nse=jaren["nse"] or "(jaar onbekend)")
     collegejaar = f"{jaren['1cijferho']}-{jaren['1cijferho'] + 1}" if jaren["1cijferho"] else "onbekend"
-    aantallen = AANTALLEN.format(jaar=collegejaar)
+    verloop = STUDIEVERLOOP.format(jaar=collegejaar)
     per_weergave = {
-        "opleidingen": [nse, LANDELIJK, aantallen, NUMERUS_FIXUS],
-        "studie": [nse, aantallen, ARBEIDSMARKT],
+        "opleidingen": [nse, LANDELIJK, verloop, NUMERUS_FIXUS, ANDERE_BRON],
+        "studie": [nse, verloop, ARBEIDSMARKT, ANDERE_BRON],
+        "toelating": [TOELATING],
         "numerus_fixus": [NUMERUS_FIXUS],
         "doorstroom_mbo_hbo": [DOORSTROOM_MBO],
         "doorstroom_bachelor_master": [DOORSTROOM_MASTER],
@@ -396,7 +440,7 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
         "instructie": OVERNEMEN,
         "bron": {
             "naam": f"{BRONNAAM}, {BRONTITEL}",
-            "regel": bronregel(herkomst),
+            "regel": bronregel(herkomst, skdb.jaren(export), keuze.weergave),
             "url": skdb.DOCUMENTATIE,
             "versie": herkomst.versie,
             "exportdatum": herkomst.datum,

@@ -1,8 +1,9 @@
 """Studiekeuzedatabase (SKDB) van het Landelijk Centrum Studiekeuze: opleidingen in het hbo en wo (#957).
 
 De data achter Studiekeuze123: per opleiding (CROHO-code × BRIN × vestiging) de oordelen uit de Nationale Studenten
-Enquête, studenten en eerstejaars, doorstroom en rendement, numerus fixus, collegegeld en accreditatie; per landelijke
-studie de arbeidsmarktpositie per SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor → master. Alleen hbo en wo.
+Enquête, doorstroom en rendement, numerus fixus en de vooropleidingseisen; per landelijke studie de
+arbeidsmarktpositie per SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor → master. Alleen hbo en wo. Wat een andere
+bron leidend heeft (aantallen studenten: DUO; collegegeld; accreditatie), geven de overzichten niet (#878).
 
 Gebruik (met `STUDIEKEUZEDATABASE_API_KEY` in de omgeving, of de sleutel als argument):
     from onderwijsbronnen import skdb
@@ -14,7 +15,7 @@ Gebruik (met `STUDIEKEUZEDATABASE_API_KEY` in de omgeving, of de sleutel als arg
     export.frame("studies")
     skdb.opleidingen(export, brin="25DW", croho=30020)   # kerncijfers per opleiding en vorm, met NSE landelijk
 
-Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v23.2). Bij elke uiting `VERPLICHTE_ZIN` met een link naar
+Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v25.1). Bij elke uiting `VERPLICHTE_ZIN` met een link naar
 `DOCUMENTATIE` en het versienummer; geen doorlevering. Dit pakket bevat daarom geen data van LCSK: de lader haalt de
 export op het moment van gebruik, met de eigen sleutel van de gebruiker.
 """
@@ -48,6 +49,7 @@ from .overzicht import (
     ARBEIDSMARKT,
     NSE_THEMAS,
     SORTERINGEN,
+    TOELATING,
     VORMEN,
     doorstroom_bachelor_master,
     doorstroom_mbo_hbo,
@@ -56,6 +58,7 @@ from .overzicht import (
     numerus_fixus,
     opleidingen,
     studie,
+    toelating,
     zoek_studies,
 )
 
@@ -89,8 +92,8 @@ def metadata(record: dict) -> dict:
 
 
 __all__ = [
-    "ARBEIDSMARKT", "NSE_THEMAS", "SORTERINGEN", "VORMEN", "doorstroom_bachelor_master", "doorstroom_mbo_hbo",
-    "instellingen", "jaren", "numerus_fixus", "opleidingen", "studie", "zoek_studies",
+    "ARBEIDSMARKT", "NSE_THEMAS", "SORTERINGEN", "TOELATING", "VORMEN", "doorstroom_bachelor_master", "doorstroom_mbo_hbo",
+    "instellingen", "jaren", "numerus_fixus", "opleidingen", "studie", "toelating", "zoek_studies",
     "API", "BRON", "DOCUMENTATIE", "EXPORT", "LEVERANCIER", "SLEUTEL_ENV", "USER_AGENT", "VEREIST", "VERPLICHTE_ZIN",
     "Export", "GeenSleutel", "Herkomst", "SkdbFout", "catalog", "catalogusrecords", "haal_op", "herkomst", "laad",
     "lees", "load", "metadata", "sleutel",

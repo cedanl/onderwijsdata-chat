@@ -6,9 +6,14 @@ niets geschat of aangevuld. Een leeg veld in de bron blijft `None`. De sleutels 
 meestal gelijk aan de CROHO-code, niet altijd: samengevoegde studies).
 
 - `opleidingen`: per opleiding van een instelling en per vorm (voltijd/deeltijd/duaal): NSE-oordeel naast het
-  landelijke oordeel van dezelfde studie, studenten, eerstejaars, doorstroom naar jaar 2, diplomarendement, numerus
-  fixus, wettelijk collegegeld en accreditatie;
-- `studie`: per landelijke studie en vorm: NSE, rendement, aantal aanbieders en de arbeidsmarkt van de SOI-rubriek;
+  landelijke oordeel van dezelfde studie, doorstroom naar jaar 2, diplomarendement en numerus fixus;
+- `studie`: per landelijke studie en vorm: NSE, rendement, aantal aanbieders, het ROA-opleidingstype en de
+  arbeidsmarkt van de SOI-rubriek;
+- `toelating`: de wettelijke vooropleidingseisen (havo, vwo, mbo) per opleiding;
+
+Wat een andere bron al leidend heeft, staat hier niet (afspraken #878): aantallen studenten en eerstejaars (DUO telt
+anders en heeft de reeks), wettelijk collegegeld (de wettekst), accreditatie (DUO/NVAO) en de aansluiting
+studie-baan (ROA-AIS, nieuwere editie). De ruwe tabellen blijven met `load`/`Export.frame` te lezen.
 - `numerus_fixus`: opleidingen met loting of decentrale selectie, met capaciteit;
 - `doorstroom_mbo_hbo` en `doorstroom_bachelor_master`: waar gediplomeerden naartoe gaan.
 """
@@ -20,7 +25,7 @@ from collections.abc import Iterable
 from .export import Export
 
 VORMEN = {1: "voltijd", 2: "deeltijd", 3: "duaal"}
-SORTERINGEN = ("naam", "oordeel", "studenten", "eerstejaars", "doorstroom_jaar2")
+SORTERINGEN = ("naam", "oordeel", "doorstroom_jaar2")
 GRADEN = {"bachelor": "Bachelor", "master": "Master", "associate degree": "Associate degree", "ad": "Associate degree"}
 
 # NSE-thema's (gemiddelde op 1–5) per opleidingsvorm, met de naam in de uitkomst.
@@ -143,25 +148,11 @@ def _numerus_fixus_per_opleiding(export: Export) -> dict[tuple, dict]:
     return nieuwste
 
 
-def _collegegeld_per_vorm(export: Export) -> dict[tuple, dict]:
-    """(opleidingSkdb, vormId) → het wettelijk collegegeld van het nieuwste collegejaar met een bedrag."""
-    gevonden: dict[tuple, dict] = {}
-    for r in export.rijen("collegegelden"):
-        if r.get("collegeGeldBedrag") is None:
-            continue
-        sleutel = (r.get("opleidingSkdb"), r.get("opleidingVormId"))
-        if sleutel not in gevonden or (r.get("collegeJaar") or 0) > gevonden[sleutel]["collegejaar"]:
-            gevonden[sleutel] = {"collegejaar": r.get("collegeJaar") or 0, "bedrag": r.get("collegeGeldBedrag")}
-    return gevonden
-
-
 def _sorteer(rijen: list[dict], sorteer: str, naamvelden: tuple[str, ...]) -> list[dict]:
     """Op naam (standaard), of aflopend op een maat met lege waarden achteraan; gelijke waarden op naam."""
     rijen.sort(key=lambda r: tuple(str(r.get(v) or "") for v in naamvelden))
     veld = {
         "oordeel": "nse_oordeel",
-        "studenten": "studenten",
-        "eerstejaars": "eerstejaars",
         "doorstroom_jaar2": "doorstroom_jaar2_pct",
     }.get(sorteer)
     if veld:
@@ -197,7 +188,6 @@ def opleidingen(
     }
     landelijk = _per(export.rijen("studievormen"), "studieOpleidingCodeSkdb", "studieVormId")
     fixus = _numerus_fixus_per_opleiding(export)
-    collegegeld = _collegegeld_per_vorm(export)
     rijen = []
     for v in export.rijen("opleidingvormen"):
         o = opleidingen_per_id.get(v.get("opleidingSkdb"))
@@ -208,7 +198,6 @@ def opleidingen(
         if alleen_numerus_fixus and nf is None:
             continue
         land = landelijk.get((o.get("studieOpleidingCodeSkdb"), vorm_id)) or {}
-        geld = collegegeld.get((o.get("opleidingSkdb"), vorm_id)) or {}
         rij = {
             "instelling": namen.get(o.get("instellingCode")),
             "brin": o.get("instellingCode"),
@@ -223,15 +212,10 @@ def opleidingen(
             "nse_oordeel": _getal(v.get("algemeenOordeelGewogenGemiddelde"), 2),
             "nse_respondenten": _getal(v.get("algemeenOordeelAantal")),
             "nse_oordeel_landelijk": _getal(land.get("algemeenOordeelGewogenGemiddelde"), 2),
-            "studenten": _getal(v.get("studentenAantal")),
-            "eerstejaars": _getal(v.get("eersteJaarAantal")),
             "doorstroom_jaar2_pct": _getal(v.get("doorstroomJaar2Perc")),
             "diploma_opleiding_pct": _getal(v.get("opleidingDiplomasPerc")),
             "numerus_fixus_capaciteit": nf["capaciteit"] if nf else None,
             "numerus_fixus_studiejaar": nf["studiejaar"] if nf else None,
-            "collegegeld_wettelijk": geld.get("bedrag"),
-            "collegejaar": geld.get("collegejaar"),
-            "accreditatiebesluit": v.get("accreditatieBesluitDatum"),
         }
         if themas:
             rij.update({uit: _getal(v.get(veld), 2) for veld, uit in NSE_THEMAS.items()})
@@ -264,8 +248,8 @@ def zoek_studies(export: Export, tekst: str, *, soort_ho: str | None = None, gra
 
 
 def studie(export: Export, studiecode: int) -> list[dict]:
-    """Eén landelijke studie per vorm: NSE, rendement, aantal aanbieders, de aansluiting studie-baan en de
-    arbeidsmarkt van haar SOI-rubriek (per rubriek, niet per studie)."""
+    """Eén landelijke studie per vorm: NSE, rendement, aantal aanbieders, het ROA-opleidingstype (de sleutel naar de
+    ROA-cijfers) en de arbeidsmarkt van haar SOI-rubriek (per rubriek, niet per studie)."""
     studies = {_code(r.get("studieOpleidingCodeSkdb")): r for r in export.rijen("studies")}
     s = studies.get(studiecode)
     if s is None:
@@ -291,18 +275,82 @@ def studie(export: Export, studiecode: int) -> list[dict]:
             "aantal_opleidingen": len(aanbieders.get(vorm_id, ())),
             "nse_oordeel": _getal(v.get("algemeenOordeelGewogenGemiddelde"), 2),
             "nse_respondenten": _getal(v.get("algemeenOordeelAantal")),
-            "eerstejaars": _getal(v.get("eersteJaarAantal")),
             "doorstroom_jaar2_pct": _getal(v.get("doorstroomJaar2Perc")),
             "diploma_opleiding_pct": _getal(v.get("opleidingDiplomasPerc")),
-            # LCSK vult een lege cel soms met een tekst tussen haakjes ("(missing, data wordt op dit niveau niet
-            # getoond)", "(data ongeschikt voor verwerking)"): dat is geen waarde.
-            "aansluiting_studie_baan": s.get("aansluitingStudieBaan")
-            if not str(s.get("aansluitingStudieBaan") or "").startswith("(")
-            else None,
-            **{uit: (markt.get(veld) if uit == "soi_rubriek" else _getal(markt.get(veld))) for veld, uit in ARBEIDSMARKT.items()},
+            "roa_opleidingstype": s.get("opleidingType"),
+            **{
+                uit: (markt.get(veld) if uit == "soi_rubriek" else _getal(markt.get(veld)))
+                for veld, uit in ARBEIDSMARKT.items()
+            },
         }
         rijen.append(rij)
     return sorted(rijen, key=lambda r: list(VORMEN.values()).index(r["vorm"]) if r["vorm"] in VORMEN.values() else 9)
+
+
+# De wettelijke vooropleidingseisen (RATHO) per opleiding, met de naam in de uitkomst.
+TOELATING = {
+    "wettelijkeVooropleidingEisenHavo": "havo",
+    "wettelijkeVooropleidingEisenVwo": "vwo",
+    "toelatingsEisenMbo": "mbo",
+    "wettelijkeAanvullendeEisenHavo": "aanvullend_havo",
+    "wettelijkeAanvullendeEisenVwo": "aanvullend_vwo",
+}
+
+
+def toelating(
+    export: Export,
+    *,
+    brin: str | None = None,
+    croho: int | None = None,
+    naam: str | None = None,
+    soort_ho: str | None = None,
+    graad: str | None = None,
+) -> list[dict]:
+    """De vooropleidingseisen per opleiding (CROHO), één rij per gelijke set eisen met de instellingen die haar hebben:
+    meestal één rij per opleiding, twee als één instelling (bijv. de Open Universiteit) andere eisen noemt."""
+    zoek = naam.lower().strip() if naam else None
+    namen = {r.get("instellingCode"): r.get("instellingNaam") for r in export.rijen("instellingen")}
+    # Een naam kiest opleidingen (CROHO-codes), niet vestigingsrijen: elke instelling noemt haar opleiding anders
+    # ("Verpleegkunde", "Opleiding tot Verpleegkundige"), en de lijst instellingen hoort bij de code, niet bij de naam.
+    codes = (
+        {
+            _code(o.get("opleidingCode"))
+            for o in export.rijen("opleidingen")
+            if _filter_opleiding(o, None, None, zoek, None, None)
+        }
+        if zoek
+        else None
+    )
+    groepen: dict[tuple, dict] = {}
+    for o in export.rijen("opleidingen"):
+        if not _filter_opleiding(o, brin, croho, None, soort_ho, graad):
+            continue
+        if codes is not None and _code(o.get("opleidingCode")) not in codes:
+            continue
+        eisen = tuple(o.get(veld) for veld in TOELATING)
+        sleutel = (_code(o.get("opleidingCode")), eisen)
+        rij = groepen.setdefault(
+            sleutel,
+            {
+                "opleiding": o.get("rioNaam") or o.get("opleidingNaam"),
+                "croho": _code(o.get("opleidingCode")),
+                "graad": o.get("graad"),
+                "soort_ho": o.get("soortHo"),
+                **dict(zip(TOELATING.values(), eisen, strict=True)),
+                "instellingen": set(),
+            },
+        )
+        rij["instellingen"].add(namen.get(o.get("instellingCode")) or o.get("instellingCode"))
+    # De instellingen als tekst: een tabelcel in de store en een CSV-export, niet een lijst.
+    rijen = [
+        {
+            **r,
+            "aantal_instellingen": len(r["instellingen"]),
+            "instellingen": "; ".join(sorted(map(str, r["instellingen"]))),
+        }
+        for r in groepen.values()
+    ]
+    return sorted(rijen, key=lambda r: (str(r["opleiding"]), r["croho"] or 0, -r["aantal_instellingen"]))
 
 
 def numerus_fixus(
@@ -330,7 +378,16 @@ def numerus_fixus(
         and (croho is None or _code(r.get("opleidingCode")) == croho)
         and (not zoek or _bevat(r.get("opleidingNaam"), zoek))
     ]
-    return sorted(rijen, key=lambda r: (str(r["instelling"]), str(r["opleiding"]), str(r["vorm"]), r["studiejaar"] or 0, str(r["voertaal"])))
+    return sorted(
+        rijen,
+        key=lambda r: (
+            str(r["instelling"]),
+            str(r["opleiding"]),
+            str(r["vorm"]),
+            r["studiejaar"] or 0,
+            str(r["voertaal"]),
+        ),
+    )
 
 
 def doorstroom_mbo_hbo(export: Export, *, mbo: str | None = None, studiecode: int | None = None) -> list[dict]:

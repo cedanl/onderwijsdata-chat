@@ -29,9 +29,10 @@ from .._kern.versie import VERSIE
 API = "https://api.skdb.nl/v1"
 EXPORT = f"{API}/export/json"
 SLEUTEL_ENV = "STUDIEKEUZEDATABASE_API_KEY"
-DOCUMENTATIE = "https://www.studiekeuze123.nl/studiekeuzedata"
+# Art. 4.1 van de leveringsvoorwaarden (v25.1): de link bij de verplichte zin.
+DOCUMENTATIE = "https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/"
 LEVERANCIER = "Landelijk Centrum Studiekeuze"
-# Art. 4.1 van de Algemene Leveringsvoorwaarden Data (v23.2): deze zin, met een link naar DOCUMENTATIE en het
+# Art. 4.1 van de Algemene Leveringsvoorwaarden Data (v25.1): deze zin, met een link naar DOCUMENTATIE en het
 # versienummer van de data, staat bij elke uiting die op de data steunt.
 VERPLICHTE_ZIN = "Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
 USER_AGENT = f"onderwijsbronnen/{VERSIE} (+https://github.com/cedanl/onderwijsdata-chat)"
@@ -48,7 +49,6 @@ VEREIST = frozenset(
         "doorstroombachelormaster",
         "doorstroommbohbo",
         "lotingopleidingendecentraleselecties",
-        "collegegelden",
     }
 )
 # De bestandsnaam in de ZIP is bij één tabel ingekort (31 tekens).

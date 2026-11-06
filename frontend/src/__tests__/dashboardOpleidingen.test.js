@@ -61,32 +61,34 @@ describe('de opleidingentabel', () => {
     await dashboard(payloads.hbo)
     expect(api.fetchDashboardData.mock.calls[0][0]).toBe('/api/dashboard/opleidingen')
     expect(kolom('Opleidingen')).toEqual([
-      'Opleiding', 'CROHO', 'Graad', 'Vorm', 'Plaats', 'Studenten', 'Eerstejaars', 'NSE-oordeel', 'NSE landelijk',
+      'Opleiding', 'CROHO', 'Graad', 'Vorm', 'Plaats', 'NSE-oordeel', 'NSE landelijk',
       'Doorstroom jaar 2', 'Diplomarendement', 'Rendement landelijk', 'Numerus fixus',
     ])
     const ict = rijen('Opleidingen').map(cellen).find(c => c[0] === 'ICT' && c[3] === 'voltijd')
-    expect(ict.slice(1, 9)).toEqual(['30020', 'Bachelor', 'voltijd', 'Utrecht', '900', '250', '3,61n = 120', '3,53'])
-    expect(ict[9]).toBe('70,0%')
-    expect(ict[11]).toBe('50,0%')
-    expect(ict[12]).toBe('nee')
+    expect(ict.slice(1, 7)).toEqual(['30020', 'Bachelor', 'voltijd', 'Utrecht', '3,61n = 120', '3,53'])
+    expect(ict[7]).toBe('70,0%')
+    expect(ict[9]).toBe('50,0%')
+    expect(ict[10]).toBe('nee')
+    // Aantallen studenten en eerstejaars staan op Mijn instelling (DUO), niet hier (#878).
+    expect(kolom('Opleidingen')).not.toContain('Studenten')
   })
 
   it('zegt "geen cijfer" bij een leeg vak, nooit 0', async () => {
     await dashboard(payloads.hbo)
     const deeltijd = rijen('Opleidingen').find(tr => cellen(tr)[0] === 'ICT' && cellen(tr)[3] === 'deeltijd')
-    const [doorstroom, rendement] = [...deeltijd.querySelectorAll('td')].slice(9, 11)
+    const [doorstroom, rendement] = [...deeltijd.querySelectorAll('td')].slice(7, 9)
     for (const td of [doorstroom, rendement]) {
       expect(td.textContent).toBe('—geen cijfer')
       expect(td.querySelector('.sr-only').textContent).toBe('geen cijfer')
     }
     // Het landelijke rendement staat er wel, en de HU is daar de enige aanbieder.
-    expect(cellen(deeltijd)[11]).toBe('50,0%enige aanbieder')
+    expect(cellen(deeltijd)[9]).toBe('50,0%enige aanbieder')
   })
 
   it('noemt een oordeel op minder dan 30 respondenten onzeker, in woorden en niet als kleur', async () => {
     await dashboard(payloads.onzeker)
     const [rij] = rijen('Opleidingen')
-    expect(cellen(rij)[7]).toBe('4,20n = 15 · onzeker')
+    expect(cellen(rij)[5]).toBe('4,20n = 15 · onzeker')
     expect(rij.querySelector('[style*="color: rgb(2"], [style*="#DC"], [style*="#16A"]')).toBeNull()
     expect(nseOnderschrift({ nse_oordeel: null, nse_respondenten: 3, nse_onzeker: true })).toBeNull()
   })
@@ -140,7 +142,7 @@ describe('NSE-thema\'s, arbeidsmarkt en numerus fixus', () => {
   it('toont de arbeidsmarkt van een hbo-bachelor met salaris, werkloosheid en baan op niveau', async () => {
     await dashboard(payloads.hbo)
     const ict = rijen('Arbeidsmarkt van de opleidingsrichting').map(cellen).find(c => c[0].startsWith('ICT'))
-    expect(ict.slice(1)).toEqual(['HBO Bachelor', 'informatica', '€ 3.295', '2,5%', '80,0%', 'goede'])
+    expect(ict.slice(1)).toEqual(['HBO Bachelor', 'informatica', '€ 3.295', '2,5%', '80,0%', 'hbo - ict'])
   })
 
   it('toont numerus fixus met capaciteit, studiejaar en voertaal, of zegt dat er geen is', async () => {
@@ -169,7 +171,7 @@ describe('melding en bronvermelding', () => {
     const bronnen = container.querySelector('.dashboard-sources')
     expect(bronnen.textContent).toContain(VERPLICHTE_ZIN)
     expect(bronnen.textContent).toContain('versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26')
-    expect(bronnen.querySelector('a').getAttribute('href')).toBe('https://www.studiekeuze123.nl/studiekeuzedata')
+    expect(bronnen.querySelector('a').getAttribute('href')).toBe('https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/')
   })
 })
 

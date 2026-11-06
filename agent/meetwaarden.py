@@ -332,7 +332,6 @@ _SKDB_GEEN_MAAT = {
     "master_studiecode",
     "master_croho",
     "rang",
-    "collegejaar",
     "numerus_fixus_studiejaar",
     "keren_meedoen",
 }
@@ -341,7 +340,7 @@ _SKDB_GEEN_MAAT = {
 def _skdb_eenheid(kolom: str) -> str | None:
     if kolom.endswith("_pct"):
         return "%"
-    return "€" if kolom.startswith(("salaris", "collegegeld")) else None
+    return "€" if kolom.startswith("salaris") else None
 
 
 def _uit_skdb(parsed: dict) -> Iterator[Meetwaarde]:

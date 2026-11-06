@@ -103,8 +103,8 @@ def test_opleidingen_per_vorm_met_het_landelijke_oordeel_ernaast(export):
     voltijd = rijen[1]
     assert voltijd["plaats"] == "Utrecht"
     assert (voltijd["doorstroom_jaar2_pct"], voltijd["diploma_opleiding_pct"]) == (70.0, 45.5)
-    # Het collegegeld van het nieuwste collegejaar met een bedrag.
-    assert (voltijd["collegegeld_wettelijk"], voltijd["collegejaar"]) == (2694, 2027)
+    # Wat een andere bron leidend heeft, staat er niet in (#878).
+    assert not {"studenten", "eerstejaars", "collegegeld_wettelijk", "accreditatiebesluit"} & set(voltijd)
 
 
 def test_numerus_fixus_neemt_het_nieuwste_studiejaar(export):
@@ -136,8 +136,8 @@ def test_studie_met_arbeidsmarkt_van_de_soi_rubriek(export):
     assert (voltijd["vorm"], voltijd["aantal_opleidingen"], voltijd["nse_oordeel"]) == ("voltijd", 2, 3.53)
     assert (voltijd["soi_rubriek"], voltijd["salaris_mediaan_bruto_maand"], voltijd["werkloos_pct"]) == ("informatica", 3295, 2.5)
     assert deeltijd["salaris_mediaan_bruto_maand"] is None
-    # Een vultekst tussen haakjes is geen waarde.
-    assert skdb.studie(export, 56604)[0]["aansluiting_studie_baan"] is None
+    # Het ROA-opleidingstype als sleutel naar ROA; de aansluiting studie-baan zelf komt uit ROA-AIS (#878).
+    assert voltijd["roa_opleidingstype"] == "hbo - ict" and "aansluiting_studie_baan" not in voltijd
     assert skdb.studie(export, 12345) == []
 
 
@@ -155,6 +155,18 @@ def test_doorstroom_op_rang(export):
         "Mbo-Verpleegkundige",
         "Software Developer",
     ]
+
+
+def test_toelating_per_opleiding_met_de_instellingen_die_dezelfde_eisen_noemen(export):
+    (ict,) = skdb.toelating(export, croho=30020)
+    assert (ict["havo"], ict["mbo"]) == ("Havo met profiel EM, CM, NG, NT.", "Direct toelaatbaar")
+    assert (ict["instellingen"], ict["aantal_instellingen"]) == ("Hogeschool Utrecht; Proefhogeschool Particulier", 2)
+    (psy,) = skdb.toelating(export, naam="psycho")
+    assert (psy["havo"], psy["vwo"], psy["graad"]) == ("Niet toelaatbaar", "Vwo met profiel EM, CM, NG, NT.", "Bachelor")
+    assert skdb.toelating(export, brin="25DW", soort_ho="wo") == []
+    # Een naam kiest de opleiding (code), en dan tellen alle aanbieders, ook als die haar anders noemen.
+    (verpleeg,) = skdb.toelating(export, naam="verpleegkunde")
+    assert verpleeg["croho"] == 34560 and verpleeg["aantal_instellingen"] == 1
 
 
 def test_numerus_fixus_lijst(export):

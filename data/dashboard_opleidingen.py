@@ -4,8 +4,8 @@ Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (LCSK).
 Eén eindpunt, `/api/dashboard/opleidingen`, voor dezelfde instelling als Mijn instelling (`?instelling=`):
 
 - de opleidingentabel: per opleiding (CROHO-code op een vestiging) en vorm het NSE-oordeel met respondenten naast het landelijke
-  oordeel, studenten, eerstejaars, doorstroom naar jaar 2, diplomarendement naast het landelijke rendement en numerus
-  fixus, met de NSE-thema's per vorm;
+  oordeel, doorstroom naar jaar 2, diplomarendement naast het landelijke rendement en numerus fixus, met de NSE-thema's
+  per vorm (aantallen studenten en eerstejaars niet: daarvoor is DUO leidend, afspraken #878);
 - de arbeidsmarkt van de opleidingsrichting: per opleiding de landelijke cijfers van haar SOI-rubriek;
 - de numerus-fixuslijst met capaciteit, studiejaar en voertaal.
 
@@ -57,8 +57,6 @@ KOLOMMEN = (
     "soort_ho",
     "vorm",
     "plaats",
-    "studenten",
-    "eerstejaars",
     "nse_oordeel",
     "nse_respondenten",
     "nse_oordeel_landelijk",
@@ -80,13 +78,14 @@ THEMANAMEN = {
     "nse_opnieuw_kiezen": "Opnieuw kiezen",
     "nse_studiedruk": "Studiedruk",
 }
-# De arbeidsmarkt per opleiding: de SOI-rubriek en drie cijfers (`skdb.ARBEIDSMARKT`), en de aansluiting studie-baan.
+# De arbeidsmarkt per opleiding: de SOI-rubriek en drie cijfers (`skdb.ARBEIDSMARKT`), en het ROA-opleidingstype: de
+# sleutel naar de ROA-cijfers. De aansluiting studie-baan zelf komt uit ROA-AIS, niet uit SKDB (#878).
 ARBEIDSMARKTVELDEN = (
     "soi_rubriek",
     "salaris_mediaan_bruto_maand",
     "werkloos_pct",
     "baan_op_niveau_pct",
-    "aansluiting_studie_baan",
+    "roa_opleidingstype",
 )
 # LCSK geeft de arbeidsmarktcijfers alleen voor voltijd (studiekeuze.ARBEIDSMARKT); de andere vormen zijn leeg.
 _ARBEIDSMARKTVORM = "voltijd"
@@ -131,14 +130,19 @@ def _uitleg(jaren: dict) -> dict[str, str]:
             "gemiddelde van de rijen in deze tabel. Is de instelling de enige aanbieder, dan is landelijk deze "
             "opleiding zelf."
         ),
+        "themas": (
+            "Bij de NSE-thema's is het aantal respondenten per thema onbekend; het aantal bij een opleiding is dat van "
+            "het algemeen oordeel."
+        ),
         "aantallen": (
-            f"Studenten en eerstejaars komen uit 1cijferHO (collegejaar {_collegejaar(jaren.get('1cijferho'))}) en "
-            "kunnen afwijken van de DUO-tellingen op Mijn instelling."
+            "Aantallen studenten en eerstejaars staan op Mijn instelling (DUO): de Studiekeuzedatabase telt anders, "
+            "daarom staan ze hier niet."
         ),
         "doorstroom": f"Doorstroom jaar 2: {studiekeuze.DOORSTROOM_JAAR2}.",
         "diplomarendement": (
-            f"Diplomarendement: {studiekeuze.DIPLOMARENDEMENT}. Het cohortjaar en de omvang van het cohort staan niet "
-            "in de bron."
+            f"Diplomarendement: {studiekeuze.DIPLOMARENDEMENT}. LCSK berekent het uit 1cijferHO (collegejaar "
+            f"{_collegejaar(jaren.get('1cijferho'))}, niet openbaar); het cohortjaar en de omvang van het cohort staan "
+            "niet in de bron."
         ),
         "leeg": "Een leeg vak is leeg in de bron: geen cijfer, ook geen 0.",
         "volgorde": (
@@ -219,7 +223,8 @@ def _export() -> tuple[skdb.Export, dict]:
             "dataset": DATASET,
             "versie": herkomst.versie,
             "peilmoment": peilmoment(herkomst.versie, herkomst.datum, jaren),
-            "vermelding": studiekeuze.bronregel(herkomst),
+            # Het dashboard toont studieverloop en arbeidsmarkt: de bronregel van de weergave studie noemt beide.
+            "vermelding": studiekeuze.bronregel(herkomst, jaren, "studie"),
             "opgehaald_op": herkomst.opgehaald,
         }
     )
