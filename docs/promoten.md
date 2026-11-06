@@ -93,10 +93,10 @@ Besluit 04-11 (#890): de bronpakketten `riodata` en `onderwijsdata` gingen op in
 en de comment op #913) verving de bevriezing: geen aparte release vóór #910 en geen schaduwperiode; release 2.7.0 ging
 met `BRON_ID_CONTRACT: "aan"` naar test en playground.
 
-Afgerond met #914: de vlag, de oude herleiding en de shims `riodata`/`onderwijsdata` zijn weg. Eén restpunt voor de
-**eerste promotie-MR van een release met #914**: haal `BRON_ID_CONTRACT` uit `manifests/playground/values.yaml`. Eerder
-niet: 2.7.0 leest de vlag nog en valt zonder vlag terug op het oude pad (`uit`). Een terugval gaat vanaf die release
-via de pin (terug naar 2.7.0, mét de vlag op `aan` in de manifests), niet meer via een vlag.
+Afgerond met #914: de vlag, de oude herleiding en de shims `riodata`/`onderwijsdata` zijn weg, en met de promotie naar
+2.8.0 ook `BRON_ID_CONTRACT` uit `manifests/playground/values.yaml`. Een terugval gaat via de pin, niet via een vlag.
+Terug naar 2.7.0 vraagt dan de vlag (`BRON_ID_CONTRACT: "aan"`) weer in de manifests: 2.7.0 leest hem nog en valt
+zonder op het oude pad (`uit`).
 
 ## Jaarlijks
 
