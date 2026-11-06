@@ -16,7 +16,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from onderwijsbronnen.duo.financien import KENGETALLEN
 
-from tools import TOOL_RUN_ANALYSIS, financien, studiekeuze, wo_personeel
+from tools import TOOL_RUN_ANALYSIS, collegegeld, financien, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
@@ -44,12 +44,14 @@ class Meetwaarde:
     data_key: str | None = None
     eenheid: str | None = None
     # De bron in woorden: zonder data_key (een UWV- of ROA-resultaat van vóór #577), of een voorgeschreven bronregel
-    # (WOPI) en een vaste waarde van een andere bron dan de tabel (de signaleringswaarden van de Inspectie, #956).
+    # (WOPI) en een vaste waarde van een andere bron dan de tabel (de signaleringswaarden van de Inspectie, #956), of
+    # een bron zonder tabel in de store (de wettekst van het collegegeld, #970).
     bron: str | None = None
     rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
     # De waarde zonder teken, voor een getal met decimale komma in de tekst (0,69; 2,0 %; `schrijft`): alleen van een
-    # bron die afgeronde decimalen geeft (financien, WOPI; #956). Een getal met komma krijgt alleen zo een citatie, en een
-    # geheel getal onder 1.000 alleen als het deze waarde exact is (SKDB-capaciteit 71, #963).
+    # bron met een eigen resultaatvorm (financien, WOPI; #956; ook SKDB en het collegegeld). Een getal met komma krijgt
+    # alleen zo een citatie, en een geheel getal onder 1.000 alleen als het deze waarde exact is (SKDB-capaciteit 71,
+    # #963); het collegegeld heeft geen bedrag onder 1.000, maar volgt dezelfde regel.
     decimaal: Decimal | None = None
 
 
@@ -368,14 +370,31 @@ def _uit_skdb(parsed: dict) -> Iterator[Meetwaarde]:
             )
 
 
+def _uit_collegegeld(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_collegegeld (#729, #970): het volledige bedrag (voltijd) en het minimum en maximum van het gedeeltelijke
+    (deeltijd en duaal) van één studiejaar, in euro, met de wettekst en haar versie als bron; er is geen tabel in de
+    store. Deeltijd en duaal staan als twee cellen, zodat een zin die er één noemt de rij aanwijst; het maximum is in
+    de wet gelijk aan het volledige bedrag, en dan beslist de zin (voltijd of deeltijd)."""
+    bron = _blok(parsed, "bron")
+    regel = f"{bron.get('naam')}, versie van {bron.get('versie')}"
+    jaar = f"Studiejaar: {parsed.get('studiejaar')}"
+    voltijd = _blok(parsed, "voltijd").get("bedrag_euro")
+    yield from _afgerond(voltijd, "Volledig wettelijk collegegeld", (jaar, "Vorm: voltijd"), None, "€", regel)
+    gedeeltelijk = _blok(parsed, "deeltijd_en_duaal")
+    for veld, grens in (("minimum_euro", "minimum"), ("maximum_euro", "maximum")):
+        selectie = (jaar, "Vorm: deeltijd", "Vorm: duaal", f"Bedrag: {grens}")
+        yield from _afgerond(gedeeltelijk.get(veld), "Gedeeltelijk wettelijk collegegeld", selectie, None, "€", regel)
+
+
 # Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956), de
-# Studiekeuzedatabase (#957).
+# Studiekeuzedatabase (#957), het wettelijk collegegeld (#970).
 _EIGEN_VORM = {
     UWV_ID: _uit_uwv,
     ROA_ID: _uit_roa,
     financien.DATASET: _uit_financien,
     wo_personeel.DATASET: _uit_wopi,
     studiekeuze.DATASET: _uit_skdb,
+    collegegeld.DATASET: _uit_collegegeld,
 }
 
 

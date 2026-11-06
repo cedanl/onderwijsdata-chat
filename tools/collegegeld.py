@@ -23,6 +23,8 @@ REGELING = "Regeling financiën hoger onderwijs"
 ARTIKEL = "artikel 9"
 BRONNAAM = "wetten.nl"
 BRONTITEL = f"{REGELING} ({BWBR}), {ARTIKEL}"
+# Het ID waaronder agent/meetwaarden.py de bedragen als meetwaarden leest (#970); de tabel staat niet in de store.
+DATASET = "wetten:collegegeld"
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,7 @@ def uitkomst(b: Bedragen, vandaag: date) -> dict:
     """Het ene bedragenpaar van een studiejaar, met betekenis, noten en bron."""
     label = periode.studiejaar_label(b.startjaar)
     uit: dict = {
+        "dataset": DATASET,
         "studiejaar": label,
         "voltijd": {"bedrag_euro": b.volledig, "betekenis": VOLTIJD},
         "deeltijd_en_duaal": {
