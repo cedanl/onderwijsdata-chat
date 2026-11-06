@@ -17,7 +17,7 @@ from routes import config as config_route
 from tests.test_financien import _BESTUUR, _DATA, _PROFIELEN
 from tools import beschikbaarheid, catalog, fusies
 from tools import financien as fin
-from tools.schemas import TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_WO_PERSONEEL
+from tools.schemas import TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_STUDIEKEUZE, TOOL_GET_WO_PERSONEEL
 
 
 @pytest.fixture(autouse=True)
@@ -77,6 +77,13 @@ def test_wopi_volgt_de_vlag(monkeypatch, vlag):
     assert beschikbaarheid.bronnen()["wo_personeel"] is vlag
 
 
+@pytest.mark.parametrize(("sleutel", "verwacht"), [("proefsleutel", True), (None, False), ("", False)])
+def test_de_studiekeuzedatabase_volgt_de_sleutel(monkeypatch, sleutel, verwacht):
+    monkeypatch.setattr(config, "STUDIEKEUZEDATABASE_API_KEY", sleutel)
+    assert beschikbaarheid.tool(TOOL_GET_STUDIEKEUZE) is verwacht
+    assert beschikbaarheid.bronnen()["studiekeuze"] is verwacht
+
+
 def test_met_de_vlag_noemt_het_rapport_de_titel_van_wopi(omgeving):
     omgeving(wopi=True)
     datasets = [{"data_key": "wopi:landelijk", "herkomst": [{"name": TOOL_GET_WO_PERSONEEL, "arguments": {}}]}]
@@ -101,7 +108,7 @@ def _zoek(vraag: str) -> list[tuple[str, str]]:
 def test_op_test_geven_beide_bronnen_antwoord_en_vindt_de_catalogus_ze_als_via_tool(omgeving):
     omgeving(wopi=True, app_env="test")
     antwoord = _config()
-    assert antwoord["config"]["bronnen"] == {"financien": True, "wo_personeel": True}
+    assert antwoord["config"]["bronnen"] == {"financien": True, "wo_personeel": True, "studiekeuze": False}
     assert ("wopi", "via_tool") in _zoek("wetenschappelijk personeel universiteit")
     assert ("financien", "via_tool") in _zoek("financien bestuur solvabiliteit")
     details = json.loads(catalog.dataset_details("unl:wopi"))
@@ -115,7 +122,7 @@ def test_op_test_geven_beide_bronnen_antwoord_en_vindt_de_catalogus_ze_als_via_t
 
 def test_op_playground_geven_de_financien_cijfers_zodra_de_licentie_geldt(omgeving):
     omgeving(wopi=False, app_env="playground", licentie=True)
-    assert _config()["config"]["bronnen"] == {"financien": True, "wo_personeel": False}
+    assert _config()["config"]["bronnen"] == {"financien": True, "wo_personeel": False, "studiekeuze": False}
     assert ("financien", "via_tool") in _zoek("financien bestuur solvabiliteit")
 
 
@@ -126,7 +133,7 @@ def test_de_licentie_van_de_financien_geldt_als_bevestigd():
 def test_op_playground_zonder_vlag_geeft_geen_van_beide_cijfers(omgeving):
     omgeving(wopi=False, app_env="playground")
     antwoord = _config()
-    assert antwoord["config"]["bronnen"] == {"financien": False, "wo_personeel": False}
+    assert antwoord["config"]["bronnen"] == {"financien": False, "wo_personeel": False, "studiekeuze": False}
     # WOPI staat uit: niet vindbaar, zoals vóór #956. De financiën blijven vindbaar, maar zeggen dat de tool hier
     # geen cijfers geeft: geen kandidaat die alleen een melding oplevert.
     assert all(dataset != "wopi" for dataset, _ in _zoek("wetenschappelijk personeel universiteit"))

@@ -35,11 +35,13 @@ from .schemas import (
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
+from .studiekeuze import get_studiekeuze
 from .wo_personeel import get_wo_personeel
 
 logger = logging.getLogger(__name__)
@@ -59,6 +61,7 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
     # geeft, beslist tools/beschikbaarheid.py bij het herladen: zonder vlag of licentie haalt ook een recept niets op.
     TOOL_GET_BESTUURSFINANCIEN: (get_bestuursfinancien, "DUO"),
     TOOL_GET_WO_PERSONEEL: (get_wo_personeel, "Universiteiten van Nederland"),
+    TOOL_GET_STUDIEKEUZE: (get_studiekeuze, "Landelijk Centrum Studiekeuze"),
 }
 _MAX_STAPPEN = 10  # een keten van selecties; meer is een kapot of rondlopend recept
 _MAX_REDEN = 300

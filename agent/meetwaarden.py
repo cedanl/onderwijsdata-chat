@@ -16,7 +16,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from onderwijsbronnen.duo.financien import KENGETALLEN
 
-from tools import TOOL_RUN_ANALYSIS, financien, wo_personeel
+from tools import TOOL_RUN_ANALYSIS, financien, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
@@ -312,8 +312,71 @@ def _uit_wopi(parsed: dict) -> Iterator[Meetwaarde]:
             yield from _afgerond(waarde, maat, selectie, data_key, eenheid, regel if isinstance(regel, str) else None)
 
 
-# Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956).
-_EIGEN_VORM = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa, financien.DATASET: _uit_financien, wo_personeel.DATASET: _uit_wopi}
+# De velden van een rij van get_studiekeuze die zeggen waar de rij over gaat (#957), in woorden; een code is geen maat.
+_SKDB_SELECTIE = {
+    "instelling": "Instelling",
+    "opleiding": "Opleiding",
+    "studie": "Studie",
+    "bachelor": "Bachelor",
+    "master": "Master",
+    "mbo_opleiding": "Mbo-opleiding",
+    "hbo_studie": "Hbo-studie",
+    "vorm": "Vorm",
+    "plaats": "Plaats",
+    "voertaal": "Voertaal",
+    "studiejaar": "Studiejaar",
+}
+_SKDB_GEEN_MAAT = {
+    "croho",
+    "studiecode",
+    "master_studiecode",
+    "master_croho",
+    "rang",
+    "collegejaar",
+    "numerus_fixus_studiejaar",
+    "keren_meedoen",
+}
+
+
+def _skdb_eenheid(kolom: str) -> str | None:
+    if kolom.endswith("_pct"):
+        return "%"
+    return "€" if kolom.startswith(("salaris", "collegegeld")) else None
+
+
+def _uit_skdb(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_studiekeuze (#957): elk getal van elke getoonde rij, met instelling, opleiding en vorm als selectie en de
+    voorgeschreven bronregel van LCSK."""
+    data_key = _sleutel(parsed)
+    regel = _blok(parsed, "bron").get("regel")
+    for rij in parsed.get("rijen") or ():
+        if not isinstance(rij, dict):
+            continue
+        selectie = tuple(
+            f"{label}: {rij[veld]}" for veld, label in _SKDB_SELECTIE.items() if rij.get(veld) not in (None, "")
+        )
+        for kolom, waarde in rij.items():
+            if kolom in _SKDB_SELECTIE or kolom in _SKDB_GEEN_MAAT:
+                continue
+            yield from _afgerond(
+                waarde,
+                kolomlabel(kolom),
+                selectie,
+                data_key,
+                _skdb_eenheid(kolom),
+                regel if isinstance(regel, str) else None,
+            )
+
+
+# Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956), de
+# Studiekeuzedatabase (#957).
+_EIGEN_VORM = {
+    UWV_ID: _uit_uwv,
+    ROA_ID: _uit_roa,
+    financien.DATASET: _uit_financien,
+    wo_personeel.DATASET: _uit_wopi,
+    studiekeuze.DATASET: _uit_skdb,
+}
 
 
 def _uit(parsed, analyse: bool) -> Iterator[Meetwaarde]:

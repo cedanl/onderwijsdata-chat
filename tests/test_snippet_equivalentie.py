@@ -75,6 +75,7 @@ from tools.schemas import (
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
     TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
@@ -89,6 +90,8 @@ _EIGEN_TEST: dict[str, str] = {
     TOOL_GET_WO_PERSONEEL: "tests/test_wo_personeel.py",
     # DUO's verantwoording uit XBRL (#935): test_de_snippet_rekent_met_dezelfde_pakketfunctie_als_de_tool.
     TOOL_GET_BESTUURSFINANCIEN: "tests/test_financien.py",
+    # De Studiekeuzedatabase (#957): test_de_snippet_geeft_dezelfde_tabel_als_de_app.
+    TOOL_GET_STUDIEKEUZE: "tests/test_studiekeuze.py",
 }
 
 # Tools van de app zonder eigen laadstap in een snippet, met de reden. Een tool hier maakt geen snippet

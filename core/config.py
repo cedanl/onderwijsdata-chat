@@ -84,6 +84,10 @@ DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
 # get_wo_personeel staat alleen in de toolset als deze vlag aan staat. Standaard uit; alleen manifests/test zet hem aan,
 # tot UNL schriftelijk bevestigt dat hergebruik mag (besluit 05-11 op #731). Playground en production niet.
 WO_PERSONEEL_ENABLED = os.getenv("ENABLE_WO_PERSONEEL", "false").lower() == "true"
+# Bearer-sleutel van de Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957, tools/studiekeuze.py): de tool
+# get_studiekeuze staat alleen in de toolset als de sleutel er is. Op test en playground uit de secret
+# (manifests/<omgeving>/values.yaml, optional); production en development hebben hem niet.
+STUDIEKEUZEDATABASE_API_KEY = os.getenv("STUDIEKEUZEDATABASE_API_KEY") or None
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

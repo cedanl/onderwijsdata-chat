@@ -18,7 +18,7 @@ from agent.session_data import (
 )
 from agent.stream import Emit
 from core.errors import Gebruikersfout
-from tools import arbeidsmarkt, financien, store, wo_personeel
+from tools import arbeidsmarkt, financien, store, studiekeuze, wo_personeel
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
@@ -27,6 +27,7 @@ from tools.schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
 )
@@ -42,6 +43,7 @@ LAADTOOLS = frozenset(
         TOOL_GET_ROA_BENCHMARK,
         TOOL_GET_BESTUURSFINANCIEN,
         TOOL_GET_WO_PERSONEEL,
+        TOOL_GET_STUDIEKEUZE,
     }
 )
 # De vaste dataset achter een tool waarvan de aanroep geen dataset-ID noemt (#577, #956).
@@ -49,6 +51,7 @@ _VASTE_DATASET = {
     **arbeidsmarkt.DATASET,
     TOOL_GET_BESTUURSFINANCIEN: financien.DATASET,
     TOOL_GET_WO_PERSONEEL: wo_personeel.DATASET,
+    TOOL_GET_STUDIEKEUZE: studiekeuze.DATASET,
 }
 
 
@@ -173,6 +176,7 @@ _SOURCE_PREFIXES = {
     TOOL_GET_ROA_BENCHMARK: "ROA",
     TOOL_GET_BESTUURSFINANCIEN: "DUO",
     TOOL_GET_WO_PERSONEEL: "UNL",
+    TOOL_GET_STUDIEKEUZE: "LCSK",
 }
 
 
