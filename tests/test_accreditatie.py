@@ -102,7 +102,7 @@ def test_de_datums_met_hun_betekenis_peilmoment_en_bron(tool):
     assert uit["bron"] == {
         "naam": "DUO, Overzicht Erkenningen ho",
         "url": documentatie_url(accreditatie.DATASET),
-        "licentie": accreditatie.LICENTIE,
+        "licentie": "CC0 1.0 (DUO, hergebruik open onderwijsdata)",  # één regel voor elke DUO-bron (#971)
         "data_key": "duo:overzicht-erkenningen-ho:0",
         "peilmoment": "versie van 30-10-2026",
     }

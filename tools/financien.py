@@ -33,7 +33,7 @@ BRONNAAM = "DUO"
 # Het ID in het bron:id-contract (#912); de tabel achter een uitkomst staat onder dit ID in de store (#956).
 DATASET = "duo:financien"
 BRONTITEL = "Financiële verantwoording uit XBRL (variant standaard)"
-LICENTIE = "CC0 1.0 (DUO, hergebruik open onderwijsdata)"
+LICENTIE = beschikbaarheid.DUO_LICENTIE
 _HEADERS = {"User-Agent": "openEDUdata+ (onderwijsdata-chat)"}
 _SECTOREN = {"MBO": "mbo", "HBO": "hbo", "WO": "wo"}
 # De velden van een jaar waarvan een lege waarde een noot krijgt: leeg is geen nul.

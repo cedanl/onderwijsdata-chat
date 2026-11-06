@@ -99,6 +99,16 @@ hbo en wo niets aan toe (onderzoek 04-11-2026, no-go): de chat gebruikt alleen R
 | Catalogus | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | Formaten | Excel/CSV via CKAN |
 | Dekking | MBO, HBO, WO |
+| Licentie | CC0 1.0 (hieronder) |
+
+**Licentie, voor elke DUO-bron (#971):** CC0 1.0. DUO verklaart op
+[Hergebruik open onderwijsdata](https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp) dat op de open
+onderwijsdata die DUO beschikbaar stelt een CC0-verklaring van toepassing is, met de Engelse Legal Code als leidend
+(nagelezen 06-11-2026). Dat geldt voor de CKAN-portal onderwijsdata.duo.nl en voor de bestanden op
+duo.nl/open_onderwijsdata (de indicatoren mbo, de financiën uit XBRL), ook als een bestand of pagina zelf geen licentie
+noemt. Het CKAN-veld `license_id` zegt bij 51 van de 57 datasets `cc-by` en bij 6 niets; de app volgt de verklaring van
+DUO zelf. Omdat de app bij elk antwoord DUO en de URL noemt, voldoet ze ook aan CC-BY. Een DUO-bestand als testfixture
+in de repo (en dus op de publieke spiegel) valt onder dezelfde regel, met de URL in `tests/fixtures/gouden/bronnen.json`.
 
 **Categorieën:**
 
@@ -334,12 +344,13 @@ chat via `get_mbo_indicatoren`, alleen voor mbo-instellingen (#727).
 - **Weigeren in plaats van gokken:** de kolommen komen uit de koppen. Een onbekende kop, sheet, BRIN of
   vergelijkingsgroep, een percentage buiten 0–1, of een groepswaarde die binnen een groep verschilt (verwisselde
   kolommen) geeft een foutmelding zonder cijfers. Een HTML-foutpagina met HTTP 200 (soft 404) ook.
-- **Licentie:** DUO vermeldt geen licentie bij dit bestand; navraag loopt. De bronvermelding noemt DUO en de URL.
+- **Licentie:** CC0 1.0, zoals alle open onderwijsdata van DUO ([de regel](#duo-dienst-uitvoering-onderwijs)); het
+  bestand en indicatoren.jsp noemen zelf geen licentie. De bronvermelding noemt DUO en de URL.
 - **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | duo.nl, open onderwijsdata (licentie nog niet bevestigd) |
+| Toegang | duo.nl, open onderwijsdata (CC0) |
 | Inhoud | Jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling, met vergelijkingsgroep |
 | Formaat | xlsx, één editie per jaar, één keer per dag opgehaald |
 | Koppeling | Instellingscode (BRIN) uit het register |
@@ -380,10 +391,8 @@ In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.fina
   alleen met voorgangers die zelf als mbo-, hbo- of wo-bestuur in de verantwoording staan.
 - **Vaste voorbehouden:** het hele bestuur (ook vo), geen uitspraak over kwaliteit, verslagjaar = boekjaar en niet door
   een accountant gecontroleerd, één variant, een signaal is geen oordeel.
-- **Licentie:** CC0 1.0. De pagina van het bestand noemt geen licentie, maar op de open onderwijsdata van DUO rust een
-  CC0-verklaring ([Hergebruik open onderwijsdata](https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp),
-  de Engelse Legal Code is leidend); het bestand staat op diezelfde site. Een schriftelijke bevestiging per bestand is er
-  niet. `LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py` staat daarom op True; op False geeft de tool op playground en
+- **Licentie:** CC0 1.0, zoals alle open onderwijsdata van DUO ([de regel](#duo-dienst-uitvoering-onderwijs)); de
+  pagina van het bestand noemt zelf geen licentie. Een schriftelijke bevestiging per bestand is er niet. `LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py` staat daarom op True; op False geeft de tool op playground en
   productie weer alleen een melding, en bepaalt dezelfde regel de status in search_catalog (dan `alleen_catalogus`), de
   suggestievragen op het startscherm en de tellingen (#956).
 - **Citaties, telling en export (#956):** elk getal uit de tool krijgt een citatie (ook met decimale komma); de tabel
@@ -403,7 +412,8 @@ In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.fina
 
 ## Accreditatie per ho-opleiding — DUO, Overzicht Erkenningen ho
 
-DUO publiceert dagelijks de erkende ho-opleidingen per instelling (`overzicht-erkenningen-ho`, CC-BY), met de datums
+DUO publiceert dagelijks de erkende ho-opleidingen per instelling (`overzicht-erkenningen-ho`, CC0 zoals elke
+[DUO-bron](#duo-dienst-uitvoering-onderwijs); CKAN meldt `cc-by`), met de datums
 die de NVAO of de minister over de accreditatie vastlegt (toelichting v1.8). In de chat via `get_accreditatie`, per
 hbo- of wo-opleiding (#726, stap A).
 - **Geen oordeel:** het overzicht bevat geen NVAO-oordeel (voldoende, goed, excellent), geen besluittekst en geen
@@ -415,7 +425,7 @@ hbo- of wo-opleiding (#726, stap A).
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | onderwijsdata.duo.nl, open data (CC-BY), via het gewone DUO-laadpad |
+| Toegang | onderwijsdata.duo.nl, open data (CC0), via het gewone DUO-laadpad |
 | Inhoud | Erkenning en accreditatiedatums per instelling en opleiding (CROHO) |
 | Formaat | CSV, dagelijks bijgewerkt |
 | Koppeling | `INSTELLINGSCODE` = instellingscode uit het register; `ERKENDEOPLEIDINGSCODE` = CROHO, vijf cijfers |

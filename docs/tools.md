@@ -533,7 +533,7 @@ verantwoording uit XBRL (#935, besluit op #725; `tools/financien.py`, bron en re
 De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit DUO's Overzicht Erkenningen ho (#726 stap A,
 `tools/accreditatie.py`).
 - **Route:** de code zoekt de instelling in het register en laadt het erkenningenbestand via `get_duo_data`
-  (`overzicht-erkenningen-ho`, bestand 0; CC-BY, dagelijks bijgewerkt). De opleiding zoekt ze op CROHO-code (vijf
+  (`overzicht-erkenningen-ho`, bestand 0; CC0 zoals elke DUO-bron, dagelijks bijgewerkt). De opleiding zoekt ze op CROHO-code (vijf
   cijfers met voorloopnullen: `4181` is `04181`) of op naam, met dezelfde resolutie als geslacht per opleiding
   (`tools/geslacht_opleiding.py`). Passen er meer opleidingen, dan noemt de melding ze met niveau en code.
 - **Resultaat:** per datum die DUO registreert de datum en zijn betekenis, uit code:
