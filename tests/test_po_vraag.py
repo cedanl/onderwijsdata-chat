@@ -54,6 +54,12 @@ def register(monkeypatch):
         "Hoeveel vmbo-leerlingen halen hun diploma?",
         # Een losse vo-vraag met een woord dat op een ho-graad lijkt, blijft dicht (#957).
         "Hoeveel vwo-leerlingen volgen een masterclass?",
+        # Een los toelatingswoord of een losse graad is geen ho-opleiding (#968).
+        "Hoeveel leerlingen worden toegelaten tot het vwo?",
+        "Hoeveel basisschoolleerlingen krijgen een vwo-advies na de toelatingstoets?",
+        "Hoeveel leraren in het vo hebben een master?",
+        "Hoeveel leerlingen met havo worden toegelaten tot het vwo?",
+        "Wat zijn de toelatingseisen voor het vwo?",
         # Po blijft dicht, ook met een doorstroomwoord (#877).
         "Wat is de doorstroom van de basisschool naar het vwo?",
     ],

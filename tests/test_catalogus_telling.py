@@ -100,9 +100,26 @@ def test_een_dataset_buiten_scope_is_voor_de_chat_onzichtbaar():
     [
         "Welk profiel heb ik met havo nodig voor Verpleegkunde?",
         "Kan ik met een vwo-diploma naar de bachelor Psychologie?",
+        "Kan ik met een havo-diploma naar de opleiding Geneeskunde?",
+        "Welke vakken moet ik met vwo hebben voor de bachelor Psychologie?",
+        "Wat zijn de toelatingseisen met havo voor Biomedische Wetenschappen?",
     ],
 )
 def test_een_toelatingsvraag_over_een_ho_opleiding_is_niet_buiten_het_profiel(vraag):
     """Dezelfde regel als de vaste scope-uitleg (ho_markers.vervolgcontext, #957): havo/vwo is hier de vooropleiding."""
     assert catalog._buiten_profiel(vraag) is False
     assert catalog._buiten_profiel("Hoeveel leerlingen zitten er op het vwo?") is True
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Hoeveel leerlingen worden toegelaten tot het vwo?",
+        "Hoeveel basisschoolleerlingen krijgen een vwo-advies na de toelatingstoets?",
+        "Hoeveel leraren in het vo hebben een master?",
+        "Hoeveel vwo-leerlingen volgen een masterclass?",
+    ],
+)
+def test_een_los_toelatingswoord_of_een_losse_graad_houdt_een_vo_vraag_buiten_het_profiel(vraag):
+    """Alleen een ho-opleiding of havo/vwo als vooropleiding maakt een toelatingsvraag ho-context (#968)."""
+    assert catalog._buiten_profiel(vraag) is True
