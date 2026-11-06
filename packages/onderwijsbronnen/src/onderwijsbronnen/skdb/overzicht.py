@@ -107,8 +107,10 @@ def jaren(export: Export) -> dict[str, int | None]:
     return {"nse": hoogste("enqueteJaar"), "1cijferho": hoogste("eenCijferHoMeestRecenteJaar")}
 
 
-def instellingen(export: Export) -> list[dict]:
-    """De instellingen van de export: BRIN, naam, soort (hogeschool/universiteit) en bekostiging."""
+def instellingen(export: Export, naam: str | None = None) -> list[dict]:
+    """De instellingen van de export: BRIN, naam, soort (hogeschool/universiteit) en bekostiging. `naam` zoekt op
+    woordbegin, zoals de opleidingen (#960): "fontys" vindt "Fontys Hogescholen", "school" niet "Hogeschool Utrecht"."""
+    zoek = naam.lower().strip() if naam else None
     return sorted(
         (
             {
@@ -118,6 +120,7 @@ def instellingen(export: Export) -> list[dict]:
                 "bekostiging": r.get("instellingBekostiging"),
             }
             for r in export.rijen("instellingen")
+            if not zoek or _bevat(r.get("instellingNaam"), zoek)
         ),
         key=lambda r: str(r["naam"]),
     )

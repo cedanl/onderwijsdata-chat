@@ -146,6 +146,14 @@ def test_een_naam_zoekt_op_woordbegin_niet_midden_in_een_woord(export):
     assert [r["plaats"] for r in skdb.opleidingen(export, plaats="'s-hertogenbosch")] == ["'s-Hertogenbosch"]
 
 
+def test_een_instellingsnaam_zoekt_op_woordbegin(export):
+    """#971: "school" vond als substring elke hogeschool; nu telt alleen het begin van een woord."""
+    assert len(skdb.instellingen(export)) == len(proefbestand.INSTELLINGEN)
+    assert [r["naam"] for r in skdb.instellingen(export, naam="hogeschool")] == ["Hogeschool Utrecht"]
+    assert [r["brin"] for r in skdb.instellingen(export, naam="Particulier")] == ["99XX"]
+    assert skdb.instellingen(export, naam="school") == []
+
+
 def test_studie_met_arbeidsmarkt_van_de_soi_rubriek(export):
     voltijd, deeltijd = skdb.studie(export, 30020)
     assert (voltijd["vorm"], voltijd["aantal_opleidingen"], voltijd["nse_oordeel"]) == ("voltijd", 2, 3.53)
