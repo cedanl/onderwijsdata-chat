@@ -97,6 +97,13 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
         key: WILLMA_API_KEY
+  # API-sleutel van de studiekeuzedatabase. optional: de pod start ook zonder deze sleutel in het secret.
+  - name: STUDIEKEUZEDATABASE_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: STUDIEKEUZEDATABASE_API_KEY
+        optional: true
   - name: LOG_LEVEL
     value: "INFO"
   - name: CORS_ORIGINS
