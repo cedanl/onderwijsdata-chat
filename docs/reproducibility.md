@@ -29,6 +29,11 @@ Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat sta
 `python`-codeblok (`frontend/src/conversationExport.js`, #366). Een los `.py`-bestand levert de app niet; je kopieert de
 code van de stap die je wilt herhalen.
 
+Vraag je in de chat om de code ("Geef de code om dit zelf na te rekenen"), dan zet de app de snippet van de laatste
+datastap van het gesprek onder het antwoord, onder de kop **Code**: dezelfde tekst als bij de stap. Het model schrijft
+geen eigen script; dat las eerder een verzonnen CSV-bestand in (#959, `agent/codeverzoek.py`). Een vraag naar een
+CROHO-, BRIN- of opleidingscode telt niet als codeverzoek.
+
 Dit is de snippet die de app voor de `query_data`-stap hierboven maakt; de commentaarkop over de databewerking en de
 pakketversies is weggelaten:
 
