@@ -33,9 +33,10 @@ def omgeving(monkeypatch):
     """Zet de vlag van WOPI en de omgeving (licentie van de financiën) en lees de catalogus opnieuw: de catalogus leest
     de vlag één keer per proces (tools/catalog.py, _TOOLBRONNEN)."""
 
-    def zet(*, wopi: bool, app_env: str = "test") -> None:
+    def zet(*, wopi: bool, app_env: str = "test", licentie: bool = False) -> None:
         monkeypatch.setattr(config, "WO_PERSONEEL_ENABLED", wopi)
         monkeypatch.setattr(beschikbaarheid.Config, "APP_ENV", app_env)
+        monkeypatch.setattr(beschikbaarheid, "LICENTIE_BEVESTIGD", licentie)
         _wis_catalogus()
 
     yield zet
@@ -110,6 +111,16 @@ def test_op_test_geven_beide_bronnen_antwoord_en_vindt_de_catalogus_ze_als_via_t
     assert antwoord["counts"] == catalog.catalogus_aantallen()
     assert antwoord["counts"]["DUO"] == catalog.dataset_counts()["DUO"] + 1
     assert json.loads(catalog.catalogus_telling())["via_eigen_tool"]["UNL"] == 1
+
+
+def test_op_playground_geven_de_financien_cijfers_zodra_de_licentie_geldt(omgeving):
+    omgeving(wopi=False, app_env="playground", licentie=True)
+    assert _config()["config"]["bronnen"] == {"financien": True, "wo_personeel": False}
+    assert ("financien", "via_tool") in _zoek("financien bestuur solvabiliteit")
+
+
+def test_de_licentie_van_de_financien_geldt_als_bevestigd():
+    assert beschikbaarheid.LICENTIE_BEVESTIGD is True  # CC0 van DUO; False zet de financiën weer terug naar test
 
 
 def test_op_playground_zonder_vlag_geeft_geen_van_beide_cijfers(omgeving):

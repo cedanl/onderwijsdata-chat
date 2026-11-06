@@ -2,7 +2,7 @@
 
 Alle wijzigingen die voor gebruikers of beheerders van belang zijn. Formaat naar
 [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versienummers volgen de git-tags;
-de laatste tag is 2.7.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.7.0 beschrijven de
+de laatste tag is 2.8.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.8.0 beschrijven de
 GitHub-releases; 2.5.1 (een tag zonder release) en 2.5.2 (een herstelrelease) staan niet apart: wat erin zat, staat
 onder 2.5.3.
 
@@ -10,6 +10,104 @@ onder 2.5.3.
 
 Nieuwe items komen niet hier, maar als fragment in `changelog.d/`: één bestand per MR (`CONTRIBUTING.md`). Bij een
 release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de items die hier nog staan.
+
+## 2.8.0 — 2026-11-06
+
+### Citaties, telling en export voor de financiën en WOPI; suggesties en vindbaarheid per omgeving (#956)
+- Een antwoord met de financiën van een bestuur (`get_bestuursfinancien`) of met WOPI-personeel (`get_wo_personeel`)
+  heeft nu citaties: elk kengetal van bestuur en sector, het verschil, de rijksbijdragen, de signaleringswaarde (met de
+  Inspectie als bron) en elk fte-, personen- en aandeelcijfer, met eenheid en selectie (bestuur of instelling,
+  verslagjaar of peildatum, variant, met of zonder GEZO). Ook een getal met een decimale komma (solvabiliteit 0,69,
+  6.184,36 fte) krijgt een citatie als het op een waarde van deze tools past.
+- De tabel achter het resultaat staat in de store, met bron, dataset (`duo:financien`, `unl:wopi`), editie of
+  peildatum en laadaanroep: de CSV-export met inhoudshash werkt, de data komt na een herstart uit haar recept terug, en
+  een volgende stap (selectie, grafiek) heeft een snippet die bij de bron begint. Een export noemt nu bij elke
+  momentopname of editie ook het peilmoment.
+- Telling: bij de financiën over hoeveel eenheden het sectorcijfer gaat en een fusie in de reeks, bij WOPI wat fte en
+  personen tellen en de GEZO-variant.
+- Startscherm: vragen over de financiën (mbo, hbo, wo) en over WOPI (alleen wo), alleen waar die bron antwoord geeft.
+- search_catalog vindt WOPI als `via_tool` waar de vlag aan staat; de financiën staan, als de licentie niet als
+  bevestigd geldt, als `alleen_catalogus`. De tellingen op de startpagina en in het venster Databronnen tellen bronnen met een eigen tool
+  (UWV, ROA, de financiën, WOPI) mee waar die antwoord geven.
+
+### Een vacaturevraag over een provincie krijgt geen kaart met instellingen meer (#953)
+- "Hoeveel vacatures in de zorg staan er in de provincie Utrecht volgens UWV?" kreeg de kaart "Over welke Utrecht
+  gaat je vraag" met Universiteit Utrecht, Hogeschool Utrecht en studenten die in Utrecht wonen; geen optie paste. Nu
+  gaat zo'n vraag direct naar de UWV-cijfers.
+- De plaatskaart komt niet meer als de vraag de plaats al een gebied noemt ("provincie Utrecht", "gemeente
+  Groningen") of over de arbeidsmarkt gaat (vacatures, UWV, arbeidsmarkt, beroepen). "Hoeveel studenten in Utrecht?"
+  houdt de kaart.
+
+### Vaste dashboards: regiototaal, kleine sectoren in de match en het oude instroom-pad (#951, #952, #954)
+- "Regio totaal" telt de eigen instelling mee en zegt wie erin zit: "Curio en 6 andere mbo-instellingen in provincie
+  Noord-Brabant" (72.104), in plaats van 56.816 zonder Curio naast "6 instellingen in regio". Het marktaandeel rekent
+  met hetzelfde totaal. Het rendement noemt in zijn label de peers in het gemiddelde, niet de gevonden peers, en heeft
+  een korte legenda; de definitie zegt dat teller en noemer ondergrenzen zijn.
+- Curio staat op haar eigen kaart (Etten-Leur ontbrak, net als vijf andere plaatsen). Het mbo krijgt bij
+  "Gediplomeerden per jaar" het regiogemiddelde dat de grafiek beloofde. De ROA-prognose toont de verwachte
+  baanopeningen en instroom van schoolverlaters (stonden overal als "—"). Het UWV-blok heet "in de provincie".
+- Elke liggende staafgrafiek noemt elke categorie (Chart.js sloeg er de helft over), lange woorden breken af op een
+  telefoon, sectoren en leerwegen heten bij hun naam (geen GEDRAG_EN_MAATSCHAPPIJ of BOLVT), een aandeel vrouw staat
+  op één decimaal en "ten minste" staat overal hetzelfde voor het getal.
+- Arbeidsmarktmatch: een sector met minder dan 30 gediplomeerden per jaar krijgt geen label en geen verhouding maar
+  "te weinig gediplomeerden"; een staaf is hoogstens 5 lang, met de echte waarde in tooltip, tabel en een noot
+  (Tilburg University, Techniek: 52,15). De duiding zegt dat teller en noemer verschillende grootheden zijn.
+- `GET /api/dashboard/instroom` geeft 410 met waar de cijfers nu staan, en elk ander pad onder `/api/dashboard/` of
+  `/api/dashboards` 404 met de vier eindpunten, in plaats van een kale 404.
+
+### De Python-snippet laadt precies wat de app laadde, voor elke tool (#945, #946)
+- De laadstap in een snippet is nu de aanroep die de app deed, niet wat het model als argument gaf. Bij DUO laadt de
+  snippet het bestand dat de app koos: ook bij een bestandsnaam, een resource-ID of geen resource (dan het leidende
+  bestand, eerder index 0), en met de dataset-ID zoals de catalogus hem schrijft (`duo:p01hoinges` of `P01HOINGES`
+  werd letterlijk overgenomen). Bij RIO staat de peildag (`datumGeldigOp`) nu ook in de snippet van `get_rio_data`
+  zelf, niet alleen in die van een vervolgstap.
+- Bij CBS vraagt de snippet dezelfde kolommen als de app: een selectie van onderwerpen (`$select`) kreeg in de app de
+  dimensies erbij, in de snippet niet, waardoor bijvoorbeeld de snippet van een vaste maat zonder `Perioden` laadde.
+  Een snippet op een data_key in een andere spelling (`DUO:P01HOINGES:1`) vindt nu ook zijn laadstap.
+- Een nieuwe test zet per tool de app en de snippet naast elkaar op dezelfde invoer en vergelijkt de aanroepen van de
+  bronladers; een nieuwe tool zonder zo'n geval maakt de test rood.
+- Opgeslagen snippets van vóór 2.7.0 met een DUO-resource als tekst-getal (`duo.load("p01hoinges", "4")`, #944): 70
+  op test en 132 op playground, alleen in gesprekken, niet in rapporten. Ze laden geen ander bestand maar stoppen met
+  `ResourceNietGevonden`; vervang `"4"` door `4`, of stel de vraag opnieuw.
+
+### Personeel van de universiteiten uit WOPI (UNL), alleen op test (#936)
+- Nieuwe tool `get_wo_personeel`: personeel in dienst van een universiteit of van de 14 universiteiten samen, uit het
+  WOPI-personeelsbestand van Universiteiten van Nederland, peildatum 31 december. Standaard in fte en zonder het
+  HOOP-gebied Gezondheid; met GEZO alleen op uitdrukkelijk verzoek en nooit gemengd. Uitsplitsing naar
+  wetenschappelijk personeel en OBP, functie, vast en tijdelijk, geslacht, en personen per leeftijdsklasse. Elk
+  antwoord noemt de peildatum, de GEZO-variant en de vaste voorbehouden (fte is geen personen, wat niet meetelt);
+  de bronregel is "WOPI {jaar}, Universiteiten van Nederland, peildatum 31-12-{jaar}, excl. sector Gezondheid".
+- Een vraag naar personeel van een hogeschool of mbo-instelling krijgt een vaste melding dat er geen open bron is;
+  de vier wo-instellingen die geen lid zijn van UNL krijgen er een zonder getal.
+- Achter de vlag `ENABLE_WO_PERSONEEL`, die alleen op test aan staat: UNL moet nog schriftelijk bevestigen dat
+  hergebruik mag. Playground en productie zien de tool niet.
+- Pakket `onderwijsbronnen` 0.10.0: nieuwe bron `unl` (`unl.load`, `unl.lees`, `unl.haal_op`) die de records van de
+  draaitabellen leest, niet de getoonde cellen; nieuwe dependency `defusedxml`. Het ID `unl:wopi` staat in het
+  ID-contract, niet in `catalog(source="all")` en niet in de zoekcatalogus van de chat.
+
+### Financiën per bestuur uit DUO's verantwoording uit XBRL (#935)
+- Een nieuwe tool, `get_bestuursfinancien`, geeft de financiële positie van het bestuur van een mbo-, hbo- of
+  wo-instelling: solvabiliteit I en II, liquiditeit, rentabiliteit en het totaal van de rijksbijdragen per verslagjaar,
+  met de variant (standaard: geconsolideerd waar aangeleverd), het gewogen sectorcijfer van de Inspectie, de toets aan
+  de signaleringswaarden van de Inspectie (2024) en vaste voorbehouden. De code rekent alles; het model niets.
+- Bestuur 40833 blijft drie eenheden (ROC van Amsterdam, ROC van Flevoland, ROC TOP), nooit een som. Een wissel van
+  variant, een bestuursfusie binnen de reeks (RIO) en een lege waarde (geen 0) krijgen een vaste melding. Besturen in
+  po en vo staan er niet in.
+- De bron staat in het pakket (`onderwijsbronnen` 0.10.0) als `onderwijsbronnen.duo.financien`, met de bestuurssleutel
+  `onderwijsbronnen.Bestuurssleutel` en een catalogusrecord `duo:financien`. `bron:ping` bewaakt de nieuwste editie.
+- Licentie: op de open onderwijsdata van DUO rust een CC0-verklaring, en dit bestand staat op diezelfde site. De tool
+  geeft daarom ook op playground en productie cijfers (`LICENTIE_BEVESTIGD`).
+
+### Het ID-contract bron:id is het enige pad; de oude pakketnamen zijn weg (#914)
+- De vlag `BRON_ID_CONTRACT` en de oude herleiding van dataset-ID's zijn weg: de chat volgt altijd het ID-contract
+  `bron:id`, zoals sinds 2.7.0 al op test en playground. Elke oude ID-vorm in opgeslagen recepten en gesprekken
+  blijft werken; de logregel `BRON_ID_VERSCHIL` bestaat niet meer.
+- Het pakket `onderwijsbronnen` (0.9.0) kent de overgangsnamen `riodata` en `onderwijsdata` niet meer. Een opgeslagen
+  snippet met `from riodata import duo` of `from onderwijsdata import data` draait tegen de installatie die zijn kop
+  noemt (de oude pakketrepo's of een oudere commit van deze repo); in nieuwe code wordt dat
+  `from onderwijsbronnen import duo` en `from onderwijsbronnen.cbs import data`.
+- Beheer: bij de eerste promotie van een release met deze wijziging gaat `BRON_ID_CONTRACT` ook uit
+  `manifests/playground` (`docs/promoten.md`).
 
 ## 2.7.0 — 2026-11-05
 

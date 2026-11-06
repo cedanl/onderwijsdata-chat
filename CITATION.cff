@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: CEDANL
     given-names: Team
-version: 2.7.0
-date-released: 2026-11-05
+version: 2.8.0
+date-released: 2026-11-06
 license: EUPL-1.2
 repository-code: https://github.com/cedanl/onderwijsdata-chat

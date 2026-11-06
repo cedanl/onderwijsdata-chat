@@ -379,9 +379,12 @@ In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.fina
   alleen met voorgangers die zelf als mbo-, hbo- of wo-bestuur in de verantwoording staan.
 - **Vaste voorbehouden:** het hele bestuur (ook vo), geen uitspraak over kwaliteit, verslagjaar = boekjaar en niet door
   een accountant gecontroleerd, één variant, een signaal is geen oordeel.
-- **Licentie:** de pagina noemt geen licentie; de vraag ligt bij DUO. Tot DUO bevestigt, geeft de tool op playground en
-  productie alleen een melding (`LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py`). Dezelfde regel bepaalt de
-  status in search_catalog (daar `alleen_catalogus`), de suggestievragen op het startscherm en de tellingen (#956).
+- **Licentie:** CC0 1.0. De pagina van het bestand noemt geen licentie, maar op de open onderwijsdata van DUO rust een
+  CC0-verklaring ([Hergebruik open onderwijsdata](https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp),
+  de Engelse Legal Code is leidend); het bestand staat op diezelfde site. Een schriftelijke bevestiging per bestand is er
+  niet. `LICENTIE_BEVESTIGD` in `tools/beschikbaarheid.py` staat daarom op True; op False geeft de tool op playground en
+  productie weer alleen een melding, en bepaalt dezelfde regel de status in search_catalog (dan `alleen_catalogus`), de
+  suggestievragen op het startscherm en de tellingen (#956).
 - **Citaties, telling en export (#956):** elk getal uit de tool krijgt een citatie (ook met decimale komma); de tabel
   achter het resultaat (`financien.overzicht`, onafgerond) staat in de store als `financien:<sleutel>` met dataset
   `duo:financien` en de editie als peilmoment, en is als CSV met inhoudshash te exporteren. De Telling noemt over hoeveel
@@ -390,7 +393,7 @@ In de chat via `get_bestuursfinancien`; in het pakket `onderwijsbronnen.duo.fina
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | duo.nl, open onderwijsdata (licentie nog niet bevestigd) |
+| Toegang | duo.nl, open onderwijsdata (CC0) |
 | Inhoud | Financiële kengetallen en rijksbijdragen per bestuur, met gewogen sectorcijfer en signaleringswaarden |
 | Formaat | xlsx, één editie per jaar (vier onderdelen, variant standaard) |
 | Koppeling | `Bevoegd Gezag` = DUO `BEVOEGD GEZAG NUMMER` (adressenbestanden) = RIO-bestuurscode (vijf tekens) |
