@@ -376,15 +376,25 @@ REGISTER_MELDING = (
 )
 
 
+# Het ID-veld per bron, zoals `<bron>.metadata(record)["id"]` van onderwijsbronnen het leest (broncontract #911).
+# Eén lijst voor de hele chat (#967): tools/catalog.py vroeg een andere en gaf ROA, SBB en de Inspectie "?" als ID.
+# UWV leest `_uwv_id` vóór `_ckan_id`; tests/test_catalogus_id.py toetst elk record tegen het contract.
+ID_VELDEN = (
+    "_cbs_id",
+    "_uwv_id",
+    "_ckan_id",
+    "_rio_resource",
+    "_roa_id",
+    "_inspectie_id",
+    "_sbb_id",
+    "_unl_id",
+    "_skdb_id",
+)
+
+
 def dataset_id(entry: dict) -> str | None:
-    return (
-        entry.get("_cbs_id")
-        or entry.get("_ckan_id")
-        or entry.get("_rio_resource")
-        or entry.get("_roa_id")
-        or entry.get("_unl_id")
-        or entry.get("_skdb_id")
-    )
+    """Het catalogus-ID van een record, zonder bron-voorvoegsel; None als het record er geen heeft."""
+    return next((waarde for veld in ID_VELDEN if (waarde := entry.get(veld))), None)
 
 
 def is_vo_context(entry_or_id: dict | str) -> bool:
