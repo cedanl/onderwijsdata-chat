@@ -48,6 +48,9 @@ MOGELIJK = {
     "personen": ("geen", "leeftijd", "geslacht"),
 }
 _TABEL = {"fte": "functie", "personen": "personen"}
+# Zonder gekozen uitsplitsing: bij fte wetenschappelijk personeel en OBP naast het totaal (#965), bij personen het
+# totaal (personen per functie bestaan niet).
+STANDAARD = {"fte": "wp_obp", "personen": "geen"}
 # De kolom waarop een uitsplitsing groepeert; wp_obp is een afgeleide kolom (zie `reken`).
 KOLOM = {"functie": "functie", "vast_tijdelijk": "aanstelling", "leeftijd": "leeftijd"}
 
@@ -447,12 +450,12 @@ def _uitkomst(df: pd.DataFrame, keuze: Keuze, herkomst: unl.Herkomst) -> dict:
 
 def _keuze(instelling, jaar, reeks, uitsplitsing, eenheid, gezo, wopi: unl.Wopi) -> Keuze | str:
     eenheid = str(eenheid or "fte").lower()
-    uitsplitsing = str(uitsplitsing or "geen").lower()
     gezo = str(gezo or "excl").lower()
     if gezo not in unl.GEZO:
         return "gezo is 'excl' (standaard) of 'incl': één variant per aanroep, nooit beide of gemengd."
     if eenheid not in EENHEDEN:
         return f"Eenheid '{eenheid}' bestaat niet: kies 'fte' (standaard) of 'personen'."
+    uitsplitsing = str(uitsplitsing or STANDAARD[eenheid]).lower()
     if uitsplitsing not in MOGELIJK[eenheid]:
         andere = [e for e in EENHEDEN if uitsplitsing in MOGELIJK[e]]
         extra = f" Met eenheid '{andere[0]}' kan het wel." if andere else f" {_NOG_NIET}"
@@ -475,7 +478,7 @@ def get_wo_personeel(
     instelling: str = "landelijk",
     jaar: int | None = None,
     reeks: bool = False,
-    uitsplitsing: str = "geen",
+    uitsplitsing: str | None = None,
     eenheid: str = "fte",
     gezo: str = "excl",
 ) -> str:

@@ -89,6 +89,28 @@ def test_wetenschappelijk_personeel_van_de_universiteit_utrecht():
     )
 
 
+@pytest.mark.parametrize("uitsplitsing", [None, ""])
+def test_de_algemene_personeelsvraag_geeft_wp_en_obp_naast_het_totaal(uitsplitsing):
+    """#965: "Hoeveel personeel werkt er bij de UU?" gaf alleen 6.184,36 fte; WP en OBP horen er standaard bij."""
+    standaard = _uit(instelling="Universiteit Utrecht")
+    assert standaard["uitsplitsing"] == "wp_obp" and standaard["definitie"] == wo_personeel.WP
+    assert standaard["cijfers"] == _uit(instelling="UU", uitsplitsing="wp_obp")["cijfers"]
+    [rij] = standaard["cijfers"]
+    assert (rij["totaal"], rij["wetenschappelijk_personeel"], rij["obp"]) == (6184.36, 3584.05, 2600.31)
+    assert _uit(instelling="UU", uitsplitsing=uitsplitsing)["uitsplitsing"] == "wp_obp"
+    # Alleen het totaal blijft mogelijk, op verzoek; personen kennen geen WP/OBP en houden het totaal als standaard.
+    assert set(_rij(instelling="UU", uitsplitsing="geen")) == {"jaar", "peildatum", "totaal"}
+    assert _uit(eenheid="personen")["uitsplitsing"] == "geen"
+    # De herlaadaanroep in de store en de snippet noemen de uitsplitsing die de app koos.
+    assert store.meta(standaard["data_key"]).laad[1]["uitsplitsing"] == "wp_obp"
+
+
+def test_het_schema_noemt_wp_obp_als_standaard():
+    beschrijving = SCHEMA_GET_WO_PERSONEEL["function"]["parameters"]["properties"]["uitsplitsing"]["description"]
+    assert beschrijving.startswith("wp_obp (standaard bij fte")
+    assert "geen (alleen het totaal" in beschrijving
+
+
 @pytest.mark.parametrize(
     "instelling", ["Hogeschool Utrecht", "25DW", "ROC Midden Nederland", "hbo", "mbo", "hogescholen"]
 )

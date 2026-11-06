@@ -599,7 +599,7 @@ de toolset en geeft de dispatch "Onbekende tool".
 | `instelling` | string, optioneel | Naam, afkorting of BRIN-code, of `landelijk` (standaard) |
 | `jaar` | integer, optioneel | Peiljaar (31 december); standaard het nieuwste |
 | `reeks` | boolean, optioneel | Alle beschikbare jaren |
-| `uitsplitsing` | enum, optioneel | `geen`, `wp_obp`, `functie`, `vast_tijdelijk`, `geslacht`, `leeftijd` (alleen personen) |
+| `uitsplitsing` | enum, optioneel | `wp_obp` (standaard bij fte: WP en OBP naast het totaal, #965), `geen` (alleen het totaal; standaard bij personen), `functie`, `vast_tijdelijk`, `geslacht`, `leeftijd` (alleen personen) |
 | `eenheid` | enum, optioneel | `fte` (standaard) of `personen` |
 | `gezo` | enum, optioneel | `excl` (standaard) of `incl`, nooit gemengd |
 

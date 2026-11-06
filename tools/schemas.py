@@ -874,9 +874,10 @@ SCHEMA_GET_WO_PERSONEEL: dict[str, Any] = {
                     "type": "string",
                     "enum": ["geen", "wp_obp", "functie", "vast_tijdelijk", "geslacht", "leeftijd"],
                     "description": (
-                        "geen (standaard); wp_obp: wetenschappelijk personeel en OBP; functie: hoogleraar, uhd, ud, "
-                        "docent, onderzoeker, overig wp, promovendus, obp; vast_tijdelijk; geslacht: totaal en "
-                        "vrouwen; leeftijd: alleen met eenheid 'personen'."
+                        "wp_obp (standaard bij fte): wetenschappelijk personeel en OBP naast het totaal; geen (alleen "
+                        "het totaal; standaard bij personen); functie: hoogleraar, uhd, ud, docent, onderzoeker, "
+                        "overig wp, promovendus, obp; vast_tijdelijk; geslacht: totaal en vrouwen; leeftijd: alleen "
+                        "met eenheid 'personen'."
                     ),
                 },
                 "eenheid": {
