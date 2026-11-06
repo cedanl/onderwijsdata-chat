@@ -221,7 +221,7 @@ platte tekst bij een miss en pseudo-records met een `melding`; het model las dri
 | `candidates` | Minstens één treffer | Kiest er één tot drie, controleert ze met `dataset_details`, laadt daarna data |
 | `no_match` | Niets raakt de vraag (of het geo-niveau) | Zoekt hooguit één keer opnieuw met andere of bredere termen, zonder sector, periode of populatie los te laten; vindt ook dat niets, dan zegt het dat de catalogus geen dataset vindt, niet dat de data niet bestaat |
 | `needs_clarification` | Alleen zwakke suggesties (drempel #351) | Laadt er geen, stelt met `clarify_scope` één vraag met deze datasets als opties |
-| `out_of_scope` | De zoekvraag gaat over po, so of vo en noemt geen ho of mbo (dezelfde regel als `agent/po_vraag.py`) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
+| `out_of_scope` | De zoekvraag gaat over po, so of vo en noemt geen ho of mbo (dezelfde regel als `agent/po_vraag.py`, behalve de toelatingsvraag over een ho-opleiding, die alleen `po_vraag` doorlaat) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
 | `metadata_unknown` | Met `geo_niveau`: geen dataset heeft het niveau zeker, wel van enkele is de dekking onbekend | Controleert de dekking met `dataset_details` |
 | `source_unavailable` | De catalogus (package `onderwijsbronnen`) is niet leesbaar | Zegt dat zoeken nu niet werkt |
 | `tool_error` | Een onverwachte fout in de zoekfunctie | Probeert hooguit één keer opnieuw |
@@ -616,10 +616,14 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   de gebruiker.
 - **Weergaven:**
   - `opleidingen`: per opleiding van een instelling en per vorm het NSE-oordeel met `nse_respondenten` en
-    `nse_oordeel_landelijk` (dezelfde studie en vorm over alle instellingen, van LCSK), studenten, eerstejaars,
-    `doorstroom_jaar2_pct`, `diploma_opleiding_pct`, numerus fixus met capaciteit, wettelijk collegegeld en
-    accreditatiedatum; de NSE-thema's alleen bij hooguit drie rijen.
-  - `studie`: één landelijke studie per vorm, met het aantal aanbieders en de arbeidsmarkt van de SOI-rubriek.
+    `nse_oordeel_landelijk` (dezelfde studie en vorm over alle instellingen, van LCSK), `doorstroom_jaar2_pct`,
+    `diploma_opleiding_pct` en numerus fixus met capaciteit; de NSE-thema's alleen bij hooguit drie rijen, met het
+    aantal respondenten van het algemeen oordeel (het aantal per thema is onbekend, dat zegt een vaste zin).
+  - `studie`: één landelijke studie per vorm, met het aantal aanbieders, `roa_opleidingstype` (de sleutel naar de
+    ROA-cijfers van `get_roa_benchmark`) en de arbeidsmarkt van de SOI-rubriek.
+  - `toelating`: per opleiding de wettelijke vooropleidingseisen (`havo`, `vwo`, `mbo`, `aanvullend_havo`,
+    `aanvullend_vwo`, uit RATHO via LCSK), één rij per gelijke set eisen met `instellingen` en `aantal_instellingen`.
+    Vraagt een opleiding of een instelling.
   - `numerus_fixus`: opleidingen met loting of decentrale selectie, capaciteit per taaltraject en studiejaar.
   - `doorstroom_mbo_hbo` en `doorstroom_bachelor_master`: aantal, aandeel en rang (van LCSK) per vervolgstudie.
 - **Resultaat:** `rijen` (hooguit 15; `afgekapt` zegt hoeveel er zijn, de hele tabel staat onder `data_key`),
@@ -628,18 +632,26 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   het een rangorde op één cijfer is en geen kwaliteitsoordeel), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
   met de verplichte bronregel van LCSK en het versienummer van de export. Afronden, sorteren en het landelijke oordeel
   doet de code; zie de [verantwoording](databronnen.md#verantwoording-hoe-de-app-selecteert-sorteert-en-afrondt).
+- **Niet uit deze tool (afspraken #878):** aantallen studenten en eerstejaars (DUO: `get_maat`, `get_duo_data`), het
+  wettelijk collegegeld (`get_collegegeld`), de accreditatie (`get_accreditatie`) en de aansluiting studie-baan (ROA).
+  Een vaste zin in de voorbehouden van `opleidingen` en `studie` verwijst ernaar.
 - **Geen cijfer:** voor een mbo-instelling of `soort_ho="mbo"` (vaste melding: alleen hbo en wo), voor een instelling
   die niet in de export staat, voor een onbekende studie, voor `opleidingen` zonder instelling, opleiding, plaats of
   numerus fixus, en voor een leeg veld in de bron (geen 0). Zonder sleutel, of als de export een andere vorm heeft, een
   bronfout.
-- **Bronregel:** "Studiekeuzedatabase {versie}, Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik
-  gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar studiekeuze123.nl/studiekeuzedata.
+- **Bronregel:** "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}. Er is
+  gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar
+  lcsk.nl/over-ons/studiekeuzedata-raadplegen (art. 4.1 en 4.2 van de leveringsvoorwaarden v25.1). De herkomst per
+  weergave (`_HERKOMST`): `opleidingen` "NSE {jaar}; studieverloop uit 1cijferHO {jaar}, bewerkt door LCSK"; `studie`
+  daarbij "arbeidsmarkt uit CBS-microdata en de NAE/HBO-monitor"; `toelating` "vooropleidingseisen uit de regeling
+  (RATHO)"; `numerus_fixus` "capaciteit uit Studielink"; `doorstroom_mbo_hbo` "doorstroombestand mbo-hbo, bewerkt door
+  LCSK"; `doorstroom_bachelor_master` zonder toevoeging.
 - **Snippet:** dezelfde functie van `onderwijsbronnen.skdb` met de opgeloste argumenten (`pakketaanroep`), op een
   export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `weergave` | enum, optioneel | `opleidingen` (standaard), `studie`, `numerus_fixus`, `doorstroom_mbo_hbo`, `doorstroom_bachelor_master` |
+| `weergave` | enum, optioneel | `opleidingen` (standaard), `studie`, `toelating`, `numerus_fixus`, `doorstroom_mbo_hbo`, `doorstroom_bachelor_master` |
 | `instelling` | string, optioneel | Naam, afkorting of BRIN-code van een hogeschool of universiteit |
 | `opleiding` | string, optioneel | Naam (of deel) of CROHO-code; bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
 | `soort_ho` | enum, optioneel | `hbo` of `wo` |
@@ -648,7 +660,7 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 | `plaats` | string, optioneel | Plaats van het bezoekadres |
 | `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (of deel) of beroep_id van de mbo-4-opleiding |
 | `alleen_numerus_fixus` | boolean, optioneel | Bij `opleidingen`: alleen opleidingen met een numerus fixus |
-| `sorteer` | enum, optioneel | Bij `opleidingen`: `naam` (standaard) of aflopend op `oordeel`, `studenten`, `eerstejaars`, `doorstroom_jaar2` |
+| `sorteer` | enum, optioneel | Bij `opleidingen`: `naam` (standaard) of aflopend op `oordeel` of `doorstroom_jaar2` |
 
 ---
 

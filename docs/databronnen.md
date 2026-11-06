@@ -185,6 +185,7 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 
 - **Alleen bij een vraag over vervolgonderwijs.** De zoekfunctie toont deze tien alleen als de vraag van de gebruiker het hoger onderwijs noemt (hbo, wo, ho, hoger onderwijs, hogeschool, universiteit), of een vo-niveau (vmbo, havo, vwo, vo, vavo, voortgezet onderwijs, middelbare school, havisten) samen met het mbo of een doorstroomwoord (doorstroom, stromen door, uitstroom, vervolgonderwijs, vervolgopleiding, na het examen, na hun diploma), of voortijdig schoolverlaters die terugkeren in het onderwijs. Code beslist dat (`ho_markers.opent_vo_context`), op de vraag van de gebruiker (bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent), niet op de zoekterm die het model meegeeft. Buiten de chat (MCP) is er geen gebruikersvraag en beslist de zoekterm. Zie [`search_catalog`](tools.md#search_catalog).
 - **Voorbeelden.** Wel: "Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havo-leerlingen heen na hun diploma?", "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?". Niet: "Hoeveel leerlingen zitten er op het vwo in Utrecht?" (een losse vo-vraag krijgt de vaste scope-uitleg) en "Hoeveel mbo-studenten per instelling?" (het mbo zonder vo-niveau).
+- **Toelating tot een ho-opleiding (#878, #957).** Een vraag naar de toelatingseisen van een ho-opleiding met havo of vwo als vooropleiding ("Welk profiel heb ik met havo nodig voor Verpleegkunde?", "Kan ik met een havo-diploma naar Geneeskunde?") krijgt niet de vaste scope-uitleg (`ho_markers.TOELATING_HO` in `agent/po_vraag.py`): het vo-niveau is dan de vooropleiding, geen vo-data, en de eisen komen uit de Studiekeuzedatabase (weergave `toelating`). Die vraag opent de vo-context niet.
 - **Altijd met label.** Elke zoektreffer en elke bronvermelding (de Bronnen, de bronregel onder een rapportgrafiek, de kop van een CSV-export) noemt ze "vo-context voor vervolgonderwijs": het gaat om leerlingen in het voortgezet onderwijs, vavo-deelnemers of schoolverlaters, niet om mbo- of ho-studenten.
 - **Het vo-deel van gemengde bronnen (#879, #880).** De VSV-tabellen `85368NED`/`85367NED` en de woonregiotabellen `85701NED`/`85702NED` laden hun vo- en vavo-rijen erbij, en de RIO-registers met een typefilter laten hun vo- en vavo-typen toe, maar alleen als de vraag de vo-context opent én zelf een vo-niveau of voortijdig schoolverlaters noemt, zonder po of (v)so (`ho_markers.vo_deel_poort`). Wel: "Hoeveel vo-leerlingen worden voortijdig schoolverlater en hoeveel daarvan in het mbo?", "Hoeveel havisten en vwo'ers in Utrecht stromen door naar het hbo?", "Welke vavo-opleidingen bieden roc's in Utrecht aan?". Niet: "Hoeveel mbo-studenten verlaten voortijdig de school?", en ook niet "Hoeveel hbo-studenten wonen er in Utrecht?": die opent de zoekpoort, maar zonder vo-niveau zouden vo-leerlingen tussen de studenten komen. De totalen over vo en mbo samen ("Totaal onderwijs") en de po- en (v)so-rijen blijven weg. De bronregel noemt het deel per lading: "…, alleen mbo en vo (vo-context voor vervolgonderwijs)" bij CBS, "…, vo-context voor vervolgonderwijs" bij een RIO-pagina met een vo-type; een eerdere lading houdt haar bronregel, ook als een latere beurt dezelfde tabel anders laadt.
 - **Inspectieoordelen van vo-scholen (#881).** Achter dezelfde poort (`vo_deel_poort`) geeft `get_inspectieoordeel_vo` de oordelen van de Inspectie per afdeling (vmbo, havo, vwo, pro) van de vo-scholen in één gemeente, met het etiket "vo-context voor vervolgonderwijs" in het resultaat, de bronregel en de Bronnen. Wel: "Hoe beoordeelt de inspectie de havo/vwo-afdelingen van de scholen waar onze eerstejaars hbo vandaan komen in Utrecht?". Niet: "Wat is het inspectieoordeel van ROC Midden Nederland?" (daarvoor is `get_inspectieoordeel`), "Hoe beoordeelt de inspectie de havo-afdelingen in Utrecht?" en een vraag over één vo-school, die het vaste vo-antwoord krijgt. Zie [Onderwijsinspectie — oordelen per vo-school](#onderwijsinspectie-oordelen-per-vo-school-vo-context).
@@ -500,7 +501,7 @@ bestaat geen open personeelsbestand per instelling, en de tool zegt dat bij zo'n
 ## Studiekeuzedatabase — Landelijk Centrum Studiekeuze (LCSK; alleen test en playground)
 
 De Studiekeuzedatabase (SKDB) van het Landelijk Centrum Studiekeuze is de data achter Studiekeuze123
-([studiekeuzedata](https://www.studiekeuze123.nl/studiekeuzedata)). Het pakket leest haar in `onderwijsbronnen.skdb`,
+([studiekeuzedata raadplegen](https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/)). Het pakket leest haar in `onderwijsbronnen.skdb`,
 de chat via `get_studiekeuze` (#957). Alleen hbo en wo: 109 hogescholen en universiteiten (ook niet-bekostigde) en
 3.312 opleidingen, waarbij een opleiding één CROHO-code bij één BRIN op één vestiging is; per vorm (voltijd, deeltijd,
 duaal) zijn het er ruim 4.400.
@@ -511,32 +512,44 @@ duaal) zijn het er ruim 4.400.
   `studiekeuze`).
 - **Dagexport:** de lader haalt in één request `/export/json` op, een ZIP van ongeveer 18 MB met één JSON-bestand per
   tabel (`instellingen`, `opleidingen`, `opleidingvormen`, `studies`, `studievormen`, `standaardonderwijsindelingvorm`,
-  `doorstroombachelormaster`, `doorstroommbohbo`, `lotingopleidingendecentraleselecties`, `collegegelden`). Ontbreekt er
+  `doorstroombachelormaster`, `doorstroommbohbo`, `lotingopleidingendecentraleselecties`). Ontbreekt er
   een tabel, dan is de vorm veranderd en geeft de tool een bronfout, geen cijfer. De bestandsnaam geeft het
   versienummer van de data (`export-skdb-26.6-…`) en de exportdatum; de app laadt de export één keer per 24 uur
   (`core/actualiteit.py`, in het geheugen) en bewaart haar niet op schijf.
 - **Jaren uit de export:** het NSE-jaar (`enqueteJaar`) en het 1cijferHO-jaar (`eenCijferHoMeestRecenteJaar`, begin van
-  het collegejaar) zijn de hoogste waarde in `opleidingvormen`. De tool noemt ze in de voorbehouden bij opleidingen en
-  studies; ze staan niet vast in de code of de catalogus.
+  het collegejaar) zijn de hoogste waarde in `opleidingvormen`. De tool noemt ze in de voorbehouden en de bronregel bij
+  opleidingen en studies; ze staan niet vast in de code of de catalogus.
 - **Inhoud:** per opleiding en vorm het NSE-oordeel (algemeen en tien thema's, schaal 1-5) met het aantal
-  respondenten, studenten en eerstejaars (1cijferHO), doorstroom naar jaar 2, diplomarendement, numerus fixus met
-  capaciteit, wettelijk collegegeld en accreditatiedatum; per landelijke studie de arbeidsmarkt van afgestudeerden per
-  SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau); de doorstroom van mbo-4-kwalificaties naar hbo-studies en
-  van bachelors naar masters.
+  respondenten van het algemeen oordeel, doorstroom naar jaar 2 en diplomarendement (door LCSK berekend uit 1cijferHO,
+  dat niet openbaar is), numerus fixus met capaciteit (Studielink); per opleiding de wettelijke vooropleidingseisen
+  voor havo, vwo en mbo (RATHO); per landelijke studie het ROA-opleidingstype en de arbeidsmarkt van afgestudeerden per
+  SOI-rubriek (mediaan salaris, werkloosheid, baan op niveau; CBS-microdata en NAE/HBO-monitor); de doorstroom van
+  mbo-4-kwalificaties naar hbo-studies en van bachelors naar masters.
+- **Andere bron leidend (afspraken #878):** wat SKDB overneemt van een bron die de chat al heeft, toont de chat uit
+  die bron, niet uit SKDB. Aantallen studenten en eerstejaars komen uit DUO (SKDB telt een andere populatie), het
+  wettelijk collegegeld uit `get_collegegeld`, de accreditatie uit `get_accreditatie` en de aansluiting studie-baan uit
+  ROA-AIS (de chat heeft een nieuwere editie). Van AIS neemt de tool alleen de koppeling studie → ROA-opleidingstype
+  over (`roa_opleidingstype`), de sleutel naar de ROA-cijfers.
 - **Wat er niet in staat:** mbo-opleidingen (van het mbo alleen waar mbo-4-gediplomeerden in het hbo naartoe gaan);
   een vraag over een mbo-instelling krijgt een vaste melding. Reeksen: de export is de stand van nu, één NSE-jaar en
-  één 1cijferHO-jaar. Officiële inschrijvingstellingen: de aantallen komen uit 1cijferHO en kunnen afwijken van de
-  DUO-bestanden; voor een telling blijft DUO de bron. Arbeidsmarktcijfers bestaan alleen voor voltijd hbo-bachelor,
-  associate degree en wo-master, en gaan over een SOI-rubriek, niet over één studie.
+  één 1cijferHO-jaar. Het aantal respondenten per NSE-thema: alleen het algemeen oordeel heeft een aantal; bij een
+  thema noemt de chat dat aantal, met de zin dat het aantal per thema onbekend is. Arbeidsmarktcijfers bestaan alleen
+  voor voltijd hbo-bachelor, associate degree en wo-master, gaan over een SOI-rubriek, niet over één studie, en vormen
+  geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
   dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
   de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. De tool
   `relatie` kent `brin` en `croho` als de sleutels instellingscode en erkende opleiding, en noemt een SKDB-tabel en een
   DUO-tabel zo als koppelkandidaten.
-- **Licentie:** de Algemene Leveringsvoorwaarden Data van LCSK, versie 23.2.
-  - *Bronvermelding (art. 4):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data van
-    Landelijk Centrum Studiekeuze.", met een link naar de pagina studiekeuzedata en het versienummer van de data. De
-    bronregel onder elk antwoord met de tool bevat alle drie (zie [Bronnen onder een antwoord](#bronnen-onder-een-antwoord)).
+- **Licentie:** de [Algemene Leveringsvoorwaarden Data van LCSK, versie 25.1](https://lcsk.nl/over-ons/leveringsvoorwaarden/).
+  - *Bronvermelding (art. 4.1 en 4.2):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data
+    van Landelijk Centrum Studiekeuze.", met een link naar
+    [lcsk.nl/over-ons/studiekeuzedata-raadplegen](https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/), het
+    versienummer van de data en bij NSE-cijfers "NSE {jaar}". De bronregel onder elk antwoord met de tool bevat dat
+    alles, plus de oorspronkelijke bron van de weergave (zie [Bronnen onder een antwoord](#bronnen-onder-een-antwoord)).
+  - *Melding bij publicatie (art. 4.6):* binnen drie weken na publicatie een link of pdf naar info@lcsk.nl; een actie
+    bij livegang op playground.
+  - *Geen indruk van samenwerking (art. 4.5):* de app wekt niet de indruk dat LCSK haar steunt of eraan meewerkt.
   - *Geen doorlevering:* er staat geen data van LCSK in de repo en het pakket levert er geen mee. De tests gebruiken
     een synthetische export met dezelfde vorm (`onderwijsbronnen.skdb.proefbestand`, verzonnen getallen). Een snippet
     haalt de export zelf op, met de eigen sleutel van wie hem draait.
@@ -556,11 +569,15 @@ doet de code, en het model neemt de getallen letterlijk over.
   opleiding, plaats of numerus fixus geeft de weergave `opleidingen` geen lijst (te veel om zinnig te tonen). Er wordt
   geen opleiding weggelaten om haar cijfers, en er wordt niets geschat of aangevuld.
 - **Volgorde:** standaard alfabetisch op instelling, opleiding, plaats en vorm: geen rangorde. Alleen als de vraag
-  erom vraagt, sorteert de tool aflopend op één cijfer: het NSE-oordeel, het aantal studenten, het aantal eerstejaars
-  of de doorstroom naar jaar 2. Opleidingen zonder dat cijfer komen achteraan, gelijke waarden op naam. Elke rangorde
+  erom vraagt, sorteert de tool aflopend op één cijfer: het NSE-oordeel of de doorstroom naar jaar 2. Opleidingen zonder dat cijfer komen achteraan, gelijke waarden op naam. Elke rangorde
   krijgt het vaste voorbehoud dat het een rangorde op één cijfer is, dat het aantal respondenten erbij hoort, en dat
   het geen oordeel over de kwaliteit van een opleiding is. De app maakt geen samengestelde score en geen top-lijst
   over meer cijfers.
+- **Toelating:** de weergave `toelating` geeft per opleiding (CROHO-code) de wettelijke vooropleidingseisen zoals LCSK
+  ze uit de regeling (RATHO) overneemt, één rij per gelijke set eisen met de instellingen die haar noemen: meestal één
+  rij per opleiding, twee als één instelling andere eisen noemt. Ze vraagt een opleiding of een instelling. Op naam
+  van de opleiding, zonder rangorde. Een
+  instelling kan meer vragen (selectie, numerus fixus, deficiënties); de tool zegt dat erbij.
 - **Doorstroom:** de rang (1 is de grootste stroom) is die van LCSK; de app rekent hem niet opnieuw uit. Het aandeel
   is van alle gediplomeerden van de mbo-opleiding of bachelor, niet van wie doorstroomt.
 - **Afronding:** NSE-oordelen op twee decimalen, percentages op één decimaal, aantallen en bedragen zoals LCSK ze
@@ -579,10 +596,10 @@ doet de code, en het model neemt de getallen letterlijk over.
 | Eigenschap | Details |
 |------------|---------|
 | Toegang | api.skdb.nl, Bearer-sleutel van LCSK (`STUDIEKEUZEDATABASE_API_KEY`); alleen test en playground |
-| Inhoud | NSE, studenten, eerstejaars, doorstroom, rendement, numerus fixus, collegegeld per hbo- en wo-opleiding en vorm; arbeidsmarkt per SOI-rubriek; doorstroom mbo-hbo en bachelor-master |
+| Inhoud | NSE, doorstroom, rendement, numerus fixus per hbo- en wo-opleiding en vorm; vooropleidingseisen (RATHO) per opleiding; ROA-opleidingstype en arbeidsmarkt per SOI-rubriek; doorstroom mbo-hbo en bachelor-master. Niet: aantallen studenten en eerstejaars (DUO), collegegeld, accreditatie, aansluiting studie-baan (ROA) |
 | Formaat | dagelijkse JSON-export als ZIP (`/export/json`, ongeveer 18 MB); runtime-cache van 24 uur, geen opslag |
 | Koppeling | `brin` = BRIN-code van RIO en DUO, `croho` = CROHO-code; `studiecode` is van LCSK en niet altijd een CROHO-code |
-| Licentie | Algemene Leveringsvoorwaarden Data van LCSK (v23.2): verplichte bronvermelding met link en versie, geen doorlevering, publieke verantwoording bij selectie en ranking (hierboven) |
+| Licentie | Algemene Leveringsvoorwaarden Data van LCSK (v25.1): verplichte bronvermelding met link, versie en NSE-jaar, melding binnen drie weken na publicatie, geen doorlevering, publieke verantwoording bij selectie en ranking (hierboven) |
 | ID | `skdb:studiekeuzedatabase`; in de zoekcatalogus van de chat alleen waar de sleutel staat, als `via_tool` naar `get_studiekeuze` |
 
 ---
@@ -619,7 +636,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | Onderwijsinspectie (bg en po-so-vo), DUO-indicatoren mbo | het gelezen bestand zelf (#749, #881, #727) |
 | Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
 | UNL, WOPI | de downloadpagina van UNL; de regel is vast: "WOPI {jaar}, Universiteiten van Nederland, peildatum 31-12-{jaar}, excl. sector Gezondheid" (of incl., #936) |
-| LCSK, Studiekeuzedatabase | de pagina [studiekeuzedata](https://www.studiekeuze123.nl/studiekeuzedata) van LCSK; de regel is vast: "Studiekeuzedatabase {versie}, Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze." (verplicht volgens de leveringsvoorwaarden, #957) |
+| LCSK, Studiekeuzedatabase | de pagina [studiekeuzedata raadplegen](https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/) van LCSK; de regel is vast: "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met als herkomst per weergave het NSE-jaar en de oorspronkelijke bron, bijv. "NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK" (verplicht volgens de leveringsvoorwaarden, #957, #878) |
 
 Een regel heeft bewust geen link:
 
