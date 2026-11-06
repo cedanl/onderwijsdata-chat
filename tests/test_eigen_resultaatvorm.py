@@ -290,12 +290,13 @@ def test_financien_komt_na_een_herstart_uit_haar_recept():
     pd.testing.assert_frame_equal(store.get(key), voor)
 
 
-def test_zonder_licentie_haalt_een_recept_de_financien_niet_op(monkeypatch):
+def test_zonder_bevestigde_licentie_haalt_een_recept_de_financien_niet_op(monkeypatch):
     key = json.loads(_financien())["data_key"]
     recept = herlaad.recept(key, {"name": TOOL_GET_BESTUURSFINANCIEN, "arguments": {}})
     assert recept is not None
     store.clear()
     monkeypatch.setattr(beschikbaarheid.Config, "APP_ENV", "playground")
+    monkeypatch.setattr(beschikbaarheid, "LICENTIE_BEVESTIGD", False)
     uitkomst = herlaad.herlaad(key, recept)
     assert not uitkomst.gelukt and "in deze omgeving geen cijfers" in uitkomst.melding
 

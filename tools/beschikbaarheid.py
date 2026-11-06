@@ -2,8 +2,9 @@
 
 Twee bronnen hangen van de omgeving af:
 
-- de financiële verantwoording van DUO per bestuur (#935): tot DUO de licentie bevestigt alleen lokaal en op test
-  (besluit 6 op #725); op playground en productie geeft `get_bestuursfinancien` alleen een melding;
+- de financiële verantwoording van DUO per bestuur (#935): overal, want op de open onderwijsdata van DUO rust een
+  CC0-verklaring (zie `LICENTIE_BEVESTIGD`); zet die terug op False en `get_bestuursfinancien` geeft op playground en
+  productie weer alleen een melding;
 - WOPI van UNL (#936): alleen met de vlag `ENABLE_WO_PERSONEEL` (core/config.py), aan op test, tot UNL hergebruik
   bevestigt.
 
@@ -18,8 +19,10 @@ vast bij het starten (tools/__init__.py, tools/schemas.py), want de toolset is p
 from config import Config
 from core import config
 
-# Tot DUO de licentie van de financiële verantwoording bevestigt (besluit 6 op #725). Na de bevestiging: True.
-LICENTIE_BEVESTIGD = False
+# Op de open onderwijsdata van DUO rust een CC0-verklaring (https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp);
+# de verantwoording uit XBRL staat op diezelfde site (besluit 6 op #725). Terug naar False zet de financiën weer alleen
+# op local, development en test.
+LICENTIE_BEVESTIGD = True
 _OMGEVINGEN_ZONDER_LICENTIE = ("local", "development", "test")
 
 # De bronnen bij naam, zoals /api/config en de frontend ze noemen.
@@ -28,7 +31,7 @@ WO_PERSONEEL = "wo_personeel"
 
 
 def financien() -> bool:
-    """Mag get_bestuursfinancien cijfers geven? Overal na de bevestiging van de licentie, tot dan lokaal en op test."""
+    """Mag get_bestuursfinancien cijfers geven? Overal zolang de licentie als bevestigd geldt, anders alleen lokaal en op test."""
     return LICENTIE_BEVESTIGD or Config.APP_ENV in _OMGEVINGEN_ZONDER_LICENTIE
 
 

@@ -11,6 +11,6 @@
 - Telling: bij de financiën over hoeveel eenheden het sectorcijfer gaat en een fusie in de reeks, bij WOPI wat fte en
   personen tellen en de GEZO-variant.
 - Startscherm: vragen over de financiën (mbo, hbo, wo) en over WOPI (alleen wo), alleen waar die bron antwoord geeft.
-- search_catalog vindt WOPI als `via_tool` waar de vlag aan staat; de financiën staan zonder bevestigde licentie als
-  `alleen_catalogus`. De tellingen op de startpagina en in het venster Databronnen tellen bronnen met een eigen tool
+- search_catalog vindt WOPI als `via_tool` waar de vlag aan staat; de financiën staan, als de licentie niet als
+  bevestigd geldt, als `alleen_catalogus`. De tellingen op de startpagina en in het venster Databronnen tellen bronnen met een eigen tool
   (UWV, ROA, de financiën, WOPI) mee waar die antwoord geven.

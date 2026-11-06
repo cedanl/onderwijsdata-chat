@@ -252,6 +252,7 @@ def test_een_bestuursnaam_uit_de_verantwoording_werkt_ook():
 @pytest.mark.parametrize("omgeving", ["playground", "production"])
 def test_zonder_bevestigde_licentie_geen_cijfers_op_playground_en_productie(monkeypatch, omgeving):
     monkeypatch.setattr(beschikbaarheid.Config, "APP_ENV", omgeving)
+    monkeypatch.setattr(beschikbaarheid, "LICENTIE_BEVESTIGD", False)
     assert tool.get_bestuursfinancien("ROC Midden Nederland") == tool.NIET_BESCHIKBAAR
     monkeypatch.setattr(beschikbaarheid, "LICENTIE_BEVESTIGD", True)
     assert tool.get_bestuursfinancien("ROC Midden Nederland").startswith("{")

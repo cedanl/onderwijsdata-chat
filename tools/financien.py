@@ -9,8 +9,8 @@ rekent niets: elk getal, verschil en signaal komt uit de code.
 Bestuur 40833 heeft drie verantwoordingen, één per BRIN; die blijven aparte eenheden. Een vraag over ROC van
 Amsterdam (25PZ) krijgt alleen die eenheid, een vraag over bestuur 40833 alle drie, nooit een som.
 
-Licentie: de pagina van DUO noemt er geen; DUO wordt gevraagd (besluit 6 op #725). Tot DUO bevestigt, geeft de tool op
-playground en productie alleen een melding (`tools.beschikbaarheid.financien`).
+Licentie: de pagina van deze bron noemt er geen, maar op de open onderwijsdata van DUO rust een CC0-verklaring. Zonder
+bevestigde licentie geeft de tool op playground en productie alleen een melding (`tools.beschikbaarheid.financien`).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ BRONNAAM = "DUO"
 # Het ID in het bron:id-contract (#912); de tabel achter een uitkomst staat onder dit ID in de store (#956).
 DATASET = "duo:financien"
 BRONTITEL = "Financiële verantwoording uit XBRL (variant standaard)"
-LICENTIE = "Niet vermeld op de bronpagina van DUO; de vraag ligt bij DUO (#725)."
+LICENTIE = "CC0 1.0 (DUO, hergebruik open onderwijsdata)"
 _HEADERS = {"User-Agent": "openEDUdata+ (onderwijsdata-chat)"}
 _SECTOREN = {"MBO": "mbo", "HBO": "hbo", "WO": "wo"}
 # De velden van een jaar waarvan een lege waarde een noot krijgt: leeg is geen nul.

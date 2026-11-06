@@ -8,4 +8,5 @@
   po en vo staan er niet in.
 - De bron staat in het pakket (`onderwijsbronnen` 0.10.0) als `onderwijsbronnen.duo.financien`, met de bestuurssleutel
   `onderwijsbronnen.Bestuurssleutel` en een catalogusrecord `duo:financien`. `bron:ping` bewaakt de nieuwste editie.
-- De licentie is nog niet bevestigd door DUO: tot dan geeft de tool op playground en productie alleen een melding.
+- Licentie: op de open onderwijsdata van DUO rust een CC0-verklaring, en dit bestand staat op diezelfde site. De tool
+  geeft daarom ook op playground en productie cijfers (`LICENTIE_BEVESTIGD`).
