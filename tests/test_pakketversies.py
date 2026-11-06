@@ -52,7 +52,7 @@ def test_de_installatieregel_haalt_het_pakket_uit_een_subdirectory_van_de_spiege
 
     assert kop[1] == (
         "# Dezelfde versies installeren: pip install "
-        f'"onderwijsbronnen @ git+{_MIRROR}@{_COMMIT}#subdirectory=packages/onderwijsbronnen"'
+        f'"onderwijsbronnen[analyse] @ git+{_MIRROR}@{_COMMIT}#subdirectory=packages/onderwijsbronnen"'
     )
 
 
@@ -64,7 +64,7 @@ def test_cbs_en_duo_in_een_snippet_geven_een_pakket_en_een_pip_regel(monkeypatch
     kop = versiekop("from onderwijsbronnen.cbs import data\nfrom onderwijsbronnen import duo\n")
 
     assert kop[0] == "# Gemaakt met onderwijsbronnen 0.8.0, commit 7d3488aa."
-    assert kop[1].count("pip install") == 1 and kop[1].count("onderwijsbronnen @") == 1
+    assert kop[1].count("pip install") == 1 and kop[1].count("onderwijsbronnen[analyse] @") == 1
 
 
 def test_zonder_bekende_commit_zegt_de_kop_dat_de_regel_de_nieuwste_versie_installeert(monkeypatch):
@@ -76,7 +76,7 @@ def test_zonder_bekende_commit_zegt_de_kop_dat_de_regel_de_nieuwste_versie_insta
 
     assert kop[0] == "# Gemaakt met onderwijsbronnen 0.8.0."
     assert kop[1].startswith("# Commit onbekend, dus de nieuwste versie installeren: pip install ")
-    assert f'"onderwijsbronnen @ git+{_MIRROR}#subdirectory=packages/onderwijsbronnen"' in kop[1]
+    assert f'"onderwijsbronnen[analyse] @ git+{_MIRROR}#subdirectory=packages/onderwijsbronnen"' in kop[1]
     assert "==" not in kop[1]
 
 
@@ -104,6 +104,30 @@ def test_elke_subdirectory_uit_de_installatieregel_bestaat_en_heet_zoals_het_pak
         assert pakketherkomst.installatiespec(naam, _COMMIT).endswith(f"#subdirectory=packages/{naam}")
 
 
+def test_de_extras_van_de_regel_geven_pandas_en_openpyxl():
+    """#971: zonder extras installeerde de regel alleen httpx en defusedxml; elke snippet importeert pandas, en de
+    financiën van DUO en de crebolijst van SBB lezen Excel met openpyxl."""
+    for naam in pakketversies._IMPORTS.values():
+        extras = pakketversies._EXTRAS.get(naam, ())
+        optioneel = tomllib.loads((_ROOT / "packages" / naam / "pyproject.toml").read_text())["project"][
+            "optional-dependencies"
+        ]
+        vereist = {eis.split(">")[0].split("=")[0].strip() for extra in extras for eis in optioneel[extra]}
+        assert {"pandas", "openpyxl"} <= vereist
+
+
+def test_een_snippet_met_een_grafiek_installeert_plotly_erbij(monkeypatch):
+    # plotly hangt niet aan het bronpakket; zonder deze toevoeging faalde `import plotly.express` (#971).
+    _installeer(monkeypatch, {"onderwijsbronnen": "0.8.0"})
+    _app(monkeypatch, None, _COMMIT)
+
+    met = versiekop("from onderwijsbronnen import duo\nimport plotly.express as px\n")
+    zonder = versiekop("from onderwijsbronnen import duo\n")
+
+    assert met[1].endswith('#subdirectory=packages/onderwijsbronnen" plotly')
+    assert "plotly" not in zonder[1]
+
+
 def test_de_snippet_van_een_laadstap_begint_met_de_kop_en_noemt_de_geinstalleerde_versie(monkeypatch):
     _app(monkeypatch, "2.5.0", _COMMIT)
 
@@ -112,6 +136,7 @@ def test_de_snippet_van_een_laadstap_begint_met_de_kop_en_noemt_de_geinstalleerd
     assert tekst is not None
     assert tekst.startswith("# Gemaakt met onderwijsbronnen " + metadata.version("onderwijsbronnen"))
     assert f"@{_COMMIT}#subdirectory=packages/onderwijsbronnen" in tekst
+    assert '"onderwijsbronnen[analyse] @ git+' in tekst
     assert "from onderwijsbronnen import duo" in tekst
 
 

@@ -1,7 +1,7 @@
 """Accreditatiedata per ho-opleiding, uit DUO's Overzicht Erkenningen ho (#726, stap A).
 
 DUO publiceert dagelijks per instelling en opleiding (CROHO) de erkenning, met de datums die de NVAO of de minister
-over de accreditatie vastlegt (toelichting v1.8, CC-BY). Een oordeel van de NVAO (voldoende, goed, excellent), de
+over de accreditatie vastlegt (toelichting v1.8; CC0 zoals elke DUO-bron, #971). Een oordeel van de NVAO (voldoende, goed, excellent), de
 besluittekst of het rapport staat er niet in: dat publiceert alleen de NVAO, en die bron zit (nog) niet in de app.
 
 Welke datum wat betekent, staat hier in code; het model formuleert alleen. Twee valkuilen uit het onderzoek van
@@ -24,7 +24,7 @@ import pandas as pd
 
 from data import instellingen
 
-from . import store
+from . import beschikbaarheid, store
 from .catalog import documentatie_url
 from .duo import get_duo_data
 from .geslacht_opleiding import CODE, NAAM, Opleiding, kies_uit, zoek
@@ -32,7 +32,8 @@ from .geslacht_opleiding import CODE, NAAM, Opleiding, kies_uit, zoek
 DATASET = "overzicht-erkenningen-ho"
 BESTAND = 0  # HO_Erkenningen_RIO; 1 is de toelichting (pdf), 2 het controlebestand
 BRONNAAM = "DUO, Overzicht Erkenningen ho"
-LICENTIE = "CC-BY (Creative Commons Naamsvermelding)"
+# CKAN meldt `cc-by`; de app volgt de CC0-verklaring van DUO zelf, voor elke DUO-bron dezelfde (#971).
+LICENTIE = beschikbaarheid.DUO_LICENTIE
 HO = ("hbo", "wo")
 
 INSTELLING = "INSTELLINGSCODE"

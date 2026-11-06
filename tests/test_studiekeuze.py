@@ -73,6 +73,21 @@ def test_een_afkorting_en_een_brin_code_geven_dezelfde_instelling():
     assert _uit(instelling="HU", opleiding="30020")["rijen"] == _uit(instelling="25dw", opleiding="30020")["rijen"]
 
 
+def test_een_instellingsnaam_zoekt_op_woordbegin(monkeypatch):
+    """#971: de naam zocht op substring, zodat "Hogeschool" ook "Proefhogeschool Particulier" vond en "school" elke
+    hogeschool; nu op woordbegin, zoals de opleidingen (#960)."""
+    fontys = {**proefbestand.INSTELLINGEN[0], "instellingCode": "30GB", "instellingNaam": "Fontys Hogescholen"}
+    tabellen = {**proefbestand.TABELLEN, "instellingen": [*proefbestand.INSTELLINGEN, fontys]}
+    inhoud = proefbestand.zip_bytes(tabellen)
+    monkeypatch.setattr(skdb, "haal_op", lambda *a, **k: (inhoud, skdb.herkomst(inhoud, proefbestand.BESTAND)))
+    studiekeuze._export.cache_clear()
+
+    assert studiekeuze._instelling("Fontys", studiekeuze._export()) == ("30GB", "Fontys Hogescholen")
+    assert studiekeuze._instelling("Hogeschool", studiekeuze._export()) == ("25DW", "Hogeschool Utrecht")
+    melding = studiekeuze._instelling("school", studiekeuze._export())
+    assert isinstance(melding, str) and "Onbekende instelling" in melding
+
+
 def test_een_niet_bekostigde_hogeschool_staat_alleen_in_de_export():
     uit = _uit(instelling="Proefhogeschool", opleiding="ICT")
     assert uit["instelling"]["brin"] == "99XX" and uit["rijen"][0]["plaats"] == "'s-Hertogenbosch"
@@ -149,7 +164,8 @@ def test_veel_rijen_worden_afgekapt_met_de_hele_tabel_in_de_store(monkeypatch):
         ({"soort_ho": "mbo", "opleiding": "ICT"}, "alleen opleidingen van hogescholen en universiteiten"),
         ({"instelling": "Universiteit Utrecht"}, "staat niet in de Studiekeuzedatabase"),
         ({"instelling": "12AB"}, "staat niet in de Studiekeuzedatabase"),
-        ({"instelling": "Hogeschool"}, "Meer instellingen passen"),
+        ({"instelling": "Proef"}, "Meer instellingen passen"),
+        ({"instelling": "school"}, "Onbekende instelling"),
         ({"instelling": "Nergenshogeschool"}, "Onbekende instelling"),
         ({}, "Geef een instelling, een opleiding of een plaats"),
         ({"weergave": "ranglijst"}, "bestaat niet"),

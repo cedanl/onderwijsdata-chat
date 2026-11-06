@@ -37,6 +37,12 @@ pip install "onderwijsbronnen[sbb] @ git+https://github.com/cedanl/onderwijsdata
 pip install "onderwijsbronnen[catalogus] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/onderwijsbronnen"  # + anthropic, pyyaml
 ```
 
+Een snippet uit de chat installeert met `[analyse]`: hij leest elke lading als DataFrame, en de financiën van DUO en
+de crebolijst van SBB lezen Excel.
+
+`sbb.crebo` bewaart gevalideerde edities van de CREBO-lijst in `~/.cache/onderwijsbronnen/crebo`; een andere map zet
+je met `ONDERWIJSBRONNEN_CACHE`. De namen van vóór de hernoeming (`RIODATA_CACHE`, `~/.cache/riodata`) werken nog.
+
 Met uv: `uv add "onderwijsbronnen[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@<commit>#subdirectory=packages/onderwijsbronnen"`.
 
 De oude repo's `cedanl/rio-onderwijsdata` en `cedanl/cbs-onderwijsdata` zijn gearchiveerd en blijven bestaan: een
@@ -98,8 +104,11 @@ onderwijsaanbieders("31JC", "2026-11-05")
 ```python
 from onderwijsbronnen import duo
 
-# Catalogus bekijken (56 datasets, offline)
+# Catalogus bekijken: live van CKAN (netwerk), het aantal volgt CKAN
 datasets = duo.catalog()
+
+# Zonder netwerk: de gepinde snapshot met verrijking, plus de financiën uit XBRL (staan niet in CKAN)
+records = duo.catalogusrecords()
 
 # Zoeken op trefwoord
 hits = duo.search("prognose mbo")

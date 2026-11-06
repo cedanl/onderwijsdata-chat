@@ -21,7 +21,9 @@ en de sleutel van de Studiekeuzedatabase vast bij het starten (tools/__init__.py
 from config import Config
 from core import config
 
-# Op de open onderwijsdata van DUO rust een CC0-verklaring (https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp);
+# Op de open onderwijsdata van DUO rust een CC0-verklaring (https://duo.nl/open_onderwijsdata/veelgestelde-vragen/hergebruik.jsp),
+# voor elke DUO-bron, ook waar CKAN `cc-by` meldt of een bestand niets noemt: één regel (docs/databronnen.md, #971).
+DUO_LICENTIE = "CC0 1.0 (DUO, hergebruik open onderwijsdata)"
 # de verantwoording uit XBRL staat op diezelfde site (besluit 6 op #725). Terug naar False zet de financiën weer alleen
 # op local, development en test.
 LICENTIE_BEVESTIGD = True

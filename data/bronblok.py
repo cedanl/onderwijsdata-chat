@@ -25,17 +25,15 @@ from collections.abc import Callable, Iterable, Mapping
 import onderwijsbronnen
 
 from tools import bestandsversie
+from tools.scopeprofiel import dataset_id
 
 
 @functools.cache
 def _catalogus() -> dict[str, dict]:
-    """Het catalogusrecord per dataset-ID: DUO en UWV op CKAN-naam, ROA op ROA-ID, de Studiekeuzedatabase op haar
-    SKDB-ID (die staat niet in "all": de chat zoekt haar alleen waar de sleutel staat)."""
-    uit: dict[str, dict] = {}
-    for record in (*onderwijsbronnen.catalog(source="all"), *onderwijsbronnen.catalog(source="skdb")):
-        if dataset := record.get("_ckan_id") or record.get("_roa_id") or record.get("_skdb_id"):
-            uit[dataset] = record
-    return uit
+    """Het catalogusrecord per dataset-ID, met het ID zoals de rest van de chat het leest (`scopeprofiel.dataset_id`,
+    één lijst, #967/#971). De Studiekeuzedatabase staat niet in "all": de chat zoekt haar alleen waar de sleutel staat."""
+    records = (*onderwijsbronnen.catalog(source="all"), *onderwijsbronnen.catalog(source="skdb"))
+    return {dataset: record for record in records if (dataset := dataset_id(record))}
 
 
 def _duo(meldingen: list[Mapping]) -> dict:

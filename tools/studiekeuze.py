@@ -242,7 +242,8 @@ def _instelling(tekst, export: skdb.Export) -> tuple[str, str] | str | None:
         return (
             f"BRIN-code {schoon.upper()} staat niet in de Studiekeuzedatabase (alleen hogescholen en universiteiten)."
         )
-    treffers = sorted((b, n) for b, n in namen.items() if schoon.lower() in str(n).lower())
+    # Op woordbegin, zoals de opleidingen (#960, #971): "school" vond als substring ook "Hogeschool Utrecht".
+    treffers = sorted((r["brin"], r["naam"]) for r in skdb.instellingen(export, naam=schoon))
     if len(treffers) == 1:
         return treffers[0]
     if treffers:
