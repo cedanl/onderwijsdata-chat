@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAKKETTEN_MAP = ROOT / "packages"
 PAKKET = "onderwijsbronnen"
 BRON_SRC = PAKKETTEN_MAP / PAKKET / "src"
-BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "unl")
+BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "unl", "skdb")
 KERN = "_kern"
 OUDE_NAMEN = ("riodata", "onderwijsdata")
 

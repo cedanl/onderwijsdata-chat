@@ -13,7 +13,7 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import collegegeld, financien, inspectie, inspectie_vo, mbo_indicatoren, store, wo_personeel
+from tools import collegegeld, financien, inspectie, inspectie_vo, mbo_indicatoren, store, studiekeuze, wo_personeel
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
@@ -24,6 +24,7 @@ from tools.schemas import (
     TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
 )
 from tools.scopeprofiel import VO_CONTEXT_DEEL
@@ -117,6 +118,8 @@ _BESTANDSBRONNEN = {
     # De vaste bronregel komt uit de tool zelf (`bron.regel`), met de GEZO-variant erin (#936).
     TOOL_GET_WO_PERSONEEL: f"{wo_personeel.BRONNAAM}{SCHEIDING}{wo_personeel.BRONTITEL}",
     TOOL_GET_BESTUURSFINANCIEN: f"{financien.BRONNAAM}{SCHEIDING}{financien.BRONTITEL}",
+    # De bronregel komt uit de tool zelf (`bron.regel`), met het versienummer en de verplichte zin van LCSK (#957).
+    TOOL_GET_STUDIEKEUZE: f"{studiekeuze.BRONNAAM}{SCHEIDING}{studiekeuze.BRONTITEL}",
 }
 # Welke velden van `bron` in de bronregel komen, en met welk woord ervoor.
 _BRONVELDEN = {"editie": "editie", "peildatum": "peildatum", "versie": "versie van", "opgehaald": "opgehaald op"}

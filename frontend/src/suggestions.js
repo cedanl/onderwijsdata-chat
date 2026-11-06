@@ -21,7 +21,7 @@ function tekstVoor(q, sector) {
 // The suggested questions the sources can answer for an institution of this sector (#447).
 // Unknown sector: only the questions that hold for every sector. Without an institution in the
 // profile, only the questions that need none (CH-42); an empty category is left out. A question
-// about a source that depends on the environment (`bron`: the DUO finances, WOPI) only shows where
+// about a source that depends on the environment (`bron`: the DUO finances, WOPI, the SKDB) only shows where
 // /api/config says that source answers here (`bronnen`, #956); until it says so, it does not.
 export function suggestionsFor(sector, { profiel = true, bronnen = {} } = {}, categories = SUGGESTED) {
   const holds = q =>

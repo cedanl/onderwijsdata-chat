@@ -1,7 +1,7 @@
 # CLAUDE.md — onderwijsbronnen (RIO, DUO en de andere bronnen)
 
 Het pakket `onderwijsbronnen` heeft per bron een subpakket: `cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`
-en `unl` (WOPI-personeel, #936), met gedeelde code in `_kern` (#910). Een bron importeert nooit een andere bron, alleen `_kern`; de chat bewaakt dat in
+`unl` (WOPI-personeel, #936) en `skdb` (Studiekeuzedatabase van LCSK, #957), met gedeelde code in `_kern` (#910). Een bron importeert nooit een andere bron, alleen `_kern`; de chat bewaakt dat in
 tests/test_importgrens.py. Dit bestand gaat over RIO en DUO (tot november 2026 het pakket `riodata`); CBS staat in
 `CLAUDE-cbs.md`. De twee belangrijkste bronnen hier:
 

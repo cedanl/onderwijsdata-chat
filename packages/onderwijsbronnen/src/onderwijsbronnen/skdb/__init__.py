@@ -1,0 +1,97 @@
+"""Studiekeuzedatabase (SKDB) van het Landelijk Centrum Studiekeuze: opleidingen in het hbo en wo (#957).
+
+De data achter Studiekeuze123: per opleiding (CROHO-code × BRIN × vestiging) de oordelen uit de Nationale Studenten
+Enquête, studenten en eerstejaars, doorstroom en rendement, numerus fixus, collegegeld en accreditatie; per landelijke
+studie de arbeidsmarktpositie per SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor → master. Alleen hbo en wo.
+
+Gebruik (met `STUDIEKEUZEDATABASE_API_KEY` in de omgeving, of de sleutel als argument):
+    from onderwijsbronnen import skdb
+
+    df = skdb.load("opleidingvormen")                 # één tabel van de nieuwste export
+
+    export = skdb.lees(*skdb.haal_op())               # alle tabellen van één export, met de herkomst
+    export.herkomst.versie                            # "26.6"
+    export.frame("studies")
+    skdb.opleidingen(export, brin="25DW", croho=30020)   # kerncijfers per opleiding en vorm, met NSE landelijk
+
+Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v23.2). Bij elke uiting `VERPLICHTE_ZIN` met een link naar
+`DOCUMENTATIE` en het versienummer; geen doorlevering. Dit pakket bevat daarom geen data van LCSK: de lader haalt de
+export op het moment van gebruik, met de eigen sleutel van de gebruiker.
+"""
+
+from __future__ import annotations
+
+import json
+from importlib.resources import files
+
+from .._kern import broncontract
+from .export import (
+    API,
+    DOCUMENTATIE,
+    EXPORT,
+    LEVERANCIER,
+    SLEUTEL_ENV,
+    USER_AGENT,
+    VEREIST,
+    VERPLICHTE_ZIN,
+    Export,
+    GeenSleutel,
+    Herkomst,
+    SkdbFout,
+    haal_op,
+    herkomst,
+    lees,
+    load,
+    sleutel,
+)
+from .overzicht import (
+    ARBEIDSMARKT,
+    NSE_THEMAS,
+    SORTERINGEN,
+    VORMEN,
+    doorstroom_bachelor_master,
+    doorstroom_mbo_hbo,
+    instellingen,
+    jaren,
+    numerus_fixus,
+    opleidingen,
+    studie,
+    zoek_studies,
+)
+
+
+def catalog() -> list[dict]:
+    """De SKDB als catalogusrecord (lokale JSON): één record, de hele export."""
+    return json.loads(files("onderwijsbronnen.skdb.data").joinpath("skdb_resources.json").read_text(encoding="utf-8"))
+
+
+# ── broncontract (#911) ────────────────────────────────────────────────────────
+
+BRON = "skdb"
+catalogusrecords = catalog
+laad = load
+
+
+def metadata(record: dict) -> dict:
+    return broncontract.metadata(
+        BRON,
+        record["_skdb_id"],
+        record.get("bron"),
+        voorlopig=False,
+        redenen={
+            "peildatum_of_editie": (
+                "de lader leest de export van vandaag; het versienummer en de exportdatum staan in de herkomst van een "
+                "lading, niet in de catalogus"
+            ),
+            "laatste_update": "de exportdatum staat in de herkomst van een lading, niet in de catalogus",
+        },
+    )
+
+
+__all__ = [
+    "ARBEIDSMARKT", "NSE_THEMAS", "SORTERINGEN", "VORMEN", "doorstroom_bachelor_master", "doorstroom_mbo_hbo",
+    "instellingen", "jaren", "numerus_fixus", "opleidingen", "studie", "zoek_studies",
+    "API", "BRON", "DOCUMENTATIE", "EXPORT", "LEVERANCIER", "SLEUTEL_ENV", "USER_AGENT", "VEREIST", "VERPLICHTE_ZIN",
+    "Export", "GeenSleutel", "Herkomst", "SkdbFout", "catalog", "catalogusrecords", "haal_op", "herkomst", "laad",
+    "lees", "load", "metadata", "sleutel",
+]

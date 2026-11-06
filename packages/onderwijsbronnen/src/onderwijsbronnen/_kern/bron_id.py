@@ -22,8 +22,9 @@ import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
-# Alle bronnen, in de volgorde van de samengevoegde catalogus (CBS eerst, dan RIO, DUO en de rest; UNL sinds #936).
-BRONNEN = ("cbs", "rio", "duo", "roa", "uwv", "inspectie", "sbb", "unl")
+# Alle bronnen, in de volgorde van de samengevoegde catalogus (CBS eerst, dan RIO, DUO en de rest; UNL sinds #936,
+# de Studiekeuzedatabase sinds #957).
+BRONNEN = ("cbs", "rio", "duo", "roa", "uwv", "inspectie", "sbb", "unl", "skdb")
 
 # Welk scheidingsteken na de bronnaam een voorvoegsel is. CBS ook `_` (`cbs_85423ned`, zoals een model het spelt);
 # bij de andere bronnen niet, want een DUO-naam kan zelf met `duo_` of `duo-` beginnen.

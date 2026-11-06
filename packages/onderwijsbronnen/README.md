@@ -11,6 +11,7 @@ Python client voor Nederlandse onderwijs- en arbeidsmarktdata uit acht bronnen, 
 - **Inspectie van het Onderwijs** — open data (2 datasets) (`onderwijsbronnen.inspectie`)
 - **SBB** — CREBO-lijst en kwalificatiedossiers (2 datasets) (`onderwijsbronnen.sbb`, met `sbb.crebo` en `sbb.dossiers`)
 - **UNL** — WOPI-personeelsbestand van de 14 universiteiten (`onderwijsbronnen.unl`, zie [UNL](#unl-wopi-personeel)); niet in `catalog(source="all")`
+- **SKDB** — Studiekeuzedatabase van het Landelijk Centrum Studiekeuze, hbo en wo (`onderwijsbronnen.skdb`, zie [SKDB](#skdb-studiekeuzedatabase)); eigen API-sleutel, niet in `catalog(source="all")`
 
 Tot november 2026 waren dit twee pakketten: `onderwijsdata` (CBS) en `riodata` (de rest). Sinds 0.9.0 (#914) bestaan
 die namen niet meer in dit pakket. Overstappen: `from riodata import duo` wordt `from onderwijsbronnen import duo`
@@ -193,6 +194,32 @@ wopi.herkomst                             # url, editiejaar, sha256, bytes, Last
 
 Licentie: UNL zegt niets over hergebruik. Er staat geen data van UNL in dit pakket; de tests gebruiken een
 synthetisch bestand met dezelfde XML-vorm (`unl.proefbestand`). Het XML gaat door `defusedxml`.
+
+## SKDB: Studiekeuzedatabase
+
+De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957), de data achter Studiekeuze123: per opleiding van
+een hogeschool of universiteit (CROHO × BRIN × vestiging, per vorm) de NSE-oordelen, studenten en eerstejaars,
+doorstroom naar jaar 2, diplomarendement, numerus fixus, collegegeld en accreditatie; per landelijke studie de
+arbeidsmarkt van de SOI-rubriek; de doorstroom mbo-4 → hbo en bachelor → master. Alleen hbo en wo. De lader haalt de
+dagelijkse export (`/export/json`, één ZIP van ongeveer 18 MB) met een eigen sleutel (`STUDIEKEUZEDATABASE_API_KEY`,
+aan te vragen bij LCSK) en leest een tabel pas als je erom vraagt.
+
+```python
+from onderwijsbronnen import skdb
+
+df = skdb.load("opleidingvormen")                    # één tabel van de export van vandaag
+
+export = skdb.lees(*skdb.haal_op())                  # alle tabellen, met de herkomst (versie "26.6", exportdatum)
+skdb.opleidingen(export, brin="25DW", croho=30020)   # per opleiding en vorm, met het landelijke NSE-oordeel ernaast
+skdb.studie(export, 56604)                           # een landelijke studie, met de arbeidsmarkt van de SOI-rubriek
+skdb.doorstroom_mbo_hbo(export, mbo="verpleeg")      # waar mbo-4-gediplomeerden in het hbo naartoe gaan
+```
+
+`brin` en `croho` zijn de codes van RIO en DUO; `studiecode` is een code van LCSK en niet altijd een CROHO-code.
+Licentie: de Algemene Leveringsvoorwaarden Data van LCSK. Bij elke uiting `skdb.VERPLICHTE_ZIN` ("Er is gebruik gemaakt
+van de data van Landelijk Centrum Studiekeuze.") met een link naar `skdb.DOCUMENTATIE` en het versienummer; geen
+doorlevering. Er staat daarom geen data van LCSK in dit pakket; de tests gebruiken een synthetische export
+(`skdb.proefbestand`).
 
 ## Broncontrole
 

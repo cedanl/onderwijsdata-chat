@@ -12,7 +12,7 @@ import pytest
 import onderwijsbronnen
 from onderwijsbronnen._kern import broncontract
 
-BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "unl")
+BRONNEN = ("cbs", "duo", "rio", "roa", "uwv", "inspectie", "sbb", "unl", "skdb")
 
 
 def _bron(naam):
@@ -56,7 +56,7 @@ def test_een_id_komt_binnen_een_bron_een_keer_voor(naam):
     assert len(ids) == len(set(ids))
 
 
-@pytest.mark.parametrize("naam", ["rio", "duo", "roa", "uwv", "inspectie", "sbb", "unl"])
+@pytest.mark.parametrize("naam", ["rio", "duo", "roa", "uwv", "inspectie", "sbb", "unl", "skdb"])
 def test_de_catalogusrecords_van_een_bron_zijn_die_van_de_gezamenlijke_catalogus(naam):
     """Geen tweede bron van waarheid: `catalog(source=...)` is precies wat de bron zelf levert."""
     assert onderwijsbronnen.catalog(source=naam) == _bron(naam).catalogusrecords()
@@ -66,7 +66,7 @@ def test_de_laders_zijn_de_bestaande_functies():
     """`laad` is een naam voor de lader die de bron al had, geen tweede implementatie."""
     assert onderwijsbronnen.cbs.laad is onderwijsbronnen.cbs.client.data
     assert onderwijsbronnen.rio.laad is onderwijsbronnen.rio.client.fetch
-    for naam in ("duo", "roa", "uwv", "inspectie", "sbb", "unl"):
+    for naam in ("duo", "roa", "uwv", "inspectie", "sbb", "unl", "skdb"):
         assert _bron(naam).laad is _bron(naam).load
 
 

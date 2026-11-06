@@ -158,4 +158,16 @@ export const SUGGESTED = [
       { tekst: 'Wat is het aandeel vrouwen onder het personeel van onze instelling?', sectoren: ['wo'], profiel: true, bron: 'wo_personeel' },
     ],
   },
+  {
+    // De Studiekeuzedatabase van LCSK (#957): alleen waar de sleutel staat (bron `studiekeuze`, test en playground).
+    // De vragen noemen zelf een hogeschool of universiteit, dus ze horen bij elk profiel en elke sector: ook een
+    // mbo-instelling wil weten waar haar gediplomeerden in het hbo naartoe gaan. Elke vraag is op de echte export getoetst.
+    category: 'Studiekeuze',
+    questions: [
+      { tekst: 'Hoe tevreden zijn studenten over ICT bij de Hogeschool Utrecht, vergeleken met landelijk?', sectoren: SECTOREN, bron: 'studiekeuze' },
+      { tekst: 'Welke opleidingen van de Universiteit Leiden hebben een numerus fixus en hoeveel plaatsen zijn er?', sectoren: SECTOREN, bron: 'studiekeuze' },
+      { tekst: 'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?', sectoren: SECTOREN, bron: 'studiekeuze' },
+      { tekst: 'Welke voltijd ICT-opleiding heeft het hoogste oordeel van studenten?', sectoren: SECTOREN, bron: 'studiekeuze' },
+    ],
+  },
 ]

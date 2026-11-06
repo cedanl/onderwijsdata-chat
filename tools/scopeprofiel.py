@@ -383,6 +383,7 @@ def dataset_id(entry: dict) -> str | None:
         or entry.get("_rio_resource")
         or entry.get("_roa_id")
         or entry.get("_unl_id")
+        or entry.get("_skdb_id")
     )
 
 

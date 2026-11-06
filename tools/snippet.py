@@ -32,6 +32,7 @@ from . import (
     maten,
     regiolocaties,
     store,
+    studiekeuze,
     wo_personeel,
 )
 from .canoniek import parse_filter_key
@@ -60,6 +61,7 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
@@ -331,6 +333,23 @@ def _financien_laadregels(args: dict) -> list[str]:
     ]
 
 
+def _skdb_laadregels(args: dict) -> list[str]:
+    """De Studiekeuzedatabase (#957): dezelfde pakketfunctie als de tool (`studiekeuze.pakketaanroep`), op de export van
+    vandaag, met de BRIN- en opleidingscode waartoe de app de vraag herleidde. De sleutel komt uit de omgeving, nooit
+    uit de snippet."""
+    functie, kwargs = studiekeuze.pakketaanroep(args)
+    argumenten = "".join(f", {naam}={_lit(waarde)}" for naam, waarde in kwargs.items())
+    return [
+        "import pandas as pd",
+        "from onderwijsbronnen import skdb",
+        "",
+        f"# De export van vandaag; de sleutel komt uit {_lit('STUDIEKEUZEDATABASE_API_KEY')} (eigen sleutel van LCSK).",
+        "export = skdb.lees(*skdb.haal_op())",
+        f"df = pd.DataFrame(skdb.{functie}(export{argumenten}))",
+        f"# {studiekeuze.skdb.VERPLICHTE_ZIN} ({studiekeuze.skdb.DOCUMENTATIE})",
+    ]
+
+
 _LAADREGELS = {
     "get_duo_data": _duo_laadregels,
     "get_cbs_data": _cbs_laadregels,
@@ -339,6 +358,7 @@ _LAADREGELS = {
     "get_roa_benchmark": _roa_laadregels,
     TOOL_GET_WO_PERSONEEL: _wopi_laadregels,
     TOOL_GET_BESTUURSFINANCIEN: _financien_laadregels,
+    TOOL_GET_STUDIEKEUZE: _skdb_laadregels,
 }
 
 
@@ -844,7 +864,8 @@ def _get_maat_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
 
 
 def _alleen_met_tabel(args: dict, recept_van: Receptbron | None = None) -> None:
-    """get_wo_personeel en get_bestuursfinancien (#935, #936) zetten hun tabel met laadaanroep in de store (#956): hun
+    """get_wo_personeel, get_bestuursfinancien en get_studiekeuze (#935, #936, #957) zetten hun tabel met laadaanroep in
+    de store (#956): hun
     snippet komt uit `_LAADREGELS`, met de keuze van de app (BRIN, jaar, bestuurssleutel). Zonder tabel (een melding of
     weigering) is er geen snippet."""
     return None
@@ -852,6 +873,7 @@ def _alleen_met_tabel(args: dict, recept_van: Receptbron | None = None) -> None:
 
 _GENERATORS = {
     TOOL_GET_WO_PERSONEEL: _alleen_met_tabel,
+    TOOL_GET_STUDIEKEUZE: _alleen_met_tabel,
     TOOL_GET_MAAT: _get_maat_snippet,
     TOOL_QUERY_DATA: _query_data_snippet,
     TOOL_RUN_ANALYSIS: _run_analysis_snippet,

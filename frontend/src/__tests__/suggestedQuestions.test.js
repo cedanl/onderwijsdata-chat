@@ -56,6 +56,20 @@ describe('SuggestedQuestions', () => {
     expect(shown.filter(q => /personeel|financieel/.test(q))).toEqual([])
   })
 
+  // #957: the Studiekeuzedatabase questions follow `bronnen.studiekeuze` from /api/config, with or without a profile.
+  it('shows the Studiekeuzedatabase questions only where that source answers', async () => {
+    const vraag = 'Naar welke hbo-opleidingen stromen mbo-verpleegkundigen door?'
+    expect(await shownQuestions({ instelling: 'ROC Midden Nederland', sector: 'mbo', bronnen: { studiekeuze: true } })).toContain(vraag)
+    act(() => root.unmount())
+    container.remove()
+    expect(await shownQuestions({ instelling: '', sector: null, bronnen: { studiekeuze: true } })).toContain(vraag)
+    act(() => root.unmount())
+    container.remove()
+    const zonder = await shownQuestions({ instelling: 'Hogeschool Utrecht', sector: 'hbo', bronnen: { financien: true } })
+    expect(zonder.length).toBeGreaterThan(0)
+    expect(zonder.filter(q => /numerus fixus|oordeel van studenten|stromen mbo|tevreden/.test(q))).toEqual([])
+  })
+
   // CH-42 (#465): a demo without a profile clicked "onze instelling" into a scope refusal.
   it('without an institution, shows only questions about the open data in general', async () => {
     const shown = await shownQuestions({ instelling: '', sector: null })

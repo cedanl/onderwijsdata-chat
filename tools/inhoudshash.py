@@ -16,7 +16,8 @@ from . import store
 
 # De bronnen waarvan de app zelf de hash maakt. DUO: KeyMeta.bronhash (#717); UWV en ROA zijn momentopnamen met een peilmoment.
 # WOPI (UNL) is één bestand per editie, maar de tabel is een som over zijn records: de hash is die van de tabel (#956).
-HASH_BRONNEN = frozenset({"cbs", "rio", "unl"})
+# De Studiekeuzedatabase (#957) is een dagexport; de hash is die van de selectie zoals de tool haar bewaart.
+HASH_BRONNEN = frozenset({"cbs", "rio", "unl", "skdb"})
 # DUO-tabellen zonder md5 van één bestand: de financien komen uit vier bestanden van één editie (#935, #956).
 HASH_DATASETS = frozenset({"duo:financien"})
 

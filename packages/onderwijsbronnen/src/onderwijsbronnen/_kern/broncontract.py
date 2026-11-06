@@ -1,6 +1,6 @@
 """Wat elke bron levert, hoe ze ook heet (#911).
 
-Elk bron-subpakket (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`, `unl`) heeft dezelfde publieke interface:
+Elk bron-subpakket (`cbs`, `duo`, `rio`, `roa`, `uwv`, `inspectie`, `sbb`, `unl`, `skdb`) heeft dezelfde publieke interface:
 
 - `BRON`: de korte naam van de bron, zoals in `onderwijsbronnen.BRONNEN`;
 - `catalogusrecords()`: de catalogusrecords van de bron, offline, zonder argumenten aan te roepen;

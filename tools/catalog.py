@@ -31,6 +31,7 @@ from .definitie import met_voorbeeldstatus
 from .schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
 )
@@ -65,8 +66,11 @@ def stil() -> Generator[None]:
 # catalogus maar hebben geen bruikbare machineleesbare resources — hun structuur is niet
 # geschikt voor de query-interfaces (search_catalog, get_*_data). Deze filtered-out state
 # is intentioneel: README mag ze niet noemen, want zij zijn niet bereikbaar voor gebruikers.
-# UNL (WOPI) staat alleen in de catalogus waar zijn vlag aan staat (_TOOLBRONNEN, #956).
-SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV", "UNIVERSITEITEN VAN NEDERLAND"})
+# UNL (WOPI) staat alleen in de catalogus waar zijn vlag aan staat (_TOOLBRONNEN, #956), de Studiekeuzedatabase van
+# LCSK alleen waar haar sleutel staat (#957).
+SUPPORTED_LEVERANCIERS = frozenset(
+    {"RIO", "DUO", "ROA", "UWV", "UNIVERSITEITEN VAN NEDERLAND", "LANDELIJK CENTRUM STUDIEKEUZE"}
+)
 
 # Bronnen waarvan de chat data kan ophalen (get_cbs_data, get_duo_data, get_rio_data).
 # ROA en UWV staan wel in de catalogus; zonder datatool mag het model er geen cijfers
@@ -76,21 +80,23 @@ CHAT_BRONNEN = ("CBS", "DUO", "RIO")
 # Bronnen van het pakket die de chat alleen via een eigen tool leest, met de regel die zegt of die tool hier antwoord
 # geeft (tools/beschikbaarheid.py): UNL (WOPI-personeel, #936) staat achter de vlag ENABLE_WO_PERSONEEL. Zonder vlag
 # kennen zoeken, details en tellingen de bron niet, zoals `onderwijsbronnen.catalog(source="all")`; met de vlag is het
-# record vindbaar als `via_tool` (#956). De vlag is per proces: de catalogus wordt één keer gelezen.
-_TOOLBRONNEN = {"unl": beschikbaarheid.wo_personeel}
+# record vindbaar als `via_tool` (#956). De vlag is per proces: de catalogus wordt één keer gelezen. De
+# Studiekeuzedatabase (#957) net zo, met haar sleutel als vlag.
+_TOOLBRONNEN = {"unl": beschikbaarheid.wo_personeel, "skdb": beschikbaarheid.studiekeuze}
 _EIGEN_TOOL = {
     "uwv-open-match-data": TOOL_GET_UWV_VACATURES,
     "ais2030": TOOL_GET_ROA_BENCHMARK,
     "financien": TOOL_GET_BESTUURSFINANCIEN,  # DUO's verantwoording uit XBRL, geen CKAN-dataset (#935)
     "wopi": TOOL_GET_WO_PERSONEEL,  # WOPI van UNL (#936)
+    "studiekeuzedatabase": TOOL_GET_STUDIEKEUZE,  # Studiekeuzedatabase van LCSK (#957)
 }
 # Hoe de tellingen een bron met een lange naam noemen.
-_KORTE_NAAM = {"Universiteiten van Nederland": "UNL"}
+_KORTE_NAAM = {"Universiteiten van Nederland": "UNL", "Landelijk Centrum Studiekeuze": "LCSK"}
 
 # Vindbaar, package-leesbaar en chat-opvraagbaar zijn drie statussen (#356). Elke zoekhit en elk
 # detailrecord zegt welke; de chat beslist, de package meldt alleen wat ze kan lezen.
 STATUS_OPVRAAGBAAR = "opvraagbaar"  # get_cbs_data, get_duo_data of get_rio_data laadt hem
-STATUS_VIA_TOOL = "via_tool"  # een eigen tool (UWV, ROA, financiën, WOPI) die hier antwoord geeft, geen datatool
+STATUS_VIA_TOOL = "via_tool"  # een eigen tool (UWV, ROA, financiën, WOPI, SKDB) die hier antwoord geeft, geen datatool
 STATUS_ALLEEN_DOCUMENTATIE = "alleen_documentatie"  # de bron heeft alleen een PDF of changelog
 STATUS_ALLEEN_CATALOGUS = "alleen_catalogus"  # vindbaar en voor de package leesbaar, maar zonder chat-adapter
 _NIET_OPVRAAGBAAR = {
@@ -257,6 +263,7 @@ _SEARCH_KEEP_FIELDS = frozenset(
         "_ckan_id",
         "_rio_resource",
         "_unl_id",
+        "_skdb_id",
         "_dimensies",
         "_meetwaarden",
         "_geo_niveau",
@@ -433,7 +440,14 @@ def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
 
 
 def _dataset_id(entry: dict) -> str:
-    return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or entry.get("_unl_id") or "?"
+    return (
+        entry.get("_cbs_id")
+        or entry.get("_ckan_id")
+        or entry.get("_rio_resource")
+        or entry.get("_unl_id")
+        or entry.get("_skdb_id")
+        or "?"
+    )
 
 
 @cache

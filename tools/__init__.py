@@ -42,6 +42,7 @@ from .schemas import (
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
     TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
@@ -50,6 +51,7 @@ from .schemas import (
     TOOL_SEARCH_CATALOG,
 )
 from .schemas import TOOL_SCHEMAS as SCHEMAS  # noqa: F401
+from .studiekeuze import get_studiekeuze
 from .wo_personeel import get_wo_personeel
 
 LABELS = {
@@ -79,6 +81,7 @@ LABELS = {
     TOOL_GET_COLLEGEGELD: "Collegegeld opgezocht",
     TOOL_GET_WO_PERSONEEL: "Personeel universiteiten opgehaald",
     TOOL_GET_BESTUURSFINANCIEN: "Financiën van het bestuur opgehaald",
+    TOOL_GET_STUDIEKEUZE: "Studiekeuzedatabase geraadpleegd",
 }
 
 _HANDLERS = {
@@ -110,6 +113,9 @@ _HANDLERS = {
 # Alleen met de vlag (#936): zonder vlag staat de tool niet in de toolset en is hij ook niet aan te roepen.
 if beschikbaarheid.wo_personeel():
     _HANDLERS[TOOL_GET_WO_PERSONEEL] = get_wo_personeel
+# Alleen met de sleutel van de Studiekeuzedatabase (#957), net zo.
+if beschikbaarheid.studiekeuze():
+    _HANDLERS[TOOL_GET_STUDIEKEUZE] = get_studiekeuze
 
 
 def dispatch(name: str, tool_input: dict) -> tuple[str, Any]:

@@ -7,11 +7,13 @@ import { useDialog } from '../hooks/useDialog'
 const withCount = (n, text) => (n ? `${n} ${text}` : text)
 
 // Sources the chat reads through a tool of their own (#956). /api/catalog/counts only names them where that tool
-// answers here (WOPI behind its flag), so a row only shows when the counts name the source.
+// answers here (WOPI behind its flag, the Studiekeuzedatabase where its key is set, #957), so a row only shows when the
+// counts name the source.
 const EIGEN_TOOL = [
   ['UWV', 'Vacatures per provincie of gemeente (momentopname mei 2023)', 'data.overheid.nl', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
   ['ROA', 'Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'doi.org', 'https://doi.org/10.34894/DVQTOG'],
   ['UNL', 'Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'universiteitenvannederland.nl', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
+  ['LCSK', 'Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'studiekeuze123.nl', 'https://www.studiekeuze123.nl/studiekeuzedata'],
 ]
 
 export default function DataSourcesModal({ onClose }) {

@@ -605,6 +605,53 @@ de toolset en geeft de dispatch "Onbekende tool".
 
 ---
 
+## get_studiekeuze
+
+Opleidingen van hogescholen en universiteiten uit de Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957,
+`tools/studiekeuze.py`, rekenen in `onderwijsbronnen.skdb`). Alleen waar `STUDIEKEUZEDATABASE_API_KEY` staat (test en
+playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatch "Onbekende tool".
+- **Route:** `onderwijsbronnen.skdb` haalt de dagexport op (één ZIP met alle tabellen); één lading per 24 uur
+  (`core/actualiteit.py`). De instelling wordt een BRIN-code via de export of het register; een opleiding een
+  CROHO-code, een studiecode of een naamfilter. Passen er meer instellingen of studies, dan noemt de melding ze en kiest
+  de gebruiker.
+- **Weergaven:**
+  - `opleidingen`: per opleiding van een instelling en per vorm het NSE-oordeel met `nse_respondenten` en
+    `nse_oordeel_landelijk` (dezelfde studie en vorm over alle instellingen, van LCSK), studenten, eerstejaars,
+    `doorstroom_jaar2_pct`, `diploma_opleiding_pct`, numerus fixus met capaciteit, wettelijk collegegeld en
+    accreditatiedatum; de NSE-thema's alleen bij hooguit drie rijen.
+  - `studie`: één landelijke studie per vorm, met het aantal aanbieders en de arbeidsmarkt van de SOI-rubriek.
+  - `numerus_fixus`: opleidingen met loting of decentrale selectie, capaciteit per taaltraject en studiejaar.
+  - `doorstroom_mbo_hbo` en `doorstroom_bachelor_master`: aantal, aandeel en rang (van LCSK) per vervolgstudie.
+- **Resultaat:** `rijen` (hooguit 15; `afgekapt` zegt hoeveel er zijn, de hele tabel staat onder `data_key`),
+  `selectie` met de opgeloste aanroep, vaste `voorbehouden` per weergave (NSE-jaar en schaal, onzekerheid onder 30
+  respondenten, 1cijferHO-jaar, wat de percentages betekenen, de SOI-rubriek, en bij een sortering op een cijfer dat
+  het een rangorde op één cijfer is en geen kwaliteitsoordeel), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
+  met de verplichte bronregel van LCSK en het versienummer van de export. Afronden, sorteren en het landelijke oordeel
+  doet de code; zie de [verantwoording](databronnen.md#verantwoording-hoe-de-app-selecteert-sorteert-en-afrondt).
+- **Geen cijfer:** voor een mbo-instelling of `soort_ho="mbo"` (vaste melding: alleen hbo en wo), voor een instelling
+  die niet in de export staat, voor een onbekende studie, voor `opleidingen` zonder instelling, opleiding, plaats of
+  numerus fixus, en voor een leeg veld in de bron (geen 0). Zonder sleutel, of als de export een andere vorm heeft, een
+  bronfout.
+- **Bronregel:** "Studiekeuzedatabase {versie}, Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik
+  gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar studiekeuze123.nl/studiekeuzedata.
+- **Snippet:** dezelfde functie van `onderwijsbronnen.skdb` met de opgeloste argumenten (`pakketaanroep`), op een
+  export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `weergave` | enum, optioneel | `opleidingen` (standaard), `studie`, `numerus_fixus`, `doorstroom_mbo_hbo`, `doorstroom_bachelor_master` |
+| `instelling` | string, optioneel | Naam, afkorting of BRIN-code van een hogeschool of universiteit |
+| `opleiding` | string, optioneel | Naam (of deel) of CROHO-code; bij `studie` en de doorstroom de naam of studiecode van de landelijke studie |
+| `soort_ho` | enum, optioneel | `hbo` of `wo` |
+| `graad` | enum, optioneel | `bachelor`, `master` of `associate degree` |
+| `vorm` | enum, optioneel | `voltijd`, `deeltijd` of `duaal`; weglaten geeft elke vorm een eigen rij |
+| `plaats` | string, optioneel | Plaats van het bezoekadres |
+| `mbo_opleiding` | string, optioneel | Bij `doorstroom_mbo_hbo`: naam (of deel) of beroep_id van de mbo-4-opleiding |
+| `alleen_numerus_fixus` | boolean, optioneel | Bij `opleidingen`: alleen opleidingen met een numerus fixus |
+| `sorteer` | enum, optioneel | Bij `opleidingen`: `naam` (standaard) of aflopend op `oordeel`, `studenten`, `eerstejaars`, `doorstroom_jaar2` |
+
+---
+
 ## get_uwv_vacatures
 
 Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een

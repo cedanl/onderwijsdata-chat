@@ -104,8 +104,9 @@ describe('suggestions without a profile', () => {
   })
 
   // Finances and staff are per institution (its board, its university): without a profile there is nothing to ask (#956).
+  // A category of only environment-bound questions (the SKDB, #957) waits for `bronnen` from /api/config.
   it('still offer a question in every category about the open data in general', () => {
-    const algemeen = SUGGESTED.filter(c => c.category !== FIN_PERSONEEL).map(c => c.category)
+    const algemeen = SUGGESTED.filter(c => c.category !== FIN_PERSONEEL && !c.questions.every(q => q.bron)).map(c => c.category)
     expect(suggestionsFor(null, { profiel: false }).map(c => c.category)).toEqual(algemeen)
   })
 })
@@ -176,5 +177,49 @@ describe('suggestions about a source that depends on the environment', () => {
     expect(vraag).toBe('Hoeveel fte wetenschappelijk personeel heeft Universiteit Utrecht?')
     expect(vragen('mbo', ALLES).filter(financieel).map(q => personalizeQuestion(q, 'ROC Midden Nederland')))
       .toContain('Hoe staat ROC Midden Nederland er financieel voor?')
+  })
+})
+
+// #957: the Studiekeuzedatabase of LCSK answers only where its key is set (test, playground). Its questions name a
+// hogeschool or universiteit themselves, so they hold for every sector, with and without a profile.
+const STUDIEKEUZE = 'Studiekeuze'
+describe('suggestions about the Studiekeuzedatabase', () => {
+  const skdb = SUGGESTED.find(c => c.category === STUDIEKEUZE).questions.map(q => q.tekst)
+  const vragen = (sector, profiel, bronnen) => suggestionsFor(sector, { profiel, bronnen }).flatMap(c => c.questions)
+
+  it('are all tagged with the source name of tools/beschikbaarheid.py', () => {
+    expect(SUGGESTED.find(c => c.category === STUDIEKEUZE).questions.map(q => q.bron)).toEqual(skdb.map(() => 'studiekeuze'))
+    expect(skdb.length).toBeGreaterThanOrEqual(3)
+    expect(skdb.length).toBeLessThanOrEqual(4)
+  })
+
+  it('are not shown without studiekeuze: true', () => {
+    for (const sector of [...SECTOREN, null]) {
+      for (const profiel of [true, false]) {
+        for (const bronnen of [undefined, {}, { studiekeuze: false }, { financien: true, wo_personeel: true }]) {
+          expect(vragen(sector, profiel, bronnen).filter(q => skdb.includes(q))).toEqual([])
+          expect(suggestionsFor(sector, { profiel, bronnen }).map(c => c.category)).not.toContain(STUDIEKEUZE)
+        }
+      }
+    }
+  })
+
+  it('are shown with studiekeuze: true, for every sector and without a profile too', () => {
+    for (const sector of [...SECTOREN, null]) {
+      for (const profiel of [true, false]) {
+        expect(vragen(sector, profiel, { studiekeuze: true }).filter(q => skdb.includes(q))).toEqual(skdb)
+      }
+    }
+  })
+
+  it('name the institution themselves and need no personalisation', () => {
+    for (const q of skdb) {
+      expect(q).not.toMatch(FIRST_PERSON)
+      expect(personalizeQuestion(q, 'ROC Midden Nederland')).toBe(q)
+    }
+  })
+
+  it('leave the other sources alone', () => {
+    expect(vragen('wo', true, { studiekeuze: true }).filter(q => /financieel|solvabiliteit|personeel/.test(q))).toEqual([])
   })
 })

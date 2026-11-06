@@ -2,7 +2,7 @@
 
 De export is de tabel die query_data, run_analysis of get_maat in de store legde,
 of de selectie van een lader als het toolresultaat haar helemaal toonde (#605), of de tabel achter
-get_bestuursfinancien of get_wo_personeel (#956);
+get_bestuursfinancien, get_wo_personeel of get_studiekeuze (#956, #957);
 niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
@@ -26,6 +26,7 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
@@ -42,7 +43,7 @@ _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}
 _LADERS = {TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA}
 # Een bron met een eigen resultaatvorm toont haar hele tabel, in haar eigen vorm (#956): elke eenheid en elk verslagjaar
 # van een bestuur, elk jaar en elke groep van een WOPI-selectie. Haar tabel in de store is de tabel achter het antwoord.
-_EIGEN_VORM = {TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_WO_PERSONEEL}
+_EIGEN_VORM = {TOOL_GET_BESTUURSFINANCIEN, TOOL_GET_WO_PERSONEEL, TOOL_GET_STUDIEKEUZE}
 
 
 def _resultaat(result: str) -> dict | None:

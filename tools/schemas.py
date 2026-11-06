@@ -33,6 +33,7 @@ TOOL_GET_ACCREDITATIE = "get_accreditatie"
 TOOL_GET_COLLEGEGELD = "get_collegegeld"
 TOOL_GET_WO_PERSONEEL = "get_wo_personeel"
 TOOL_GET_BESTUURSFINANCIEN = "get_bestuursfinancien"
+TOOL_GET_STUDIEKEUZE = "get_studiekeuze"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -895,3 +896,79 @@ SCHEMA_GET_WO_PERSONEEL: dict[str, Any] = {
 }
 if beschikbaarheid.wo_personeel():
     TOOL_SCHEMAS.append(SCHEMA_GET_WO_PERSONEEL)
+
+# De Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (#957). Alleen in de toolset waar de sleutel
+# STUDIEKEUZEDATABASE_API_KEY staat (tools/beschikbaarheid.py): test en playground. De weergaven staan in
+# tools/studiekeuze.py.
+SCHEMA_GET_STUDIEKEUZE: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": TOOL_GET_STUDIEKEUZE,
+        "description": (
+            "Opleidingen van hogescholen en universiteiten (hbo en wo) uit de Studiekeuzedatabase van het Landelijk "
+            "Centrum Studiekeuze (de data achter Studiekeuze123). Gebruik dit bij vragen naar het oordeel van "
+            "studenten (NSE) over een opleiding, studenten en eerstejaars per opleiding, doorstroom naar jaar 2, "
+            "diplomarendement, numerus fixus en capaciteit, het salaris en de baankansen van afgestudeerden van een "
+            "studie, en de doorstroom van mbo-4 naar hbo of van bachelor naar master. Weergaven: 'opleidingen' (per "
+            "opleiding van een instelling en per vorm, met het landelijke oordeel van dezelfde studie ernaast), "
+            "'studie' (één landelijke studie, met arbeidsmarkt), 'numerus_fixus', 'doorstroom_mbo_hbo', "
+            "'doorstroom_bachelor_master'. Geen mbo-opleidingen. Neem de getallen en de voorbehouden letterlijk over, "
+            "reken niet zelf, en noem de bronregel: die vermelding van LCSK is verplicht."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "weergave": {
+                    "type": "string",
+                    "enum": [
+                        "opleidingen",
+                        "studie",
+                        "numerus_fixus",
+                        "doorstroom_mbo_hbo",
+                        "doorstroom_bachelor_master",
+                    ],
+                    "description": "opleidingen (standaard), studie, numerus_fixus, doorstroom_mbo_hbo of doorstroom_bachelor_master.",
+                },
+                "instelling": {
+                    "type": "string",
+                    "description": "Naam, afkorting of BRIN-code van een hogeschool of universiteit. Weglaten: alle instellingen.",
+                },
+                "opleiding": {
+                    "type": "string",
+                    "description": (
+                        "Naam (of deel van de naam) of CROHO-code van de opleiding; bij 'studie' en de doorstroom de "
+                        "naam of studiecode van de landelijke studie."
+                    ),
+                },
+                "soort_ho": {"type": "string", "enum": ["hbo", "wo"], "description": "Alleen hbo of alleen wo."},
+                "graad": {
+                    "type": "string",
+                    "enum": ["bachelor", "master", "associate degree"],
+                    "description": "Alleen deze graad.",
+                },
+                "vorm": {
+                    "type": "string",
+                    "enum": ["voltijd", "deeltijd", "duaal"],
+                    "description": "Alleen deze vorm. Weglaten: alle vormen, elk een eigen rij.",
+                },
+                "plaats": {"type": "string", "description": "Alleen opleidingen in deze plaats (bezoekadres)."},
+                "mbo_opleiding": {
+                    "type": "string",
+                    "description": "Bij doorstroom_mbo_hbo: naam (of deel) of beroep_id van de mbo-4-opleiding.",
+                },
+                "alleen_numerus_fixus": {
+                    "type": "boolean",
+                    "description": "Bij opleidingen: alleen opleidingen met een numerus fixus.",
+                },
+                "sorteer": {
+                    "type": "string",
+                    "enum": ["naam", "oordeel", "studenten", "eerstejaars", "doorstroom_jaar2"],
+                    "description": "Bij opleidingen: op naam (standaard) of aflopend op dit cijfer (een rangorde).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+if beschikbaarheid.studiekeuze():
+    TOOL_SCHEMAS.append(SCHEMA_GET_STUDIEKEUZE)
