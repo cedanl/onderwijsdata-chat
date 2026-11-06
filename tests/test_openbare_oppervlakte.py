@@ -150,14 +150,22 @@ DASHBOARDS = {
     "/api/dashboard/nationaal": "load_dashboard_nationaal",
     "/api/dashboard/rendement": "load_dashboard_rendement",
     "/api/dashboard/arbeidsmarktmatch": "load_dashboard_arbeidsmarktmatch",
+    "/api/dashboard/financien": "load_dashboard_financien",
+    "/api/dashboard/personeel": "load_dashboard_personeel",
+    "/api/dashboard/opleidingen": "load_dashboard_opleidingen",
 }
+# Eindpunten op een bron met een omgevingsregel (tools/beschikbaarheid.py, #935, #936): pad → de regel die aan moet.
+OP_EEN_BRON = {"/api/dashboard/financien": "financien", "/api/dashboard/personeel": "wo_personeel"}
 
 
 @pytest.fixture
 def loaders(monkeypatch):
-    """Elke dashboardloader nagebootst (geen DUO-download); de lijst zegt welke paden data laadden."""
+    """Elke dashboardloader nagebootst (geen DUO-download); de lijst zegt welke paden data laadden. De sleutel van de
+    Studiekeuzedatabase staat, zodat ook het dashboard Opleidingen er is (#957)."""
     import routes.instellingen
+    from tools import beschikbaarheid
 
+    monkeypatch.setattr(beschikbaarheid, "studiekeuze", lambda: True)
     geladen: list[tuple[str, str]] = []
     for naam in DASHBOARDS.values():
         monkeypatch.setattr(
@@ -166,16 +174,19 @@ def loaders(monkeypatch):
     return geladen
 
 
-def _client(database, monkeypatch, *, login: bool, dashboards: bool) -> TestClient:
-    """De gewone app, zonder modules te herladen: login en de dashboardvlag via monkeypatch."""
+def _client(database, monkeypatch, *, login: bool, dashboards: bool, bronnen: bool = True) -> TestClient:
+    """De gewone app, zonder modules te herladen: login, de dashboardvlag en de regels van de bronnen via monkeypatch."""
     import routes.instellingen
     import server
     from core import auth
     from persistence import db
+    from tools import beschikbaarheid
 
     db.init_db()
     monkeypatch.setattr(auth, "AUTH_ENABLED", login)
     monkeypatch.setattr(routes.instellingen, "DASHBOARDS_ENABLED", dashboards)
+    for regel in OP_EEN_BRON.values():
+        monkeypatch.setattr(beschikbaarheid, regel, lambda aan=bronnen: aan)
     return TestClient(server.app)
 
 
@@ -238,6 +249,21 @@ def test_dashboard_zonder_login_werkt_als_voorheen(database, monkeypatch, loader
     assert resp.status_code == 200
     assert resp.json() == {"ok": loader}
     assert loaders == [(loader, "VU")]
+
+
+@pytest.mark.parametrize("login", [True, False])
+@pytest.mark.parametrize("pad", OP_EEN_BRON)
+def test_een_eindpunt_op_een_bron_die_uit_staat_bestaat_niet(database, monkeypatch, loaders, pad, login):
+    # WOPI zonder ENABLE_WO_PERSONEEL, de financiën zonder bevestigde licentie: 404, en er wordt niets geladen.
+    from routes.instellingen import BRON_UIT
+
+    client = _client(database, monkeypatch, login=login, dashboards=True, bronnen=False)
+
+    resp = client.get(pad, params={"instelling": "Universiteit Utrecht"}, headers=_bearer())
+
+    assert resp.status_code == 404
+    assert resp.json() == {"error": BRON_UIT}
+    assert loaders == []
 
 
 # De paden die geen dashboard laden, maar zeggen waar het wel kan (#954): de oude instroom (410) en elk ander pad (404).

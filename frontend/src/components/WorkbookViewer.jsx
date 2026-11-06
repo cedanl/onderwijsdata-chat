@@ -2,7 +2,7 @@ import { Suspense, lazy, useState, useCallback, useEffect, useRef } from 'react'
 import { fetchFeedbackGiven } from '../api'
 import { useReportFrame } from '../hooks/useReportFrame'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN } from '../workbooks'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
@@ -18,6 +18,7 @@ const BUILTIN_COMPONENTS = {
   [BUILTIN_MIJN_INSTELLING.id]: dashboard('InlineDashboardMijnInstelling'),
   [BUILTIN_ARBEIDSMARKT.id]: dashboard('InlineDashboardArbeidsmarkt'),
   [BUILTIN_NATIONAAL.id]: dashboard('InlineDashboardNationaal'),
+  [BUILTIN_OPLEIDINGEN.id]: dashboard('InlineDashboardOpleidingen'),
 }
 
 function DashboardLaadt() {

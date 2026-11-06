@@ -242,6 +242,8 @@ export function DashboardSources({ sources }) {
                   )
                   : <span className="dashboard-sources-naam">{label}</span>}
                 {details.length > 0 && <div className="dashboard-sources-meta">{details.join(' · ')}</div>}
+                {/* Een bron die een vermelding verplicht stelt (LCSK, #957): die zin staat er letterlijk. */}
+                {bron.vermelding && <div className="dashboard-sources-meta">{bron.vermelding}</div>}
               </div>
             </li>
           )

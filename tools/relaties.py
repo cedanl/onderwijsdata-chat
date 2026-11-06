@@ -63,7 +63,10 @@ def _tekst(v) -> str | None:
 
 
 def norm_code(v) -> str | None:
-    """Een BRIN- of opleidingscode: gestript, hoofdletters; 21pk en 21PK zijn dezelfde instelling."""
+    """Een BRIN- of opleidingscode: gestript, hoofdletters; 21pk en 21PK zijn dezelfde instelling. Een code die als
+    getal is gelezen (30020.0 in een kolom met lege cellen) is dezelfde code als 30020."""
+    if isinstance(v, float) and v == v and v.is_integer():
+        v = int(v)
     tekst = _tekst(v)
     return tekst.upper() if tekst else None
 
@@ -129,8 +132,11 @@ class Connector:
 CONNECTOREN: tuple[Connector, ...] = (
     Connector(
         "instellingscode",
-        frozenset({"INSTELLINGSCODE_ACTUEEL", "INSTELLINGSCODE", "BRIN", "BRINNUMMER", "BRIN_NUMMER"}),
-        ("duo",),
+        # INSTELLINGCODE en brin: de Studiekeuzedatabase (#957), ruw en zoals get_studiekeuze haar teruggeeft.
+        frozenset(
+            {"INSTELLINGSCODE_ACTUEEL", "INSTELLINGSCODE", "INSTELLINGCODE", "BRIN", "BRINNUMMER", "BRIN_NUMMER"}
+        ),
+        ("duo", "skdb"),
         (
             "naam, sector, provincie en arbeidsmarktregio via het instellingsregister "
             "(DUO-adressen plus CBS-gebiedsindeling; aliassen handmatig)",
@@ -186,9 +192,16 @@ CONNECTOREN: tuple[Connector, ...] = (
     ),
     Connector(
         "erkende_opleiding",
-        frozenset({"ERKENDEOPLEIDINGSCODE", "OPLEIDINGSCODE_ACTUEEL", "BEROEPSOPLEIDING CODE"}),
-        ("duo", "rio"),
-        ("RIO opleidingserkenningen (erkendeopleidingscode); CROHO voor ho, crebo voor mbo: controleer de overlap",),
+        # croho en master_croho: de CROHO-code in de uitkomst van get_studiekeuze (#957); studiecode niet, die is van
+        # LCSK en niet altijd een CROHO-code.
+        frozenset(
+            {"ERKENDEOPLEIDINGSCODE", "OPLEIDINGSCODE_ACTUEEL", "BEROEPSOPLEIDING CODE", "CROHO", "MASTER_CROHO"}
+        ),
+        ("duo", "rio", "skdb"),
+        (
+            "RIO opleidingserkenningen (erkendeopleidingscode); CROHO voor ho, crebo voor mbo: controleer de overlap",
+            "Studiekeuzedatabase (LCSK): de opleiding van een hogeschool of universiteit op BRIN plus CROHO",
+        ),
         norm_code,
         0.8,
     ),

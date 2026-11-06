@@ -530,7 +530,9 @@ duaal) zijn het er ruim 4.400.
   associate degree en wo-master, en gaan over een SOI-rubriek, niet over één studie.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
   dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
-  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`.
+  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. De tool
+  `relatie` kent `brin` en `croho` als de sleutels instellingscode en erkende opleiding, en noemt een SKDB-tabel en een
+  DUO-tabel zo als koppelkandidaten.
 - **Licentie:** de Algemene Leveringsvoorwaarden Data van LCSK, versie 23.2.
   - *Bronvermelding (art. 4):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data van
     Landelijk Centrum Studiekeuze.", met een link naar de pagina studiekeuzedata en het versienummer van de data. De
@@ -571,6 +573,8 @@ doet de code, en het model neemt de getallen letterlijk over.
   code zelf als onzeker (`nse_onzeker`), en een verschil van een paar honderdsten heet geen verschil.
 - **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
   zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
+- **Dashboard Opleidingen:** dezelfde rijen per opleiding van één instelling, op naam en zonder rangorde; wat het toont
+  en zijn eigen verantwoording staan in [Dashboards](dashboards.md#opleidingen-studiekeuzedatabase).
 
 | Eigenschap | Details |
 |------------|---------|

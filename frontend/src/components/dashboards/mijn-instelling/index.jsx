@@ -15,21 +15,33 @@ import {
   RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
   perJaar, OndergrensNoot,
 } from '../shared/index'
+import { useFinancienDashboardData, usePersoneelDashboardData } from '../shared/hooks'
 import { jaarLabel } from '../../../schooljaar'
+import { useBronAan } from '../../../bronnenAan'
 
 // Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; UWV en ROA staan op het arbeidsmarktdashboard.
-const REGIO_BRONNEN = ['DUO']
+// UNL is WOPI, van het personeel (#936).
+const REGIO_BRONNEN = ['DUO', 'UNL']
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
 import { Kerncijfers } from './kerncijfers'
+import { FinancienSection } from './financien-section'
+import { PersoneelSection } from './personeel-section'
 
 export function InlineDashboardMijnInstelling({ instelling }) {
   const { data, loading, error, opnieuw } = useRegioDashboardData(instelling)
   const rendement = useRendementDashboardData(instelling)
   const rendData = rendement.data
-  const gaten = gatenVan([data, rendData], REGIO_BRONNEN)
-  const bronnen = bronnenVan([data, rendData], REGIO_BRONNEN)
-  const allesOpnieuw = () => { opnieuw(); rendement.opnieuw() }
+  // De financiën en het personeel alleen waar hun bron hier antwoord geeft (/api/config, #935, #936): anders bestaat
+  // het eindpunt niet en vraagt de pagina niets op.
+  const financienAan = useBronAan('financien')
+  const personeelAan = useBronAan('wo_personeel')
+  const financien = useFinancienDashboardData(financienAan ? instelling : null)
+  const personeel = usePersoneelDashboardData(personeelAan ? instelling : null)
+  const ladingen = [data, rendData, financien.data, personeel.data]
+  const gaten = gatenVan(ladingen, REGIO_BRONNEN)
+  const bronnen = bronnenVan(ladingen, REGIO_BRONNEN)
+  const allesOpnieuw = () => { opnieuw(); rendement.opnieuw(); financien.opnieuw(); personeel.opnieuw() }
   const c = useRegioComputed(data, instelling)
   const dark = useDarkMode()
 
@@ -123,6 +135,18 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
         {/* ── Gender & diversiteit ── */}
         <GenderSection data={data} instelling={instelling} dark={dark} />
+
+        {/* ── Bestuur en personeel ── */}
+        {financienAan && (
+          <DeelLading titel="Financiën van het bestuur" loading={financien.loading} error={financien.error} onOpnieuw={financien.opnieuw} hoogte={320}>
+            <FinancienSection data={financien.data} dark={dark} />
+          </DeelLading>
+        )}
+        {personeelAan && (
+          <DeelLading titel="Personeel" loading={personeel.loading} error={personeel.error} onOpnieuw={personeel.opnieuw} hoogte={260}>
+            <PersoneelSection data={personeel.data} dark={dark} />
+          </DeelLading>
+        )}
 
         <DashboardSources sources={bronnen} />
       </div>

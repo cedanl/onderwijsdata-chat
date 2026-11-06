@@ -130,6 +130,19 @@ export function useArbeidsmarktmatchDashboardData(instelling) {
   return useDashboardFetch('/api/dashboard/arbeidsmarktmatch', instelling)
 }
 
+// Alleen waar de bron hier antwoord geeft (`useBronAan`, #935, #936): zonder `instelling` vraagt de hook niets op.
+export function useFinancienDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/financien', instelling)
+}
+
+export function usePersoneelDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/personeel', instelling)
+}
+
+export function useOpleidingenDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/opleidingen', instelling)
+}
+
 export function useRegioComputed(data, instelling) {
   const dark = useDarkMode()
 

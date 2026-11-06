@@ -22,7 +22,11 @@ from data.dashboard import (
     load_dashboard_regio,
     load_dashboard_rendement,
 )
+from data.dashboard_financien import load_dashboard_financien
+from data.dashboard_opleidingen import load_dashboard_opleidingen
+from data.dashboard_personeel import load_dashboard_personeel
 from data.instellingen import get_all as get_all_instellingen
+from tools import beschikbaarheid
 from tools.catalog import _cbs as _cbs_catalog
 from tools.catalog import _rio_duo as _rio_duo_catalog
 from tools.scopeprofiel import is_vo_context
@@ -126,10 +130,19 @@ def _laat_uitlopen(taak: asyncio.Task) -> None:
     taak.add_done_callback(klaar)
 
 
-async def _laad_dashboard(loader: Callable[[str], dict], instelling: str) -> dict | JSONResponse:
-    """De lading in een plaats en binnen de tijdsgrens (#901); de frontend leest `error` en biedt een nieuwe poging."""
+# Een eindpunt op een bron met een omgevingsregel (tools/beschikbaarheid.py) bestaat niet waar die bron uit staat.
+BRON_UIT = "Dit dashboard-eindpunt staat in deze omgeving niet aan: de bron erachter geeft hier geen antwoord."
+
+
+async def _laad_dashboard(
+    loader: Callable[[str], dict], instelling: str, bron_aan: Callable[[], bool] | None = None
+) -> dict | JSONResponse:
+    """De lading in een plaats en binnen de tijdsgrens (#901); de frontend leest `error` en biedt een nieuwe poging.
+    `bron_aan`: de regel van de bron (tools/beschikbaarheid.py); staat ze uit, dan 404 en wordt er niets geladen."""
     if not DASHBOARDS_ENABLED:
         return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
+    if bron_aan is not None and not bron_aan():
+        return JSONResponse({"error": BRON_UIT}, status_code=404)
     taak = asyncio.ensure_future(_in_een_plaats(loader, instelling))
     grens = asyncio.timeout(DASHBOARD_TIMEOUT_S)
     try:
@@ -172,12 +185,28 @@ async def dashboard_arbeidsmarktmatch(instelling: str = Query(...)) -> dict | JS
     return await _laad_dashboard(load_dashboard_arbeidsmarktmatch, instelling)
 
 
+@router.get("/api/dashboard/financien", response_model=None, dependencies=_INGELOGD)
+async def dashboard_financien(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_financien, instelling, beschikbaarheid.financien)
+
+
+@router.get("/api/dashboard/personeel", response_model=None, dependencies=_INGELOGD)
+async def dashboard_personeel(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_personeel, instelling, beschikbaarheid.wo_personeel)
+
+
+@router.get("/api/dashboard/opleidingen", response_model=None, dependencies=_INGELOGD)
+async def dashboard_opleidingen(instelling: str = Query(...)) -> dict | JSONResponse:
+    # De Studiekeuzedatabase (#957): zonder de sleutel van LCSK bestaat het dashboard hier niet, zoals get_studiekeuze.
+    return await _laad_dashboard(load_dashboard_opleidingen, instelling, beschikbaarheid.studiekeuze)
+
+
 # ─── Wat geen dashboard-eindpunt is (#954) ───────────────────────────────────
-# De vier eindpunten hierboven, zoals docs/api.md en docs/dashboards.md ze noemen. Een ander pad onder /api/dashboard of
+# De eindpunten hierboven, zoals docs/api.md en docs/dashboards.md ze noemen. Een ander pad onder /api/dashboard of
 # /api/dashboards gaf een kale 404; nu zegt het antwoord welke er wel zijn. /api/dashboard/instroom bestond tot 2.6.0
 # (#930) en geeft 410 met waar de cijfers nu staan. Geen login nodig: er wordt niets geladen, en de paden staan in de
-# docs. De routes staan na de vier, zodat die voorgaan.
-DASHBOARD_EINDPUNTEN = ("regio", "nationaal", "rendement", "arbeidsmarktmatch")
+# docs. De routes staan na de eindpunten, zodat die voorgaan.
+DASHBOARD_EINDPUNTEN = ("regio", "nationaal", "rendement", "arbeidsmarktmatch", "financien", "personeel", "opleidingen")
 _WEL = ", ".join(f"/api/dashboard/{naam}" for naam in DASHBOARD_EINDPUNTEN) + ", elk met ?instelling=<naam>"
 INSTROOM_WEG = (
     "/api/dashboard/instroom bestaat niet meer sinds versie 2.6.0: de cijfers van de eigen instelling staan in "

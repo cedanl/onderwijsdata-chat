@@ -6,7 +6,7 @@ export { darkColors, buildIndexChartOpts, benchmarkColor, SECTOR_LABELS, sectorK
 export { Grafiek } from './grafiek'
 export { buildSupplyDemandData, sortedEntries, yearOverYearDelta, buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData, groeiStartjaar, groeiPct } from './chart-builders'
 export { fmt, fmtProcent } from './getal'
-export { useDarkMode, dashboardFout, useRegioDashboardData, useNationaalDashboardData, useRendementDashboardData, useArbeidsmarktmatchDashboardData, useRegioComputed } from './hooks'
+export { useDarkMode, dashboardFout, useRegioDashboardData, useNationaalDashboardData, useRendementDashboardData, useArbeidsmarktmatchDashboardData, useOpleidingenDashboardData, useRegioComputed } from './hooks'
 export { DemografieKpis, InstroomKpis, DiplomeringKpis, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot } from './kpis'
 export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, POPULATIE_NATIONAAL, ROA_AIS, ROA_SIS, bronnenVan, bronBadge, roaPeilmoment } from './shell'
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'

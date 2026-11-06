@@ -38,6 +38,21 @@ export const BUILTIN_NATIONAAL = {
   builtin: true,
 }
 
+// Het dashboard Opleidingen (#957) rust op de Studiekeuzedatabase van LCSK: alleen hbo en wo, en alleen waar de sleutel
+// staat (`bronnen.studiekeuze` van /api/config). Voor een mbo-instelling zegt de kaart dat er niets in staat.
+export function opleidingenBeschrijving(sector) {
+  if (sector === 'mbo') return 'Alleen voor hogescholen en universiteiten: de Studiekeuzedatabase heeft geen mbo-opleidingen.'
+  return 'Per opleiding het oordeel van studenten (NSE), doorstroom, diplomarendement en numerus fixus naast landelijk, en de arbeidsmarkt van de richting.'
+}
+
+export const BUILTIN_OPLEIDINGEN = {
+  id: '__builtin_opleidingen__',
+  title: 'Opleidingen',
+  description: opleidingenBeschrijving(null),
+  createdAt: '2026-11-06T00:00:00.000Z',
+  builtin: true,
+}
+
 function stripMessage(m) {
   return { role: m.role, content: m.content }
 }

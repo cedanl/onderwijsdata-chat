@@ -1319,6 +1319,16 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 }
 .db-schakel[aria-pressed="true"] { background: var(--blue-100); border-color: var(--accent-text); color: var(--gray-900); }
 @media (pointer: coarse) { .db-schakel { min-height: var(--tap-min); } }
+/* Dashboard Opleidingen (#957): een kolomkop die sorteert (op naam, graad, vorm of plaats) en de NSE-thema's achter
+   een uitklap. */
+.db-sorteerknop {
+  min-height: var(--tap-min-aa); padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--accent-text); text-align: left;
+}
+@media (pointer: coarse) { .db-sorteerknop { min-height: var(--tap-min); } }
+.db-uitklap { margin: 16px 0; }
+.db-uitklap > summary { cursor: pointer; font-weight: 700; font-size: .9rem; min-height: var(--tap-min-aa); }
+.db-uitklap[open] > summary { margin-bottom: 12px; }
 /* Afdrukken (#904): de knop rechts boven het dashboard; de noot onder de regio- en provinciebadges. */
 .db-afdrukbalk { display: flex; justify-content: flex-end; padding: 12px 24px 0; }
 .db-afdrukbalk + .dashboard-content { padding-top: 12px !important; }
