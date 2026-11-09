@@ -158,7 +158,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
 | `GET` | `/api/data/csv` | De tabel achter een antwoord als CSV-bijlage (`key` als query param, met BOM voor Excel). Alleen voor een `key` waar een eigen gesprek een recept van heeft; na een herstart haalt de server de tabel opnieuw op. Een vreemde of verdwenen `key` geeft dezelfde 404; een bronfout 502. De header `X-Data-Herladen` meldt dat de cijfers kunnen afwijken van het eerdere antwoord (#269, #472) |
-| `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback, datarecepten en het bewijs per antwoord (`beurtbewijs`) van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
+| `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback, datarecepten en het bewijs per antwoord (`beurtbewijs`: herkomst, rekenbewijs en kaarten; sinds #983 zonder `controle`) van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
 | `DELETE` | `/api/mijn-gegevens` | Verwijdert al het werk van de ingelogde gebruiker in één transactie en trekt alle tokens van het account in, ook die van een ander apparaat (#786). Body precies `{"bevestig": "verwijder"}`, anders 422; zonder authenticatie 404, want dan is er geen eigen account (#646) |
 | `GET` | `/api/feedback/questions` | De vragenlijst voor feedback op een rapport of dashboard (`core/feedback.py`) |
 | `GET` | `/api/feedback/given` | De werkboek-ID's waar de ingelogde gebruiker al feedback op gaf; leeg zonder login |
