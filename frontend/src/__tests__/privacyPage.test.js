@@ -97,9 +97,12 @@ describe('PrivacyPage', () => {
       expect(zelf).toContain('Verwijder al mijn gegevens')
       expect(zelf).not.toMatch(/kan nog niet/)
       // What goes and what stays.
-      for (const tekst of ['kopie in deze browser', 'serverlogs', 'back-ups van de beheerder', 'tot zij verloopt', 'losgekoppeld', 'ander apparaat', 'gedeeld account']) {
+      for (const tekst of ['kopie in deze browser', 'serverlogs', 'back-ups van de beheerder', 'tot zij verloopt', 'ander apparaat', 'gedeeld account']) {
         expect(zelf).toContain(tekst)
       }
+      // Feedback per antwoord (de duimpjes) wordt niet meer bewaard, ook niet losgekoppeld (#983).
+      expect(zelf).not.toContain('losgekoppeld')
+      expect(server).not.toMatch(/duim|answer_feedback|feedback per antwoord|losgekoppeld/i)
       expect(open).not.toMatch(/alles verwijderen|exporteren/)
       expect(open).toMatch(/bewaartermijn van het (serverlog|logplatform)/i)
       expect(open).not.toContain('bij productie')

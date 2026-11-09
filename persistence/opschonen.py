@@ -4,9 +4,9 @@ Termijnen (besluit 21-10-2026), in te stellen in core/config.py:
 
 - Gesprekken (`conversations`): 90 dagen na de laatste activiteit, de tijd van het laatst opgeslagen bericht
   (`timestamp`). Met het gesprek gaat wat erbij hoort, zoals bij verwijderen door de gebruiker
-  (`db.ruim_gesprek_op`): zijn datarecepten en bewijsrijen weg, zijn feedback per antwoord losgekoppeld (#476, #875).
-- Feedback (`answer_feedback` met de `trace`, `feedback` met `report_title` en vrije tekst, `algemene_feedback`):
-  90 dagen nadat hij is gegeven (`created_at`). Feedback per antwoord blijft zolang zijn gesprek actief is.
+  (`db.ruim_gesprek_op`): zijn datarecepten en bewijsrijen weg (#875).
+- Feedback (`feedback` met `report_title` en vrije tekst, `algemene_feedback`): 90 dagen nadat hij is gegeven
+  (`created_at`).
 - Datarecepten zonder gesprek (`data_recipes`): 90 dagen na `created_at`; een jonger recept kan bij een gesprek
   horen dat nog wordt opgeslagen.
 - Bewijsrijen zonder gesprek (`beurtbewijs`, ADR-009): 90 dagen na `created_at`, zoals een recept zonder gesprek.
@@ -43,7 +43,6 @@ SOORTEN = (
     "conversations",
     "data_recipes",
     "beurtbewijs",
-    "answer_feedback",
     "feedback",
     "algemene_feedback",
     "workbooks",
@@ -128,10 +127,6 @@ def _voorwaarden(g: Grenzen) -> dict[str, tuple[str, tuple]]:
         # Van een verlopen gesprek, of zonder gesprek en ouder dan de termijn.
         "data_recipes": _zonder_actief_gesprek("data_recipes", gesprek_s, gesprek_iso),
         "beurtbewijs": _zonder_actief_gesprek("beurtbewijs", gesprek_s, gesprek_iso),
-        "answer_feedback": (
-            f"created_at < ? AND NOT {_bij_gesprek('answer_feedback', 'conversation_id', actief=True)}",
-            (gesprek_iso, gesprek_s),
-        ),
         "feedback": ("created_at < ?", (gesprek_iso,)),
         "algemene_feedback": ("created_at < ?", (gesprek_iso,)),
         "workbooks": ("laatst_gebruikt < ?", (int(g.rapporten.timestamp()),)),
@@ -163,18 +158,17 @@ def _verwijder(conn: Any, g: Grenzen) -> dict[str, int]:
     voorwaarden = _voorwaarden(g)
     waar, params = voorwaarden["conversations"]
     gesprekken = db._execute(conn, f"DELETE FROM conversations WHERE {waar} RETURNING id, username", params).fetchall()
-    # Per verwijderd gesprek hetzelfde als bij verwijderen door de gebruiker: recepten en bewijsrijen weg, feedback
-    # losgekoppeld.
+    # Per verwijderd gesprek hetzelfde als bij verwijderen door de gebruiker: recepten en bewijsrijen weg.
     aantallen = {"conversations": len(gesprekken), "data_recipes": 0, "beurtbewijs": 0}
     for rij in gesprekken:
         for tabel, aantal in db.ruim_gesprek_op(conn, rij["username"], rij["id"]).items():
             aantallen[tabel] += aantal
-    # Daarna heeft geen recept, bewijsrij of feedback nog een verlopen gesprek: wat overblijft van de voorwaarde zijn
-    # de rijen zonder gesprek (wezen), de losgekoppelde feedback en die van eerder verwijderde gesprekken.
+    # Daarna heeft geen recept of bewijsrij nog een verlopen gesprek: wat overblijft van de voorwaarde zijn de rijen
+    # zonder gesprek (wezen).
     for tabel in ("data_recipes", "beurtbewijs"):
         wezen = f"DELETE FROM {tabel} WHERE created_at < ? AND NOT {_bij_gesprek(tabel, 'conv_id', False)}"
         aantallen[tabel] += db._execute(conn, wezen, (_iso(g.gesprekken),)).rowcount
-    for tabel in ("answer_feedback", "feedback", "algemene_feedback", "workbooks"):
+    for tabel in ("feedback", "algemene_feedback", "workbooks"):
         waar, params = voorwaarden[tabel]
         aantallen[tabel] = db._execute(conn, f"DELETE FROM {tabel} WHERE {waar}", params).rowcount
     return {tabel: aantallen[tabel] for tabel in SOORTEN}

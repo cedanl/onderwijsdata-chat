@@ -1,8 +1,7 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met rijen van alle zeven soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
-nergens nog een rij, staan die van Bert en de losgekoppelde feedback (`verwijderd`, #476) er ongewijzigd, zijn al
-haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
+Twee accounts in CHAT_USERS, elk met rijen van alle zes soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
+nergens nog een rij, staan die van Bert er ongewijzigd, zijn al haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
 """
 
@@ -17,7 +16,6 @@ from fastapi.testclient import TestClient
 from agent import beurtbewijs, recepten
 from core import foutmeldingen
 from persistence import db, export, verwijderen
-from tests import oude_antwoordfeedback
 from tests.test_mijn_gegevens_export import _vul
 
 _URL = "/api/mijn-gegevens"
@@ -27,7 +25,6 @@ _SOORTEN = [
     "workbooks",
     "feedback",
     "algemene_feedback",
-    "answer_feedback",
     "data_recipes",
     "beurtbewijs",
 ]
@@ -38,7 +35,6 @@ _ANNA = {
     "workbooks": 2,
     "feedback": 4,
     "algemene_feedback": 5,
-    "answer_feedback": 6,
     "data_recipes": 1,
     "beurtbewijs": 2,
 }
@@ -48,7 +44,6 @@ _BERT = {
     "workbooks": 2,
     "feedback": 1,
     "algemene_feedback": 1,
-    "answer_feedback": 1,
     "data_recipes": 1,
     "beurtbewijs": 1,
 }
@@ -96,8 +91,6 @@ def _vul_anna() -> None:
         db.add_feedback("anna", "anna-w1", "report", "Rapport", {"nuttig": str(i)})
     for i in range(4):
         db.add_algemene_feedback("anna", "probleem", f"extra-{i}", "/rapporten")
-    for i in range(5):
-        oude_antwoordfeedback.voeg_toe("anna", "anna-c2", 10 + i, "omhoog", "", {"vraag": f"extra-trace-{i}"})
     db.save_beurtbewijs(
         "anna",
         "anna-c2",
@@ -142,24 +135,14 @@ def _ingetrokken() -> int:
         )
 
 
-def _maak_losgekoppelde_feedback() -> None:
-    """Een gesprek van carla met feedback, verwijderd: de feedback hangt daarna aan `verwijderd` (#476)."""
-    db.upsert_conversation("carla", "carla-c1", "Weg", 1_700_000_000, [])
-    oude_antwoordfeedback.voeg_toe("carla", "carla-c1", 1, "omlaag", "losgekoppeld-tekst", {"vraag": "losgekoppeld"})
-    db.delete_conversation("carla", "carla-c1")
-    assert _aantal("answer_feedback", db.VERWIJDERDE_GEBRUIKER) == 1
-
-
 # ── 1. Alles van Anna weg, niets van een ander ───────────────────────────────
 
 
 def test_alles_van_de_gebruiker_weg_met_de_aantallen_per_soort(client):
     _vul_anna()
     _vul("bert", "BERT-UNIEK")
-    _maak_losgekoppelde_feedback()
     assert _aantallen("anna") == _ANNA
     bert_voor = _rijen("bert")
-    losgekoppeld_voor = _rijen(db.VERWIJDERDE_GEBRUIKER)
 
     response = _verwijder(client, _token("anna"))
 
@@ -168,7 +151,6 @@ def test_alles_van_de_gebruiker_weg_met_de_aantallen_per_soort(client):
     assert _aantallen("anna") == _ALLES_NUL
     assert _rijen("bert") == bert_voor
     assert _aantallen("bert") == _BERT
-    assert _rijen(db.VERWIJDERDE_GEBRUIKER) == losgekoppeld_voor
 
 
 # ── 2. Bevestiging en sessie ─────────────────────────────────────────────────
@@ -338,17 +320,6 @@ def test_een_naam_buiten_chat_users_wist_alleen_zijn_eigen_rijen(client):
     assert (_rijen("anna"), _rijen("bert")) == (anna_voor, bert_voor)
 
 
-def test_een_account_dat_verwijderd_heet_laat_de_losgekoppelde_feedback_staan(client):
-    _maak_losgekoppelde_feedback()
-    losgekoppeld_voor = _rijen(db.VERWIJDERDE_GEBRUIKER)
-
-    response = _verwijder(client, _token(db.VERWIJDERDE_GEBRUIKER))
-
-    assert response.status_code == 200
-    assert response.json()["verwijderd"]["answer_feedback"] == 0
-    assert _rijen(db.VERWIJDERDE_GEBRUIKER) == losgekoppeld_voor
-
-
 # ── 7. Log en antwoord: alleen aantallen ─────────────────────────────────────
 
 
@@ -360,15 +331,15 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
     response = _verwijder(client, _token("anna"))
 
     log = "\n".join(r.getMessage() for r in caplog.records)
-    # Elke opgeslagen tekst van Anna (titel, berichten, HTML, toelichting, trace, recept) draagt ANNA-UNIEK.
-    for tekst in ("ANNA-UNIEK", "extra-trace", "RECEPT-UNIEK", "anna"):
+    # Elke opgeslagen tekst van Anna (titel, berichten, HTML, feedback, recept) draagt ANNA-UNIEK.
+    for tekst in ("ANNA-UNIEK", "RECEPT-UNIEK", "anna"):
         assert tekst not in log
         assert tekst not in response.text
     regels = [r.getMessage() for r in caplog.records if r.name == "routes.mijn_gegevens"]
     assert len(regels) == 1
     assert regels[0] == (
         "verwijder mijn gegevens: conversations=3, workbooks=2, feedback=4, algemene_feedback=5, "
-        "answer_feedback=6, data_recipes=1, beurtbewijs=2"
+        "data_recipes=1, beurtbewijs=2"
     )
     assert next(r for r in caplog.records if r.name == "routes.mijn_gegevens").levelno == logging.INFO
 

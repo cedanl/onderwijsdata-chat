@@ -14,14 +14,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from persistence import db, export
-from tests import oude_antwoordfeedback
 
 _SOORTEN = [
     "conversations",
     "workbooks",
     "feedback",
     "algemene_feedback",
-    "answer_feedback",
     "data_recipes",
     "beurtbewijs",
 ]
@@ -73,9 +71,6 @@ def _vul(gebruiker: str, uniek: str) -> None:
         gebruiker, f"{gebruiker}-w1", "report", f"Rapport {uniek}", {"nuttig": f"4-{uniek}"}, f"Instelling {uniek}"
     )
     db.add_algemene_feedback(gebruiker, "idee", f"algemeen-{uniek}", "/chat")
-    oude_antwoordfeedback.voeg_toe(
-        gebruiker, f"{gebruiker}-c1", 1, "omlaag", f"toelichting-{uniek}", {"vraag": f"trace-{uniek}"}
-    )
     db.save_recipes(gebruiker, f"{gebruiker}-c1", {f"key-{uniek}": {"laad": ["query_data", {"id": uniek}]}})
     db.save_beurtbewijs(
         gebruiker,
@@ -126,11 +121,11 @@ def test_bijlage_met_datum_json_en_nooit_in_een_cache(client):
     assert json.loads(response.text)["exported_at"].startswith(vandaag)
 
 
-def test_een_gebruiker_zonder_gegevens_krijgt_zeven_lege_lijsten(client):
+def test_een_gebruiker_zonder_gegevens_krijgt_zes_lege_lijsten(client):
     _vul("anna", "ANNA-UNIEK")
     data, _ = _export(client, "leeg")
     assert data["username"] == "leeg"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
 
 
 # ── Inhoud en isolatie ───────────────────────────────────────────────────────
@@ -145,7 +140,6 @@ def test_alleen_de_eigen_rijen_per_soort(client):
     assert [w["id"] for w in data["workbooks"]] == ["anna-w2", "anna-w1"]
     assert [f["workbook_id"] for f in data["feedback"]] == ["anna-w1"]
     assert [f["tekst"] for f in data["algemene_feedback"]] == ["algemeen-ANNA-UNIEK"]
-    assert [(f["conversation_id"], f["message_index"]) for f in data["answer_feedback"]] == [("anna-c1", 1)]
     assert [(r["conv_id"], r["data_key"]) for r in data["data_recipes"]] == [("anna-c1", "key-ANNA-UNIEK")]
     assert [(r["conv_id"], r["tekst_hash"]) for r in data["beurtbewijs"]] == [("anna-c1", "hash-ANNA-UNIEK")]
     assert "BERT" not in body
@@ -169,9 +163,6 @@ def test_json_kolommen_zijn_ontleed(client):
     assert dashboard["html_content"] is None
     assert data["feedback"][0]["answers"] == {"nuttig": "4-ANNA-UNIEK"}
     assert data["feedback"][0]["instelling"] == "Instelling ANNA-UNIEK"
-    oordeel = data["answer_feedback"][0]
-    assert (oordeel["oordeel"], oordeel["toelichting"]) == ("omlaag", "toelichting-ANNA-UNIEK")
-    assert oordeel["trace"] == {"vraag": "trace-ANNA-UNIEK"}
     assert data["data_recipes"][0]["recipe"] == {"laad": ["query_data", {"id": "ANNA-UNIEK"}]}
     bewijs = data["beurtbewijs"][0]
     assert bewijs["lineage"] == {"key-ANNA-UNIEK": {"name": "query_data", "arguments": {"id": "ANNA-UNIEK"}}}
@@ -206,20 +197,6 @@ def test_een_onleesbare_json_kolom_gaat_als_tekst_mee(client):
     assert data["conversations"][0]["messages"] == "{kapot"
 
 
-def test_losgekoppelde_feedback_hoort_bij_niemand(client):
-    _vul("anna", "ANNA-UNIEK")
-    assert _als(client, "anna").delete("/api/conversations/anna-c1").status_code == 200
-    with db._connection() as conn:
-        losgekoppeld = db._execute(conn, "SELECT username FROM answer_feedback").fetchall()
-    assert [r["username"] for r in losgekoppeld] == [db.VERWIJDERDE_GEBRUIKER]
-
-    data, body = _export(client, "anna")
-    assert data["answer_feedback"] == []
-    assert "toelichting-ANNA-UNIEK" not in body
-    # Ook een account dat toevallig zo heet, krijgt ze niet.
-    assert list(export.answer_feedback(db.VERWIJDERDE_GEBRUIKER)) == []
-
-
 def test_geen_tokens_of_hashes_in_de_export(client):
     from core import auth
 
@@ -247,8 +224,8 @@ def test_het_log_telt_alleen(client, caplog):
 
     log = "\n".join(r.getMessage() for r in caplog.records)
     assert "conversations=2" in log
-    assert "answer_feedback=1" in log
-    for tekst in ("Vraag ANNA-UNIEK", "Antwoord ANNA-UNIEK", "toelichting-ANNA-UNIEK", "algemeen-ANNA-UNIEK", "anna"):
+    assert "algemene_feedback=1" in log
+    for tekst in ("Vraag ANNA-UNIEK", "Antwoord ANNA-UNIEK", "algemeen-ANNA-UNIEK", "anna"):
         assert tekst not in log
 
 
@@ -261,7 +238,7 @@ def test_de_stukken_vormen_samen_de_json(tmp_path, monkeypatch):
     assert len(stukken) > 1
     data = json.loads("".join(stukken))
     assert data["exported_at"] == "2026-10-20T09:30:00+00:00"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
 
 
 def test_werkboeken_een_voor_een(client, monkeypatch):
@@ -303,7 +280,7 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
 
     monkeypatch.setattr(export, "_rijen", vang)
     list(export.export_json_chunks("anna"))
-    assert len(queries) == 7
+    assert len(queries) == 6
     for sql, params in queries:
         assert re.search(r"WHERE username = \?", sql)
         assert "anna" in params
