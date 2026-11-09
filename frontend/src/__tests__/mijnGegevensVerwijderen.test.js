@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 const LABEL = 'Verwijder al mijn gegevens'
-const ZESMAAL_NUL = { conversations: 0, workbooks: 0, feedback: 0, algemene_feedback: 0, answer_feedback: 0, data_recipes: 0 }
+const VIJFMAAL_NUL = { conversations: 0, workbooks: 0, feedback: 0, algemene_feedback: 0, data_recipes: 0 }
 const openKnop = () => document.querySelector('.mijn-gegevens-verwijderen-btn')
 const dialoog = () => document.querySelector('[role="alertdialog"]')
 const invoer = () => dialoog().querySelector('input')
@@ -97,10 +97,10 @@ const opslag = () => Object.fromEntries(Array.from({ length: localStorage.length
 describe('deleteMijnGegevens', () => {
   it('sends DELETE /api/mijn-gegevens with the token and the fixed confirmation, and returns the counts', async () => {
     localStorage.setItem(STORAGE_TOKEN, 'tok-1')
-    const fetchMock = vi.fn(async () => response(200, { ok: true, verwijderd: ZESMAAL_NUL }))
+    const fetchMock = vi.fn(async () => response(200, { ok: true, verwijderd: VIJFMAAL_NUL }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(deleteMijnGegevens()).resolves.toEqual({ ok: true, verwijderd: ZESMAAL_NUL })
+    await expect(deleteMijnGegevens()).resolves.toEqual({ ok: true, verwijderd: VIJFMAAL_NUL })
 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, opties] = fetchMock.mock.calls[0]
@@ -162,9 +162,11 @@ describe('the dialog', () => {
 
     const uitleg = document.getElementById(dialoog().getAttribute('aria-describedby')).textContent
     for (const tekst of [
-      'gesprekken', 'rapporten en dashboards', 'al je feedback', 'per antwoord', 'datarecepten',
+      'gesprekken', 'rapporten en dashboards', 'al je feedback', 'via de link Feedback', 'datarecepten',
       'niet ongedaan', 'kopie in deze browser', 'ander apparaat', 'tot je daar uitlogt', 'samen met anderen',
     ]) expect(uitleg).toContain(tekst)
+    // Feedback per antwoord bestaat niet meer (#983).
+    expect(uitleg).not.toContain('per antwoord')
     const exportKnop = dialoog().querySelector('.mijn-gegevens-export-btn')
     expect(exportKnop.textContent).toBe('Exporteer al mijn gegevens')
     expect(dialoog().textContent).toContain('Bewaar eerst een kopie')
@@ -231,7 +233,7 @@ describe('inside the settings dialog', () => {
 
 describe('confirming', () => {
   it('keeps the button disabled and sends nothing until the field says verwijder', async () => {
-    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: ZESMAAL_NUL }))
+    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: VIJFMAAL_NUL }))
     await render(createElement(MijnGegevensVerwijderen, { onVerwijderd: vi.fn(), verwijder }))
     await open()
     expect(bevestigKnop().textContent).toBe('Definitief verwijderen')
@@ -250,7 +252,7 @@ describe('confirming', () => {
   })
 
   it('submits with Enter in the field: the field and the submit button share one form', async () => {
-    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: ZESMAAL_NUL }))
+    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: VIJFMAAL_NUL }))
     const onVerwijderd = vi.fn()
     await render(createElement(MijnGegevensVerwijderen, { onVerwijderd, verwijder }))
     await open()
@@ -263,12 +265,12 @@ describe('confirming', () => {
     await act(async () => { invoer().form.requestSubmit() })
 
     expect(verwijder).toHaveBeenCalledOnce()
-    expect(onVerwijderd).toHaveBeenCalledWith({ ok: true, verwijderd: ZESMAAL_NUL })
+    expect(onVerwijderd).toHaveBeenCalledWith({ ok: true, verwijderd: VIJFMAAL_NUL })
   })
 
   it('sends the fixed confirmation through the real helper, whatever the capitals typed', async () => {
     localStorage.setItem(STORAGE_TOKEN, 'tok-1')
-    const fetchMock = vi.fn(async () => response(200, { ok: true, verwijderd: ZESMAAL_NUL }))
+    const fetchMock = vi.fn(async () => response(200, { ok: true, verwijderd: VIJFMAAL_NUL }))
     vi.stubGlobal('fetch', fetchMock)
     const onVerwijderd = vi.fn()
     await render(createElement(MijnGegevensVerwijderen, { onVerwijderd }))
@@ -284,7 +286,7 @@ describe('confirming', () => {
   it('waits for a conversation save under way before it sends the DELETE', async () => {
     const opslaan = deferred()
     volgOpslag(opslaan.promise)
-    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: ZESMAAL_NUL }))
+    const verwijder = vi.fn(async () => ({ ok: true, verwijderd: VIJFMAAL_NUL }))
     await render(createElement(MijnGegevensVerwijderen, { onVerwijderd: vi.fn(), verwijder }))
     await open()
 
@@ -313,7 +315,7 @@ describe('confirming', () => {
     expect(dialoog()).not.toBeNull()
     expect(verwijder).toHaveBeenCalledOnce()
 
-    await act(async () => { lopend.resolve({ ok: true, verwijderd: ZESMAAL_NUL }) })
+    await act(async () => { lopend.resolve({ ok: true, verwijderd: VIJFMAAL_NUL }) })
     expect(onVerwijderd).toHaveBeenCalledOnce()
   })
 })
@@ -344,11 +346,11 @@ describe('on failure', () => {
     expect(bevestigKnop().disabled).toBe(false)
     expect(document.activeElement).toBe(bevestigKnop())
 
-    fetchMock.mockImplementation(async () => response(200, { ok: true, verwijderd: ZESMAAL_NUL }))
+    fetchMock.mockImplementation(async () => response(200, { ok: true, verwijderd: VIJFMAAL_NUL }))
     await act(async () => { bevestigKnop().click() })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fout()).toBeNull()
-    expect(onVerwijderd).toHaveBeenCalledWith({ ok: true, verwijderd: ZESMAAL_NUL })
+    expect(onVerwijderd).toHaveBeenCalledWith({ ok: true, verwijderd: VIJFMAAL_NUL })
   })
 })
 

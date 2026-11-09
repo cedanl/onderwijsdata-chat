@@ -17,7 +17,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 // Each App test renders the whole app; on a busy machine that nears the 5 s default.
 const APP_TEST = { timeout: 20000 }
 const LABEL = 'Verwijder al mijn gegevens'
-const ZESMAAL_NUL = { conversations: 0, workbooks: 0, feedback: 0, algemene_feedback: 0, answer_feedback: 0, data_recipes: 0 }
+const VIJFMAAL_NUL = { conversations: 0, workbooks: 0, feedback: 0, algemene_feedback: 0, data_recipes: 0 }
 
 const response = (status, body = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => body })
 
@@ -30,7 +30,7 @@ function serve({ required = true } = {}) {
     if (url === '/api/auth/status') return response(200, { required, oidc_enabled: false })
     if (url === '/api/auth/user') return response(200, { name: 'Anna' })
     if (url === '/api/instellingen') return response(200, [])
-    if (url === '/api/mijn-gegevens' && opties.method === 'DELETE') return response(200, { ok: true, verwijderd: ZESMAAL_NUL })
+    if (url === '/api/mijn-gegevens' && opties.method === 'DELETE') return response(200, { ok: true, verwijderd: VIJFMAAL_NUL })
     return response(200, {})
   })
   vi.stubGlobal('fetch', fetchMock)

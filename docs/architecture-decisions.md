@@ -465,9 +465,10 @@ De duimpjes onder een antwoord zijn uit de app (besluit gebruiker 09-11), en daa
 de trace (`core/answer_feedback.py`, `antwoord_trace`, `als_markdown`, `scripts/antwoordfeedback.py`) en
 `beurtbewijs_controles`. Gevolg 2 hierboven bestaat dus niet meer, en besluit 2 geldt alleen nog voor de rij: de
 kolom `controle` blijft geschreven en gaat mee in de export van "Mijn gegevens", maar geen code leest haar nog. De rij
-zelf en besluit 1 (alleen eigen beurten als bewijs) blijven ongewijzigd. Bestaande rijen in `answer_feedback` blijven
-tot de opschoning of tot de gebruiker al zijn gegevens verwijdert; export, verwijderen en ontkoppelen bij het
-verwijderen van een gesprek nemen ze mee. De tabel weghalen is een vervolgstap.
+zelf en besluit 1 (alleen eigen beurten als bewijs) blijven ongewijzigd. In een tweede stap (besluit 09-11) is ook de
+opgeslagen feedback weg: `init_db` haalt de tabel `answer_feedback` weg met `DROP TABLE IF EXISTS` (bij elke start,
+op SQLite en PostgreSQL), en export, verwijderen, opschonen en het loskoppelen bij het verwijderen van een gesprek
+(#476) raken haar niet meer.
 
 ### Open vragen
 3. De instelling per beurt (`turns[].instelling`, #543) valt buiten de vier velden van het besluit. Na heropenen weet

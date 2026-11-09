@@ -356,7 +356,7 @@ def _migrate(conn: Any) -> None:
     _voeg_kolom_toe(conn, "beurtbewijs", "controle", _BEURTBEWIJS_CONTROLE)
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
-    _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
+    _verwijder_tabel(conn, "answer_feedback")
 
 
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
@@ -372,6 +372,16 @@ def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
     elif kolom not in {row[1] for row in conn.execute(f"PRAGMA table_info({tabel})")}:
         conn.execute(f"ALTER TABLE {tabel} ADD COLUMN {kolom} {definitie}")
         conn.commit()
+
+
+def _verwijder_tabel(conn: Any, tabel: str) -> None:
+    """Een tabel die niet meer bestaat, met haar rijen: `answer_feedback`, de duimpjes per antwoord (#248, weg sinds
+    #983, besluit 09-11).
+
+    Idempotent, dus veilig bij elke start en bij twee replica's tegelijk: `IF EXISTS` kennen SQLite en PostgreSQL allebei.
+    """
+    _execute(conn, f"DROP TABLE IF EXISTS {tabel}")
+    conn.commit()
 
 
 def _begin_bewaartermijn_werkboeken(conn: Any) -> None:
@@ -408,24 +418,6 @@ _ALGEMENE_FEEDBACK_TABLE = """
         tekst      TEXT NOT NULL,
         pagina     TEXT NOT NULL,
         created_at TEXT NOT NULL
-    )
-"""
-
-
-# Eén oordeel per antwoord (👍/👎, #248) met een trace (JSON: vraag, antwoord, stappen). De duimpjes zijn sinds 09-11
-# uit de app (#983): er komen geen rijen meer bij. Wat er staat, blijft tot de opschoning of tot de gebruiker al zijn
-# gegevens verwijdert, en gaat mee in de export; verdwijnt het gesprek, dan gaan gebruikersnaam en gesprek-id eruit
-# (#476, zie delete_conversation). De tabel weghalen is een vervolgstap, geen migratie hier.
-_ANSWER_FEEDBACK_TABLE = """
-    CREATE TABLE IF NOT EXISTS answer_feedback (
-        username        TEXT    NOT NULL,
-        conversation_id TEXT    NOT NULL,
-        message_index   INTEGER NOT NULL,
-        oordeel         TEXT    NOT NULL,
-        toelichting     TEXT    NOT NULL DEFAULT '',
-        trace           TEXT    NOT NULL,
-        created_at      TEXT    NOT NULL,
-        PRIMARY KEY (username, conversation_id, message_index)
     )
 """
 
@@ -528,7 +520,6 @@ _SCHEMA = (
     _WORKBOOKS_TABLE,
     _WORKBOOKS_INDEX,
     _FEEDBACK_TABLE,
-    _ANSWER_FEEDBACK_TABLE,
     _ALGEMENE_FEEDBACK_TABLE,
     _DATA_RECIPES_TABLE,
     _DATA_RECIPES_INDEX,
@@ -748,12 +739,6 @@ def rename_conversation(username: str, conv_id: str, title: str) -> bool:
     return cursor.rowcount > 0
 
 
-# Feedback op een antwoord van een verwijderd gesprek blijft voor het team (oordeel, toelichting,
-# trace), maar hangt niet meer aan de gebruiker of zijn gesprek (#476, privacy M2). Een willekeurig
-# gesprek-id per verwijderd gesprek houdt de meldingen daarvan bij elkaar zonder dat ze te herleiden zijn.
-VERWIJDERDE_GEBRUIKER = "verwijderd"
-
-
 def delete_conversation(username: str, conv_id: str) -> None:
     with _connection() as conn:
         _execute(
@@ -766,46 +751,15 @@ def delete_conversation(username: str, conv_id: str) -> None:
 
 
 def ruim_gesprek_op(conn: Any, username: str, conv_id: str) -> dict[str, int]:
-    """Wat bij een verwijderd gesprek hoort, in de transactie van `conn`: recepten en bewijsrijen weg, feedback
-    losgekoppeld (#476, #875).
+    """Wat bij een verwijderd gesprek hoort, in de transactie van `conn`: recepten en bewijsrijen weg (#875).
 
     Voor het verwijderen door de gebruiker en voor de opschoning na de bewaartermijn (persistence/opschonen.py).
     Geeft per tabel het aantal verwijderde rijen.
     """
-    verwijderd = {
+    return {
         tabel: _execute(conn, f"DELETE FROM {tabel} WHERE username = ? AND conv_id = ?", (username, conv_id)).rowcount
         for tabel in ("data_recipes", "beurtbewijs")
     }
-    _ontkoppel_feedback(conn, username, conv_id)
-    return verwijderd
-
-
-def _ontkoppel_feedback(conn: Any, username: str, conv_id: str) -> None:
-    _execute(
-        conn,
-        "UPDATE answer_feedback SET username = ?, conversation_id = ? WHERE username = ? AND conversation_id = ?",
-        (VERWIJDERDE_GEBRUIKER, str(uuid.uuid4()), username, conv_id),
-    )
-
-
-MIGRATIE_FEEDBACK_ZONDER_GESPREK = "476_ontkoppel_feedback_zonder_gesprek"
-
-
-def _ontkoppel_feedback_zonder_gesprek(conn: Any) -> None:
-    """Feedback van gesprekken die vóór #476 zijn verwijderd: dezelfde ontkoppeling als delete_conversation.
-
-    Feedback kon alleen bij een bestaand gesprek gegeven worden (#248, tot #983), dus een rij zonder
-    gesprek hoort bij een verwijderd gesprek.
-    """
-    paren = _execute(
-        conn,
-        "SELECT DISTINCT username, conversation_id FROM answer_feedback a WHERE username <> ? AND NOT EXISTS "
-        "(SELECT 1 FROM conversations c WHERE c.id = a.conversation_id AND c.username = a.username)",
-        (VERWIJDERDE_GEBRUIKER,),
-    ).fetchall()
-    for paar in paren:
-        _ontkoppel_feedback(conn, paar["username"], paar["conversation_id"])
-    logger.info("feedback van %d verwijderde gesprekken ontkoppeld", len(paren))
 
 
 def save_recipes(username: str, conv_id: str, recipes: dict[str, dict]) -> None:

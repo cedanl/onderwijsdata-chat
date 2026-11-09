@@ -66,12 +66,9 @@ export default function PrivacyInhoud() {
           <strong>Feedback</strong>: je antwoorden op de vragen bij een rapport of dashboard, met de titel van het
           rapport en de instelling die je in de app koos (als je er een koos). De vragen over je instelling krijg je
           alleen na een eigen keuze (Help ons verder); de vragen over het rapport kun je zonder die vragen versturen.
-          Gaf je vóór 9 november 2026 een duim bij een antwoord, dan bewaren we die met je toelichting plus een kopie
-          van vraag, antwoord en stappen; duimpjes geven kan niet meer. Verwijder je het gesprek, dan wordt die kopie
-          losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via de link
-          Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
-          Feedback wordt {gesprek} dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog
-          bestaat), of eerder als je al je gegevens verwijdert.
+          Wat je via de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je
+          was. Feedback wordt {gesprek} dagen nadat je hem gaf verwijderd, of eerder als je al je gegevens verwijdert.
+          Een oordeel op een antwoord (👍/👎) bewaren we sinds 9 november 2026 niet meer; wat er stond, is verwijderd.
         </li>
         <li>
           <strong>Datarecepten</strong>: hoe een tabel is opgehaald (dataset en selectie), zodat een export na een
@@ -134,19 +131,16 @@ export default function PrivacyInhoud() {
         <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
-          dashboards, feedback, datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat, en feedback van een
-          verwijderd gesprek, die niet meer aan je account hangt.
+          dashboards, feedback, datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;,
           nadat je het woord &ldquo;verwijder&rdquo; hebt getypt. Dat kan niet ongedaan worden gemaakt; exporteer
           eerst. Dan verdwijnt alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, al
-          je feedback, ook de kopie bij de feedback per antwoord, de datarecepten en het bewijs per antwoord), en ook de kopie in deze
-          browser; je wordt uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en
-          de back-ups van de beheerder, een hash van je accountnaam tot je laatste sessie verlopen is, een hash van
-          een sessie waarmee je uitlogde tot zij verloopt, feedback die al eerder van een verwijderd gesprek is
-          losgekoppeld en niet meer aan je account hangt, en de kopie in de browser van een ander apparaat tot je daar
-          uitlogt.
+          je feedback, de datarecepten en het bewijs per antwoord), en ook de kopie in deze browser; je wordt
+          uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en de back-ups van de
+          beheerder, een hash van je accountnaam tot je laatste sessie verlopen is, een hash van een sessie waarmee je
+          uitlogde tot zij verloopt, en de kopie in de browser van een ander apparaat tot je daar uitlogt.
           Gebruik je een gedeeld account, dan verdwijnt ook het werk van de anderen. Zonder eigen login kan het niet.
         </li>
       </ul>

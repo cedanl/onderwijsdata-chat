@@ -13,7 +13,6 @@ import pytest
 
 from core import config
 from persistence import db, opschonen
-from tests import oude_antwoordfeedback
 
 NU = datetime(2026, 10, 21, 3, 30, tzinfo=UTC)
 _DAG = 24 * 3600
@@ -67,15 +66,6 @@ def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: f
     """Bewijsrijen van een gesprek (ADR-009), met de tijd van hun antwoord `dagen_geleden`."""
     rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "controle": [], "created_at": _iso(dagen_geleden)}
     db.save_beurtbewijs(user, conv, dict.fromkeys(hashes, rij))
-
-
-def _oordeel(pad, user: str, conv: str, index: int, dagen_geleden: float) -> None:
-    oude_antwoordfeedback.voeg_toe(user, conv, index, "down", "klopt niet", {"vraag": "x", "antwoord": "y"})
-    _sql(
-        pad,
-        "UPDATE answer_feedback SET created_at = ? WHERE username = ? AND conversation_id = ? AND message_index = ?",
-        (_iso(dagen_geleden), user, conv, index),
-    )
 
 
 def _werkboek(pad, user: str, wb: str, dagen_geleden: float) -> None:
@@ -225,42 +215,6 @@ def test_een_gesprek_met_een_tijd_in_de_toekomst_ontloopt_de_termijn_niet(pad):
 # ── Feedback ──
 
 
-def test_feedback_van_een_actief_gesprek_blijft_ook_als_hij_oud_is(pad):
-    _gesprek(pad, "anna", "c1", 1)
-    _oordeel(pad, "anna", "c1", 1, 200)
-
-    opschonen.schoon_op(_grenzen())
-
-    assert _ids(pad, "SELECT username, conversation_id FROM answer_feedback") == {("anna", "c1")}
-
-
-def test_feedback_van_een_verlopen_gesprek(pad):
-    """Oude feedback gaat mee; jonge wordt losgekoppeld zoals bij verwijderen (#476) en houdt zijn eigen termijn."""
-    _gesprek(pad, "anna", "c1", 100)
-    _oordeel(pad, "anna", "c1", 1, 95)
-    _oordeel(pad, "anna", "c1", 3, 10)
-
-    aantallen = opschonen.schoon_op(_grenzen())
-
-    rijen = _sql(pad, "SELECT username, conversation_id, message_index FROM answer_feedback")
-    assert len(rijen) == 1
-    username, conv_id, index = rijen[0]
-    assert (username, index) == (db.VERWIJDERDE_GEBRUIKER, 3)
-    assert conv_id != "c1"
-    assert aantallen["answer_feedback"] == 1
-
-
-def test_losgekoppelde_feedback_verdwijnt_na_de_termijn(pad):
-    _gesprek(pad, "anna", "c1", 1)
-    _oordeel(pad, "anna", "c1", 1, 91)
-    _oordeel(pad, "anna", "c1", 3, 89)
-    db.delete_conversation("anna", "c1")  # #476: beide losgekoppeld
-
-    opschonen.schoon_op(_grenzen())
-
-    assert _ids(pad, "SELECT message_index FROM answer_feedback") == {3}
-
-
 def test_feedback_op_rapporten_en_algemene_feedback_na_90_dagen(pad):
     db.add_feedback("anna", "wb-1", "report", "Instroom hbo", {"contact": "anna@example.org"})
     db.add_feedback("anna", "wb-2", "report", "Uitval mbo", {"contact": "nog jong"})
@@ -351,10 +305,6 @@ def _gevuld(pad) -> None:
     db.save_recipes("bert", "wees", {"b2": {"laad": ["x", {}]}})
     _sql(pad, "UPDATE data_recipes SET created_at = ? WHERE data_key = 'b2'", (_iso(150),))
     _bewijs(pad, "bert", "wees", ("h5",), 150)
-    _oordeel(pad, "anna", "oud", 1, 99)
-    _oordeel(pad, "anna", "oud", 3, 2)
-    _oordeel(pad, "anna", "nieuw", 1, 150)
-    _oordeel(pad, "bert", "oud", 1, 299)
     db.add_feedback("anna", "wb", "report", "R", {"q": "a"})
     _sql(pad, "UPDATE feedback SET created_at = ?", (_iso(120),))
     db.add_algemene_feedback("bert", "", "tekst", "/")
@@ -375,7 +325,6 @@ def test_droog_telt_wat_de_echte_run_verwijdert_en_verwijdert_zelf_niets(pad):
         "conversations": 2,
         "data_recipes": 4,
         "beurtbewijs": 4,
-        "answer_feedback": 2,
         "feedback": 1,
         "algemene_feedback": 0,
         "workbooks": 1,
@@ -391,7 +340,7 @@ def test_een_fout_halverwege_laat_alles_staan(pad, monkeypatch):
     def kapot(*args):
         raise RuntimeError("database weg")
 
-    monkeypatch.setattr(db, "_ontkoppel_feedback", kapot)
+    monkeypatch.setattr(db, "ruim_gesprek_op", kapot)
     with pytest.raises(RuntimeError):
         opschonen.schoon_op(_grenzen())
 
@@ -502,9 +451,9 @@ def test_postgres_een_commit_en_postgres_parameters(postgres):
     statements = [sql for sql, _ in postgres.sql]
     assert all("?" not in sql for sql in statements)
     assert statements[0].startswith("DELETE FROM conversations") and "RETURNING id, username" in statements[0]
-    # Het verwijderde gesprek: zijn recepten weg, zijn jonge feedback losgekoppeld (#476).
+    # Het verwijderde gesprek: zijn recepten weg.
     assert any(s.startswith("DELETE FROM data_recipes WHERE username") for s in statements)
-    assert any(s.startswith("UPDATE answer_feedback SET username") for s in statements)
+    assert not any("answer_feedback" in s for s in statements)
     for tabel in opschonen.SOORTEN:
         assert any(s.startswith(f"DELETE FROM {tabel}") for s in statements)
 

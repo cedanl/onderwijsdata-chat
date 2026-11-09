@@ -32,12 +32,14 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
 | Rapporten en dashboards (werkboeken) | `workbooks` | 365 dagen nadat het werkboek voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
-| Feedback per antwoord van vóór 9 november 2026: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`). De duimpjes zijn sindsdien uit de app (#983); er komt niets meer bij | `answer_feedback` | 90 dagen na het geven, maar niet zolang het gesprek nog bestaat; eerder als de gebruiker al zijn gegevens verwijdert. Bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), daarna tot 90 dagen na het geven |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de kolommen van kaarten en de meldingen van de controles onder het antwoord, onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
+
+Een oordeel op een antwoord (👍/👎 met toelichting en een kopie van vraag, antwoord en stappen) bewaart de server sinds
+9 november 2026 niet meer: de knoppen zijn weg en wat er stond, is bij de volgende start van de app verwijderd (#983).
 
 Inloggen: met `CHAT_USERS` (gebruikersnaam en wachtwoord) bewaart de server alleen de gebruikersnaam bij de
 gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van een rapport (#487); naam,
@@ -88,19 +90,17 @@ is een open punt.
   ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
-  (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback
-  datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat, en feedback van een verwijderd gesprek, die niet meer aan
-  je account hangt.
+  (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback,
+  datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
-  (gesprekken, rapporten en dashboards, al je feedback, ook `answer_feedback` met de `trace`, datarecepten en het bewijs per antwoord), en
+  (gesprekken, rapporten en dashboards, al je feedback, datarecepten en het bewijs per antwoord), en
   ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
   (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
   back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash
-  van een sessie waarmee je uitlogde in `revoked_tokens` tot zij verloopt, feedback die al eerder van een verwijderd
-  gesprek is losgekoppeld (`verwijderd`, #476) en niet meer aan je account hangt, en de kopie in de browser van een
-  ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
+  van een sessie waarmee je uitlogde in `revoked_tokens` tot zij verloopt, en de kopie in de browser van een ander
+  apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
   teamaccount in `CHAT_USERS`), dan verdwijnt ook het werk van de anderen. Zonder eigen login (iedereen is dan
   `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404.
 

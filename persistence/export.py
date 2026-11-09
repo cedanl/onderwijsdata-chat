@@ -6,8 +6,7 @@ ook niet met tachtig rapporten van een paar MB HTML (#633). Gesprekken en werkbo
 lijst van ids en daarna één voor één; een verbinding blijft alleen open voor één query, niet over een
 `yield` heen, zodat een trage download geen plek in de Postgres-pool vasthoudt (#508).
 
-Elke query filtert op `username = ?`. Niet in de export: andermans rijen, feedback die bij het
-verwijderen van een gesprek is losgekoppeld (`verwijderd`, #476), ingetrokken tokens en de
+Elke query filtert op `username = ?`. Niet in de export: andermans rijen, ingetrokken tokens en de
 `localStorage` van de browser. Kolomnamen zijn die van de database (`html_content`, zoals
 `GET /api/workbooks/{id}`).
 """
@@ -96,19 +95,6 @@ def algemene_feedback(username: str) -> Iterator[dict]:
     )
 
 
-def answer_feedback(username: str) -> Iterator[dict]:
-    """Het oordeel per antwoord met toelichting en trace; losgekoppelde feedback (#476) hoort bij niemand."""
-    if username == db.VERWIJDERDE_GEBRUIKER:
-        return
-    for row in _rijen(
-        "SELECT conversation_id, message_index, oordeel, toelichting, trace, created_at FROM answer_feedback "
-        "WHERE username = ? ORDER BY created_at, conversation_id, message_index",
-        (username,),
-    ):
-        row["trace"] = _json_of_tekst(row["trace"])
-        yield row
-
-
 def data_recipes(username: str) -> Iterator[dict]:
     """Hoe de tabellen van de gesprekken zijn opgehaald (#472)."""
     for row in _rijen(
@@ -138,7 +124,6 @@ SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "workbooks": workbooks,
     "feedback": feedback,
     "algemene_feedback": algemene_feedback,
-    "answer_feedback": answer_feedback,
     "data_recipes": data_recipes,
     "beurtbewijs": beurtbewijs,
 }

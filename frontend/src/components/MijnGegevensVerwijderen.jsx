@@ -112,7 +112,8 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
         <div id={uitlegId} className="mijn-gegevens-verwijderen-uitleg">
           <p>
             Dit verwijdert alles wat de server onder je account bewaart: je gesprekken, je rapporten en dashboards,
-            al je feedback (bij rapporten, per antwoord en via de link Feedback) je datarecepten en het bewijs achter je antwoorden.{' '}
+            al je feedback (bij rapporten en dashboards en via de link Feedback), je datarecepten en het bewijs achter je
+            antwoorden.{' '}
             <strong>Dit kan niet ongedaan worden gemaakt.</strong>
           </p>
           <p>
