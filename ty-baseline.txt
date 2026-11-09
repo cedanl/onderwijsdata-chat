@@ -8,7 +8,6 @@ auth/oidc.py: error[unresolved-attribute] Attribute `rstrip` is not defined on `
 auth/oidc.py: warning[invalid-argument-type] Argument to bound method `AsyncClient.get` is incorrect: Expected `URL | str`, found `str | None`
 core/config.py: error[invalid-assignment] Object of type `dict[str, str | None]` is not assignable to `dict[str, str]`
 health.py: error[invalid-return-type] Return type does not match returned value: expected `dict[Unknown, Unknown]`, found `tuple[dict[str, str | dict[str, bool] | float], Literal[200, 503]]`
-logging_config.py: error[no-matching-overload] No overload of bound method `MutableMapping.update` matches arguments
 logging_config.py: warning[deprecated] The function `utcnow` is deprecated: Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)
 routes/chat.py: error[unresolved-attribute] Attribute `cancel` is not defined on `None` in union `Task[Unknown] | None`
 scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `choices` is not defined on `CustomStreamWrapper`, `Coroutine[object, object, ModelResponse | CustomStreamWrapper]` in union `ModelResponse | CustomStreamWrapper | Coroutine[object, object, ModelResponse | CustomStreamWrapper]`
@@ -17,30 +16,15 @@ tests/test_config_provider_keys.py: warning[invalid-argument-type] Argument to f
 tests/test_controle_melding.py: error[unresolved-attribute] Object of type `str` has no attribute `melding`
 tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `RealDictCursor` on type `ModuleType`
 tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `extras` on type `ModuleType`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[dict[Unknown, Unknown]]`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[dict[Unknown, Unknown]]`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
-tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
 tests/test_rio_onvolledig.py: warning[invalid-argument-type] Argument to function `loads` is incorrect: Expected `str | bytes | bytearray`, found `str | tuple[str, Figure]`
 tests/test_snippet.py: error[invalid-assignment] Object of type `(...) -> DataFrame` is not assignable to attribute `load` of type `def load(dataset_id: str, resource: int | str = 0, skiprows: int | None = None, **kwargs) -> Unknown`
 tests/test_snippet.py: error[invalid-assignment] Object of type `(...) -> DataFrame` is not assignable to attribute `load` of type `def load(dataset_id: str, resource: int | str = 0, skiprows: int | None = None, **kwargs) -> Unknown`
 tests/test_snippet.py: error[unresolved-attribute] Attribute `laad` is not defined on `None` in union `KeyMeta | None`
 tests/test_snippet.py: error[unresolved-attribute] Attribute `laad` is not defined on `None` in union `KeyMeta | None`
-tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `data` on type `ModuleType`
-tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `duo` on type `ModuleType`
-tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `fetch` on type `ModuleType`
-tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `load` on type `ModuleType`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["print(df.round())"]` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `not in` is not supported between objects of type `Literal["store"]` and `str | None`
-tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
