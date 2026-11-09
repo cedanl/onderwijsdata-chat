@@ -121,6 +121,14 @@ env:
         name: onderwijsdata-chat-secrets
         key: LOG_HASH_SECRET
         optional: true
+  # API-sleutels voor /mcp (#939, docs/mcp.md), kommagescheiden. optional: zonder deze sleutel in het secret bestaat
+  # /mcp niet (404) en start de pod zoals nu; de waarde zetten is beheer (SOPS, #941).
+  - name: MCP_API_KEYS
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: MCP_API_KEYS
+        optional: true
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
   # Dashboards staan op test en playground aan (vlag uit 47e7727f); production houdt ze uit.

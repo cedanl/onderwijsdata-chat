@@ -10,9 +10,16 @@ nodig die zo lang leeft als de app; `draai()` hoort daarom in de lifespan van de
 
 Alleen POST: een GET-stroom of een DELETE van een sessie heeft stateless geen betekenis (405). Zonder sleutels in
 MCP_API_KEYS bestaat /mcp niet: 404, ook voor GET (anders gaf de SPA index.html).
+
+Elk verzoek draagt `Authorization: Bearer <sleutel>` met een sleutel uit MCP_API_KEYS (#939), anders 401. Meerdere
+sleutels tegelijk: roteren zonder onderbreking, en een eigen sleutel per consument. Het log noemt nooit de sleutel,
+alleen een sleutel-ID (`tekst_kenmerk`, met LOG_HASH_SECRET een HMAC), zodat te zien is wie een aanroep deed.
 """
 
 import contextlib
+import contextvars
+import hashlib
+import hmac
 import json
 import logging
 import time
@@ -22,6 +29,7 @@ from typing import Any
 import anyio
 from fastapi.responses import JSONResponse
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from starlette.datastructures import Headers
 from starlette.types import Receive, Scope, Send
 
 import mcp_server
@@ -33,6 +41,39 @@ logger = logging.getLogger(__name__)
 
 PAD = "/mcp"
 ALLEEN_POST = "Alleen POST: /mcp is stateless, zonder stroom of sessie."
+GEEN_SLEUTEL = "Geen geldige API-sleutel. Stuur Authorization: Bearer <sleutel>."
+
+# Het sleutel-ID van het lopende verzoek, voor de logregel van de toolaanroep: de SDK draait die in een eigen taak,
+# die de context van het verzoek erft.
+_sleutel_id: contextvars.ContextVar[str] = contextvars.ContextVar("mcp_sleutel_id", default="-")
+
+
+class Sleutels:
+    """De geldige API-sleutels (#939). Elke vergelijking constant-time, op een SHA-256 van gelijke lengte, en tegen
+    alle sleutels zonder vroeg te stoppen: de duur verraadt niet welke sleutel bijna klopte, noch hoe lang hij is."""
+
+    def __init__(self, sleutels: tuple[str, ...]) -> None:
+        self._sleutels = [(_digest(s), tekst_kenmerk(s, "sleutel_")) for s in sleutels]
+
+    def __bool__(self) -> bool:
+        return bool(self._sleutels)
+
+    def herken(self, autorisatie: str | None) -> str | None:
+        """Het sleutel-ID bij `Bearer <geldige sleutel>`, anders None."""
+        schema, _, aangeboden = (autorisatie or "").partition(" ")
+        aangeboden = aangeboden.strip()
+        if schema.lower() != "bearer" or not aangeboden:
+            return None
+        digest = _digest(aangeboden)
+        gevonden = None
+        for kandidaat, sleutel_id in self._sleutels:
+            if hmac.compare_digest(digest, kandidaat):
+                gevonden = sleutel_id
+        return gevonden
+
+
+def _digest(sleutel: str) -> bytes:
+    return hashlib.sha256(sleutel.encode()).digest()
 
 
 async def _in_thread(naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
@@ -41,11 +82,12 @@ async def _in_thread(naam: str, argumenten: dict[str, Any] | None) -> tuple[str,
     begin = time.monotonic()
     tekst, fout = await anyio.to_thread.run_sync(mcp_server.voer_uit, naam, argumenten)
     logger.info(
-        "MCP TOOL %s %s fout=%s duur=%.2fs",
+        "MCP TOOL %s %s fout=%s duur=%.2fs %s",
         naam,
         tekst_kenmerk(json.dumps(argumenten or {}, ensure_ascii=False, sort_keys=True), "args_"),
         fout,
         time.monotonic() - begin,
+        _sleutel_id.get(),
     )
     return tekst, fout
 
@@ -54,7 +96,7 @@ class McpEindpunt:
     """De ASGI-app achter /mcp. Eén per app: server.create_app maakt hem en zet `draai()` in de lifespan."""
 
     def __init__(self, *, sleutels: tuple[str, ...]) -> None:
-        self._sleutels = sleutels
+        self._sleutels = Sleutels(sleutels)
         self._server = mcp_server.maak_server(_in_thread)
         self._manager: StreamableHTTPSessionManager | None = None
 
@@ -82,6 +124,14 @@ class McpEindpunt:
         if self._manager is None:
             await JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)(scope, receive, send)
             return
+        sleutel_id = self._sleutels.herken(Headers(scope=scope).get("authorization"))
+        if sleutel_id is None:
+            # Zonder de aangeboden waarde: ook een foute sleutel kan een echte zijn met een tikfout.
+            logger.warning("MCP 401: geen of ongeldige sleutel")
+            await JSONResponse({"detail": GEEN_SLEUTEL}, status_code=401, headers={"WWW-Authenticate": "Bearer"})(
+                scope, receive, send
+            )
+            return
         if scope["method"] != "POST":
             # Stateless is er geen GET-stroom (de SDK hield hem open zonder ooit iets te sturen) en geen sessie om met
             # DELETE te sluiten. 405 zegt de client dat de server geen stroom aanbiedt (MCP-spec, streamable HTTP).
@@ -89,4 +139,5 @@ class McpEindpunt:
                 scope, receive, send
             )
             return
+        _sleutel_id.set(sleutel_id)
         await self._manager.handle_request(scope, receive, send)

@@ -159,3 +159,68 @@ def test_de_app_start_vaker_met_dezelfde_fabriek(maak_app):
         with TestClient(app) as client:
             koppen = ACCEPT | {"Authorization": f"Bearer {SLEUTEL}"}
             assert client.post("/mcp", json=INITIALIZE, headers=koppen).status_code == 200
+
+
+# ── API-sleutel (#939) ───────────────────────────────────────────────────────────────────
+
+ANDERE = "sleutel-b-fedcba9876543210"
+
+
+def _initialize(app, koppen: dict[str, str]):
+    with TestClient(app) as client:
+        return client.post("/mcp", json=INITIALIZE, headers=ACCEPT | koppen)
+
+
+@pytest.mark.parametrize(
+    "koppen",
+    [
+        {},
+        {"Authorization": "Bearer verkeerd"},
+        {"Authorization": f"Bearer {SLEUTEL}x"},
+        {"Authorization": f"Basic {SLEUTEL}"},
+        {"Authorization": SLEUTEL},
+        {"Authorization": "Bearer "},
+    ],
+    ids=["geen", "ongeldig", "langer", "basic", "zonder-schema", "leeg"],
+)
+def test_zonder_geldige_sleutel_401(maak_app, koppen):
+    antwoord = _initialize(maak_app(SLEUTEL), koppen)
+    assert antwoord.status_code == 401
+    assert antwoord.headers["www-authenticate"] == "Bearer"
+    assert SLEUTEL not in antwoord.text
+
+
+def test_geldige_sleutel_200(maak_app):
+    assert _initialize(maak_app(SLEUTEL), {"Authorization": f"Bearer {SLEUTEL}"}).status_code == 200
+    assert _initialize(maak_app(SLEUTEL), {"Authorization": f"bearer {SLEUTEL}"}).status_code == 200
+
+
+def test_twee_sleutels_tegelijk_geldig(maak_app):
+    """Roteren zonder onderbreking: oude en nieuwe sleutel werken naast elkaar, een derde niet."""
+    app = maak_app(SLEUTEL, ANDERE)
+    for sleutel in (SLEUTEL, ANDERE):
+        assert _initialize(app, {"Authorization": f"Bearer {sleutel}"}).status_code == 200
+    assert _initialize(app, {"Authorization": "Bearer derde"}).status_code == 401
+
+
+def test_de_client_van_de_sdk_met_een_foute_sleutel_komt_er_niet_in(maak_app):
+    from mcp.shared.exceptions import MCPError
+
+    with pytest.raises((MCPError, ExceptionGroup, httpx2.HTTPStatusError)):
+        via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools(), koppen={"Authorization": "Bearer fout"})
+
+
+def test_de_sleutel_staat_niet_in_het_log_wel_een_sleutel_id(maak_app, caplog):
+    from core.logging_util import tekst_kenmerk
+
+    app = maak_app(SLEUTEL, ANDERE)
+    with caplog.at_level("DEBUG"):
+        via_mcp(app, lambda sessie: sessie.call_tool("dataset_counts", {}))
+        _initialize(app, {"Authorization": f"Bearer {ANDERE}x"})
+        _initialize(app, {})
+    log = "\n".join(r.getMessage() for r in caplog.records)
+    assert SLEUTEL not in log and ANDERE not in log
+    tool = [r.getMessage() for r in caplog.records if r.getMessage().startswith("MCP TOOL dataset_counts")]
+    assert len(tool) == 1
+    assert tekst_kenmerk(SLEUTEL, "sleutel_") in tool[0], "het log noemt welke consument de aanroep deed"
+    assert any("MCP 401" in r.getMessage() for r in caplog.records)

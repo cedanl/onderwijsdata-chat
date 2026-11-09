@@ -16,7 +16,7 @@ De koppeling is voorbereid, niet live. Wat er is en wat nog moet:
 | Catalogustools via MCP (`search_catalog`, `dataset_details`, `dataset_counts`) | Er, via stdio voor lokale clients en via streamable HTTP op `/mcp` ([MCP-server](mcp.md)) |
 | `bewijs` en `vervolg` in elk resultaat, brontekst ontsmet (#707) | Er ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)) |
 | Deep link naar de chat met een vraag in de invoer (#709) | Er ([Deep link naar de chat](api.md#deep-link-naar-de-chat)) |
-| Streamable-http-transport op `/mcp` in de app (#706) | Er, alleen met sleutels in `MCP_API_KEYS`; nog op geen omgeving (#941) |
+| Streamable-http-transport op `/mcp` in de app (#706), met API-sleutel (#939) | Er, alleen met sleutels in `MCP_API_KEYS`; nog op geen omgeving (#941) |
 | Datatools voor de kernvragen (#708) | Nog niet; zonder deze tools levert de koppeling metadata, geen cijfers |
 | Afspraken met Npuls: globale MCP-entry, egress, DPIA, naam, SLA (#711) | Open |
 | Productie die de ladder volgt (#674) | Open; tot dan wijst de koppeling naar playground |
