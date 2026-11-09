@@ -1,7 +1,9 @@
-# Eén pod (#421): de opgehaalde data (tools/store.py) en de rate limiters leven in het
-# geheugen van de pod. Met meer pods en zonder sticky sessions komt een CSV-download
-# (/api/data/csv) bij een pod die de tabel niet kent en geeft 404. Opschalen kan pas
-# als die staat gedeeld is.
+# Eén pod, bewust (ADR-011, besluit 09-11 op #677): de opgehaalde data (tools/store.py), de limieten en de
+# SRAM-cache leven in het geheugen van de pod. Met meer pods en zonder sticky sessions komt een CSV-download
+# (/api/data/csv) bij een pod die de tabel niet kent, en tellen de limieten per pod. Opschalen is #984; geen HPA.
+# Strategie: de standaard RollingUpdate (maxSurge 1, maxUnavailable 0), zodat de oude pod pas stopt als de nieuwe
+# klaar is; dat vraagt quotum voor een tweede pod tijdens de uitrol (#674). Past dat niet, dan `strategy: Recreate`
+# zoals op test, en is elke uitrol een onderbreking van start plus startupProbe (docs/operatie.md).
 replicaCount: 1
 
 resources:
@@ -11,9 +13,6 @@ resources:
   requests:
     cpu: 1000m
     memory: 1Gi
-
-autoscaling:
-  enabled: false
 
 ingress:
   web:

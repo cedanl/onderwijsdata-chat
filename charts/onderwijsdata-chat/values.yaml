@@ -1,3 +1,5 @@
+# Eén pod, bewust (ADR-011, #677): datastore, limieten en SRAM-cache leven in het procesgeheugen. Geen HPA-knop;
+# opschalen vraagt eerst gedeelde staat (#984).
 replicaCount: 1
 
 # Deployment rollout strategy. Empty = Kubernetes default (RollingUpdate,
@@ -74,10 +76,19 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 3
 
-# Tijd tussen SIGTERM en kill. Uvicorn wacht tot 45 s op lopende HTTP-verzoeken (--timeout-graceful-shutdown in de
-# Dockerfile). Een chat-WebSocket sluit uvicorn bij het stoppen meteen met 1012, dus een langere termijn redt geen
-# lopend antwoord; dat vraagt een tweede pod of RollingUpdate (#677).
+# Tijd van het stopbevel tot kill: eerst preStop (hieronder), dan SIGTERM, waarna uvicorn tot 45 s op lopende
+# HTTP-verzoeken wacht (--timeout-graceful-shutdown in de Dockerfile). Een chat-WebSocket sluit uvicorn bij het stoppen
+# meteen met 1012; de frontend zegt dan dat de app wordt bijgewerkt en blijft herverbinden tot de nieuwe pod er is
+# (#677). Een langere termijn redt geen lopend antwoord; dat vraagt een tweede pod (#984).
 terminationGracePeriodSeconds: 60
+
+# Vóór SIGTERM: Kubernetes haalt de pod tegelijk uit de endpoints, en Traefik heeft een paar seconden nodig om dat te
+# zien. Zolang luistert uvicorn nog, zodat een verzoek dat dan binnenkomt geen 502 krijgt (bij RollingUpdate). Bij
+# Recreate kost het 5 s extra op een uitrol van minuten. `sleep` uit de base-image (Debian coreutils).
+lifecycle:
+  preStop:
+    exec:
+      command: ["sleep", "5"]
 
 service:
   web:
@@ -101,9 +112,6 @@ ingress:
       - secretName: "onderwijsdata-chat-tls"
         hosts:
           - onderwijsdata-chat.test.sdp.surf.nl
-
-autoscaling:
-  enabled: false
 
 serviceAccount:
   create: true

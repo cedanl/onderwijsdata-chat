@@ -4,7 +4,7 @@ import { trimHistory } from '../contextLimits'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
-import { createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
+import { HERSTART, createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
 import { markeerWeggegaan } from '../weggegaan'
@@ -52,6 +52,8 @@ export function useChat({ maxHistory } = {}) {
   const [connected, setConnected] = useState(false)
   // Geen eigen pogingen meer (#783): 'weg' na de laatste, 'te_veel' als de server nog een venster weigerde.
   const [opgegeven, setOpgegeven] = useState(null)
+  // De server sloot de socket voor een uitrol (1012, #677): de voettekst zegt dat, tot een socket weer opent.
+  const [bijwerken, setBijwerken] = useState(false)
   const verbindOpnieuwRef = useRef(() => {})
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
@@ -402,7 +404,12 @@ export function useChat({ maxHistory } = {}) {
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
     // until then the user saw a counting pill and no melding (#489).
     const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
-    const retry = createRetry(connect, { opgegeven: () => setOpgegeven('weg') })
+    const retry = createRetry(connect, {
+      opgegeven: () => {
+        setBijwerken(false)
+        setOpgegeven('weg')
+      },
+    })
 
     // One live socket at a time (#522). A real close() is asynchronous, so the onclose of a
     // socket that was already replaced can come after its successor opened. Only the socket
@@ -446,6 +453,11 @@ export function useChat({ maxHistory } = {}) {
         setOpgegeven(reden)
         return
       }
+      // Een uitrol (#677): de app is weg tot de nieuwe pod klaar is; langer proberen, en zeggen waarom.
+      if (code === HERSTART) {
+        retry.herstart()
+        setBijwerken(true)
+      }
       // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
       if (!opened) checkSession()
       retry.schedule()
@@ -463,6 +475,7 @@ export function useChat({ maxHistory } = {}) {
         if (!isCurrent(ws)) return
         opened = true
         setConnected(true)
+        setBijwerken(false)
         heartbeat.start()
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
@@ -721,5 +734,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

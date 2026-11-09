@@ -533,6 +533,64 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 
 ---
 
+## ADR-011: De eerste productie draait bewust één pod; schaalbaar maken is een vervolgepic
+
+**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677)
+**Status:** Decided
+**Issue:** #677 (vervolgepic #984; graceful shutdown #675; productie uitrolbaar #674)
+
+### Problem
+De app kan maar met één pod draaien. De datastore (`tools/store.py`), de limieten (`core/rate_limit.py` voor login,
+berichten en feedback; `core/gelijktijdig.py` voor verbindingen, runs en sandboxplaatsen, #688), de SRAM-gebruikerscache
+(`routes/auth.py` `_oidc_user_cache`) en de nog niet opgeslagen recepten (`agent/recepten.py` `_wachtend`) leven in het
+geheugen van het proces. Met twee pods komt een CSV-download, een dashboard-refresh of het opslaan van een gesprek
+(`PUT /api/conversations/{id}`) soms bij de pod die die staat niet kent, en tellen alle limieten per pod. Tegelijk
+betekent één pod: geen hoge beschikbaarheid, en elke uitrol een onderbreking (op test bij `Recreate` 8 minuten 503,
+29-10). De docs beloofden eerder 3–10 replica's met HPA; dat is in !655 rechtgezet.
+
+### Decision
+- **Optie A nu:** de eerste productie draait bewust één pod. `replicaCount: 1` in elke omgeving, geen HPA en geen PDB;
+  de HPA-knop (`autoscaling.enabled` zonder HPA-template) is uit de chart. `tests/test_manifests.py` toetst per omgeving
+  de gerenderde chart.
+- **Stoppen op orde:** `preStop` 5 s (Traefik laat de pod los voordat uvicorn stopt met luisteren), uvicorn 45 s voor
+  lopende HTTP-verzoeken, `terminationGracePeriodSeconds: 60`. Een lopend antwoord redden we niet: uvicorn sluit een
+  chat-WebSocket bij het stoppen met 1012. De frontend herkent 1012, zegt "De app wordt bijgewerkt" en blijft tot
+  12 minuten herverbinden; het afgebroken antwoord krijgt "Probeer opnieuw".
+- **Productie houdt de standaard RollingUpdate** (`maxSurge 1`, `maxUnavailable 0`): de oude pod stopt pas als de
+  nieuwe klaar is. Laat het quotum van de productie-tenant geen tweede pod toe, dan `Recreate` zoals op test (#674).
+- **Beschikbaarheid eerlijk benoemen** (besluit gebruiker 09-11), in `docs/operatie.md` (Beschikbaarheid):
+    - **Geen vaste onderhoudsvensters.** Productie rolt uit wanneer dat nodig is; de melding "De app wordt bijgewerkt"
+      en het automatisch opnieuw verbinden vangen dat op.
+    - **Best effort, geen streefwaarde.** Geen percentage. De tekst beschrijft wat gebruikers bij een uitrol of storing
+      zien en, in algemene termen, hoe we reageren, zonder reactie- of hersteltijd.
+    - **Plek:** `docs/operatie.md`, publiek op de documentatiesite, en input voor de afspraken met Npuls en SURF AI
+      Chat (#711). Niet in de app.
+- **Optie B als vervolgepic (#984):** limieten en SRAM-cache naar Postgres, sticky sessions of een gedeelde store,
+  daarna twee replica's met RollingUpdate en een PDB.
+
+### Rationale
+- **Klein en nu:** A vraagt geen wijziging in de datalaag; B raakt limieten, gelijktijdigheid, recepten en de ingress,
+  en vraagt quotum voor twee pods. De eerste productie hoeft daar niet op te wachten.
+- **Geen schijnzekerheid:** een PDB met één pod blokkeert een node-drain (`minAvailable: 1`) of beschermt niets
+  (`maxUnavailable: 1`); een HPA zou de staat in het geheugen over pods verdelen. Liever geen knop dan een knop die
+  stuk is.
+- **Een duidelijke melding is haalbaar, een gered antwoord niet:** een antwoord mag tot `RUN_TIMEOUT_S` (300 s) duren.
+  Een drain van die lengte verlengt bij `Recreate` de 503 voor iedereen, en bij RollingUpdate vraagt het een tweede pod
+  die de staat van de eerste niet kent.
+
+### Trade-off(s)
+- Elke uitrol, herstart, node-drain of OOM is een onderbreking voor alle gebruikers; lopende antwoorden gaan verloren.
+- Limieten beginnen na een herstart op nul (login, berichten).
+- Met RollingUpdate draaien tijdens een uitrol kort twee pods; een CSV-download of dashboard-refresh in dat venster
+  kan de verkeerde pod treffen. De recepten (#472) maken de data daarna weer herstelbaar.
+- **Heroverwegen** zodra een van deze zich voordoet:
+    - productie krijgt gebruikers die een onderbreking midden op de dag niet accepteren, of er komt een SLA met een
+      streefwaarde;
+    - het quotum laat twee pods toe en #984 stap 1 (limieten en cache naar Postgres) is klaar;
+    - de server schrijft zijn beurten zelf weg (#784), waardoor de recepten niet meer per proces hoeven te wachten.
+
+---
+
 ## How to add a new ADR
 
 1. Increment the number (ADR-008, etc.)
