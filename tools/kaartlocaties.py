@@ -11,7 +11,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from . import relaties
+from onderwijsbronnen import sleutels
 
 # De volgorde is ook de voorkeur bij gelijke dekking: de lijst "Utrecht, Groningen" is een lijst provincies.
 NIVEAUS = ("provincie", "gemeente", "corop")
@@ -64,8 +64,8 @@ class _Gebied:
         if code := self.namen.get(sleutel(waarde)) or self.kort.get(sleutel(waarde)):
             return code
         if self.niveau == "provincie":
-            code = relaties.norm_provincie(waarde)  # 'Friesland' staat in de GeoJSON als 'Fryslân'
-        elif self.niveau == "gemeente" and (nummer := relaties.norm_gemeente(waarde)):
+            code = sleutels.norm_provincie(waarde)  # 'Friesland' staat in de GeoJSON als 'Fryslân'
+        elif self.niveau == "gemeente" and (nummer := sleutels.norm_gemeente(waarde)):
             code = f"GM{nummer}"  # DUO schrijft het gemeentenummer: 344 of '344.0'
         else:
             code = None

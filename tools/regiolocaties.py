@@ -36,13 +36,13 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import pandas as pd
-from onderwijsbronnen import duo
+from onderwijsbronnen import duo, sleutels
 from onderwijsbronnen.rio import onderwijsaanbieders
 
 from core import actualiteit
 from data import arbeidsmarktregio, woonplaatsen
 
-from . import instelling, relaties
+from . import instelling
 from .kaartlocaties import sleutel
 
 logger = logging.getLogger(__name__)
@@ -113,7 +113,7 @@ def _gemeenteindex() -> dict[str, str]:
 
 def _gemeentecode(waarde) -> str | None:
     """'DOETINCHEM', 'Doetinchem', 222, '0222' of 'GM0222' → '0222'; None als onbekend."""
-    code = relaties.norm_gemeente(waarde)
+    code = sleutels.norm_gemeente(waarde)
     if code is None:
         code = _gemeenteindex().get(sleutel(str(waarde)))
     return code if code in woonplaatsen.gemeenten() else None
@@ -141,7 +141,7 @@ def _doelen(niveau: str, waarden: list) -> set[str]:
         return {sleutel(str(w)) for w in waarden}
     if niveau == "arbeidsmarktregio":
         return {d for w in waarden if (d := _arbeidsmarktregio(w))}
-    lees = _gemeentecode if niveau == "gemeente" else relaties.norm_provincie
+    lees = _gemeentecode if niveau == "gemeente" else sleutels.norm_provincie
     return {d for w in waarden if (d := lees(w))}
 
 
@@ -164,8 +164,8 @@ def _weergave(niveau: str, waarde) -> str:
         return woonplaatsen.gemeenten()[code]["naam"] if code else str(waarde)
     if niveau == "arbeidsmarktregio":
         return _arbeidsmarktregio(waarde) or str(waarde)
-    code = relaties.norm_provincie(waarde)
-    return relaties.PROVINCIES[code] if code else str(waarde)
+    code = sleutels.norm_provincie(waarde)
+    return sleutels.PROVINCIES[code] if code else str(waarde)
 
 
 # --- de bronnen, een dag in de cache ---

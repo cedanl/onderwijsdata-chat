@@ -48,16 +48,6 @@ _CAPABILITIES = {
     "sbb": ["tabular_read"],
 }
 
-# Kolomnamen die als koppelsleutel bekend zijn (prefix-match, hoofdletterongevoelig).
-_JOIN_SLEUTELS = (
-    ("INSTELLINGSCODE", "brin"),
-    ("BRIN", "brin"),
-    ("CREBO", "crebo"),
-    ("CROHO", "croho"),
-    ("OPLEIDINGSCODE", "opleidingscode (crebo of croho)"),
-    ("GEMEENTENUMMER", "cbs_gemeentecode"),
-    ("GEMEENTECODE", "cbs_gemeentecode"),
-)
 # ID-formaat per RIO-resource. De v2-spec legde ze vast in het pad-parameter ``id`` van
 # ``/{resource}/{id}``; de v3-spec (RIO_LOD_API_v3.yml) noemt geen formaten meer, maar de API
 # valideert ze nog wel (GGM-003) en de records dragen ze (test_rio_id_formaten_gelijk_aan_de_spec,
@@ -416,20 +406,14 @@ def _join_sleutels(provider: str, rec: dict, resources: list[dict]) -> dict:
         resource = rec["_rio_resource"]
         sleutel = {"veld": "id", "sleutel": f"rio:{resource}", "formaat": _rio_id_formaat(resource)}
         return {"status": SUPPORTED, "sleutels": [sleutel], "bron": "RIO LOD API v2 (OpenAPI-spec)"}
-    kolommen = _alle_kolommen(resources)
-    if not kolommen:
+    if not _alle_kolommen(resources):
         return _onbekend("kolommen niet vastgelegd")
-    sleutels = []
-    for k in kolommen:
-        for prefix, sleutel in _JOIN_SLEUTELS:
-            if k.upper().startswith(prefix):
-                sleutels.append({"kolom": k, "sleutel": sleutel})
-                break
-    return {"status": SUPPORTED, "sleutels": sleutels, "bron": "kolomnamen in de schema-snapshot"}
+    # Dezelfde sleutels als het catalogusrecord (`_sleutels`, uit `onderwijsbronnen.sleutels`, #958): geen tweede lijst.
+    return {"status": SUPPORTED, "sleutels": list(rec["_sleutels"]), "bron": "kolomnamen in de schema-snapshot"}
 
 
-def _instellingseenheden(provider: str, resources: list[dict]) -> dict:
-    kolommen = [k for k in _alle_kolommen(resources) if k.upper().startswith(("INSTELLINGSCODE", "BRIN"))]
+def _instellingseenheden(provider: str, rec: dict, resources: list[dict]) -> dict:
+    kolommen = [p["kolom"] for p in rec["_sleutels"] if p["sleutel"] == "brin"]
     if kolommen:
         return {"status": SUPPORTED, "kolommen": kolommen, "eenheid": "instelling (BRIN-code)"}
     if provider == "duo" and _alle_kolommen(resources):
@@ -497,7 +481,7 @@ def _record(rec: dict) -> dict:
         "teldefinitie": _teldefinitie(rec),
         "maat": _maat(rec),
         "geografie": _geografie(rec),
-        "instellingseenheden": _instellingseenheden(provider, resources),
+        "instellingseenheden": _instellingseenheden(provider, rec, resources),
         "tijdsdekking": _tijdsdekking(provider, rec),
         "join_sleutels": _join_sleutels(provider, rec, resources),
         "beperkingen": _beperkingen(rec),
@@ -507,7 +491,7 @@ def _record(rec: dict) -> dict:
             "notes": rec.get("_notes_provenance"),
             "afgeleide_velden": {
                 "scopeprofiel": "gecureerde onderwijstype, RIO-typefilter (spec) of DUO-resourcenaam",
-                "join_sleutels": "kolomnamen",
+                "join_sleutels": "kolomnamen, via onderwijsbronnen.sleutels (#958)",
                 "tijdsdekking": "CKAN notes of volledige scan; anders onbekend",
             },
         },

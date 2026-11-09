@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 from importlib.resources import files
 
-from .._kern import broncontract
+from .._kern import broncontract, sleutels
 from .wopi import (
     AANTAL_UNIVERSITEITEN,
     GESLACHT,
@@ -43,8 +43,10 @@ from .wopi import (
 
 
 def catalog() -> list[dict]:
-    """De UNL-bron als catalogusrecord (lokale JSON): één record, het WOPI-bestand."""
-    return json.loads(files("onderwijsbronnen.unl.data").joinpath("unl_resources.json").read_text(encoding="utf-8"))
+    """De UNL-bron als catalogusrecord (lokale JSON): één record, het WOPI-bestand, met de BRIN-code van elke rij als
+    sleutel (`brin` in `load`, #958)."""
+    records = json.loads(files("onderwijsbronnen.unl.data").joinpath("unl_resources.json").read_text(encoding="utf-8"))
+    return [sleutels.in_record(r, [{"kolom": "brin", "sleutel": "brin"}], "") for r in records]
 
 
 # ── broncontract (#911) ────────────────────────────────────────────────────────

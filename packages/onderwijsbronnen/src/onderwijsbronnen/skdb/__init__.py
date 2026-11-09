@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 from importlib.resources import files
 
-from .._kern import broncontract
+from .._kern import broncontract, sleutels
 from .export import (
     API,
     DOCUMENTATIE,
@@ -74,7 +74,18 @@ def catalog() -> list[dict]:
     [record] = json.loads(
         files("onderwijsbronnen.skdb.data").joinpath("skdb_resources.json").read_text(encoding="utf-8")
     )
-    return [{**record, "tabellen": sorted(MOGELIJKHEDEN)}]
+    return [sleutels.in_record({**record, "tabellen": sorted(MOGELIJKHEDEN)}, _SLEUTELS, "")]
+
+
+# De sleutels in de uitkomst van de overzichten (`opleidingen`, `studie`, `doorstroom_bachelor_master`, #958): vast,
+# want het schema staat niet in de repo. De ruwe tabellen (instellingCode, opleidingCode, soiId, …) dragen ze onder hun
+# eigen kolomnaam; `sleutels.paren` leest die uit het schema van een opgehaalde export.
+_SLEUTELS = [
+    {"kolom": "brin", "sleutel": "brin"},
+    {"kolom": "croho", "sleutel": "croho"},
+    {"kolom": "master_croho", "sleutel": "croho"},
+    {"kolom": "roa_opleidingstype", "sleutel": "roa_opleidingstype"},
+]
 
 
 # ── broncontract (#911) ────────────────────────────────────────────────────────

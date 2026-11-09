@@ -548,9 +548,9 @@ duaal) zijn het er ruim 4.400.
   geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
   dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
-  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. De tool
-  `relatie` kent `brin` en `croho` als de sleutels instellingscode en erkende opleiding, en noemt een SKDB-tabel en een
-  DUO-tabel zo als koppelkandidaten.
+  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. `brin` en
+  `croho` zijn canonieke sleutels van `onderwijsbronnen.sleutels` (#958): het catalogusrecord noemt ze als
+  `koppelbaar_via`, en `relatie` noemt een SKDB-tabel en een DUO-tabel zo als koppelkandidaten.
 - **Schema en wat de chat ermee kan (#978):** de export beschrijft zichzelf in `exporttabellen` (45 tabellen) en
   `exportkolommen` (639 kolommen). `onderwijsbronnen.skdb.schema` bouwt daaruit per tabel de omschrijving, de kolommen
   met type, de korrel (de parameters van het endpoint, zoals instelling × vestiging × product bij `tracks`), de

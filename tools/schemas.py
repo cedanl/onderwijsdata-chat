@@ -244,8 +244,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_RELATIE,
             "description": (
-                "Wat hangt aan wat tussen CBS, DUO en RIO. Met één data_key: per sleutelkolom (instellingscode, "
-                "instellingsnaam, gemeente, provincie, schooljaar, opleidingscode) wat eraan hangt en hoeveel "
+                "Wat hangt aan wat tussen CBS, DUO, RIO en de Studiekeuzedatabase. Met één data_key: per sleutelkolom "
+                "(brin, croho, crebo, gemeente, provincie, schooljaar, …: dezelfde sleutels als koppelbaar_via in "
+                "search_catalog en dataset_details) wat eraan hangt en hoeveel "
                 "waarden het register of de gebiedsindeling kent. Met andere_key: de kolommen die beide tabellen "
                 "als dezelfde sleutel dragen, hoe hun waarden vertalen (GM0344 is gemeente 344, 2021SJ00 is "
                 "schooljaar 2021), de kardinaliteit en de overlap. Koppelt zelf niets: gebruik de uitkomst in "

@@ -31,7 +31,7 @@ from functools import lru_cache
 
 import httpx
 
-from .._kern import broncontract, verrijking
+from .._kern import broncontract, sleutels, verrijking
 from . import financien
 from .notes import details_from_pkg, zoekkaart_tijd
 
@@ -217,18 +217,41 @@ def catalogusrecords(live: bool = False) -> list[dict]:
     Beide met het record van de financiële verantwoording uit XBRL (`financien`, #935): die staat niet in CKAN.
     """
     if live:
-        return catalog() + _buiten_ckan()
+        return [_met_sleutels(r) for r in catalog()] + _buiten_ckan()
     records = verrijking.met_verrijking(_DATA, "duo_resources.json", "duo_resources_enriched.json",
                                         verrijking.VERRIJKT_DUO)
     for r in records:
         if r.get("_tijd"):
             r["_zoekkaart"] = {**(r.get("_zoekkaart") or {}), "tijd": zoekkaart_tijd(r["_tijd"])}
-    return records + _buiten_ckan()
+    return [_met_sleutels(r) for r in records] + _buiten_ckan()
 
 
 def _buiten_ckan() -> list[dict]:
-    """De DUO-bronnen met een eigen lader buiten CKAN: nu alleen `financien`."""
-    return verrijking.lees_json(_DATA, "duo_financien.json")
+    """De DUO-bronnen met een eigen lader buiten CKAN: nu alleen `financien`, per bestuur (#935)."""
+    vast = [{"kolom": "Bevoegd Gezag", "sleutel": "bestuur"}]  # financien._SLEUTELKOLOMMEN
+    return [sleutels.in_record(r, vast, "") for r in verrijking.lees_json(_DATA, "duo_financien.json")]
+
+
+def _kolomnamen(record: dict) -> list[str]:
+    """De kolommen van alle bestanden van een dataset: uit de schemasnapshot, anders uit `_kolommen`."""
+    ds = _schema_snapshot()["datasets"].get(record.get("_ckan_id")) or {}
+    namen = [k["naam"] for r in ds.get("resources", []) for k in r["kolommen"]]
+    if namen:
+        return namen
+    kolommen = record.get("_kolommen") or {}
+    per_bestand = all(isinstance(v, dict) for v in kolommen.values()) if isinstance(kolommen, dict) else False
+    return [k for v in kolommen.values() for k in v] if per_bestand else list(kolommen)
+
+
+def _met_sleutels(record: dict) -> dict:
+    """Het record met `_sleutels` (#958): de sleutelkolommen in de bestanden van de dataset."""
+    kolommen = _kolomnamen(record)
+    reden = (
+        "Geen kolom met een sleutel die een andere bron deelt (instelling, opleiding, gemeente, provincie, schooljaar)."
+        if kolommen
+        else "Geen kolommen bekend in de schemasnapshot of de catalogus."
+    )
+    return sleutels.uit_kolommen(record, kolommen, reden)
 
 
 def metadata(record: dict) -> dict:

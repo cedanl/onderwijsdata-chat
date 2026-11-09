@@ -12,7 +12,8 @@ ziet. Twee lagen, om de leveringsvoorwaarden (art. 11.1, geen doorlevering):
 
 Wat de chat met een tabel kan, staat per tabel: een weergave van get_studiekeuze, alleen in het pakket leesbaar, of
 bewust niet in de chat omdat een andere bron leidend is. Zo gaat "niet beschikbaar" over de tool, niet over de bron.
-De sleutels naar andere bronnen komen uit de connectoren van `relatie` (`tools/relaties.py`), niet uit een tweede lijst.
+De sleutels naar andere bronnen komen uit `onderwijsbronnen.sleutels` (#958), dezelfde lijst als `relatie` en de
+catalogus, niet uit een tweede lijst.
 """
 
 from __future__ import annotations
@@ -21,11 +22,11 @@ import json
 import logging
 import re
 
-from onderwijsbronnen import skdb
+from onderwijsbronnen import skdb, sleutels
 from onderwijsbronnen.skdb import schemakaart
 
-from . import relaties
 from .catalog import _DETAILS_BUDGET as DETAILS_BUDGET
+from .catalog import koppelbaar_via
 from .schemas import TOOL_GET_STUDIEKEUZE
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,7 @@ def _bron(export: skdb.Export) -> dict:
 def details(entry: dict, status: dict) -> str:
     """dataset_details van `skdb:studiekeuzedatabase`: de status van het record (via get_studiekeuze) met het
     overzicht van de tabellen uit de export; zonder export de tabelnamen met wat er kan, en de reden."""
-    uit: dict = {"bron": entry.get("bron", DATASET_ID), **status}
+    uit: dict = {"bron": entry.get("bron", DATASET_ID), **status, "koppelbaar_via": koppelbaar_via(entry)}
     export, reden = _export()
     if export is None:
         uit["schema"] = {
@@ -160,12 +161,8 @@ def _kolomtekst(kolom: dict, maximum: int) -> str:
 
 
 def _sleutels(kolommen: list[dict]) -> list[dict]:
-    """De kolommen die een sleutel naar een andere bron zijn, volgens de connectoren van `relatie`."""
-    return [
-        {"kolom": k["kolom"], "sleutel": c.naam}
-        for k in kolommen
-        if (c := relaties.connector_op_naam(str(k["kolom"]))) is not None
-    ]
+    """De kolommen die een sleutel naar een andere bron zijn (`onderwijsbronnen.sleutels`); alleen hbo en wo."""
+    return sleutels.paren((str(k["kolom"]) for k in kolommen), ["HBO", "WO"])
 
 
 def _ingekort(maximum: int) -> dict:

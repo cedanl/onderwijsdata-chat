@@ -17,6 +17,7 @@ from functools import cache
 
 from . import cbs, duo, inspectie, rio, roa, sbb, skdb, unl, uwv
 from . import contract, scope
+from ._kern import sleutels
 from ._kern.bestuur import Bestuurssleutel
 from ._kern.bron_id import BRONNEN, AmbigueBronId, BronId, BronIdFout, OnbekendBronId, Register, bron_van_sleutel
 from ._kern.resolutie import AmbigueResource, ResourceNietGevonden
@@ -34,7 +35,8 @@ def catalogus() -> dict[str, list[dict]]:
     """De samengevoegde catalogus (#912): per bron, in de volgorde van `BRONNEN`, haar catalogusrecords.
 
     Eén aanroep voor alle negen bronnen, zodat een gebruiker (de chat) niet zelf twee catalogi samenvoegt. De records
-    zijn die van `<bron>.catalogusrecords()`, ongewijzigd; elke aanroep geeft nieuwe lijsten.
+    zijn die van `<bron>.catalogusrecords()`, ongewijzigd; elke aanroep geeft nieuwe lijsten. Elk record draagt
+    `_sleutels` (de koppelsleutels per kolom, `sleutels.in_record`, #958), of zonder sleutel `_sleutels_reden`.
     """
     return {bron: _BRON[bron].catalogusrecords() for bron in BRONNEN}
 
@@ -92,6 +94,6 @@ def catalog(source: str = "rio", ai: bool = True, live: bool = False) -> list[di
     )
 
 
-__all__ = ["BRONNEN", "Bestuurssleutel", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
+__all__ = ["BRONNEN", "Bestuurssleutel", "sleutels", "catalog", "catalogus", "register", "parse_bron_id", "normaliseer_bron_id", "bron_van_sleutel",
            "BronId", "BronIdFout", "OnbekendBronId", "AmbigueBronId", "Register", "cbs", "duo", "rio", "roa", "uwv",
            "inspectie", "sbb", "unl", "skdb", "contract", "scope", "AmbigueResource", "ResourceNietGevonden", "__version__"]

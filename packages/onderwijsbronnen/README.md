@@ -182,6 +182,25 @@ o.catalogus()                           # {"cbs": [...], "rio": [...], "duo": [.
 
 Een kale ID die bij twee bronnen past geeft `AmbigueBronId` (met `.opties`), een onbekende `OnbekendBronId`.
 
+## Koppelsleutels
+
+Welke sleutels bronnen delen, onder welke kolomnamen en hoe hun waarden naar één vorm gaan (#958), op één plek:
+
+```python
+from onderwijsbronnen import sleutels
+
+sleutels.normaliseer("gemeente", "GM0344")         # '0344', net als 344 en '344.0'
+sleutels.normaliseer("schooljaar", "2021SJ00")     # '2021', net als 2021/2022; 2021JJ00 is geen schooljaar
+[s.naam for s in sleutels.van_kolom("ERKENDEOPLEIDINGSCODE")]   # ['croho', 'crebo']
+sleutels.paren(["STUDIEJAAR", "INSTELLINGSCODE_ACTUEEL"])      # [{'kolom': 'STUDIEJAAR', 'sleutel': 'schooljaar'}, …]
+```
+
+Elk catalogusrecord van elke bron heeft `_sleutels` (`{"kolom", "sleutel"}` per kolom), of zonder sleutel
+`_sleutels_reden`. Bij DUO uit de kolommen van de schemasnapshot (ERKENDEOPLEIDINGSCODE versmald naar de sector:
+CROHO in het ho, crebo in het mbo), bij CBS uit de regiodimensie en Perioden (alleen schooljaarcodes), bij RIO, ROA en
+UWV uit de kolommen, en vast bij de Studiekeuzedatabase, WOPI en de financiën. Het contract neemt ze over als
+`join_sleutels`. Puur: of een waarde bestaat en hoeveel twee tabellen overlappen, toetst de gebruiker op de data.
+
 ## UNL: WOPI-personeel
 
 Het WOPI-personeelsbestand van Universiteiten van Nederland (#936): personeel in dienst op 31 december, per
