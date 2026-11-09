@@ -359,9 +359,13 @@ _KOPPELPLAN = (
 
 
 def _sleutelnamen(entry: dict) -> list[str]:
-    """De koppelsleutels van een record (`_sleutels`, #958), uniek, in de volgorde van `onderwijsbronnen.sleutels`."""
+    """De codesleutels van een record (`_sleutels`, #958), uniek, in de volgorde van `onderwijsbronnen.sleutels`.
+
+    Zonder de namen (instellingsnaam, gemeentenaam): op een naam plant het model geen koppeling (besluit 09-11);
+    `relatie` gebruikt ze na het laden nog wel, met een waarschuwing.
+    """
     eigen = {p["sleutel"] for p in entry.get("_sleutels") or []}
-    return [naam for naam in sleutels.SLEUTELS if naam in eigen]
+    return [naam for naam, s in sleutels.SLEUTELS.items() if naam in eigen and not s.op_naam]
 
 
 def koppelbaar_via(entry: dict) -> str:

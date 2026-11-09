@@ -88,6 +88,10 @@ def test_de_provincies_zijn_de_twaalf_cbs_codes():
 # --- kolomnamen ------------------------------------------------------------------------------------------------------
 
 
+def test_alleen_de_twee_namen_zijn_een_sleutel_op_naam():
+    assert {x.naam for x in s.SLEUTELS.values() if x.op_naam} == {"instellingsnaam", "gemeentenaam"}
+
+
 def test_een_kolomnaam_geeft_zijn_sleutels_hoofdletterongevoelig():
     assert [x.naam for x in s.van_kolom("studiejaar")] == ["schooljaar"]
     assert [x.naam for x in s.van_kolom(" INSTELLINGSCODE_ACTUEEL ")] == ["brin"]

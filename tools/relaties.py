@@ -39,6 +39,12 @@ KOPPELREGEL = (
     "afbakening), vul nooit 0 in, en gooi geen rijen weg met dropna of een inner join op de koppelkolommen."
 )
 
+# Bij elke sleutelkolom en koppelkandidaat op een naam (besluit 09-11, #958): een naam is een zwakke sleutel.
+NAAMWAARSCHUWING = (
+    "Naam, geen code: spelling verschilt per bron en na een fusie of naamswijziging past een oude naam niet meer. "
+    "Koppel liever op een code (brin, gemeente); koppel je toch op naam, controleer dan welke rijen geen match hebben."
+)
+
 # Wat er in de chat aan een sleutel hangt: naslag en tools. De sleutels zelf staan in het pakket.
 KOPPELT_AAN: dict[str, tuple[str, ...]] = {
     "brin": (
@@ -139,6 +145,8 @@ class Sleutelkolom:
         }
         if (dekking := _dekking(self.sleutel, self.waarden)) is not None:
             uit["dekking"] = dekking
+        if self.sleutel.op_naam:
+            uit["waarschuwing"] = NAAMWAARSCHUWING
         return uit
 
 
@@ -189,6 +197,7 @@ def koppelingen(links_key: str, links: list[Sleutelkolom], rechts_key: str, rech
                     },
                     "basis": GEDETECTEERD if a.kolom.upper() != b.kolom.upper() else HANDMATIG,
                     "confidence": a.sleutel.confidence,
+                    **({"waarschuwing": NAAMWAARSCHUWING} if a.sleutel.op_naam else {}),
                 }
             )
     return sorted(uit, key=lambda k: (-k["overlap"]["gedeeld"], k["sleutel"]))

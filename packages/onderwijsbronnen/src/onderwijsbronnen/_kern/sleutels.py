@@ -162,6 +162,7 @@ class Sleutel:
     confidence: float = 1.0  # 1.0: een code met een vaste vertaling; lager: een naam, spelling kan verschillen
     waardepatroon: re.Pattern[str] | None = None  # herkent de sleutel aan de waarden, zoals CBS RegioS
     sectoren: frozenset[str] = frozenset()  # leeg: elke sector; anders versmalt `paren` een kolom met meer sleutels
+    op_naam: bool = False  # een naam, geen code: spelling en fusies breken hem; geen sleutel om een koppeling op te plannen
 
 
 def _k(*namen: str) -> frozenset[str]:
@@ -294,6 +295,7 @@ _ALLE: tuple[Sleutel, ...] = (
         ("duo", "rio"),
         norm_naam,
         confidence=0.8,
+        op_naam=True,
     ),
     Sleutel(
         "gemeentenaam",
@@ -302,6 +304,7 @@ _ALLE: tuple[Sleutel, ...] = (
         ("duo", "cbs"),
         norm_naam,
         confidence=0.8,
+        op_naam=True,
     ),
 )
 SLEUTELS: dict[str, Sleutel] = {s.naam: s for s in _ALLE}
