@@ -46,6 +46,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; rand (Traefik) en quotum per gebruiker open |
 | S25 | De server begrensde de modelkeuze uit de chat niet tot het aanbod (`AVAILABLE_MODELS`/`USER_MODELS`) | Gemiddeld | ✅ Opgelost (#755) — `toegestaan_model` valt terug op `MODEL` bij elke naam buiten het aanbod |
 | S26 | Een omgeving buiten lokaal kon stil zonder login starten (`CHAT_USERS` leeg, geen `OIDC_PROVIDER`): elke bezoeker was `gast` en zag alle gesprekken | Gemiddeld | ✅ Opgelost (#787) — `Config.validate` weigert de start buiten `APP_ENV=local`, tenzij `ALLOW_ANONYMOUS=true` |
+| S27 | Nieuw eindpunt `/mcp` (MCP over HTTP voor SURF AI Chat) | Gemiddeld | ✅ Afgedekt bij de bouw (#706, #939, #940) — alleen met sleutels, Bearer constant-time, eigen limieten; per-IP-grens ziet achter de ingress het adres van de ingress (zoals S5) |
 
 ---
 
@@ -394,6 +395,27 @@ Tests: `tests/test_modelkeuze.py`.
 
 Tests: `tests/test_login_verplicht.py` (de combinaties lokaal/niet-lokaal × login aan/uit, de uitzondering, en een bewaking dat elk manifest een login zet).  
 **Open:** geen. Controleer vóór een uitrol van development of production dat hun secret een gevulde `CHAT_USERS` heeft (#674).
+
+### S27 — `/mcp`: MCP over HTTP ✅ Afgedekt bij de bouw
+
+**Aangetroffen in:** de bouw van `/mcp` (#706, #939, #940), voor SURF AI Chat (#704)  
+**Probleem:** een eindpunt dat een externe dienst zonder gebruikerslogin aanroept, in dezelfde pod als de chat. Open zou
+elke instelling er onbegrensd bij kunnen en kon één consument de chat voor iedereen traag maken.  
+**Maatregelen** (`routes/mcp_http.py`, [MCP-server](docs/mcp.md#over-http-mcp-in-de-app)):
+- Fail-closed: zonder `MCP_API_KEYS` bestaat `/mcp` niet (404). Met sleutels vraagt elk verzoek `Authorization: Bearer`,
+  constant-time vergeleken tegen alle sleutels; de sleutel staat nooit in een log of foutmelding, het log noemt een
+  sleutel-ID.
+- Limieten los van de chat: rate limit per sleutel en per IP (429 met `Retry-After`; per IP telt ook een foute
+  sleutel), een bovengrens op gelijktijdige verzoeken (503), een tijdslimiet per toolaanroep en een begrensd resultaat.
+  Toolaanroepen draaien in eigen threads, zodat een hangende aanroep de threads van de rest van de app niet opmaakt.
+- Alleen POST, stateless: geen GET-stroom die open blijft, geen sessies in het geheugen.
+- Alleen de catalogustools: openbare metadata, geen datastore, geen modelaanroep. Toolargumenten alleen als kenmerk in
+  het log.
+
+Tests: `tests/test_mcp_http.py`.  
+**Open:** de per-IP-grens ziet achter de ingress het adres van de ingress zolang `FORWARDED_ALLOW_IPS` niet gezet is
+(zie S5) en werkt dan als totaalgrens voor `/mcp`. De definitieve waarden van de limieten volgen uit de
+belastingsmeting (#942).
 
 ---
 

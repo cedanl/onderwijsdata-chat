@@ -107,7 +107,7 @@ werken zoals ze werkten, en er is geen tweede deployment.
   een aanroep in een thread, zodat de eerste zoekactie (het DUO-register laden) de chat niet ophoudt.
 - **Alleen met sleutels.** Zonder `MCP_API_KEYS` bestaat `/mcp` niet: elk verzoek, ook `GET`, krijgt 404 en het log
   zegt bij de start één keer waarom. Met sleutels vraagt elk verzoek er een ([Sleutels](#sleutels)).
-- **Log.** Per aanroep een regel `MCP TOOL <naam> args_len=… args_hash=… fout=… duur=… sleutel_len=… sleutel_hash=…`:
+- **Log.** Per aanroep een regel `MCP TOOL <naam> args_len=… args_hash=… fout=… duur=… tekens=… sleutel_len=… sleutel_hash=…`:
   de argumenten (zoekwoorden, vaak uit de vraag van de gebruiker) alleen als kenmerk, zoals in de chat, en welke
   sleutel de aanroep deed.
 
@@ -149,6 +149,33 @@ of chat.
 **Roteren.** Zet de nieuwe sleutel naast de oude (`oud,nieuw`), rol uit, laat de consument overstappen en haal daarna
 de oude weg. Een sleutel intrekken is hetzelfde zonder de nieuwe. Na een wijziging van de secret herstart de pod niet
 vanzelf: `kubectl rollout restart` (de app leest `MCP_API_KEYS` bij de start).
+
+### Limieten
+
+Eén pod met toestand in het geheugen (#677): één consument van `/mcp` mag de chat niet voor iedereen traag maken (#940).
+De limieten staan los van die van de chat; een volle `/mcp` raakt de chat niet, en andersom. Volgorde per verzoek:
+
+| Stap | Antwoord | Instelling (standaard) |
+|---|---|---|
+| Rate limit per IP, ook voor een foute sleutel | 429 met `Retry-After` | `MCP_RATE_LIMIT_IP` (120) per `MCP_RATE_WINDOW_S` (60 s) |
+| Sleutel | 401 | `MCP_API_KEYS` |
+| Alleen POST | 405 | |
+| Rate limit per sleutel | 429 met `Retry-After` | `MCP_RATE_LIMIT` (60) per `MCP_RATE_WINDOW_S` |
+| Een vrije plaats | 503 met `Retry-After: 5`, na hooguit `MCP_WACHT_S` (1 s) | `MCP_MAX_GELIJKTIJDIG` (4) |
+| Tijdslimiet per toolaanroep | MCP-fout (`isError`) met de tool en de grens | `MCP_TOOL_TIMEOUT_S` (30 s) |
+| Grootte van een resultaat | `{"melding": "Afgekapt: …", "begin": "…", "bewijs": …, "vervolg": …}` | `TOOL_RESULT_MAX_CHARS` (12000) |
+
+- Een sessie van een MCP-client kost een paar verzoeken (`initialize`, de bevestiging, `tools/list`) plus één per
+  toolaanroep; 60 per minuut is ruim voor een paar gelijktijdige gesprekken per sleutel.
+- **Per IP** ziet de app achter de ingress het adres van de ingress, zolang uvicorn `X-Forwarded-For` niet vertrouwt
+  (`FORWARDED_ALLOW_IPS`, SECURITY.md S5). Dan werkt deze grens als totaalgrens voor `/mcp` op de pod.
+- **Tijdslimiet.** Een toolaanroep draait in een thread en is daar niet te stoppen: na de grens krijgt de client een
+  fout, de aanroep loopt door en houdt zijn thread vast. Toolaanroepen van `/mcp` hebben eigen threads
+  (`MCP_MAX_GELIJKTIJDIG`), dus een hangende aanroep raakt de threads van de chat niet.
+- **Afkappen.** Zoals in de chat ziet het model het begin met een melding; anders dan daar blijft het resultaat één
+  geldig JSON-object, met `bewijs` en `vervolg`. `search_catalog` blijft zelf onder de grens door hele treffers weg te
+  laten.
+- Voorzichtige standaarden; de definitieve waarden volgen uit de belastingsmeting (#942).
 
 ### SURF AI Chat
 

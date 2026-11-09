@@ -176,6 +176,32 @@ def _envelop(naam: str, argumenten: dict[str, Any], tekst: str) -> str:
     return json.dumps(ontsmet(resultaat), ensure_ascii=False)
 
 
+def begrens(tekst: str, max_tekens: int) -> str:
+    """Een resultaat boven max_tekens, als geldige envelope met `bewijs` en `vervolg` (#940).
+
+    Zoals in de chat (agent/loop.py) ziet het model het begin met een melding; anders dan daar blijft het één
+    JSON-object en vallen `bewijs` en `vervolg` niet weg. Het begin staat als tekst in `begin`. Elk weggelaten teken
+    van `begin` maakt de JSON minstens één teken korter, dus één correctie brengt hem onder de grens.
+    """
+    if len(tekst) <= max_tekens:
+        return tekst
+    envelop = json.loads(tekst)
+    vast = {sleutel: envelop.pop(sleutel) for sleutel in ("bewijs", "vervolg") if sleutel in envelop}
+    inhoud = json.dumps(envelop, ensure_ascii=False)
+    melding = (
+        f"Afgekapt: het resultaat had {len(tekst)} tekens, de grens is {max_tekens}. `begin` is het begin ervan; wat "
+        "daarna kwam heb je niet gezien, concludeer niet dat het ontbreekt. Vraag de volledige app via `vervolg`."
+    )
+
+    def bouw(lengte: int) -> str:
+        return json.dumps({"melding": melding, "begin": inhoud[:lengte]} | vast, ensure_ascii=False)
+
+    lengte = max(0, max_tekens - len(bouw(0)))
+    if (teveel := len(bouw(lengte)) - max_tekens) > 0:
+        lengte = max(0, lengte - teveel)
+    return bouw(lengte)
+
+
 def voer_uit(naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
     """Voer een catalogustool uit via tools.dispatch; (tekst, is_fout).
 

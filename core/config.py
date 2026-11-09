@@ -91,6 +91,19 @@ STUDIEKEUZEDATABASE_API_KEY = os.getenv("STUDIEKEUZEDATABASE_API_KEY") or None
 # De catalogustools over streamable HTTP op /mcp (#706, routes/mcp_http.py). Kommagescheiden sleutels uit de secret;
 # zonder sleutels bestaat /mcp niet (404). Nooit in de repo.
 MCP_API_KEYS = tuple(s for s in (d.strip() for d in os.getenv("MCP_API_KEYS", "").split(",")) if s)
+# Limieten op /mcp (#940), los van die van de chat: één consument mag de chat op de pod niet traag maken. Voorzichtige
+# standaarden; de definitieve waarden volgen uit de belastingsmeting (#942). Een sessie van een MCP-client kost een paar
+# verzoeken (initialize, de bevestiging, tools/list) plus één per toolaanroep.
+MCP_RATE_LIMIT = int(os.getenv("MCP_RATE_LIMIT", "60"))  # verzoeken per sleutel per venster
+# Per IP telt elk verzoek, ook met een foute sleutel. Achter de ingress is dat het adres van de ingress zolang uvicorn
+# X-Forwarded-For niet vertrouwt: dan werkt dit als totaalgrens voor /mcp op de pod.
+MCP_RATE_LIMIT_IP = int(os.getenv("MCP_RATE_LIMIT_IP", "120"))
+MCP_RATE_WINDOW_S = int(os.getenv("MCP_RATE_WINDOW_S", "60"))
+# Gelijktijdige verzoeken op /mcp; daarboven na MCP_WACHT_S een 503, geen lange wachtrij.
+MCP_MAX_GELIJKTIJDIG = int(os.getenv("MCP_MAX_GELIJKTIJDIG", "4"))
+MCP_WACHT_S = float(os.getenv("MCP_WACHT_S", "1"))
+# Per toolaanroep; de eerste zoekactie laadt het DUO-instellingenregister (enkele seconden).
+MCP_TOOL_TIMEOUT_S = float(os.getenv("MCP_TOOL_TIMEOUT_S", "30"))
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

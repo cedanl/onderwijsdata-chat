@@ -224,3 +224,134 @@ def test_de_sleutel_staat_niet_in_het_log_wel_een_sleutel_id(maak_app, caplog):
     assert len(tool) == 1
     assert tekst_kenmerk(SLEUTEL, "sleutel_") in tool[0], "het log noemt welke consument de aanroep deed"
     assert any("MCP 401" in r.getMessage() for r in caplog.records)
+
+
+# ── Limieten (#940) ──────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def grenzen(monkeypatch):
+    """Zet limieten van /mcp voor de volgende maak_app (de fabriek leest ze bij create_app)."""
+
+    def zet(**waarden):
+        for naam, waarde in waarden.items():
+            monkeypatch.setattr(mcp_http, naam, waarde)
+
+    return zet
+
+
+def _drie_keer(app, koppen_per_verzoek):
+    with TestClient(app) as client:
+        return [client.post("/mcp", json=INITIALIZE, headers=ACCEPT | k) for k in koppen_per_verzoek]
+
+
+def _bearer(sleutel: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {sleutel}"}
+
+
+def test_rate_limit_per_sleutel_429_met_retry_after(maak_app, grenzen):
+    grenzen(MCP_RATE_LIMIT=2, MCP_RATE_LIMIT_IP=100, MCP_RATE_WINDOW_S=60)
+    antwoorden = _drie_keer(maak_app(SLEUTEL, ANDERE), [_bearer(SLEUTEL)] * 3 + [_bearer(ANDERE)])
+    assert [a.status_code for a in antwoorden] == [200, 200, 429, 200], "de andere sleutel heeft een eigen grens"
+    assert 1 <= int(antwoorden[2].headers["retry-after"]) <= 61
+
+
+def test_rate_limit_per_ip_429_ook_voor_foute_sleutels(maak_app, grenzen):
+    """Per IP telt elk verzoek, ook met een foute sleutel: raden kost dan ook tijd."""
+    grenzen(MCP_RATE_LIMIT=100, MCP_RATE_LIMIT_IP=3, MCP_RATE_WINDOW_S=60)
+    reeks = [_bearer(SLEUTEL), _bearer("fout"), _bearer(ANDERE), _bearer(ANDERE), _bearer("fout")]
+    antwoorden = _drie_keer(maak_app(SLEUTEL, ANDERE), reeks)
+    assert [a.status_code for a in antwoorden] == [200, 401, 200, 429, 429]
+    assert int(antwoorden[3].headers["retry-after"]) >= 1
+
+
+def _blokkerende_voer_uit(monkeypatch):
+    """voer_uit die wacht tot `los` gezet is; `gestart` zegt dat hij draait."""
+    import threading
+
+    gestart, los = threading.Event(), threading.Event()
+
+    def voer_uit(naam, argumenten):
+        gestart.set()
+        los.wait(10)
+        return '{"ok": true, "bewijs": {}, "vervolg": {}}', False
+
+    monkeypatch.setattr(mcp_server, "voer_uit", voer_uit)
+    return gestart, los
+
+
+def test_gelijktijdigheidsgrens_geeft_snel_503(maak_app, grenzen, monkeypatch):
+    grenzen(MCP_MAX_GELIJKTIJDIG=1, MCP_WACHT_S=0.1)
+    gestart, los = _blokkerende_voer_uit(monkeypatch)
+    app = maak_app(SLEUTEL)
+
+    async def draai():
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), headers=_bearer(SLEUTEL)) as http,
+            streamable_http_client("http://test/mcp", http_client=http) as (lezen, schrijven),
+            ClientSession(lezen, schrijven) as sessie,
+            anyio.create_task_group() as groep,
+        ):
+            await sessie.initialize()
+            uitkomst = {}
+
+            async def traag():
+                uitkomst["traag"] = await sessie.call_tool("dataset_counts", {})
+
+            groep.start_soon(traag)
+            try:
+                await anyio.to_thread.run_sync(gestart.wait, 5)
+                with anyio.fail_after(5):
+                    tweede = await http.post("http://test/mcp", json=INITIALIZE, headers=ACCEPT)
+            finally:
+                los.set()
+        return tweede, uitkomst["traag"]
+
+    tweede, traag = anyio.run(draai)
+    assert tweede.status_code == 503
+    assert int(tweede.headers["retry-after"]) >= 1
+    assert not traag.is_error, "de lopende aanroep gaat gewoon door"
+
+
+def test_tijdslimiet_per_toolaanroep(maak_app, grenzen, monkeypatch):
+    grenzen(MCP_TOOL_TIMEOUT_S=0.2)
+    _, los = _blokkerende_voer_uit(monkeypatch)
+    try:
+        _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("search_catalog", {"query": "hbo"}))
+    finally:
+        los.set()
+    assert resultaat.is_error
+    assert "search_catalog" in resultaat.content[0].text and "0.2" in resultaat.content[0].text
+
+
+def test_een_groot_resultaat_wordt_begrensd_en_blijft_een_envelope(maak_app, grenzen, monkeypatch):
+    grenzen(MCP_MAX_TEKENS=2000)
+    groot = {
+        "kolommen": [{"naam": f"kolom {i}", "uitleg": "x" * 50} for i in range(200)],
+        "bewijs": {"bron": "CBS"},
+        "vervolg": {"url": "https://voorbeeld/chat"},
+    }
+    monkeypatch.setattr(mcp_server, "voer_uit", lambda naam, argumenten: (json.dumps(groot), False))
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("dataset_details", {"dataset_id": "x"}))
+    tekst = resultaat.content[0].text
+    assert len(tekst) <= 2000
+    envelop = json.loads(tekst)
+    assert envelop["bewijs"] == groot["bewijs"] and envelop["vervolg"] == groot["vervolg"]
+    assert "afgekapt" in envelop["melding"].lower()
+    assert envelop["begin"].startswith('{"kolommen"')
+
+
+def test_limieten_van_mcp_en_chat_raken_elkaar_niet(maak_app, grenzen, monkeypatch):
+    """Eigen limiters en plaatsen: een volle /mcp laat de chat vrij, en een volle chat /mcp."""
+    from core.rate_limit import RateLimiter
+    from routes import chat
+
+    monkeypatch.setattr(chat, "_berichtlimiter", RateLimiter(max_attempts=1, window_seconds=600))
+    assert chat._berichtlimiter.is_allowed("gast")
+    assert not chat._berichtlimiter.is_allowed("gast"), "de chat zit aan zijn grens"
+
+    grenzen(MCP_RATE_LIMIT=1, MCP_RATE_LIMIT_IP=100)
+    antwoorden = _drie_keer(maak_app(SLEUTEL), [_bearer(SLEUTEL)] * 2)
+    assert [a.status_code for a in antwoorden] == [200, 429], "een volle chat houdt /mcp niet tegen"
+    assert chat._berichtlimiter.is_allowed("iemand-anders"), "een volle /mcp telt niet bij de chat"
