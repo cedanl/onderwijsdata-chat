@@ -199,10 +199,17 @@ CONNECTOREN: tuple[Connector, ...] = (
     ),
     Connector(
         "erkende_opleiding",
-        # croho en master_croho: de CROHO-code in de uitkomst van get_studiekeuze (#957); studiecode niet, die is van
-        # LCSK en niet altijd een CROHO-code.
+        # croho en master_croho: de CROHO-code in de uitkomst van get_studiekeuze (#957), opleidingCode in de ruwe
+        # export (#978); studiecode niet, die is van LCSK en niet altijd een CROHO-code.
         frozenset(
-            {"ERKENDEOPLEIDINGSCODE", "OPLEIDINGSCODE_ACTUEEL", "BEROEPSOPLEIDING CODE", "CROHO", "MASTER_CROHO"}
+            {
+                "ERKENDEOPLEIDINGSCODE",
+                "OPLEIDINGSCODE_ACTUEEL",
+                "BEROEPSOPLEIDING CODE",
+                "CROHO",
+                "MASTER_CROHO",
+                "OPLEIDINGCODE",
+            }
         ),
         ("duo", "rio", "skdb"),
         (
@@ -242,6 +249,11 @@ def _waarden(reeks: pd.Series, connector: Connector) -> list[str]:
 _MIN_AANDEEL_REGIOCODES = 0.5
 
 
+def connector_op_naam(kolom: str) -> Connector | None:
+    """De connector van een kolomnaam, zonder naar waarden te kijken: voor een schema zonder data (SKDB, #978)."""
+    return _OP_NAAM.get(str(kolom).strip().upper())
+
+
 def connector_van(kolom: str, reeks: pd.Series) -> Connector | None:
     """De connector van een kolom: op naam, anders op de waarden (CBS-regiokolom met GM- of PV-codes).
 
@@ -249,7 +261,7 @@ def connector_van(kolom: str, reeks: pd.Series) -> Connector | None:
     (GM). De soort met de meeste codes bepaalt de sleutel, mits dat minstens de helft van de waarden is; de
     andere regio's tellen dan niet mee in `_waarden`, dekking en overlap.
     """
-    if (c := _OP_NAAM.get(str(kolom).strip().upper())) is not None:
+    if (c := connector_op_naam(kolom)) is not None:
         return c
     tekst = reeks.dropna().astype(str).str.strip().str.upper()
     if tekst.empty:

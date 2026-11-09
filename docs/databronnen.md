@@ -551,6 +551,26 @@ duaal) zijn het er ruim 4.400.
   de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. De tool
   `relatie` kent `brin` en `croho` als de sleutels instellingscode en erkende opleiding, en noemt een SKDB-tabel en een
   DUO-tabel zo als koppelkandidaten.
+- **Schema en wat de chat ermee kan (#978):** de export beschrijft zichzelf in `exporttabellen` (45 tabellen) en
+  `exportkolommen` (639 kolommen). `onderwijsbronnen.skdb.schema` bouwt daaruit per tabel de omschrijving, de kolommen
+  met type, de korrel (de parameters van het endpoint, zoals instelling × vestiging × product bij `tracks`), de
+  relaties (tabellen waarvan de korrel in deze tabel staat), de jaarkolommen, de editie (versie, exportdatum, NSE- en
+  1cijferHO-jaar) en wat een leeg veld betekent (niet gevuld, nooit 0). Per tabel staat erbij wat de chat ermee kan:
+  een weergave van `get_studiekeuze` (de negen tabellen van de zes weergaven), alleen in het pakket leesbaar
+  (`skdb.load`, zoals `tracks`, `studieadvies` en `opendagen`), of bewust niet in de chat omdat een andere bron
+  leidend is (`collegegelden`: de wettekst; `cijfersopleidingniveauland`: CBS StatLine). Kolommen die de chat volgens
+  de afspraken hierboven niet toont (aantallen studenten en eerstejaars, accreditatiedatums, wettelijk collegegeld,
+  aansluiting studie-baan, loon uit CBS-microdata) staan in het schema met de leidende bron in plaats van hun
+  omschrijving. `search_catalog` vindt de bron op een tabelnaam ("tracks", "studieadvies") en op "skdb", en noemt de
+  geraakte tabel met wat er kan; `dataset_details("skdb:studiekeuzedatabase")` geeft het overzicht van de tabellen,
+  `dataset_details("skdb:studiekeuzedatabase/<tabel>")` het schema van één tabel, met de sleutels naar andere bronnen
+  uit de connectoren van `relatie` (`instellingCode` = BRIN, `opleidingCode` = CROHO, `gemeenteCode`).
+  *Licentie:* de omschrijvingen zijn het gegevenswoordenboek van LCSK (art. 11.1, databankrechten) en de repo wordt
+  publiek gespiegeld. Daarom staan alleen de tabelnamen in de code (zoals de veldnamen in de proefexport, het voorstel
+  in #878 "ja voor alleen veldnamen", waarop LCSK nog moet antwoorden); omschrijvingen, kolommen en types komen alleen
+  uit de export van vandaag, in het geheugen, en gaan niet naar de catalogussite. Zoeken downloadt daarom niets; pas
+  `dataset_details` haalt de export op (dezelfde lading als `get_studiekeuze`). Zoeken op een kolomnaam of een woord uit
+  een omschrijving kan zo niet.
 - **Licentie:** de [Algemene Leveringsvoorwaarden Data van LCSK, versie 25.1](https://lcsk.nl/over-ons/leveringsvoorwaarden/).
   - *Bronvermelding (art. 4.1 en 4.2):* bij elke uiting die op de data steunt de zin "Er is gebruik gemaakt van de data
     van Landelijk Centrum Studiekeuze.", met een link naar
@@ -610,7 +630,7 @@ doet de code, en het model neemt de getallen letterlijk over.
 | Formaat | dagelijkse JSON-export als ZIP (`/export/json`, ongeveer 18 MB); runtime-cache van 24 uur, geen opslag |
 | Koppeling | `brin` = BRIN-code van RIO en DUO, `croho` = CROHO-code; `studiecode` is van LCSK en niet altijd een CROHO-code |
 | Licentie | Algemene Leveringsvoorwaarden Data van LCSK (v25.1): verplichte bronvermelding met link, versie en NSE-jaar, melding binnen drie weken na publicatie, geen doorlevering, publieke verantwoording bij selectie en ranking (hierboven) |
-| ID | `skdb:studiekeuzedatabase`; in de zoekcatalogus van de chat alleen waar de sleutel staat, als `via_tool` naar `get_studiekeuze` |
+| ID | `skdb:studiekeuzedatabase`; in de zoekcatalogus van de chat alleen waar de sleutel staat, als `via_tool` naar `get_studiekeuze`. Het schema van één tabel: `skdb:studiekeuzedatabase/<tabel>` in `dataset_details` (#978) |
 
 ---
 

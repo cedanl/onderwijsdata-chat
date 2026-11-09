@@ -13,6 +13,7 @@ Gebruik (met `STUDIEKEUZEDATABASE_API_KEY` in de omgeving, of de sleutel als arg
     export = skdb.lees(*skdb.haal_op())               # alle tabellen van één export, met de herkomst
     export.herkomst.versie                            # "26.6"
     export.frame("studies")
+    skdb.schema(export)                               # het schema uit de export zelf: tabellen, kolommen, korrel (#978)
     skdb.opleidingen(export, brin="25DW", croho=30020)   # kerncijfers per opleiding en vorm, met NSE landelijk
 
 Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v25.1). Bij elke uiting `VERPLICHTE_ZIN` met een link naar
@@ -61,11 +62,19 @@ from .overzicht import (
     toelating,
     zoek_studies,
 )
+from .schemakaart import MOGELIJKHEDEN, schema
 
 
 def catalog() -> list[dict]:
-    """De SKDB als catalogusrecord (lokale JSON): één record, de hele export."""
-    return json.loads(files("onderwijsbronnen.skdb.data").joinpath("skdb_resources.json").read_text(encoding="utf-8"))
+    """De SKDB als catalogusrecord (lokale JSON): één record, de hele export, met de namen van haar tabellen.
+
+    Alleen de namen (#978): de omschrijvingen, kolommen en types zijn het woordenboek van LCSK en komen uit een
+    opgehaalde export (`schema`), niet uit de repo.
+    """
+    [record] = json.loads(
+        files("onderwijsbronnen.skdb.data").joinpath("skdb_resources.json").read_text(encoding="utf-8")
+    )
+    return [{**record, "tabellen": sorted(MOGELIJKHEDEN)}]
 
 
 # ── broncontract (#911) ────────────────────────────────────────────────────────
@@ -96,5 +105,5 @@ __all__ = [
     "instellingen", "jaren", "numerus_fixus", "opleidingen", "studie", "toelating", "zoek_studies",
     "API", "BRON", "DOCUMENTATIE", "EXPORT", "LEVERANCIER", "SLEUTEL_ENV", "USER_AGENT", "VEREIST", "VERPLICHTE_ZIN",
     "Export", "GeenSleutel", "Herkomst", "SkdbFout", "catalog", "catalogusrecords", "haal_op", "herkomst", "laad",
-    "lees", "load", "metadata", "sleutel",
+    "lees", "load", "metadata", "schema", "sleutel",
 ]

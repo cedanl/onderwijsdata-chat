@@ -120,7 +120,55 @@ LOTING = [
     {"instellingCode": "21PB", "opleidingCode": 56990, "opleidingNaam": "Biomedische Wetenschappen", "opleidingVorm": "Voltijd", "voerTaal": "Voertaal-overstijgend", "studieJaar": 2027, "capaciteit": 71, "kerenMeedoenAantal": 2, "aanmeldDatumUiterlijk": "15 januari", "lotingUrl": "https://example.org/bmw"},
 ]
 
+# De beschrijving van de export (#978): dezelfde velden als `exporttabellen` en `exportkolommen` van LCSK, met verzonnen
+# omschrijvingen. De echte omschrijvingen zijn het gegevenswoordenboek van LCSK en staan niet in de repo.
+EXPORTTABELLEN = [
+    {"Tabel": "instellingen", "Endpoint": "/instellingen/{instellingSkdb}", "Omschrijving": "Proef: een instelling"},
+    {"Tabel": "vestigingen", "Endpoint": "/instellingen/{instellingSkdb}/vestigingen/{vestigingSkdb}", "Omschrijving": "Proef: een vestiging"},
+    {"Tabel": "tracks", "Endpoint": "/instellingen/{instellingSkdb}/vestigingen/{vestigingSkdb}/tracks/{hoviProductId}", "Omschrijving": "Proef: een track"},
+    {"Tabel": "opleidingen", "Endpoint": "/opleidingen/{opleidingSkdb}", "Omschrijving": "Proef: een opleiding"},
+    {"Tabel": "opleidingvormen", "Endpoint": "/opleidingen/{opleidingSkdb}/vormen/{opleidingVormId}", "Omschrijving": "Proef: een opleiding per vorm"},
+    {"Tabel": "collegegelden", "Endpoint": "/opleidingen/{opleidingSkdb}/vormen/{opleidingVormId}/collegegelden/{collegeGeldId}", "Omschrijving": "Proef: wettelijk collegegeld"},
+    {"Tabel": "studieadvies", "Endpoint": "/opleidingen/{opleidingSkdb}/programmas/{hoviProductId}/vormen/{hoviProductVorm}/studieadviezen/{studieAdviesId}", "Omschrijving": "Proef: studieadvies"},
+    {"Tabel": "studies", "Endpoint": "/studies/{studieOpleidingCodeSkdb}", "Omschrijving": "Proef: een landelijke studie"},
+    {"Tabel": "lotingopleidingendecentraleselecties", "Endpoint": "/instellingen/{instellingSkdb}/lotingopleidingendecentraleselecties/{lotingOpleidingDecentraleSelectieId}", "Omschrijving": "Proef: numerus fixus"},
+]
+
+
+def _kolommen(tabel: str, *kolommen: tuple[str, str]) -> list[dict]:
+    return [{"Tabel": tabel, "Kolom": k, "Type": t, "Omschrijving": f"Proef: {k}"} for k, t in kolommen]
+
+
+EXPORTKOLOMMEN = [
+    *_kolommen("instellingen", ("instellingSkdb", "number"), ("instellingCode", "string"), ("instellingNaam", "string")),
+    *_kolommen(
+        "vestigingen", ("instellingSkdb", "number"), ("vestigingSkdb", "number"), ("gemeenteCode", "number"),
+        ("studentenAantal", "number"),
+    ),
+    *_kolommen("tracks", ("instellingSkdb", "number"), ("vestigingSkdb", "number"), ("hoviProductId", "string"), ("trackNaam", "string")),
+    *_kolommen(
+        "opleidingen", ("opleidingSkdb", "number"), ("instellingSkdb", "number"), ("instellingCode", "string"),
+        ("opleidingCode", "number"), ("studieOpleidingCodeSkdb", "number"),
+    ),
+    *_kolommen(
+        "opleidingvormen", ("opleidingSkdb", "number"), ("opleidingVormId", "number"), ("enqueteJaar", "number"),
+        ("algemeenOordeelGewogenGemiddelde", "number"), ("eersteJaarAantal", "number"),
+    ),
+    *_kolommen("collegegelden", ("opleidingSkdb", "number"), ("opleidingVormId", "number"), ("collegeGeldId", "number"), ("collegeGeldBedrag", "number")),
+    *_kolommen(
+        "studieadvies", ("opleidingSkdb", "number"), ("hoviProductId", "string"), ("hoviProductVorm", "string"),
+        ("studieAdviesId", "number"), ("minimumEcts", "number"), ("studieAdviesBindend", "boolean"),
+    ),
+    *_kolommen("studies", ("studieOpleidingCodeSkdb", "number"), ("studieNaam", "string")),
+    *_kolommen(
+        "lotingopleidingendecentraleselecties", ("instellingSkdb", "number"), ("lotingOpleidingDecentraleSelectieId", "number"),
+        ("opleidingCode", "number"), ("studieJaar", "number"), ("capaciteit", "number"),
+    ),
+]
+
 TABELLEN = {
+    "exporttabellen": EXPORTTABELLEN,
+    "exportkolommen": EXPORTKOLOMMEN,
     "instellingen": INSTELLINGEN,
     "opleidingen": OPLEIDINGEN,
     "opleidingvormen": OPLEIDINGVORMEN,
@@ -140,7 +188,6 @@ def zip_bytes(tabellen: dict[str, list[dict]] | None = None, weglaten: tuple[str
         for naam, rijen in (tabellen or TABELLEN).items():
             if naam not in weglaten:
                 z.writestr(f"data/{naam}.json", json.dumps(rijen, ensure_ascii=False))
-        z.writestr("data/exporttabellen.json", "[]")
     return buffer.getvalue()
 
 

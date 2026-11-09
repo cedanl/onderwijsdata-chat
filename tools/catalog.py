@@ -966,11 +966,26 @@ def search_catalog(
 
 
 def _kandidaat(hit: dict, termen: list[str]) -> dict:
-    """Een kandidaat: de compacte hit, met het gewone `dataset_id` en de zoektermen die hij raakt (`geraakt`)."""
+    """Een kandidaat: de compacte hit, met het gewone `dataset_id`, de zoektermen die hij raakt (`geraakt`) en bij de
+    Studiekeuzedatabase de weg naar haar schema."""
     kandidaat = {"dataset_id": _dataset_id(hit), **_compacte_hit(hit)}
     if geraakt := sorted(_geraakte_termen(hit, termen)):
         kandidaat["geraakt"] = geraakt
-    return kandidaat
+    return {**kandidaat, **_skdb_schema(hit, termen)}
+
+
+def _skdb_schema(hit: dict, termen: list[str]) -> dict:
+    """Bij de Studiekeuzedatabase de weg naar haar schema, en de tabellen (`tabellen`, alleen namen) die een zoekterm
+    raken met wat de chat ermee kan (#978). Niet de hele lijst van 45: alleen wat de vraag noemt."""
+    if not hit.get("_skdb_id"):
+        return {}
+    from . import skdb_schema  # lazy: skdb_schema importeert catalog
+
+    uit: dict = {"schema": skdb_schema.SCHEMA_HINT}
+    tabellen = [t for t in hit.get("tabellen") or [] if any(_word_match(term, str(t).lower()) for term in termen)]
+    if tabellen:
+        uit["tabellen"] = [skdb_schema.tabelregel(t) for t in tabellen]
+    return uit
 
 
 def _zoek(query: str, source: str, top_n: int, geo_niveau: str | None) -> str:
@@ -1458,8 +1473,20 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
     return []
 
 
+def _skdb_tabeldetails(dataset_id: str) -> str | None:
+    """Het schema van één tabel van de Studiekeuzedatabase (`skdb:studiekeuzedatabase/<tabel>`, #978); None voor een
+    ander ID, of als de bron hier niet aan staat (dan is het ID onbekend, zoals het record)."""
+    from . import skdb_schema  # lazy: skdb_schema importeert catalog
+
+    tabel = skdb_schema.tabel_uit_id(dataset_id)
+    record = next((e for e in _rio_duo() if e.get("_skdb_id")), None) if tabel else None
+    return skdb_schema.tabeldetails(record, tabel) if record and tabel else None
+
+
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
+    if (skdb_tabel := _skdb_tabeldetails(dataset_id)) is not None:
+        return skdb_tabel
     # cbs:85423NED, duo:p01hoinges en rio:erkenningen zijn dezelfde records als zonder voorvoegsel (#370, #356).
     ruw = dataset_id
     dataset_id = cbs_id = bron_id(dataset_id)
@@ -1474,6 +1501,11 @@ def dataset_details(dataset_id: str) -> str:
         if scopeprofiel.dataset_id(entry) == dataset_id:
             logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
             if reden := _niet_opvraagbaar(entry):
+                if entry.get("_skdb_id") and reden["status"] == STATUS_VIA_TOOL:
+                    from . import skdb_schema  # lazy: skdb_schema importeert catalog
+
+                    # Het schema uit de export van vandaag naast de verwijzing naar get_studiekeuze (#978).
+                    return skdb_schema.details(entry, reden)
                 return json.dumps({"bron": entry.get("bron", dataset_id), **reden}, ensure_ascii=False)
             if entry.get("leverancier") == "DUO":
                 from . import duo  # lazy: duo importeert catalog
