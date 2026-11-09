@@ -6,10 +6,11 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from onderwijsbronnen import sleutels as kern
 
 from tools import relaties as rel
 from tools import store
-from tools.relaties import norm_gemeente, norm_provincie, norm_schooljaar, relatie
+from tools.relaties import relatie
 
 _DUO = pd.DataFrame(
     {
@@ -43,55 +44,16 @@ def _register():
         yield
 
 
-# --- vertaling van waarden ------------------------------------------------------------------------
+# --- één lijst: de sleutels uit het pakket ---------------------------------------------------------------------------
+# De vertaling van waarden (GM0344 ↔ 344, 2021SJ00 ↔ 2021, …) toetst het pakket: packages/onderwijsbronnen/tests/test_sleutels.py.
 
 
-@pytest.mark.parametrize(
-    ("waarde", "verwacht"),
-    [
-        ("GM0344", "0344"),
-        ("gm0344", "0344"),
-        (344, "0344"),
-        ("344.0", "0344"),
-        (" 34 ", "0034"),
-        ("Utrecht", None),
-        (None, None),
-    ],
-)
-def test_gemeente_wordt_vier_cijfers(waarde, verwacht):
-    assert norm_gemeente(waarde) == verwacht
-
-
-@pytest.mark.parametrize(
-    ("waarde", "verwacht"),
-    [
-        ("PV26", "PV26"),
-        ("Utrecht", "PV26"),
-        ("noord-brabant", "PV30"),
-        ("Fryslân", "PV21"),
-        ("PV99", None),
-        ("Elders", None),
-    ],
-)
-def test_provincie_wordt_cbs_code(waarde, verwacht):
-    assert norm_provincie(waarde) == verwacht
-
-
-@pytest.mark.parametrize(
-    ("waarde", "verwacht"),
-    [
-        (2021, "2021"),
-        ("2021/2022", "2021"),
-        ("2021/22", "2021"),
-        ("2015/'16", "2015"),
-        ("2021SJ00", "2021"),
-        ("2021JJ00", None),
-        ("x", None),
-        (3000, None),
-    ],
-)
-def test_schooljaar_wordt_startjaar(waarde, verwacht):
-    assert norm_schooljaar(waarde) == verwacht
+def test_relatie_kent_elke_sleutelkolom_uit_het_pakket_en_heeft_geen_eigen_lijst():
+    """#958: de kolomnamen staan alleen in `onderwijsbronnen.sleutels`; relatie hangt er per sleutel iets aan."""
+    assert set(rel.KOPPELT_AAN) == set(kern.SLEUTELS)
+    for kolom in kern.KOLOMMEN:
+        assert rel.sleutels_van(kolom.lower(), pd.Series([], dtype=object)) == kern.van_kolom(kolom)
+    assert not hasattr(rel, "CONNECTOREN")
 
 
 # --- sleutels van één tabel -----------------------------------------------------------------------
@@ -112,7 +74,7 @@ def test_sleutels_op_naam_en_wat_eraan_hangt():
     assert uit["zonder_sleutel"] == ["AANTAL"]
     code = per["INSTELLINGSCODE_ACTUEEL"]
     assert (code["sleutel"], code["basis"], code["confidence"], code["uniek"]) == (
-        "instellingscode",
+        "brin",
         "handmatig",
         1.0,
         2,
@@ -244,17 +206,21 @@ def test_dezelfde_kolomnaam_in_beide_tabellen_is_handmatig_een_op_een():
     _put("b:t", pd.DataFrame({"INSTELLINGSCODE": ["25be", "21pk"], "PROVINCIE": ["Noord-Brabant", "Noord-Brabant"]}))
     (k,) = json.loads(relatie("a:t", andere_key="b:t"))["koppelingen"]
     assert (k["sleutel"], k["type"], k["basis"], k["overlap"]["gedeeld"]) == (
-        "instellingscode",
+        "brin",
         "one_to_one",
         "handmatig",
         2,
     )
 
 
-def test_connector_kolommen_zijn_hoofdletterongevoelig_en_uniek_per_naam():
-    namen = [kolom for c in rel.CONNECTOREN for kolom in c.kolommen]
-    assert len(namen) == len({n.upper() for n in namen})
-    assert rel.connector_van("studiejaar", pd.Series([2021])) is rel.connector_van("STUDIEJAAR", pd.Series([2021]))
+def test_een_erkende_opleidingscode_koppelt_als_croho_aan_een_ho_tabel():
+    """ERKENDEOPLEIDINGSCODE is CROHO (ho) of crebo (mbo); tegen een DUO-ho-tabel is alleen croho een kandidaat."""
+    _put("duo:aanbod", pd.DataFrame({"ERKENDEOPLEIDINGSCODE": ["34139", "04181"]}))
+    _put("duo:ho", pd.DataFrame({"OPLEIDINGSCODE_ACTUEEL": [34139.0, 4181.0, 30020.0]}))
+    uit = json.loads(relatie("duo:aanbod", andere_key="duo:ho"))
+    assert [s["sleutel"] for s in uit["sleutels"]] == ["croho", "crebo"]
+    (k,) = uit["koppelingen"]
+    assert (k["sleutel"], k["overlap"]["gedeeld"]) == ("croho", 2)  # 04181 is 4181
 
 
 def test_een_skdb_tabel_koppelt_op_brin_en_croho_aan_duo():

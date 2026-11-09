@@ -11,6 +11,7 @@ from contextvars import ContextVar
 from functools import cache
 
 import onderwijsbronnen
+from onderwijsbronnen import sleutels
 from onderwijsbronnen.rio.client import zonder_lijstendpoint
 
 from core.config import TOOL_RESULT_MAX_CHARS
@@ -345,7 +346,31 @@ def _compacte_hit(entry: dict) -> dict:
         hit["samenvatting"] = samenvatting
     if kaart := _zoekkaart(entry):
         hit["zoekkaart"] = kaart
+    if namen := _sleutelnamen(entry):
+        hit["koppelbaar_via"] = ", ".join(namen)
     return hit
+
+
+# Bij de sleutels in dataset_details (#958): de sleutel plant de koppeling, relatie toetst haar op de geladen data.
+_KOPPELPLAN = (
+    "Koppel twee datasets alleen op een sleutel die ze allebei hebben; relatie toetst na het laden de kolommen en de "
+    "overlap."
+)
+
+
+def _sleutelnamen(entry: dict) -> list[str]:
+    """De koppelsleutels van een record (`_sleutels`, #958), uniek, in de volgorde van `onderwijsbronnen.sleutels`."""
+    eigen = {p["sleutel"] for p in entry.get("_sleutels") or []}
+    return [naam for naam in sleutels.SLEUTELS if naam in eigen]
+
+
+def koppelbaar_via(entry: dict) -> str:
+    """Voor dataset_details: per sleutel de kolommen ('brin (INSTELLINGSCODE_ACTUEEL), schooljaar (STUDIEJAAR)'), of
+    waarom een dataset geen sleutel heeft. Zo plant het model een koppeling vóór het laadt (#958)."""
+    if not (namen := _sleutelnamen(entry)):
+        return f"geen sleutel naar een andere bron: {entry.get('_sleutels_reden') or 'niet vastgelegd'}"
+    kolommen = {n: [p["kolom"] for p in entry["_sleutels"] if p["sleutel"] == n] for n in namen}
+    return ", ".join(f"{n} ({', '.join(kolommen[n])})" for n in namen) + f". {_KOPPELPLAN}"
 
 
 @cache
@@ -1239,7 +1264,12 @@ def _build_details(entry: dict, dataset_id: str, zonder: tuple[str, ...] = ()) -
             ensure_ascii=False,
         )
     return json.dumps(
-        {"bron": entry.get("bron", dataset_id), "status": status(entry), **details},
+        {
+            "bron": entry.get("bron", dataset_id),
+            "status": status(entry),
+            "koppelbaar_via": koppelbaar_via(entry),
+            **details,
+        },
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -1506,7 +1536,10 @@ def dataset_details(dataset_id: str) -> str:
 
                     # Het schema uit de export van vandaag naast de verwijzing naar get_studiekeuze (#978).
                     return skdb_schema.details(entry, reden)
-                return json.dumps({"bron": entry.get("bron", dataset_id), **reden}, ensure_ascii=False)
+                return json.dumps(
+                    {"bron": entry.get("bron", dataset_id), **reden, "koppelbaar_via": koppelbaar_via(entry)},
+                    ensure_ascii=False,
+                )
             if entry.get("leverancier") == "DUO":
                 from . import duo  # lazy: duo importeert catalog
 

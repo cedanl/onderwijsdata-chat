@@ -25,7 +25,7 @@ import io
 
 import httpx
 
-from .._kern import broncontract
+from .._kern import broncontract, sleutels
 
 _BASE = "https://kwalificatie-mijn.s-bb.nl"
 
@@ -145,7 +145,9 @@ def _pick_resource(res_list: list[dict], resource: int | str, dataset_id: str) -
 # ── broncontract (#911) ────────────────────────────────────────────────────────
 
 BRON = "sbb"
-catalogusrecords = catalog  # sbb_resources.json, dezelfde lijst die de lader leest
+def catalogusrecords() -> list[dict]:
+    """sbb_resources.json, dezelfde lijst die de lader leest; zonder kolommen in de catalogus (#958)."""
+    return [sleutels.in_record(r, [], sleutels.GEEN_KOLOMMEN) for r in catalog()]
 laad = load
 
 

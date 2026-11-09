@@ -121,9 +121,9 @@ def test_details_van_een_tabel(opgehaald):
     assert details["dataset_id"] == "skdb:studiekeuzedatabase/opleidingen"
     assert details["korrel"] == ["opleidingSkdb"]
     assert details["kolommen"]["opleidingCode"] == "number: Proef: opleidingCode"
-    # De sleutels naar andere bronnen komen uit de connectoren van relatie (één lijst, #958).
-    assert {"kolom": "instellingCode", "sleutel": "instellingscode"} in details["sleutels"]
-    assert {"kolom": "opleidingCode", "sleutel": "erkende_opleiding"} in details["sleutels"]
+    # De sleutels naar andere bronnen komen uit onderwijsbronnen.sleutels, dezelfde lijst als relatie (#958).
+    assert {"kolom": "instellingCode", "sleutel": "brin"} in details["sleutels"]
+    assert {"kolom": "opleidingCode", "sleutel": "croho"} in details["sleutels"]
     assert {"tabel": "instellingen", "via": ["instellingSkdb"]} in details["relaties"]
     assert "get_studiekeuze" in details["kan"] and "toelating" in details["kan"]
     assert skdb.VERPLICHTE_ZIN in details["bronregel"]

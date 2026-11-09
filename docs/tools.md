@@ -196,6 +196,10 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
+Een hit met koppelsleutels heeft `koppelbaar_via`: de sleutels van de dataset, kort (`"brin, croho, gemeente,
+provincie, schooljaar, instellingsnaam, gemeentenaam"`), zodat het model een koppeling tussen bronnen plant vóór het
+laadt (#958). De kolommen per sleutel staan in `dataset_details`. Het veld scoort niet mee in de zoekscore.
+
 ### De envelope
 
 Het antwoord is altijd dezelfde JSON-envelope (#358, stap 2), ook bij een fout. Voorheen was het een lijst met treffers,
@@ -283,6 +287,13 @@ contract niet vastlegt, staat er niet in. Het contract-ID `cbs:85423NED`, `cbs_8
 Hetzelfde geldt voor DUO en RIO (#356): `duo:p01hoinges`, `DUO/P01HOINGES` en `rio:erkenningen` wijzen in `dataset_details`,
 `get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde record (`tools/bron_ids.py::bron_id`); de evals en de packages
 spellen `<bron>:<id>`. Het detailrecord draagt dezelfde `status` als een zoekhit.
+
+Elk detailrecord heeft `koppelbaar_via` (#958): per sleutel de kolommen (`"brin (INSTELLINGSCODE_ACTUEEL), croho
+(OPLEIDINGSCODE_ACTUEEL), …"`, bij CBS `"gemeente (Regiokenmerken), provincie (Regiokenmerken), schooljaar (Perioden)"`)
+met de regel dat twee datasets alleen op een gedeelde sleutel koppelen, of `"geen sleutel naar een andere bron: <reden>"`.
+De sleutels komen uit het catalogusrecord (`_sleutels`, `onderwijsbronnen.sleutels`): bij DUO uit de kolommen van de
+schemasnapshot, bij CBS uit de regiodimensie (de niveaus uit `_geo_niveau`) en Perioden (alleen schooljaarcodes `SJ`),
+bij RIO uit de kolommen van het register, en vast bij de Studiekeuzedatabase, WOPI en de financiën.
 
 De Studiekeuzedatabase (alleen waar haar sleutel staat, #978): `skdb:studiekeuzedatabase` geeft naast `via_tool` het
 schema uit de export van vandaag (`schema`: editie, betekenis van een leeg veld, en per tabel de omschrijving, het aantal
@@ -778,11 +789,16 @@ een kolom buiten de korrel telt dubbel (totaalrijen naast onderdelen, meerdere r
 
 ## relatie
 
-Relatielaag, stap 1 (#63): wat hangt aan wat tussen CBS, DUO en RIO, uit bestaande kennis en zonder model
-(`tools/relaties.py`). Sleutels die bronnen delen (connectoren): instellingscode (BRIN), instellingsnaam,
-gemeente, gemeentenaam, provincie, schooljaar, erkende opleiding, opleidingseenheid en aangeboden opleiding,
-elk met de kolomnamen waaronder hij voorkomt en een vaste vertaling van de waarden (`GM0344` ↔ `344`,
-`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). Een CBS-regiokolom (`RegioS`, `Regiokenmerken`) wordt aan de waarden herkend: de kolom mengt Nederland, landsdelen,
+Relatielaag (#63, #958): wat hangt aan wat tussen CBS, DUO, RIO en de Studiekeuzedatabase, uit bestaande kennis en
+zonder model (`tools/relaties.py`). De sleutels die bronnen delen staan in het pakket, `onderwijsbronnen.sleutels`
+(`_kern/sleutels.py`): `brin`, `vestiging` (BRIN plus twee cijfers), `bestuur`, `croho`, `crebo`, `opleidingseenheid`,
+`aangeboden_opleiding`, `gemeente`, `provincie`, `arbeidsmarktregio`, `schooljaar`, `soi`, `roa_opleidingstype` en de
+namen `instellingsnaam` en `gemeentenaam`, elk met de kolomnamen waaronder hij voorkomt en een pure vertaling van de
+waarden (`GM0344` ↔ `344`, `PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`, `30020.0` ↔ `30020`,
+`="00008"` ↔ `00008`). Dezelfde lijst geeft de catalogus per dataset (`koppelbaar_via` in `search_catalog` en
+`dataset_details`) en het datasetcontract (`join_sleutels`); `relatie` heeft geen eigen lijst meer. De kolom
+`ERKENDEOPLEIDINGSCODE` (RIO, DUO) draagt in het ho de CROHO-code en in het mbo de crebo-code: `relatie` noemt hem als
+beide, de catalogus versmalt hem naar de sector van de dataset. `DIPLOMAJAAR` is geen schooljaar (CH-41). Een CBS-regiokolom (`RegioS`, `Regiokenmerken`) wordt aan de waarden herkend: de kolom mengt Nederland, landsdelen,
 provincies, COROP-gebieden en gemeenten, en geldt als gemeente- of provinciesleutel zodra minstens de helft van de
 waarden een `GM`- of `PV`-code is. De overige regio's tellen niet mee in `uniek`, `dekking` en `overlap`.
 

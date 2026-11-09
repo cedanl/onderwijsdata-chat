@@ -1,9 +1,9 @@
 {
-  "catalogus_digest": "fe2dd2ab67d2",
+  "catalogus_digest": "1fd5700c6a3a",
   "catalogusversie": [
     {
       "pakket": "onderwijsbronnen",
-      "versie": "0.9.0",
+      "versie": "0.11.2",
       "commit": null,
       "manifest": {
         "catalogusrevisie": "076d42ee7c5ec9b8",
@@ -186,7 +186,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-11-05",
+  "gemeten_op": "2026-11-09",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 22,

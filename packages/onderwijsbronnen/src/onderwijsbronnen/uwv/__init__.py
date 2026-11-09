@@ -27,7 +27,7 @@ import zipfile
 
 import httpx
 
-from .._kern import broncontract, verrijking
+from .._kern import broncontract, sleutels, verrijking
 
 CKAN_BASE = "https://data.overheid.nl/data/api/3/action"
 DATASET_ID = "uwv-open-match-data"
@@ -225,8 +225,12 @@ BRON = "uwv"
 
 
 def catalogusrecords() -> list[dict]:
-    """De UWV-records uit uwv_resources.json (met het gevalideerde schema); `catalog()` geeft de vaste beschrijving."""
-    return verrijking.lees_json("onderwijsbronnen.uwv.data", "uwv_resources.json")
+    """De UWV-records uit uwv_resources.json (met het gevalideerde schema); `catalog()` geeft de vaste beschrijving.
+    Met `_sleutels` uit de kolommen van het schema (#958)."""
+    return [
+        sleutels.uit_kolommen(r, (r.get("_schema") or {}).get("kolommen") or [], sleutels.GEEN_KOLOMMEN)
+        for r in verrijking.lees_json("onderwijsbronnen.uwv.data", "uwv_resources.json")
+    ]
 
 
 laad = load

@@ -25,7 +25,7 @@ import io
 
 import httpx
 
-from .._kern import broncontract
+from .._kern import broncontract, sleutels
 
 DATAVERSE_BASE = "https://dataverse.nl/api"
 
@@ -145,7 +145,19 @@ def _pick_file_id(meta: dict, resource: int | str, dataset_id: str) -> int:
 # ── broncontract (#911) ────────────────────────────────────────────────────────
 
 BRON = "roa"
-catalogusrecords = catalog  # roa_resources.json, dezelfde lijst die de lader leest
+_ZONDER_SLEUTEL = (
+    "ROA-AIS is een lange tabel: regio, beroep en opleidingstype staan als tekst in de rijen (regionaam, indeling, "
+    "waarde), niet als kolom met een code die een andere bron deelt."
+)
+
+
+def catalogusrecords() -> list[dict]:
+    """roa_resources.json, dezelfde lijst die de lader leest, met `_sleutels` uit de kolommen per bestand (#958)."""
+    return [
+        sleutels.uit_kolommen(r, [k for x in r["_resources"] for k in (x.get("schema") or {}).get("kolommen") or []],
+                              _ZONDER_SLEUTEL)
+        for r in catalog()
+    ]
 laad = load
 
 

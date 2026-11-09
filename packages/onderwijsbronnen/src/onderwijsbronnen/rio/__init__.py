@@ -6,7 +6,7 @@
 fusies en overgangen van instellingen, `aanbieders` de onderwijsaanbieders van een erkenning (#744).
 """
 
-from .._kern import broncontract, verrijking
+from .._kern import broncontract, sleutels, verrijking
 from . import aanbieders, client, overgangen
 from .aanbieders import onderwijsaanbieders
 from ._filtercontract import filtercontract, typewaarden, valideer_filters
@@ -20,9 +20,18 @@ _DATA = "onderwijsbronnen.rio.data"
 def catalogusrecords(ai: bool = True) -> list[dict]:
     """De RIO-resources als catalogusrecords; `ai`: met de AI-verrijkte beschrijvingen (standaard)."""
     if ai:
-        return verrijking.met_verrijking(_DATA, "rio_resources_ai.json", "rio_resources_enriched.json",
-                                         verrijking.VERRIJKT_RIO)
-    return verrijking.lees_json(_DATA, "rio_resources.json")
+        records = verrijking.met_verrijking(_DATA, "rio_resources_ai.json", "rio_resources_enriched.json",
+                                            verrijking.VERRIJKT_RIO)
+    else:
+        records = verrijking.lees_json(_DATA, "rio_resources.json")
+    return [sleutels.uit_kolommen(r, r.get("_kolommen") or [], _ZONDER_SLEUTEL) for r in records]
+
+
+# Een register zonder sleutelkolom (licenties, locaties, erkenningen) koppelt binnen RIO via zijn eigen ID's.
+_ZONDER_SLEUTEL = (
+    "Dit RIO-register koppelt via zijn eigen RIO-ID's (id, code, licentiecode) binnen RIO, niet via een sleutel die "
+    "een andere bron deelt."
+)
 
 
 laad = fetch

@@ -24,7 +24,7 @@ import urllib.request
 
 import httpx
 
-from .._kern import broncontract
+from .._kern import broncontract, sleutels
 
 _BASE = "https://www.onderwijsinspectie.nl"
 
@@ -176,7 +176,9 @@ def _pick_resource(files_list: list[dict], resource: int | str, dataset_id: str)
 # ── broncontract (#911) ────────────────────────────────────────────────────────
 
 BRON = "inspectie"
-catalogusrecords = catalog  # inspectie_resources.json, dezelfde lijst die de lader leest
+def catalogusrecords() -> list[dict]:
+    """inspectie_resources.json, dezelfde lijst die de lader leest; zonder kolommen in de catalogus (#958)."""
+    return [sleutels.in_record(r, [], sleutels.GEEN_KOLOMMEN) for r in catalog()]
 laad = load
 
 
