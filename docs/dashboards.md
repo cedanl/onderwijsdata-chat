@@ -1,7 +1,7 @@
 # Dashboards
 
-De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arbeidsmarkt en Landelijk) op de pagina
-`/dashboards`, en een vierde, Opleidingen, waar de sleutel van de Studiekeuzedatabase staat (test en playground, #957). De LLM-gestuurde dashboardbouwer is verwijderd (#765); een analyse delen gaat met een rapport.
+De app heeft op de pagina `/dashboards` vaste dashboards per onderwijsinstelling: drie (Mijn instelling, Arbeidsmarkt
+en Landelijk), en waar de Studiekeuzedatabase aan staat vier, met Opleidingen (test en playground, #957). De LLM-gestuurde dashboardbouwer is verwijderd (#765); een analyse delen gaat met een rapport.
 
 ---
 
