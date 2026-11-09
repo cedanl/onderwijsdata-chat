@@ -26,8 +26,9 @@ from .metatekst import metatekst, zonder_toolnamen
 from .ongekozen import ongekozen_studies
 from .probleem import Probleem, hard, uitkomsten, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
+from .tabelbinding import verkeerde_tabeljaren
 from .tekens import zonder_citaatkop
-from .zelfcorrectie import zonder_zelfcorrectie
+from .zelfcorrectie import onvervangen_tabelcorrectie, zonder_zelfcorrectie
 
 # De regel CONTROLES blijft onder de logger van `agent/run.py`: logfilters en tests kennen die bron, en de verhuizing
 # van de code is geen reden om hem te veranderen (#694).
@@ -125,6 +126,8 @@ def antwoordcontrole(
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         gelezen = leestekst(text)
+        # Een herziene tabel gaat naar de redeneerkaart (#982): de binding toetst de tabellen die de gebruiker leest.
+        zichtbaar = lezingen(zonder_zelfcorrectie(text)[0])
         # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
         # ingehouden (#207).
         controles = [
@@ -137,6 +140,8 @@ def antwoordcontrole(
             (onbekende_datasets, (text,), False),
             (ongebruikte_bronnen, (text, tool_results), False),
             (verkeerd_gebonden, (text, tool_results), False),
+            (verkeerde_tabeljaren, (zichtbaar, tool_results), False),
+            (onvervangen_tabelcorrectie, (text,), False),
             (verkeerde_kenmerken, (text, tool_results), True),
             (verkeerde_kpi_periodes, (text, tool_results), True),
             (kpi_naast_filter, (text, tool_results), False),

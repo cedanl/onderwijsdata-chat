@@ -12,8 +12,7 @@ import re
 from core.sentinels import BETEKENIS, CBS_BETEKENIS
 from tools import bron_ids, duo
 
-from .beschermd import lopende_regels
-from .getalnotatie import tabelscheiding
+from .mdtabel import tabellen
 from .selectie import stapkeys
 
 # Per bron de voetnoot, in de woorden van de Ondergrens-regel (agent/telling.py).
@@ -27,7 +26,6 @@ _LEGE_CEL = re.compile(
     r"(?:|[-–—−]|[-–—−]\s?1|n\.?\s?b\.?|niet\s+beschikbaar\b.*|onderdrukt\b.*|geen\s+cijfer\b.*|<\s?5|null|nan)",
     re.IGNORECASE,
 )
-_OPMAAK = " \t*_`"
 
 
 def _bronnen(tool_results: list[str]) -> list[str]:
@@ -36,36 +34,9 @@ def _bronnen(tool_results: list[str]) -> list[str]:
     return [bron for bron in NOTEN if bron in gevonden]
 
 
-def _cellen(regel: str) -> list[str]:
-    """De cellen van een tabelrij, zonder de lege stukken buiten de buitenste pijpen."""
-    delen = regel.strip().split("|")
-    if delen and not delen[0].strip():
-        delen = delen[1:]
-    if delen and not delen[-1].strip():
-        delen = delen[:-1]
-    return [cel.strip(_OPMAAK) for cel in delen]
-
-
-def _lege_cel(regel: str) -> bool:
-    return any(_LEGE_CEL.fullmatch(cel) for cel in _cellen(regel))
-
-
 def _tabellen(regels: list[str]) -> list[tuple[int, bool]]:
     """Per tabel in lopende tekst: de index van haar laatste rij en of een datarij een lege cel heeft."""
-    lopend = [isloop for _, isloop in lopende_regels(regels)]
-    tabellen: list[tuple[int, bool]] = []
-    i = 0
-    while i + 1 < len(regels):
-        if not (lopend[i] and "|" in regels[i] and tabelscheiding(regels[i + 1])):
-            i += 1
-            continue
-        einde, leeg = i + 1, False
-        while einde + 1 < len(regels) and lopend[einde + 1] and "|" in regels[einde + 1]:
-            einde += 1
-            leeg = leeg or _lege_cel(regels[einde])
-        tabellen.append((einde, leeg))
-        i = einde + 1
-    return tabellen
+    return [(t.einde, any(_LEGE_CEL.fullmatch(cel) for rij in t.rijen for cel in rij)) for t in tabellen(regels)]
 
 
 def met_tabelnoot(tekst: str, tool_results: list[str]) -> str:

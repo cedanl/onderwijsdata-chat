@@ -282,8 +282,12 @@ def editie() -> Editie:
 
 BRONNAAM = "DUO"
 BRONTITEL = "Indicatoren per instelling (jaardocument mbo)"
+# De naam van de uitkomst voor agent/meetwaarden.py, zoals die van de andere tools met een eigen resultaatvorm (#982).
+DATASET = "duo:mbo_indicatoren"
 GEEN_CIJFER = "geen cijfer"
 _PROCENT = Decimal("0.1")
+# De indicatoren in woorden, zoals een antwoord ze noemt.
+MATEN = {"jaarresultaat": "Jaarresultaat", "diplomaresultaat": "Diplomaresultaat", "nieuwe_vsv": "Nieuwe vsv'ers"}
 DEFINITIES = {
     "jaarresultaat": (
         "Aandeel met een diploma onder de deelnemers die in het jaar een diploma haalden of de instelling zonder "
@@ -337,6 +341,7 @@ def _uitkomst(profiel: dict, inst: Instelling, e: Editie) -> dict:
 
     reeksen = {indicator: reeks(indicator) for indicator in DEFINITIES}
     uit: dict = {
+        "dataset": DATASET,
         "instelling": {"naam": profiel["naam"], "instellingscode": inst.brin},
         "vergelijkingsgroep": {"code": inst.groep, "omschrijving": GROEPEN[inst.groep]},
         "eenheid": "procent; verschil = instelling min vergelijkingsgroep, in procentpunt",

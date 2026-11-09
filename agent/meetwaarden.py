@@ -16,7 +16,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from onderwijsbronnen.duo.financien import KENGETALLEN
 
-from tools import TOOL_RUN_ANALYSIS, collegegeld, financien, studiekeuze, wo_personeel
+from tools import TOOL_RUN_ANALYSIS, collegegeld, financien, mbo_indicatoren, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
@@ -49,7 +49,7 @@ class Meetwaarde:
     bron: str | None = None
     rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
     # De waarde zonder teken, voor een getal met decimale komma in de tekst (0,69; 2,0 %; `schrijft`): alleen van een
-    # bron met een eigen resultaatvorm (financien, WOPI; #956; ook SKDB en het collegegeld). Een getal met komma krijgt
+    # bron met een eigen resultaatvorm (financien, WOPI; #956; ook SKDB, het collegegeld en de mbo-indicatoren). Een getal met komma krijgt
     # alleen zo een citatie, en een geheel getal onder 1.000 alleen als het deze waarde exact is (SKDB-capaciteit 71,
     # #963); het collegegeld heeft geen bedrag onder 1.000, maar volgt dezelfde regel.
     decimaal: Decimal | None = None
@@ -386,8 +386,30 @@ def _uit_collegegeld(parsed: dict) -> Iterator[Meetwaarde]:
         yield from _afgerond(gedeeltelijk.get(veld), "Gedeeltelijk wettelijk collegegeld", selectie, None, "€", regel)
 
 
+def _uit_mbo_indicatoren(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_mbo_indicatoren (#727, #982): per indicator en schooljaar de waarde van de instelling, die van de
+    vergelijkingsgroep en hun verschil, in procent op één decimaal. De groep heet zoals een tekst haar noemt ("alle
+    roc's", "de beroepscolleges"); het verschil heeft de cel "Verschil", zodat een kop "Verschil (procentpunt)" het
+    aanwijst."""
+    naam = _blok(parsed, "instelling").get("naam")
+    groep = str(_blok(parsed, "vergelijkingsgroep").get("omschrijving")).split(" (")[0]
+    bron = _blok(parsed, "bron")
+    regel = f"{bron.get('naam')}, editie {bron.get('editie')}"
+    for sleutel, maat in mbo_indicatoren.MATEN.items():
+        for jaar in parsed.get(sleutel) or ():
+            if not isinstance(jaar, dict):
+                continue
+            instelling, schooljaar = f"Instelling: {naam}", f"Schooljaar: {jaar.get('schooljaar')}"
+            for veld, selectie, eenheid in (
+                ("instelling", (instelling, schooljaar), "%"),
+                ("vergelijkingsgroep", (f"Vergelijkingsgroep: {groep}", schooljaar), "%"),
+                ("verschil_procentpunt", (instelling, schooljaar, "Verschil"), "procentpunt"),
+            ):
+                yield from _afgerond(jaar.get(veld), maat, selectie, None, eenheid, regel)
+
+
 # Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956), de
-# Studiekeuzedatabase (#957), het wettelijk collegegeld (#970).
+# Studiekeuzedatabase (#957), het wettelijk collegegeld (#970), de mbo-indicatoren (#982).
 _EIGEN_VORM = {
     UWV_ID: _uit_uwv,
     ROA_ID: _uit_roa,
@@ -395,6 +417,7 @@ _EIGEN_VORM = {
     wo_personeel.DATASET: _uit_wopi,
     studiekeuze.DATASET: _uit_skdb,
     collegegeld.DATASET: _uit_collegegeld,
+    mbo_indicatoren.DATASET: _uit_mbo_indicatoren,
 }
 
 
