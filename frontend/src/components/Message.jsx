@@ -4,7 +4,6 @@ import DataExport from './DataExport'
 import AnswerBlocks from './AnswerBlocks'
 import IngetrokkenVersies from './IngetrokkenVersies'
 import { hasExport } from '../dataExport'
-import AnswerFeedback from './AnswerFeedback'
 import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
@@ -61,7 +60,7 @@ function hasAssistantContent(msg) {
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
-export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   if (msg.role === 'user') {
     return (
@@ -197,7 +196,6 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
           </div>
         )}
         {modelLabel && <div className="message-model">Antwoord van {modelLabel}</div>}
-        {feedback && <AnswerFeedback value={feedback.value} onSubmit={feedback.onSubmit} />}
       </div>
     </div>
   )

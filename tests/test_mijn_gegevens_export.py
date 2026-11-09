@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from persistence import db, export
+from tests import oude_antwoordfeedback
 
 _SOORTEN = [
     "conversations",
@@ -72,7 +73,7 @@ def _vul(gebruiker: str, uniek: str) -> None:
         gebruiker, f"{gebruiker}-w1", "report", f"Rapport {uniek}", {"nuttig": f"4-{uniek}"}, f"Instelling {uniek}"
     )
     db.add_algemene_feedback(gebruiker, "idee", f"algemeen-{uniek}", "/chat")
-    db.upsert_answer_feedback(
+    oude_antwoordfeedback.voeg_toe(
         gebruiker, f"{gebruiker}-c1", 1, "omlaag", f"toelichting-{uniek}", {"vraag": f"trace-{uniek}"}
     )
     db.save_recipes(gebruiker, f"{gebruiker}-c1", {f"key-{uniek}": {"laad": ["query_data", {"id": uniek}]}})

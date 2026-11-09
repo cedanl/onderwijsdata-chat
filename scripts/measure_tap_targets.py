@@ -44,7 +44,7 @@ AA_MIN = 24
 TOUCH_MIN = 44
 TOUCH_MAX_WIDTH = 1024
 NAMED = (
-    ".resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn, "
+    ".resend-btn, .copy-btn, .modal-close, .modal-overlay-close, "
     ".scroll-to-bottom-btn, .message-continue, .data-export-btn, .answer-bronnen a"
 )
 ICONS = {".resend-btn svg": 14, ".copy-btn svg": 14, ".history-action-icon svg": 13}
@@ -254,7 +254,6 @@ def run_viewport(browser, base, width, height, allow_absent=()):
     page.goto(f"{base}/chat", wait_until="networkidle")
     page.locator("textarea.chat-input").fill("Hoeveel studenten stonden er in 2024 ingeschreven?")
     page.locator("textarea.chat-input").press("Enter")
-    page.wait_for_selector(".answer-feedback-btn")
     page.wait_for_selector(".message-retry .message-continue")
     page.wait_for_timeout(800)  # plotly and the code highlighter render late
     show_scroll_button(page)

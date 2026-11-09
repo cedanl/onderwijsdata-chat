@@ -42,7 +42,6 @@ import health
 from auth.oidc import is_oidc_configured
 from persistence import db as persistence_db
 from routes import (
-    answer_feedback_router,
     auth_router,
     chat_router,
     config_router,
@@ -230,7 +229,6 @@ def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsync
 _ROUTERS = (
     config_router,
     feedback_router,
-    answer_feedback_router,
     auth_router,
     persistence_router,
     instellingen_router,

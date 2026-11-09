@@ -412,10 +412,10 @@ _ALGEMENE_FEEDBACK_TABLE = """
 """
 
 
-# Eén oordeel per antwoord; een nieuw oordeel vervangt het oude (#248). trace is
-# JSON uit het opgeslagen gesprek (core/answer_feedback.py), zodat de melding
-# reproduceerbaar blijft als het gesprek later verandert of verdwijnt; verdwijnt het,
-# dan gaan gebruikersnaam en gesprek-id eruit (#476, zie delete_conversation).
+# Eén oordeel per antwoord (👍/👎, #248) met een trace (JSON: vraag, antwoord, stappen). De duimpjes zijn sinds 09-11
+# uit de app (#983): er komen geen rijen meer bij. Wat er staat, blijft tot de opschoning of tot de gebruiker al zijn
+# gegevens verwijdert, en gaat mee in de export; verdwijnt het gesprek, dan gaan gebruikersnaam en gesprek-id eruit
+# (#476, zie delete_conversation). De tabel weghalen is een vervolgstap, geen migratie hier.
 _ANSWER_FEEDBACK_TABLE = """
     CREATE TABLE IF NOT EXISTS answer_feedback (
         username        TEXT    NOT NULL,
@@ -449,7 +449,7 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 # levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
 # client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en kaarten zijn JSON; de
 # kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211). controle is de JSON-lijst met de
-# meldingen die message_end droeg, voor de feedbacktrace (#876); een rij van daarvóór heeft een lege lijst.
+# meldingen die message_end droeg, zoals de server ze vastlegde (#876); een rij van daarvóór heeft een lege lijst.
 _BEURTBEWIJS_CONTROLE = "TEXT NOT NULL DEFAULT '[]'"
 _BEURTBEWIJS_TABLE = f"""
     CREATE TABLE IF NOT EXISTS beurtbewijs (
@@ -794,7 +794,7 @@ MIGRATIE_FEEDBACK_ZONDER_GESPREK = "476_ontkoppel_feedback_zonder_gesprek"
 def _ontkoppel_feedback_zonder_gesprek(conn: Any) -> None:
     """Feedback van gesprekken die vóór #476 zijn verwijderd: dezelfde ontkoppeling als delete_conversation.
 
-    Feedback kan alleen bij een bestaand gesprek (routes/answer_feedback.py), dus een rij zonder
+    Feedback kon alleen bij een bestaand gesprek gegeven worden (#248, tot #983), dus een rij zonder
     gesprek hoort bij een verwijderd gesprek.
     """
     paren = _execute(
@@ -854,26 +854,6 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
                 "controle": json.loads(r["controle"]),
                 "created_at": r["created_at"],
             }
-        except ValueError:
-            continue
-    return uit
-
-
-def beurtbewijs_controles(username: str, conv_id: str) -> dict[str, list[str]]:
-    """Per tekst-hash de controle-uitkomst van een eigen gesprek, zonder lineage en rekenbewijs te lezen (#876).
-
-    Voor de feedbacktrace: een hash die hier staat, is een antwoord van de server. Een onleesbare rij slaat ze over.
-    """
-    with _connection() as conn:
-        rows = _execute(
-            conn,
-            "SELECT tekst_hash, controle FROM beurtbewijs WHERE username = ? AND conv_id = ?",
-            (username, conv_id),
-        ).fetchall()
-    uit: dict[str, list[str]] = {}
-    for r in rows:
-        try:
-            uit[r["tekst_hash"]] = json.loads(r["controle"])
         except ValueError:
             continue
     return uit
@@ -1071,48 +1051,6 @@ def list_feedback_workbooks(username: str) -> list[str]:
     return [r["workbook_id"] for r in rows]
 
 
-def conversation_messages(username: str, conv_id: str) -> list[dict] | None:
-    """De berichten van een eigen gesprek; None als deze gebruiker het niet heeft."""
-    conversation = get_conversation(username, conv_id)
-    return None if conversation is None else conversation["messages"]
-
-
-def upsert_answer_feedback(
-    username: str, conv_id: str, message_index: int, oordeel: str, toelichting: str, trace: dict
-) -> None:
-    with _connection() as conn:
-        _execute(
-            conn,
-            "INSERT INTO answer_feedback "
-            "(username, conversation_id, message_index, oordeel, toelichting, trace, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT (username, conversation_id, message_index) DO UPDATE SET "
-            "oordeel=excluded.oordeel, toelichting=excluded.toelichting, trace=excluded.trace, "
-            "created_at=excluded.created_at",
-            (
-                username,
-                conv_id,
-                message_index,
-                oordeel,
-                toelichting,
-                json.dumps(trace, ensure_ascii=False),
-                datetime.now(UTC).isoformat(timespec="seconds"),
-            ),
-        )
-        conn.commit()
-
-
-def answer_feedback_for(username: str, conv_id: str) -> dict[int, str]:
-    """Het oordeel per antwoord in een eigen gesprek, om de knoppen na heropenen te tonen."""
-    with _connection() as conn:
-        rows = _execute(
-            conn,
-            "SELECT message_index, oordeel FROM answer_feedback WHERE username = ? AND conversation_id = ?",
-            (username, conv_id),
-        ).fetchall()
-    return {r["message_index"]: r["oordeel"] for r in rows}
-
-
 def add_algemene_feedback(username: str, soort: str, tekst: str, pagina: str) -> None:
     with _connection() as conn:
         _execute(
@@ -1127,11 +1065,4 @@ def all_algemene_feedback() -> list[dict]:
     """Alle algemene feedback, nieuwste eerst: de lijst voor het team (#600)."""
     with _connection() as conn:
         rows = _execute(conn, "SELECT * FROM algemene_feedback ORDER BY created_at DESC").fetchall()
-    return [dict(r) for r in rows]
-
-
-def all_answer_feedback() -> list[dict]:
-    """Alle meldingen, nieuwste eerst: de lijst voor het team."""
-    with _connection() as conn:
-        rows = _execute(conn, "SELECT * FROM answer_feedback ORDER BY created_at DESC").fetchall()
     return [dict(r) for r in rows]

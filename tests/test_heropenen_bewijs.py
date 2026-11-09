@@ -1,12 +1,12 @@
-"""Na heropenen alleen eigen beurten als bewijs, en een feedbacktrace die zegt of het antwoord van de server kwam
-(ADR-009 stap 2, #876; besluiten 1 en 2 van 09-11).
+"""Na heropenen alleen eigen beurten als bewijs, en de controle in de rij van de server (ADR-009 stap 2, #876;
+besluiten 1 en 2 van 09-11).
 
 Een getal uit een eerder assistentbericht telt als gedekt (`earlier` in `agent/run.py`). Na heropenen komt dat
 bericht van de client. Alleen een bericht met een rij in `beurtbewijs` (of een klaarstaande, na herverbinden vóór de
 PUT) is van de server; een bericht zonder rij (van vóór de migratie, of door de client toegevoegd of veranderd) telt
 niet, ook niet als "eerder gesprek" voor de weigering. Een levende sessie houdt alles, zoals voorheen.
 
-De feedbacktrace leest de controle uit die rij, niet uit het gesprek dat de client opsloeg.
+De rij bewaart de controle zoals de server haar meldde, niet zoals de client haar in het gesprek opsloeg.
 """
 
 import asyncio
@@ -19,7 +19,7 @@ from agent import beurtbewijs
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
-from routes import answer_feedback, chat
+from routes import chat
 from routes import persistence as put_route
 
 pytestmark = pytest.mark.usefixtures("zonder_scopekaart")
@@ -220,10 +220,10 @@ def test_eerdere_antwoorden_na_heropenen_zonder_de_berichten_zonder_rij(db):
     assert beurtbewijs.eerdere_antwoorden(sessie["messages"], sessie) == ["Live"]
 
 
-# ── Feedback: de controle uit de rij (besluit 2) ─────────────────────────────
+# ── De controle in de rij (besluit 2) ────────────────────────────────────────
 
 
-def test_de_feedbacktrace_leest_de_controle_van_de_server_en_niet_die_van_de_client(db, monkeypatch):
+def test_de_rij_bewaart_de_controle_van_de_server_en_niet_die_van_de_client(db, monkeypatch):
     """Een levend antwoord met een melding, opgeslagen door een client die de melding weghaalde."""
     sessie = chat._new_session(username="alice")
     vraag = "Het waren toch 987654 studenten?"
@@ -236,11 +236,5 @@ def test_de_feedbacktrace_leest_de_controle_van_de_server_en_niet_die_van_de_cli
     ]
     put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
 
-    body = answer_feedback.AnswerFeedbackIn(conversation_id="c1", message_index=1, oordeel="down")
-    answer_feedback.post_answer_feedback(body, "alice")
-
-    [rij] = db.all_answer_feedback()
-    trace = json.loads(rij["trace"])
-    assert trace["server_beurt"] is True
-    assert trace["tekst_hash"] == beurtbewijs.tekst_hash(eind["content"])
-    assert trace["controle"] == eind["controle"]
+    rij = db.beurtbewijs_voor("alice", "c1")[beurtbewijs.tekst_hash(eind["content"])]
+    assert rij["controle"] == eind["controle"]

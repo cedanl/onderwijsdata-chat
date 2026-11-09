@@ -26,8 +26,6 @@ vi.mock('../api', () => {
     putConversation: pending,
     renameConversationApi: pending,
     deleteConversationApi: pending,
-    fetchAnswerFeedback: pending,
-    postAnswerFeedback: pending,
     downloadMijnGegevens: pending,
   }
 })

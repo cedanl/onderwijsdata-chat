@@ -127,7 +127,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     session["turn_figures"] = []
 
     session["_clarified"] = False
-    # De meldingen die het antwoord droeg, voor de rij in beurtbewijs: de feedbacktrace leest ze daar (#876).
+    # De meldingen die het antwoord droeg, voor de rij in beurtbewijs (#876).
     eind: dict = {}
 
     async def emit_beurt(event: dict) -> None:

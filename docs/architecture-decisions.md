@@ -294,9 +294,10 @@ databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41)
 
 ## ADR-009: Het gesprek blijft van de client; de server bewaart per beurt wat rapport en controles nodig hebben
 
-**Date:** 2026-11-03 (besluit 2026-10-30); bijgewerkt 2026-11-09 (besluiten op open vragen 1 en 2)  
+**Date:** 2026-11-03 (besluit 2026-10-30); bijgewerkt 2026-11-09 (besluiten op open vragen 1 en 2; feedback verwijderd)  
 **Status:** Decided; stap 1 gebouwd (#875: tabel, schrijven, herstellen, levenscyclus), stap 2 gebouwd (#876: alleen
-eigen beurten als bewijs na heropenen, de controle in de rij en `server_beurt` in de feedbacktrace)  
+eigen beurten als bewijs na heropenen, de controle in de rij en `server_beurt` in de feedbacktrace); feedback per
+antwoord verwijderd 09-11 (#983), de feedbacktrace is daarmee weg  
 **Issue:** #784 (raakt #472, #677, #760, #785)
 
 ### Problem
@@ -398,7 +399,7 @@ Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvrage
   weg uit `earlier` in `agent/run.py`. Dat geldt voor de getalcontrole (`maak_getalcontrole`) en voor het "eerdere
   gesprek" van `weigering`. Wat de server na heropenen in dezelfde sessie schrijft, telt wel. De controles zelf
   (`agent/controles.py`) veranderen niet.
-- **Feedback.** De sleutel van `answer_feedback` blijft `(username, conversation_id, message_index)`. `antwoord_trace`
+- **Feedback** (verwijderd 09-11, #983; zie hieronder). De sleutel van `answer_feedback` blijft `(username, conversation_id, message_index)`. `antwoord_trace`
   zoekt de rij van het bericht op die index op via de hash (`beurtbewijs_controles`, alleen hash en controle), en de
   trace krijgt `tekst_hash` en `server_beurt`. Zo is ook na een verschoven index na te gaan bij welk antwoord de melding
   hoort. De `controle` in de trace komt uit de rij, niet uit de blob; feedback op een tekst zonder rij wordt aangenomen
@@ -458,6 +459,15 @@ app.
 2. **Feedback op een antwoord zonder rij wordt aangenomen**, met `server_beurt: false`; de trace krijgt `tekst_hash`
    en `server_beurt`. **De controle-uitkomst staat in de rij** (kolom `controle`), zodat de trace haar niet uit de blob
    leest die de client schreef. Zonder rij heeft de trace geen controle.
+
+### Feedback verwijderd (2026-11-09, #983)
+De duimpjes onder een antwoord zijn uit de app (besluit gebruiker 09-11), en daarmee `POST`/`GET /api/answer-feedback`,
+de trace (`core/answer_feedback.py`, `antwoord_trace`, `als_markdown`, `scripts/antwoordfeedback.py`) en
+`beurtbewijs_controles`. Gevolg 2 hierboven bestaat dus niet meer, en besluit 2 geldt alleen nog voor de rij: de
+kolom `controle` blijft geschreven en gaat mee in de export van "Mijn gegevens", maar geen code leest haar nog. De rij
+zelf en besluit 1 (alleen eigen beurten als bewijs) blijven ongewijzigd. Bestaande rijen in `answer_feedback` blijven
+tot de opschoning of tot de gebruiker al zijn gegevens verwijdert; export, verwijderen en ontkoppelen bij het
+verwijderen van een gesprek nemen ze mee. De tabel weghalen is een vervolgstap.
 
 ### Open vragen
 3. De instelling per beurt (`turns[].instelling`, #543) valt buiten de vier velden van het besluit. Na heropenen weet

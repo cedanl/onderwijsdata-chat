@@ -28,7 +28,6 @@ import { groepeerFiguren } from '../figuurGroep'
 import ConversationExport from '../components/ConversationExport'
 import ChatNavActies from '../components/ChatNavActies'
 import ModelPicker from '../components/ModelPicker'
-import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
 import FeedbackLink from '../components/FeedbackLink'
@@ -136,7 +135,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   }
   // Het verwijderde open gesprek (#530): geen lokale save schrijft het terug tot er een nieuw gesprek begint.
   const verwijderdRef = useRef(null)
-  // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
+  // The save in flight: opening another conversation waits for it.
   const savingRef = useRef(Promise.resolve())
   // Lukt een DELETE niet, dan komt het gesprek terug (#778). Via een ref: voerUit en de verwijderwachtrij bij het laden
   // (#801) zijn van de eerste render.
@@ -324,7 +323,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
     }
     return savingRef.current
   }, [putOpenConversation, persistHistoryMetMelding])
-  const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
   // Save every finished answer, so closing the tab loses nothing. Also when the connection is back: a save
   // that failed offline goes again then (#635); an unchanged conversation is not sent twice.
@@ -838,10 +836,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                   herstel: msg.herstel, onRapport: reportState === 'ready' ? handleMakeRapport : null,
                   reportBusy,
                 } : null}
-                feedback={feedbackEnabled && !busy && canJudge(msg) ? {
-                  value: answerFeedback.oordelen[i] ?? null,
-                  onSubmit: (oordeel, toelichting) => answerFeedback.submit(i, oordeel, toelichting),
-                } : null}
               />
             ))}
             {thinking && (
@@ -987,9 +981,6 @@ function questionBefore(messages, i) {
   }
   return null
 }
-
-// What the server can judge: a finished answer with text (core/answer_feedback.py).
-const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
 // Een rapport is een eigen kopie van het gesprek en blijft staan als het gesprek weg is (#513, besluit:
 // informeren, niet meeverwijderen); wie dat niet wil, verwijdert het los op de rapportenpagina.

@@ -66,7 +66,6 @@ COPY auth/ ./auth/
 COPY prompts/ ./prompts/
 COPY public/ ./public/
 COPY core/ ./core/
-COPY scripts/antwoordfeedback.py ./scripts/
 
 # Copy built frontend from Stage 1
 COPY --from=frontend-builder /frontend/dist ./frontend/dist

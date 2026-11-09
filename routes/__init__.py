@@ -1,4 +1,3 @@
-from .answer_feedback import router as answer_feedback_router
 from .auth import router as auth_router
 from .chat import router as chat_router
 from .config import router as config_router
@@ -9,7 +8,6 @@ from .mijn_gegevens import router as mijn_gegevens_router
 from .persistence import router as persistence_router
 
 __all__ = [
-    "answer_feedback_router",
     "auth_router",
     "chat_router",
     "config_router",
