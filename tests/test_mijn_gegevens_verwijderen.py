@@ -100,7 +100,15 @@ def _vul_anna() -> None:
     db.save_beurtbewijs(
         "anna",
         "anna-c2",
-        {"hash-extra": {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "2026-11-03T10:00:00+00:00"}},
+        {
+            "hash-extra": {
+                "lineage": {},
+                "rekenbewijs": [],
+                "kaarten": {},
+                "controle": [],
+                "created_at": "2026-11-03T10:00:00+00:00",
+            }
+        },
     )
 
 
