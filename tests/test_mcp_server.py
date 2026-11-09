@@ -250,3 +250,25 @@ def test_protocol_markeert_een_sessietool_als_fout():
     _, resultaat = _via_protocol(lambda sessie: sessie.call_tool("query_data", {"data_key": "x"}))
     assert resultaat.is_error
     assert "query_data" in resultaat.content[0].text
+
+
+# ── Resultaatgrootte over HTTP (#940) ───────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "vulling", ["x", '"', "\\", "é", "\n"], ids=["kaal", "aanhalingsteken", "backslash", "accent", "regel"]
+)
+@pytest.mark.parametrize("grens", [600, 1000, 5000])
+def test_begrens_blijft_onder_de_grens_ook_als_escapen_de_tekst_langer_maakt(vulling, grens):
+    tekst, _ = mcp_server.voer_uit("dataset_counts", {})
+    envelop = json.loads(tekst) | {"veld": vulling * 20000}
+    begrensd = mcp_server.begrens(json.dumps(envelop, ensure_ascii=False), grens)
+    assert len(begrensd) <= grens
+    uit = json.loads(begrensd)
+    assert uit["bewijs"] == envelop["bewijs"] and uit["vervolg"] == envelop["vervolg"]
+    assert uit["begin"], "er blijft een begin over"
+
+
+def test_begrens_laat_een_klein_resultaat_ongemoeid():
+    tekst, _ = mcp_server.voer_uit("dataset_counts", {})
+    assert mcp_server.begrens(tekst, len(tekst)) == tekst

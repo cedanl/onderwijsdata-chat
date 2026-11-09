@@ -42,6 +42,7 @@ manifests/
 │   ├── kustomization.yaml        # Test patches
 │   ├── middleware.yaml
 │   ├── secret.yaml               # SOPS-versleuteld (in git)
+│   ├── secret.yaml.example
 │   └── values.yaml               # Test ingress (traefik-external)
 ├── playground/
 │   ├── helmrelease.yaml          # vaste release-pin (docs/promoten.md)

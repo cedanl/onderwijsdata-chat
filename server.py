@@ -1,7 +1,9 @@
 import asyncio
+import contextlib
 import logging
 import sys
 import tomllib
+from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -10,6 +12,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.routing import Route
 
 load_dotenv()
 
@@ -49,6 +52,8 @@ from routes import (
     mijn_gegevens_router,
     persistence_router,
 )
+from routes.mcp_http import PAD as MCP_PAD
+from routes.mcp_http import McpEindpunt
 
 # Initialize database
 try:
@@ -204,6 +209,22 @@ async def on_shutdown() -> None:
     logger.info("Application shutdown completed")
 
 
+def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsyncContextManager[None]]:
+    """Start en stop van de app, met daartussen de sessiemanager van /mcp (#706): die heeft een taakgroep nodig die zo
+    lang leeft als de app. Een gemounte app krijgt geen eigen lifespan, dus de app start hem zelf."""
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+        await on_startup()
+        try:
+            async with mcp.draai():
+                yield
+        finally:
+            await on_shutdown()
+
+    return lifespan
+
+
 # ─── App ─────────────────────────────────────────────────────────────────────
 
 _ROUTERS = (
@@ -227,11 +248,13 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     # API-documentatie niet op playground en productie (#636, #676): het schema somt elke route op voor wie niet is
     # ingelogd, en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
     docs = Config.api_docs() if api_docs is None else api_docs
+    mcp = McpEindpunt.uit_config()
     app = FastAPI(
         title="Onderwijsdata Chat",
         docs_url="/api/docs" if docs else None,
         redoc_url="/redoc" if docs else None,
         openapi_url="/api/openapi.json" if docs else None,
+        lifespan=levensloop(mcp),
     )
     # Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
     foutmeldingen.registreer(app)
@@ -247,10 +270,11 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.middleware("http")(security_headers)
     app.include_router(_routes)
-    app.router.add_event_handler("startup", on_startup)
-    app.router.add_event_handler("shutdown", on_shutdown)
     for router in _ROUTERS:
         app.include_router(router)
+    # Vóór de SPA: zonder sleutels geeft ook GET /mcp een JSON-404, geen index.html. Een ASGI-app als eindpunt: elke
+    # methode gaat naar de transport van de SDK, die zelf POST, GET en DELETE afhandelt.
+    app.router.routes.append(Route(MCP_PAD, endpoint=mcp, include_in_schema=False))
     if frontend_dist is not None:
         mount_frontend(app, frontend_dist)
     return app

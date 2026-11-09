@@ -1,7 +1,8 @@
 # MCP-server voor de catalogus
 
 De catalogus van de chat (CBS, DUO en RIO; mbo, hbo en wo) is ook te doorzoeken vanuit een MCP-client
-zoals Claude Desktop, Cursor of VS Code, zonder de chat-app te draaien. `mcp_server.py` biedt drie
+zoals Claude Desktop, Cursor of VS Code, zonder de chat-app te draaien, en vanuit SURF AI Chat (EduGenAI) via
+`/mcp` in de app ([Over HTTP](#over-http-mcp-in-de-app)). `mcp_server.py` biedt drie
 tools aan via het [Model Context Protocol](https://modelcontextprotocol.io/), met dezelfde JSON-schema's
 die het model in de chat ziet (`tools/schemas.py`) en dezelfde uitvoering (`tools.dispatch`). De
 scopegrens mbo/hbo/wo, de bron-ID's en de status per record zijn daardoor gelijk aan die in de chat.
@@ -90,7 +91,110 @@ Zonder client testen kan met de MCP Inspector:
 npx @modelcontextprotocol/inspector uv run python mcp_server.py
 ```
 
-## Clientconfiguratie
+## Over HTTP: /mcp in de app
+
+SURF AI Chat (aichat.surf.nl, voorheen EduGenAI) koppelt een extensie met een URL, een transporttype en een header; een
+stdio-server kan het niet aanroepen. Daarom biedt de chat-app dezelfde server ook aan op `/mcp`, als
+streamable-http-endpoint (#706). Eén pod en dezelfde ingress als de chat: `/health`, `/version` en de chat blijven
+werken zoals ze werkten, en er is geen tweede deployment.
+
+- **Stateless, JSON-antwoorden.** Elk verzoek krijgt een eigen transport: geen sessie per client (`Mcp-Session-Id`
+  ontbreekt), geen SSE-stroom en geen GET-stroom. Dat past bij de catalogustools, die geen datastore hebben, en bij
+  één pod. Elke `POST /mcp` draagt één JSON-RPC-bericht en krijgt één JSON-antwoord; `GET` en `DELETE` krijgen 405
+  (`Allow: POST`), zoals de spec voor een server zonder stroom voorschrijft.
+- **Dezelfde server als stdio.** Beide transporten bouwen hun server met `maak_server()`: dezelfde
+  `tooldefinities()`, `INSTRUCTIES` en `voer_uit()`, dus dezelfde envelope, scopegrens en statussen. Over HTTP draait
+  een aanroep in een thread, zodat de eerste zoekactie (het DUO-register laden) de chat niet ophoudt.
+- **Alleen met sleutels.** Zonder `MCP_API_KEYS` bestaat `/mcp` niet: elk verzoek, ook `GET`, krijgt 404 en het log
+  zegt bij de start één keer waarom. Met sleutels vraagt elk verzoek er een ([Sleutels](#sleutels)).
+- **Log.** Per aanroep een regel `MCP TOOL <naam> args_len=… args_hash=… fout=… duur=… tekens=… sleutel_len=… sleutel_hash=…`:
+  de argumenten (zoekwoorden, vaak uit de vraag van de gebruiker) alleen als kenmerk, zoals in de chat, en welke
+  sleutel de aanroep deed.
+
+Lokaal, met de app op poort 8000 en een sleutel in `MCP_API_KEYS`:
+
+```bash
+npx @modelcontextprotocol/inspector --cli http://localhost:8000/mcp --transport http \
+  --header "Authorization: Bearer $MCP_SLEUTEL" --method tools/list
+```
+
+Zonder `--cli` opent de Inspector in de browser; kies daar transport "Streamable HTTP", URL `http://localhost:8000/mcp`
+en de header `Authorization`.
+
+### Sleutels
+
+`/mcp` staat niet open op internet: elk verzoek draagt `Authorization: Bearer <sleutel>` met een sleutel uit
+`MCP_API_KEYS` (#939). Zonder header, met een ander schema of met een onbekende sleutel: 401 met
+`WWW-Authenticate: Bearer`. Geen OAuth in deze stap.
+
+- **Meer sleutels tegelijk**, kommagescheiden: een eigen sleutel per consument (een gebruikersextensie in de spike
+  #705, een globale entry per tenant #711), en roteren zonder onderbreking.
+- **Vergelijking** constant-time, op een SHA-256 van gelijke lengte en tegen alle sleutels zonder vroeg te stoppen.
+- **Nooit in een log of foutmelding.** Het log noemt per aanroep een sleutel-ID (`sleutel_len=… sleutel_hash=…`,
+  `tekst_kenmerk`; met `LOG_HASH_SECRET` een HMAC), genoeg om te zien welke consument het was en niet terug te rekenen.
+  Een geweigerd verzoek geeft de regel `MCP 401: geen of ongeldige sleutel`, zonder de aangeboden waarde.
+
+**Aanmaken.** Een willekeurige sleutel per consument, buiten een LLM-sessie:
+
+```bash
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
+```
+
+**Zetten.** `MCP_API_KEYS` staat in de secret `onderwijsdata-chat-secrets` van de omgeving; `manifests/test/values.yaml`
+leest hem `optional` (zonder sleutel geen `/mcp`). Sjabloon: `manifests/test/secret.yaml.example`; versleutelen met
+SOPS zoals in [Deployment → Secrets](deployment.md#3-secrets-configuration). De sleutel van een consument gaat via een
+eigen, veilig kanaal naar de beheerder van die consument (bij een globale entry: Npuls/SURF, #711), nooit in een issue
+of chat.
+
+**Roteren.** Zet de nieuwe sleutel naast de oude (`oud,nieuw`), rol uit, laat de consument overstappen en haal daarna
+de oude weg. Een sleutel intrekken is hetzelfde zonder de nieuwe. Na een wijziging van de secret herstart de pod niet
+vanzelf: `kubectl rollout restart` (de app leest `MCP_API_KEYS` bij de start).
+
+### Limieten
+
+Eén pod met toestand in het geheugen (#677): één consument van `/mcp` mag de chat niet voor iedereen traag maken (#940).
+De limieten staan los van die van de chat; een volle `/mcp` raakt de chat niet, en andersom. Volgorde per verzoek:
+
+| Stap | Antwoord | Instelling (standaard) |
+|---|---|---|
+| Rate limit per IP, ook voor een foute sleutel | 429 met `Retry-After` | `MCP_RATE_LIMIT_IP` (120) per `MCP_RATE_WINDOW_S` (60 s) |
+| Sleutel | 401 | `MCP_API_KEYS` |
+| Alleen POST | 405 | |
+| Rate limit per sleutel | 429 met `Retry-After` | `MCP_RATE_LIMIT` (60) per `MCP_RATE_WINDOW_S` |
+| Een vrije plaats | 503 met `Retry-After: 5`, na hooguit `MCP_WACHT_S` (1 s) | `MCP_MAX_GELIJKTIJDIG` (4) |
+| Tijdslimiet per toolaanroep | MCP-fout (`isError`) met de tool en de grens | `MCP_TOOL_TIMEOUT_S` (30 s) |
+| Grootte van een resultaat | `{"melding": "Afgekapt: …", "begin": "…", "bewijs": …, "vervolg": …}` | `TOOL_RESULT_MAX_CHARS` (12000) |
+
+- Een sessie van een MCP-client kost een paar verzoeken (`initialize`, de bevestiging, `tools/list`) plus één per
+  toolaanroep; 60 per minuut is ruim voor een paar gelijktijdige gesprekken per sleutel.
+- **Per IP** ziet de app achter de ingress het adres van de ingress, zolang uvicorn `X-Forwarded-For` niet vertrouwt
+  (`FORWARDED_ALLOW_IPS`, SECURITY.md S5). Dan werkt deze grens als totaalgrens voor `/mcp` op de pod.
+- **Tijdslimiet.** Een toolaanroep draait in een thread en is daar niet te stoppen: na de grens krijgt de client een
+  fout, de aanroep loopt door en houdt zijn thread vast. Toolaanroepen van `/mcp` hebben eigen threads
+  (`MCP_MAX_GELIJKTIJDIG`), dus een hangende aanroep raakt de threads van de chat niet.
+- **Afkappen.** Zoals in de chat ziet het model het begin met een melding; anders dan daar blijft het resultaat één
+  geldig JSON-object, met `bewijs` en `vervolg`. `search_catalog` blijft zelf onder de grens door hele treffers weg te
+  laten.
+- Voorzichtige standaarden; de definitieve waarden volgen uit de belastingsmeting (#942).
+
+### SURF AI Chat
+
+Een extensie in SURF AI Chat, of een globale entry in de LibreChat-config van een tenant (`mcpServers`, #711):
+
+```yaml
+mcpServers:
+  onderwijsdata:
+    type: streamable-http
+    url: https://onderwijsdata-chat.test.sdp.surf.nl/mcp
+    headers:
+      Authorization: "Bearer ${ONDERWIJSDATA_MCP_KEY}"
+    serverInstructions: true
+```
+
+In het formulier voor een eigen extensie: URL zoals hierboven, transport "Streamable HTTP", authenticatie "API Key" met
+de sleutel als Bearer. `/mcp` staat nog op geen enkele omgeving: eerst test (#941).
+
+## Clientconfiguratie (stdio)
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) en VS Code (`.vscode/mcp.json`)
 gebruiken hetzelfde formaat; vul het pad naar deze repository in:
@@ -116,3 +220,7 @@ gebruiken hetzelfde formaat; vul het pad naar deze repository in:
 - Een nieuwe catalogustool in de chat is in de MCP-server beschikbaar zodra hij in `CATALOGUS_TOOLS` staat.
   `tests/test_mcp_server.py` bewaakt dat de definities het chatschema volgen en toetst het protocol zelf
   (initialize, `tools/list`, `tools/call`) over een in-memory verbinding.
+- `routes/mcp_http.py` zet dezelfde server achter `/mcp`: de sessiemanager van de SDK in stateless modus met
+  JSON-antwoorden. Die heeft een taakgroep nodig die zo lang leeft als de app, dus `server.create_app` start hem in de
+  lifespan van de app; een gemounte Starlette-app krijgt geen eigen lifespan. `tests/test_mcp_http.py` toetst het
+  protocol eind tot eind tegen de app, met de client van de SDK.

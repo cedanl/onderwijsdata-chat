@@ -51,7 +51,8 @@ op test en playground ook `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` en `STUDIEKEUZE
 de Studiekeuzedatabase, `optional`). Op test noemen de values ook `LOG_HASH_SECRET`, als `optional`: die sleutel staat
 nu niet in de secret van test (06-11-2026). Zonder dat geheim is de hash in logregels een kale, afgekapte SHA-256 in
 plaats van een HMAC, en staat er geen gebruikerspseudoniem in het log (`gebruiker=-`; `docs/configuratie/index.md`,
-`core/logging_util.py`). Zetten is beheer via SOPS, zoals hierboven. `POSTGRES_URI`
+`core/logging_util.py`). Op test ook `MCP_API_KEYS`, `optional`: zonder die sleutel bestaat `/mcp` niet
+([MCP-server](mcp.md#sleutels)). Zetten is beheer via SOPS, zoals hierboven. `POSTGRES_URI`
 komt uit de secret `onderwijsdata-chat-app` van het platform (zie hierboven).
 
 ### 4. GitLab CI/CD Variables

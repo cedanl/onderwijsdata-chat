@@ -111,7 +111,9 @@ def _routes(routes) -> list[tuple]:
         if hasattr(route, "original_router"):
             platte += _routes(route.original_router.routes)
         else:
-            platte.append((type(route).__name__, getattr(route, "path", None), sorted(getattr(route, "methods", ()))))
+            platte.append(
+                (type(route).__name__, getattr(route, "path", None), sorted(getattr(route, "methods", None) or ()))
+            )
     return platte
 
 
@@ -125,8 +127,25 @@ def test_de_fabriek_bouwt_dezelfde_app_als_server_app():
     assert {"/health", "/ready", "/version", "/api/version", "/info"} <= set(app.openapi()["paths"])
     assert [(m.cls, m.kwargs) for m in app.user_middleware] == [(m.cls, m.kwargs) for m in server.app.user_middleware]
     assert app.exception_handlers.keys() == server.app.exception_handlers.keys()
-    assert app.router.on_startup == server.app.router.on_startup == [server.on_startup]
-    assert app.router.on_shutdown == server.app.router.on_shutdown == [server.on_shutdown]
+
+
+def test_de_lifespan_start_en_stopt_de_app(monkeypatch):
+    """on_startup en on_shutdown via de lifespan, met daartussen de sessiemanager van /mcp (#706)."""
+    import server
+
+    gebeurd: list[str] = []
+
+    async def start() -> None:
+        gebeurd.append("start")
+
+    async def stop() -> None:
+        gebeurd.append("stop")
+
+    monkeypatch.setattr(server, "on_startup", start)
+    monkeypatch.setattr(server, "on_shutdown", stop)
+    with TestClient(server.create_app(api_docs=False)):
+        assert gebeurd == ["start"]
+    assert gebeurd == ["start", "stop"]
 
 
 def test_de_fabriek_zet_dezelfde_beveiligingsheaders_als_server_app():
