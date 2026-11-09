@@ -34,6 +34,9 @@ _meta: dict = {}
 # Bytes per key, measured once at put(); an alias counts 0 and goes with its original.
 _grootte: dict[str, int] = {}
 _MAX_BYTES = STORE_MAX_MB * 1024 * 1024
+# De inhoudshash per geladen key, berekend bij de eerste afleiding (#985): een tweede selectie op dezelfde tabel rekent
+# hem niet opnieuw uit. put() en het verwijderen van de key wissen hem.
+_inhoud: dict[str, str | None] = {}
 # Tools run in worker threads; the LRU order and the eviction must not interleave.
 _slot = threading.RLock()
 
@@ -126,6 +129,12 @@ class KeyMeta:
     # eenheden het sectorcijfer van DUO's verantwoording gaat, of wat fte en personen in WOPI zijn. De tool zet ze bij het
     # laden. Herkomst, geen identiteit.
     telregels: tuple[str, ...] = field(default=(), compare=False)
+    # De keys waar deze afgeleide key op rust, vastgelegd bij het afleiden (#985): elke ouder, gelezen tabel en tussenstap
+    # met haar meta zoals die toen was. De store kan een bron wegdoen (boven STORE_MAX_MB, #13) of opnieuw laden terwijl
+    # deze key blijft; zijn herkomst leest dan dit. Herkomst, geen identiteit.
+    keten: "tuple[tuple[str, KeyMeta], ...]" = field(default=(), compare=False)
+    # De inhoudshash (#715) van een geladen tabel, alleen in een vastgelegde keten: de tabel zelf kan dan al weg zijn.
+    inhoudshash: str | None = field(default=None, compare=False)
 
 
 def _bytes(value) -> int:
@@ -158,6 +167,7 @@ def _verwijder(key: str, reden: str) -> None:
     for k in keys:
         _cache.pop(k, None)
         _meta.pop(k, None)
+        _inhoud.pop(k, None)
         vrij += _grootte.pop(k, 0)
         duo.vergeet_sentinel_cells(k)
     logger.info(
@@ -197,6 +207,7 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
         _cache[key] = value
         _cache.move_to_end(key)
         _grootte[key] = _bytes(value)
+        _inhoud.pop(key, None)
         if meta is None:
             _meta.pop(key, None)
         else:
@@ -207,16 +218,42 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
 def derive(parent: str, key: str, value, **changes) -> None:
     """Store data derived from `parent`; it inherits what is known about the parent.
 
-    `changes` overrides what the derivation changed, such as the schooljaren of a selection.
+    `changes` overrides what the derivation changed, such as the schooljaren of a selection. De keten waar de key op
+    rust, staat vastgelegd in zijn meta (#985): zijn herkomst hangt zo niet af van wat de store later nog heeft.
     """
     parent_meta = _meta.get(parent)
-    put(
-        key,
-        value,
-        replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, **changes})
-        if parent_meta
-        else None,
-    )
+    if parent_meta is None:
+        put(key, value, None)
+        return
+    known = replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, "keten": (), **changes})
+    put(key, value, replace(known, keten=_leg_vast(key, known)))
+
+
+def _leg_vast(key: str, known: KeyMeta) -> "tuple[tuple[str, KeyMeta], ...]":
+    """De keten onder `key` zoals ze nu is, zonder `key` zelf: elke key met haar meta, een geladen tabel met haar hash.
+
+    Een tabel die de store nog heeft, krijgt hier haar inhoudshash; wat al vastgelegd was, houdt de zijne. Een kopie
+    draagt geen eigen keten: die van `key` is al de hele.
+    """
+    vast = []
+    for k, m in _keten(key, known)[:-1]:
+        if not m.afgeleid_van and m.inhoudshash is None and _meta.get(k) is m:
+            m = replace(m, inhoudshash=_hash(k, m))
+        vast.append((k, replace(m, keten=())))
+    return tuple(vast)
+
+
+def _hash(key: str, known: KeyMeta) -> str | None:
+    """De inhoudshash van de geladen tabel `key`, één keer berekend zolang de store haar met meta `known` heeft."""
+    from . import inhoudshash  # lazy: inhoudshash importeert store
+
+    if key in _inhoud:
+        return _inhoud[key]
+    hash_ = inhoudshash.hash_van(key)
+    with _slot:
+        if _meta.get(key) is known:  # niet intussen opnieuw gezet
+            _inhoud[key] = hash_
+    return hash_
 
 
 def _verlopen(key: str) -> bool:
@@ -255,32 +292,38 @@ def meta(key: str) -> KeyMeta | None:
     return _meta.get(key)
 
 
-def _keten(key: str) -> list[tuple[str, KeyMeta]]:
+def _keten(key: str, known: KeyMeta | None = None) -> list[tuple[str, KeyMeta]]:
     """`key` en elke key waar hij op rust, oudste eerst en elk één keer; alleen keys waarvan de meta bekend is.
 
     Een afgeleide key rust op zijn ouder (`afgeleid_van`) en, bij een eigen berekening, op elke tabel die ze las
     (`gelezen`, #201): ook een tabel die het script via store_get las, niet alleen de eerste (#977). Een selectie op
-    zo'n berekening erft `gelezen` van haar; die keys staan dan al in de keten.
+    zo'n berekening erft `gelezen` van haar; die keys staan dan al in de keten. De meta van een ouder komt uit de
+    keten die bij het afleiden is vastgelegd (#985), en alleen zonder vastlegging uit de store: die kan de ouder kwijt
+    zijn of opnieuw geladen hebben. `known` is de meta van `key` als die nog niet in de store staat.
     """
     keten: list[tuple[str, KeyMeta]] = []
     gezien: set[str] = set()
+    vastgelegd: dict[str, KeyMeta] = {}
 
-    def loop(k: str) -> None:
-        if k in gezien or (known := _meta.get(k)) is None:
-            return
+    def loop(k: str, m: KeyMeta) -> None:
         gezien.add(k)
-        if known.afgeleid_van:
-            for ouder in (known.afgeleid_van, *(known.gelezen or ())):
-                loop(ouder)
-        keten.append((k, known))
+        for ouder, vast in m.keten:
+            vastgelegd.setdefault(ouder, vast)
+        if m.afgeleid_van:
+            for ouder in (m.afgeleid_van, *(m.gelezen or ())):
+                if ouder not in gezien and (om := vastgelegd.get(ouder) or _meta.get(ouder)) is not None:
+                    loop(ouder, om)
+        keten.append((k, m))
 
-    loop(key)
+    if (wortel := known or _meta.get(key)) is not None:
+        loop(key, wortel)
     return keten
 
 
-def bronkeys(key: str) -> list[str]:
-    """De geladen tabellen achter `key` (zonder ouder), in de volgorde van de herkomst; `key` zelf als hij geladen is."""
-    return [k for k, known in _keten(key) if not known.afgeleid_van]
+def bronnen(key: str) -> list[tuple[str, KeyMeta]]:
+    """De geladen tabellen achter `key` (zonder ouder) met hun meta, in de volgorde van de herkomst; `key` zelf als hij
+    geladen is. Ook een tabel die de store intussen kwijt is: haar meta en hash komen uit de vastgelegde keten (#985)."""
+    return [(k, known) for k, known in _keten(key) if not known.afgeleid_van]
 
 
 def _bronregel(known: KeyMeta) -> str:
@@ -392,6 +435,7 @@ def clear() -> None:
     with _slot:
         _cache.clear()
         _meta.clear()
+        _inhoud.clear()
         _grootte.clear()
         duo.clear_sentinel_cells()
         cbs.clear_dimensions()
