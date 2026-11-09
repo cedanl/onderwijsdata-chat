@@ -20,7 +20,7 @@ laatste kolom zegt wie beslist: **code** (deterministisch) of **model**.
 | 5 | Antwoordcontroles na elke modelronde (laag 3). Een gevonden probleem trekt het antwoord in en geeft het model één correctieronde; blijft een hard probleem staan, dan houdt de loop het antwoord in (#207). | `antwoordcontrole` (`check`, `agent/controles.py`), `tool_loop` | code |
 | 6 | Einde zonder gewoon antwoord: afgebroken, een verduidelijkingskaart, of de loop is uitgeput (dan een vaste tekst met wat al is opgehaald). | `_vroeg_einde` | code |
 | 7 | Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619). | `zonder_ongedekte_zinnen` | code |
-| 8 | Eindtekst: zelfcorrectie naar de redeneerkaart, bronnen en links uit de toolstappen, vaste teleenheidsregel, kopregels (lezing, uitgangspunt en wat de telling niet meetelt, #743). | `_eindtekst`, `_met_kopregels`, `agent/telling.py` | code |
+| 8 | Eindtekst: zelfcorrectie naar de redeneerkaart (ook een tabel die het antwoord zelf herziet, #982), bronnen en links uit de toolstappen, vaste teleenheidsregel, kopregels (lezing, uitgangspunt en wat de telling niet meetelt, #743). | `_eindtekst`, `_met_kopregels`, `agent/telling.py` | code |
 | 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `_slotbericht` | code (vervolgvragen: uit de catalogus, `agent/vervolgvragen.py`) |
 
 Het model formuleert dus in stap 4; de vervolgvragen in stap 9 kiest code uit de voorbeeldvragen van de catalogus, het model beslist er niets over (#364, #539). Alles waarop een getal, bron of selectie rust,
@@ -51,6 +51,8 @@ Na elk chatantwoord draaien deze controles (samengevoegd in `check` in `agent/co
 | Selectie | `agent/selectie.py` | Een gevraagd schooljaar of een genoemde instelling zit in de selectie waarop het antwoord rust; een telling of "niet gevonden" rust niet op een afgekapte selectie. |
 | Labels | `agent/labels.py` | Opleidingsvorm (VT, DT, DU) en dataset-ID kloppen met de bron. |
 | Binding | `agent/binding.py` | Een getal staat bij het jaar en de instelling van zijn eigen rij, niet bij een ander jaar uit dezelfde selectie. |
+| Tabelbinding | `agent/tabelbinding.py` | Een getal met decimale komma in een tabelrij staat bij het schooljaar, de maat en de instelling of vergelijkingsgroep van die rij en kolom (mbo-indicatoren en collegegeld, de bronnen met een eigen resultaatvorm die een schooljaar meegeven; #982). |
+| Herziene tabel | `agent/zelfcorrectie.py` | Zegt het antwoord dat een eigen tabel fout is zonder er een tabel met dezelfde kolommen na te geven, dan schrijft het model het opnieuw op (#982). |
 
 Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonder conclusie, reikwijdte of bevinding wordt niet getoond, en tekst die afwezigheid van data claimt naast een gevulde grafiek wordt geweigerd. Elk percentage dat het model in het rapport schreef, toetst dezelfde regel als in de chat; een groeicijfer of verschil rekent de rapportrun uit met `compute_kpi` (#872). Ook als het model halverwege faalt of zijn stappenbudget opmaakt, gaat een rapport alleen door op tekst die de controle goedkeurde (#754).
 
@@ -59,7 +61,7 @@ Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonde
 De controles zijn code, geen begrip. Ze vangen een bepaalde klasse fouten en laten andere door:
 
 - **Kleine getallen en jaartallen.** Alleen getallen van vier of meer cijfers, en percentages, worden getoetst.
-- **Een getal dat ergens anders in de data staat.** Staat 27.135 in de data, dan is het getal gedekt, ook als het model het bij de verkeerde groep noemt. De bindingscontrole vangt dat alleen als de zin of tabelrij precies één jaar of instelling noemt.
+- **Een getal dat ergens anders in de data staat.** Staat 27.135 in de data, dan is het getal gedekt, ook als het model het bij de verkeerde groep noemt. De bindingscontrole vangt dat alleen als de zin of tabelrij precies één jaar of instelling noemt. Een decimaal (70,6%) bindt alleen de tabelbinding, en alleen in een tabelrij met een schooljaar en bij een bron die haar waarden met decimalen en een schooljaar meegeeft (#982); in een zin, met een kaal kalenderjaar (de financiën, WOPI, het studiejaar van de Studiekeuzedatabase) of bij een tabel uit de store toetst alleen de getalcontrole of het getal ergens staat. Noemt de tabel de maat niet, dan geldt de maat die de tekst erboven het laatst noemt: daarom is die melding zacht.
 - **Interpretatie.** Een conclusie die niet volgt uit de cijfers, of een causaal verband dat de data niet draagt, is geen getal en wordt niet gecontroleerd.
 - **Teleenheid.** Wat een DUO-bestand telt (personen of inschrijvingen) en wanneer totalen een ondergrens zijn, zet `agent/telling.py` uit de metadata onder het antwoord; het model hoeft het niet te formuleren en wordt er niet op gecontroleerd. Een vergelijking van p01 en p03 toont beide definities.
 - **Vergelijken met eigen cijfers.** In een rapport zet `agent/report_vergelijken.py` per dataset onder de teldefinitie wat een verschil met eigen cijfers of die van de Vereniging Hogescholen kan verklaren: peildatum, personen of inschrijvingen, wat niet meetelt (dezelfde regel als in het chatantwoord, #743), opleidingsvorm en de afronding van CBS. Elke DUO-zin staat er alleen als de teldefinitie van de geladen key hem draagt; het model schrijft niets mee (#736).
@@ -74,7 +76,7 @@ Een getal onder 1.000 valt buiten de getalcontrole, maar kan wel een citatie kri
 
 ## Tests
 
-- `tests/test_grounding.py`, `tests/test_selectie.py`, `tests/test_labels.py`, `tests/test_binding.py`: de controles per module.
+- `tests/test_grounding.py`, `tests/test_selectie.py`, `tests/test_labels.py`, `tests/test_binding.py`, `tests/test_tussentabel.py`: de controles per module; de laatste ook met een nepmodel dat een tabel geeft, zich corrigeert en een tweede tabel geeft (#982).
 - `tests/test_report_checks.py`: de rapportcontroles.
 - `tests/test_tools_kpi.py`, `tests/test_tools_analysis.py`: de rekentools en de sandbox.
 - `tests/test_eval_*.py`: evaluaties met een echt model tegen een ground truth; die draaien niet in CI (ze hebben een API-key nodig).
