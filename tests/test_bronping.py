@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from onderwijsbronnen.skdb import proefbestand
+from onderwijsbronnen.skdb import spec as skdb_spec
 
 from scripts import bronping
 
@@ -44,8 +46,23 @@ def test_de_fusieping_bewaakt_de_zes_instellingen_met_een_fusie_in_de_duo_reeks(
 
 
 def test_elke_bron_van_de_chat_heeft_een_ping():
-    assert {p.bron for p in bronping.PINGS} == {"cbs", "duo", "rio", "inspectie", "kaart", "collegegeld"}
+    assert {p.bron for p in bronping.PINGS} == {"cbs", "duo", "rio", "inspectie", "kaart", "collegegeld", "skdb"}
     assert len({p.id for p in bronping.PINGS}) == len(bronping.PINGS)
+
+
+def test_de_skdb_ping_leest_de_openbare_spec_en_noemt_wat_ontbreekt():
+    """#878: zonder sleutel (die staat niet in CI, afspraak 04-11) de spec tegen de export en de negen tabellen van de
+    zes weergaven; een ontbrekende tabel staat met naam in de ping."""
+    ping = next(p for p in bronping.PINGS if p.bron == "skdb")
+    assert ping.id == "skdb-openapi"
+    assert ping.haal is skdb_spec.haal_spec
+    assert bronping.beoordeel(ping, proefbestand.openapi()).ok
+
+    zonder = proefbestand.openapi()
+    del zonder["paths"]["/doorstroommbohbo"]
+    uitslag = bronping.beoordeel(ping, zonder)
+    assert not uitslag.ok
+    assert "doorstroommbohbo" in uitslag.detail
 
 
 # --- beoordelen -----------------------------------------------------------------------

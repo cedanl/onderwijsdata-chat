@@ -196,12 +196,18 @@ Zet in zo'n schema geen `EVAL_BASE_URL`: dan draait ook `eval:bronwaarheid`, met
 jobs zijn ook met de hand te starten via "Run pipeline" op `main` met dezelfde variabele.
 
 *`bron:ping`* (`scripts/bronping.py --sweep`) doet eerst één echte aanroep per bron door de toollaag van de chat
-(CBS, DUO, RIO, Inspectie, de DUO-indicatoren en de kaart-GeoJSON), en vraagt het lopende studiejaar op in de
-tabel met het wettelijk collegegeld (#729; die ping leest geen bron, ze controleert dat de tabel bij is). De ping
+(CBS, DUO, RIO, Inspectie, de DUO-indicatoren, de Studiekeuzedatabase en de kaart-GeoJSON), en vraagt het lopende
+studiejaar op in de tabel met het wettelijk collegegeld (#729; die ping leest geen bron, ze controleert dat de tabel
+bij is). De ping
 `duo-instroom-mbo` legt de vaste bestanden van de mbo-eerstejaars en de ingeschrevenen per hoofdgroep in de dashboards
 naast de lijst bij DUO en is rood zodra DUO een jaar publiceerde dat er niet in staat (#924, #934,
-[Dashboards](dashboards.md)). Faalt er één, dan is de job rood en komt de
-melding van de mislukte pipeline binnen. Daarna volgt de sweep over elke dataset die de chat kan opvragen
+[Dashboards](dashboards.md)). De ping `skdb-openapi` leest de openbare OpenAPI-spec van de Studiekeuzedatabase
+(`https://api.skdb.nl/v1/openapi.json`), zonder sleutel: de sleutel van LCSK staat alleen als secret op test en
+playground, niet in CI (afspraak #878). Hij is rood zodra `/export/json` geen ZIP meer levert of een van de negen
+tabellen van `get_studiekeuze` niet meer in de API staat, als eigen pad of als lijst in het antwoord van een ander pad
+(`onderwijsbronnen.skdb.spec`), en noemt dan dat pad of die tabel. De export zelf leest hij niet: daar is de sleutel
+voor nodig, dus een veld dat binnen een tabel verdwijnt of een lege export ziet deze ping niet. Faalt er één, dan is de
+job rood en komt de melding van de mislukte pipeline binnen. Daarna volgt de sweep over elke dataset die de chat kan opvragen
 (`scripts/bronsweep.py`, #869), parallel en binnen een halve minuut (gemeten 02-11-2026: 13 s voor 226 controles):
 
 - *CBS*: per tabel één `TableInfos`. `Modified … catalogus …: CBS werkte de tabel bij` betekent dat de cijfers na de

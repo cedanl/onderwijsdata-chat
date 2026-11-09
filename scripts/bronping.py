@@ -4,7 +4,7 @@ Bron-ping: één aanroep per bron door de toollaag van de chat, zonder LLM (#627
 
 Gebruik:
     uv run python scripts/bronping.py                # elke bron één keer; exitcode 1 zodra één bron niet antwoordt
-    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart, collegegeld
+    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart, collegegeld, skdb
     uv run python scripts/bronping.py --sweep --rapport bronping-sweep.json
                                                      # plus de sweep over elke CBS-, DUO- en RIO-dataset (#869)
 
@@ -22,6 +22,10 @@ jaarlijkse controle tegen de wettekst (docs/promoten.md, "Jaarlijks") vanzelf bi
 Zo ook de vaste DUO-bestanden achter de mbo-eerstejaars (#924) en de ingeschrevenen per hoofdgroep (#934) van de
 dashboards (data/dashboard.py): de ping duo-instroom-mbo wordt rood zodra DUO een jaar publiceert dat er niet in staat,
 of de volgorde verschuift. Een vaste lijst houdt de pytest-job zonder netwerk; deze ping is de live controle erop.
+
+De Studiekeuzedatabase (SKDB) vraagt voor de export een sleutel van LCSK, en die staat niet in CI (afspraak #878,
+04-11: alleen als secret in de clusters). Haar ping leest daarom de openbare OpenAPI-spec en wordt rood zodra
+`/export/json` of een tabel die get_studiekeuze leest er niet meer in staat (onderwijsbronnen.skdb.spec).
 
 Met --sweep volgt een goedkope controle van elke dataset die de chat kan opvragen (scripts/bronsweep.py, #869): een
 afwijking daar is een waarschuwing in de log en het rapport, de exitcode blijft die van de pings.
@@ -41,6 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from onderwijsbronnen.duo import financien as xbrl
+from onderwijsbronnen.skdb import spec as skdb_spec
 
 from data import dashboard
 from scripts import bronsweep
@@ -79,7 +84,7 @@ _DUO_REEKS = (2021, 2025)
 @dataclass(frozen=True)
 class Ping:
     id: str
-    bron: str  # cbs | duo | rio | kaart
+    bron: str  # cbs | duo | rio | inspectie | kaart | collegegeld | skdb
     omschrijving: str
     haal: Callable[[], str | dict]  # de aanroep, zoals de chat hem doet
     bewijs: Callable[[dict], str | None]  # waarom de uitkomst geen echt antwoord is; None als ze dat wel is
@@ -209,6 +214,11 @@ def _instroom_mbo_bewijs(uitkomst: dict) -> str | None:
     return "; ".join(uitkomst["afwijkingen"]) or None
 
 
+def _skdb_bewijs(spec: dict) -> str | None:
+    # De openbare spec tegen de export en de tabellen van get_studiekeuze; de sleutel staat niet in CI (#878).
+    return "; ".join(skdb_spec.ontbreekt(spec)) or None
+
+
 def _collegegeld_bewijs(uitkomst: dict) -> str | None:
     return None if "voltijd" in uitkomst else "geen bedrag voor het lopende studiejaar"
 
@@ -271,6 +281,13 @@ PINGS: tuple[Ping, ...] = (
         _instroom_mbo_bewijs,
     ),
     Ping(
+        "skdb-openapi",
+        "skdb",
+        "OpenAPI-spec van de Studiekeuzedatabase: /export/json en de tabellen van get_studiekeuze (zonder sleutel)",
+        skdb_spec.haal_spec,
+        _skdb_bewijs,
+    ),
+    Ping(
         "collegegeld-tabel",
         "collegegeld",
         "wettelijk collegegeld van het lopende studiejaar in de tabel (get_collegegeld)",
@@ -328,7 +345,7 @@ def _argumenten(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--alleen",
         default="",
-        help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart, collegegeld (standaard alle)",
+        help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart, collegegeld, skdb (standaard alle)",
     )
     parser.add_argument("--sweep", action="store_true", help="controleer ook elke CBS-, DUO- en RIO-dataset (#869)")
     parser.add_argument("--rapport", type=Path, help="schrijf de bevindingen van de sweep als JSON naar dit pad")

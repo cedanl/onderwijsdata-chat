@@ -526,6 +526,9 @@ duaal) zijn het er ruim 4.400.
   een tabel, dan is de vorm veranderd en geeft de tool een bronfout, geen cijfer. De bestandsnaam geeft het
   versienummer van de data (`export-skdb-26.6-…`) en de exportdatum; de app laadt de export één keer per 24 uur
   (`core/actualiteit.py`, in het geheugen) en bewaart haar niet op schijf.
+- **Bereikbaarheid (#878):** `bron:ping` (`skdb-openapi`) leest dagelijks de openbare OpenAPI-spec, zonder sleutel
+  (die staat niet in CI), en is rood zodra `/export/json` of een van de negen tabellen hierboven niet meer in de API
+  staat. De inhoud van de export (velden, aantallen) ziet de ping niet: daar is de sleutel voor nodig.
 - **Welke lading (#981):** bij elke lading legt de app de versie, de exportdatum, de sha256 van het opgehaalde
   ZIP-bestand en de laaddatum vast (`skdb.Herkomst`). Versie, exportdatum en laaddatum staan in de bronregel en als
   peilmoment in de store (CSV-kop, selecties); de sha256 staat, zoals de md5 van een DUO-bestand, als `bronhash` in

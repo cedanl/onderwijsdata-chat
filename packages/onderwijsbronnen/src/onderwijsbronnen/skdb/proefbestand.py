@@ -206,3 +206,25 @@ def standaard() -> tuple[bytes, Herkomst]:
     """De proefexport met haar herkomst, zoals `haal_op()` ze geeft."""
     inhoud = zip_bytes()
     return inhoud, herkomst(inhoud, BESTAND)
+
+
+def _lijst(*velden: str) -> dict:
+    schema = {"type": "array", "items": {"type": "object", "properties": {v: {"type": "string"} for v in velden}}}
+    return {"get": {"responses": {"200": {"content": {"application/json": {"schema": schema}}}}}}
+
+
+def openapi() -> dict:
+    """Een minimale OpenAPI-spec in de vorm van `/openapi.json` (#878): alleen de paden en veldnamen die het pakket leest,
+    zodat de toets van `skdb.spec` zonder netwerk draait. Elke aanroep geeft een nieuwe dict, om in een test te wijzigen."""
+    return {
+        "openapi": "3.1.0",
+        "paths": {
+            "/export/json": {"get": {"responses": {"200": {"content": {"application/zip": {"schema": {"type": "string"}}}}}}},
+            "/instellingen": _lijst("instellingSkdb", "instellingCode"),
+            "/instellingen/{instellingSkdb}/lotingopleidingendecentraleselecties": _lijst("opleidingCode", "capaciteit"),
+            "/opleidingen": _lijst("opleidingSkdb", "opleidingCode", "vormen"),
+            "/studies": _lijst("studieOpleidingCodeSkdb", "vormen", "doorstroomBachelorMaster"),
+            "/standaardonderwijsindeling": _lijst("soiId", "vormen"),
+            "/doorstroommbohbo": _lijst("doorstroomMboHboId", "studieOpleidingCodeSkdb"),
+        },
+    }
