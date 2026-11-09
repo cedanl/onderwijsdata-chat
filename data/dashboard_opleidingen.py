@@ -230,8 +230,9 @@ def _export() -> tuple[skdb.Export, dict]:
             "dataset": DATASET,
             "versie": herkomst.versie,
             "peilmoment": peilmoment(herkomst.versie, herkomst.datum, jaren),
-            # Het dashboard toont studieverloop en arbeidsmarkt: de bronregel van de weergave studie noemt beide.
-            "vermelding": studiekeuze.bronregel(herkomst, jaren, "studie"),
+            # Het dashboard toont studieverloop en arbeidsmarkt: de bronregel van de weergave studie noemt beide. Met de
+            # sha256 van de geladen export, zoals onder een antwoord (#981).
+            "vermelding": studiekeuze.met_hash(studiekeuze.bronregel(herkomst, jaren, "studie"), herkomst.sha256),
             "opgehaald_op": herkomst.opgehaald,
         }
     )

@@ -6,6 +6,7 @@ verzonnen getallen. Het register (DUO) staat hier als woordenboek, zonder netwer
 """
 
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -325,9 +326,11 @@ def test_het_bronblok_noemt_versie_jaren_en_de_verplichte_zin_van_lcsk():
     assert bron["editie"] == "26.6"
     assert bron["peilmoment"] == "versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26"
     herkomst = skdb.herkomst(*proefbestand.standaard()[:1], proefbestand.BESTAND)
-    assert bron["vermelding"] == studiekeuze.bronregel(
-        herkomst, skdb.jaren(skdb.lees(*proefbestand.standaard())), "studie"
+    # De vermelding is de bronregel van de chat, met de sha256 van de geladen export (#981).
+    assert bron["vermelding"] == studiekeuze.met_hash(
+        studiekeuze.bronregel(herkomst, skdb.jaren(skdb.lees(*proefbestand.standaard())), "studie"), herkomst.sha256
     )
+    assert f"sha256 {herkomst.sha256[:12]}" in bron["vermelding"]
     assert "NSE 2026" in bron["vermelding"] and "CBS-microdata" in bron["vermelding"]
     assert skdb.VERPLICHTE_ZIN in bron["vermelding"]
     assert bron["voorlopig"] is False
@@ -405,6 +408,10 @@ def fixture_payloads() -> dict[str, dict]:
         payload = opleidingen.load_dashboard_opleidingen(naam)
         for bron in payload.get("bronnen", []):
             bron["opgehaald_op"] = "2026-11-06T06:00:00+00:00"
+            # De vermelding noemt de laaddatum (#981): ook die vast.
+            bron["vermelding"] = re.sub(
+                r"opgehaald op \d{4}-\d{2}-\d{2}", "opgehaald op 2026-11-06", bron["vermelding"]
+            )
         uit[soort] = payload
     return uit
 

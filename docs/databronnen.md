@@ -526,6 +526,14 @@ duaal) zijn het er ruim 4.400.
   een tabel, dan is de vorm veranderd en geeft de tool een bronfout, geen cijfer. De bestandsnaam geeft het
   versienummer van de data (`export-skdb-26.6-…`) en de exportdatum; de app laadt de export één keer per 24 uur
   (`core/actualiteit.py`, in het geheugen) en bewaart haar niet op schijf.
+- **Welke lading (#981):** bij elke lading legt de app de versie, de exportdatum, de sha256 van het opgehaalde
+  ZIP-bestand en de laaddatum vast (`skdb.Herkomst`). Versie, exportdatum en laaddatum staan in de bronregel en als
+  peilmoment in de store (CSV-kop, selecties); de sha256 staat, zoals de md5 van een DUO-bestand, als `bronhash` in
+  het manifest, de logregel en de CSV-kop, en met twaalf tekens in de bronregel onder het antwoord en op het
+  dashboard, niet in het toolresultaat voor het model. LCSK levert alleen de export van vandaag: de snippet leest live,
+  noemt in zijn kop de export die de app las en waarschuwt als hij een andere leest (een andere hash). Een export van
+  een eerdere dag opnieuw lezen kan de snippet niet; of hij een door de gebruiker bewaard bestand mag lezen, is een
+  open besluit (#981).
 - **Jaren uit de export:** het NSE-jaar (`enqueteJaar`) en het 1cijferHO-jaar (`eenCijferHoMeestRecenteJaar`, begin van
   het collegejaar) zijn de hoogste waarde in `opleidingvormen`. De tool noemt ze in de voorbehouden en de bronregel bij
   opleidingen en studies; ze staan niet vast in de code of de catalogus.
@@ -543,7 +551,9 @@ duaal) zijn het er ruim 4.400.
 - **Wat er niet in staat:** mbo-opleidingen (van het mbo alleen waar mbo-4-gediplomeerden in het hbo naartoe gaan);
   een vraag over een mbo-instelling krijgt een vaste melding. Reeksen: de export is de stand van nu, één NSE-jaar en
   één 1cijferHO-jaar. Het aantal respondenten per NSE-thema: alleen het algemeen oordeel heeft een aantal; bij een
-  thema noemt de chat dat aantal, met de zin dat het aantal per thema onbekend is. Arbeidsmarktcijfers bestaan alleen
+  thema noemt de chat dat aantal, met de zin dat het aantal per thema onbekend is. De landelijke thema's staan wel in
+  de bron (`studievormen`) en in de weergave `studie` (#979); de weergave `opleidingen` geeft alleen het landelijke
+  algemeen oordeel, en zegt dat als beperking van de weergave, niet van de bron. Arbeidsmarktcijfers bestaan alleen
   voor voltijd hbo-bachelor, associate degree en wo-master, gaan over een SOI-rubriek, niet over één studie, en vormen
   geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
@@ -616,8 +626,9 @@ doet de code, en het model neemt de getallen letterlijk over.
 - **Landelijk oordeel:** naast het NSE-oordeel van een opleiding staat `nse_oordeel_landelijk`, het oordeel over
   dezelfde landelijke studie in dezelfde vorm over alle instellingen samen, zoals LCSK het berekent (tabel
   `studievormen`). Het is geen gemiddelde van de getoonde rijen.
-- **Onzekerheid:** het antwoord noemt het aantal respondenten. Een oordeel op minder dan 30 respondenten markeert de
-  code zelf als onzeker (`nse_onzeker`), en een verschil van een paar honderdsten heet geen verschil.
+- **Onzekerheid:** het antwoord noemt het aantal respondenten. Een oordeel of thema op minder dan 30 respondenten, of
+  een thema zonder bekend aantal (geen algemeen oordeel in die rij), markeert de code zelf als onzeker (`nse_onzeker`,
+  #979), en een verschil van een paar honderdsten heet geen verschil.
 - **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
   zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
 - **Dashboard Opleidingen:** dezelfde rijen per opleiding van één instelling, op naam en zonder rangorde; wat het toont
@@ -666,7 +677,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | Onderwijsinspectie (bg en po-so-vo), DUO-indicatoren mbo | het gelezen bestand zelf (#749, #881, #727) |
 | Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
 | UNL, WOPI | de downloadpagina van UNL; de regel is vast: "WOPI {jaar}, Universiteiten van Nederland, peildatum 31-12-{jaar}, excl. sector Gezondheid" (of incl., #936) |
-| LCSK, Studiekeuzedatabase | de pagina [studiekeuzedata raadplegen](https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/) van LCSK; de regel is vast: "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met als herkomst per weergave het NSE-jaar en de oorspronkelijke bron, bijv. "NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK" (verplicht volgens de leveringsvoorwaarden, #957, #878) |
+| LCSK, Studiekeuzedatabase | de pagina [studiekeuzedata raadplegen](https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/) van LCSK; de regel is vast: "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}, opgehaald op {laaddatum}, sha256 {eerste 12 tekens}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met als herkomst per weergave het NSE-jaar en de oorspronkelijke bron, bijv. "NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK" (verplicht volgens de leveringsvoorwaarden, #957, #878) |
 
 Een regel heeft bewust geen link:
 

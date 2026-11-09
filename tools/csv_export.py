@@ -32,6 +32,10 @@ from .schemas import (
     TOOL_RUN_ANALYSIS,
 )
 
+# Het label van de knop onder een antwoord met een tabel (frontend/src/components/DataExport.jsx): een toolmelding en de
+# prompt noemen hem zo, zodat het model niet zegt dat het geen bestand kan geven (#979).
+KNOP = "Download data als CSV"
+
 # De stappen die een selectie in de store leggen en `data_key` plus `rijen` teruggeven. get_maat selecteert zelf
 # (#188) en gaf daardoor geen CSV-knop (#538).
 _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}

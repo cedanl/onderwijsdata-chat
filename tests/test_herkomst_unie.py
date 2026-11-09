@@ -131,6 +131,22 @@ def test_de_csv_van_de_koppeling_noemt_lcsk_ook_als_duo_vooraan_staat():
     _draagt_beide_bronnen(kop, skdb_key)
 
 
+@pytest.mark.parametrize("volgorde", ["skdb_eerst", "duo_eerst"])
+def test_de_csv_van_de_koppeling_noemt_de_sha256_van_lcsk_en_de_md5_van_duo_elk_bij_naam(volgorde):
+    """#981: de SKDB-lading heeft een sha256 als bronhash. In de unie van de herkomst heet die nooit "md5 van het
+    DUO-bestand"; elke hash staat bij zijn eigen bron en dataset."""
+    skdb_key, duo_key = _skdb(), _duo()
+    eerst, dan = (skdb_key, duo_key) if volgorde == "skdb_eerst" else (duo_key, skdb_key)
+    sha256 = studiekeuze._export().herkomst.sha256
+    csv = naar_csv(_koppeling(eerst, dan)) or ""
+
+    kop = [r.removeprefix("# ") for r in csv.splitlines() if r.startswith("# ")]
+    (lcsk,) = [r for r in kop if sha256 in r]
+    assert lcsk.startswith(f"sha256 van de export van de Studiekeuzedatabase ({studiekeuze.DATASET}): {sha256}")
+    (md5,) = [r for r in kop if r.startswith("md5 van het DUO-bestand")]
+    assert md5.startswith(f"md5 van het DUO-bestand (p01hoinges): {_MD5}") and sha256 not in md5
+
+
 def test_een_bestand_met_alleen_skdb_inhoud_en_een_duo_kop_noemt_lcsk():
     """De rijen zijn NSE-waarden, de key is afgeleid van DUO: de kop van het bestand is niet de bron van de inhoud."""
     skdb_key, duo_key = _skdb(), _duo()

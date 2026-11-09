@@ -58,9 +58,9 @@ ALLEEN_HO = (
 NSE = (
     "NSE-oordelen zijn gewogen gemiddelden op een schaal van 1 (zeer ontevreden) tot 5 (zeer tevreden) uit de "
     "Nationale Studenten Enquête {nse}; nse_respondenten is het aantal antwoorden. Een verschil van een paar "
-    "honderdsten is geen verschil. Een rij met nse_onzeker: true heeft minder dan 30 respondenten: noem dat oordeel "
-    "onzeker. Bij de thema's (nse_docenten, nse_toetsing, …) is het aantal respondenten per thema onbekend; het getoonde "
-    "aantal is dat van het algemeen oordeel."
+    "honderdsten is geen verschil. Een rij met nse_onzeker: true heeft minder dan 30 respondenten of geen bekend aantal: "
+    "noem het oordeel en de thema's in die rij onzeker. Bij de thema's (nse_docenten, nse_toetsing, …) heeft de bron "
+    "geen aantal respondenten per thema; het getoonde aantal is dat van het algemeen oordeel."
 )
 LANDELIJK = (
     "nse_oordeel_landelijk is het oordeel over dezelfde studie in dezelfde vorm over alle instellingen samen, zoals LCSK "
@@ -128,6 +128,28 @@ KIES_EERST = (
     "Stel de gebruiker deze keuze met clarify_scope (is clarify_scope er niet meer, stel de keuze dan als vraag met "
     "deze opties in je antwoord) en wacht op het antwoord: haal geen studie of instelling op die de gebruiker niet "
     "koos, en geef nog geen cijfers."
+)
+# Toolbeperkingen in vaste woorden (#979, B1): het antwoord zei "de bron geeft de thema's alleen voor HU, niet
+# landelijk", terwijl `studievormen` ze wel heeft. Wat een weergave weglaat, is een keuze van de tool, geen gat in de bron.
+NIET_IN_DE_BRON = (
+    "Staat iets niet in deze rijen, zeg dan dat deze weergave het niet geeft; zeg niet dat de bron het niet heeft, "
+    "tenzij een voorbehoud dat zegt."
+)
+LANDELIJKE_THEMAS = (
+    "Per opleiding staat hier het landelijke algemeen oordeel (nse_oordeel_landelijk), maar deze weergave geeft de "
+    "landelijke thema's niet door. De bron heeft ze wel: de weergave studie (met de studiecode) geeft ze per vorm."
+)
+THEMAS_WEGGELATEN = (
+    "De NSE-thema's (nse_docenten, nse_toetsing, …) staan niet in deze rijen omdat het er te veel zijn: een keuze van "
+    "deze tool om het resultaat kort te houden, niet uit de bron. Ze staan in de hele tabel onder data_key (query_data)."
+)
+# S1 (#979): het antwoord zei geen bestand te kunnen klaarzetten. Een tabel van deze tool krijgt altijd de CSV-knop
+# (tools/csv_export._EIGEN_VORM); het label is csv_export.KNOP, hier letterlijk want csv_export importeert via herlaad
+# deze module (tests/test_studiekeuze.py houdt ze gelijk).
+BESTAND = (
+    "De app zet de hele tabel ({n} rijen) als CSV-bestand onder je antwoord, met de knop 'Download data als CSV'. Zeg "
+    "niet dat je geen bestand kunt geven: verwijs naar die knop. Een eigen selectie maak je met query_data; die krijgt "
+    "dezelfde knop."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "
@@ -377,7 +399,8 @@ _HERKOMST = {
 
 def bronregel(herkomst: skdb.Herkomst, jaren: dict | None = None, weergave: str | None = None) -> str:
     """'Studiekeuzedatabase 26.6 (NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK), Landelijk Centrum
-    Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt …': versie en NSE-jaar zijn verplicht (art. 4.2)."""
+    Studiekeuze, export van 2026-11-06, opgehaald op 2026-11-09. Er is gebruik gemaakt …': versie en NSE-jaar zijn
+    verplicht (art. 4.2); de exportdatum en de laaddatum zeggen welke lading het was (#981)."""
     jaren = jaren or {}
     delen = [f"NSE {jaren['nse']}"] if jaren.get("nse") and weergave in (None, "opleidingen", "studie") else []
     if weergave in _HERKOMST:
@@ -386,7 +409,33 @@ def bronregel(herkomst: skdb.Herkomst, jaren: dict | None = None, weergave: str 
     versie = f" {herkomst.versie}" if herkomst.versie else ""
     toelichting = f" ({'; '.join(delen)})" if delen else ""
     datum = f", export van {herkomst.datum}" if herkomst.datum else ""
-    return f"{BRONTITEL}{versie}{toelichting}, {BRONNAAM}{datum}. {skdb.VERPLICHTE_ZIN}"
+    return (
+        f"{BRONTITEL}{versie}{toelichting}, {BRONNAAM}{datum}, opgehaald op {herkomst.laaddatum}. {skdb.VERPLICHTE_ZIN}"
+    )
+
+
+def met_hash(regel: str, sha256: str) -> str:
+    """De bronregel met de eerste twaalf tekens van de sha256 van de geladen export, vóór de verplichte zin (#981). Voor
+    de bronvermelding onder het antwoord en op het dashboard, niet voor het toolresultaat: het model heeft de hash niet
+    nodig, en de cijferreeksen erin zouden als bewijsgetal gelden (agent/grounding.py)."""
+    return regel.replace(f". {skdb.VERPLICHTE_ZIN}", f", sha256 {sha256[:12]}. {skdb.VERPLICHTE_ZIN}", 1)
+
+
+def peilmoment(herkomst: skdb.Herkomst) -> str:
+    """'versie 26.6, export van 2026-11-06, opgehaald op 2026-11-09': de lading in woorden, voor de store (#981)."""
+    delen = [f"versie {herkomst.versie or 'onbekend'}", f"export van {herkomst.datum}" if herkomst.datum else None]
+    return ", ".join([*(d for d in delen if d), f"opgehaald op {herkomst.laaddatum}"])
+
+
+# Het peilmoment in de store is de lading plus de verplichte vermelding; de snippet neemt alleen de lading over.
+_VERMELDING = "; "
+
+
+def lading(known: store.KeyMeta | None) -> tuple[str, str] | None:
+    """De lading achter een SKDB-tabel in de store: (peilmoment zonder de vermelding, sha256); None zonder (#981)."""
+    if known is None or known.bron != "skdb" or not known.peilmoment or not known.bronhash:
+        return None
+    return known.peilmoment.partition(_VERMELDING)[0], known.bronhash
 
 
 def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: skdb.Herkomst) -> str:
@@ -397,9 +446,11 @@ def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: skdb.Herkomst) -> str:
         bron="skdb",
         dataset=DATASET,
         laad=(TOOL_GET_STUDIEKEUZE, args),
-        # De vermelding van LCSK is verplicht bij elke uiting (art. 4.1): zo staat ze ook in de kop van een CSV-export
-        # en in de bronregel van een selectie op deze tabel.
-        peilmoment=f"versie {herkomst.versie or 'onbekend'}; {skdb.VERPLICHTE_ZIN} ({skdb.DOCUMENTATIE})",
+        # De lading (#981) en de vermelding van LCSK, die verplicht is bij elke uiting (art. 4.1): zo staan ze ook in de
+        # kop van een CSV-export en in de bronregel van een selectie op deze tabel.
+        peilmoment=f"{peilmoment(herkomst)}{_VERMELDING}{skdb.VERPLICHTE_ZIN} ({skdb.DOCUMENTATIE})",
+        # De sha256 van de export-ZIP, zoals de md5 van een DUO-bestand: manifest, logregel en CSV-kop (#981).
+        bronhash=herkomst.sha256,
         instellingskolom="brin" if "brin" in df.columns else None,
         instellingen=tuple(sorted(df["brin"].dropna().unique())) if "brin" in df.columns else None,
     )
@@ -425,12 +476,17 @@ def _voorbehouden(keuze: Keuze, export: skdb.Export) -> list[str]:
     return per_weergave
 
 
+_NSE_CIJFERS = ("nse_oordeel", *skdb.NSE_THEMAS.values())
+
+
 def met_onzekerheid(rij: dict) -> dict:
-    """Een NSE-oordeel op minder dan MIN_RESPONDENTEN antwoorden krijgt `nse_onzeker: true`: de code markeert het, het
-    model hoeft niet zelf te tellen. Alleen in het toolresultaat en op het dashboard Opleidingen, niet in de tabel in de
-    store (die is gelijk aan de snippet)."""
+    """Een NSE-oordeel of -thema op minder dan MIN_RESPONDENTEN antwoorden, of zonder bekend aantal (een thema zonder
+    algemeen oordeel, #979), krijgt `nse_onzeker: true`: de code markeert het, het model hoeft niet zelf te tellen.
+    Alleen in het toolresultaat en op het dashboard Opleidingen, niet in de tabel in de store (die is gelijk aan de
+    snippet)."""
     n = rij.get("nse_respondenten")
-    if rij.get("nse_oordeel") is not None and isinstance(n, int) and n < MIN_RESPONDENTEN:
+    genoeg = isinstance(n, int) and n >= MIN_RESPONDENTEN
+    if not genoeg and any(rij.get(k) is not None for k in _NSE_CIJFERS):
         return {**rij, "nse_onzeker": True}
     return rij
 
@@ -439,8 +495,14 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
     herkomst = export.herkomst
     df = pd.DataFrame(alle)
     getoond = alle[:MAX_RIJEN]
+    beperkingen = [NIET_IN_DE_BRON]
+    if keuze.weergave == "opleidingen":
+        beperkingen.append(LANDELIJKE_THEMAS)
     if len(alle) > min(MAX_THEMARIJEN, MAX_RIJEN):  # thema's alleen als alles getoond wordt en het weinig is
-        getoond = [{k: v for k, v in r.items() if not k.startswith("nse_") or k in _NSE_KERN} for r in getoond]
+        weg = [{k: v for k, v in r.items() if not k.startswith("nse_") or k in _NSE_KERN} for r in getoond]
+        if weg != getoond:
+            beperkingen.append(THEMAS_WEGGELATEN)
+        getoond = weg
     getoond = [met_onzekerheid(r) for r in getoond]
     uit: dict = {
         "dataset": DATASET,
@@ -450,14 +512,17 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
         "aantal_rijen": len(alle),
         "rijen": getoond,
         "voorbehouden": _voorbehouden(keuze, export),
+        "toolbeperkingen": beperkingen,
         "koppelen": KOPPELEN,
         "instructie": OVERNEMEN,
+        "bestand": BESTAND.format(n=len(alle)),
         "bron": {
             "naam": f"{BRONNAAM}, {BRONTITEL}",
             "regel": bronregel(herkomst, skdb.jaren(export), keuze.weergave),
             "url": skdb.DOCUMENTATIE,
             "versie": herkomst.versie,
             "exportdatum": herkomst.datum,
+            "opgehaald": herkomst.laaddatum,
         },
     }
     if keuze.instelling:
@@ -467,6 +532,7 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
     if not alle:
         uit["melding"] = "Geen rijen voor deze selectie in de Studiekeuzedatabase. Noem geen getal, ook geen 0."
         uit.pop("data_key")
+        uit.pop("bestand")
     return uit
 
 

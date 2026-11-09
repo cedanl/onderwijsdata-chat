@@ -644,8 +644,10 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   - `opleidingen`: per opleiding van een instelling en per vorm het NSE-oordeel met `nse_respondenten` en
     `nse_oordeel_landelijk` (dezelfde studie en vorm over alle instellingen, van LCSK), `doorstroom_jaar2_pct`,
     `diploma_opleiding_pct` en numerus fixus met capaciteit; de NSE-thema's alleen bij hooguit drie rijen, met het
-    aantal respondenten van het algemeen oordeel (het aantal per thema is onbekend, dat zegt een vaste zin).
-  - `studie`: één landelijke studie per vorm, met het aantal aanbieders, `roa_opleidingstype` (de sleutel naar de
+    aantal respondenten van het algemeen oordeel (het aantal per thema is onbekend, dat zegt een vaste zin). De
+    landelijke thema's geeft deze weergave niet; die staan bij `studie`.
+  - `studie`: één landelijke studie per vorm, met het NSE-oordeel en de tien landelijke NSE-thema's (met het aantal
+    respondenten van het algemeen oordeel, #979), het aantal aanbieders, `roa_opleidingstype` (de sleutel naar de
     ROA-cijfers van `get_roa_benchmark`) en de arbeidsmarkt van de SOI-rubriek.
   - `toelating`: per opleiding de wettelijke vooropleidingseisen (`havo`, `vwo`, `mbo`, `aanvullend_havo`,
     `aanvullend_vwo`, uit RATHO via LCSK), één rij per gelijke set eisen met `instellingen` en `aantal_instellingen`.
@@ -655,7 +657,10 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 - **Resultaat:** `rijen` (hooguit 15; `afgekapt` zegt hoeveel er zijn, de hele tabel staat onder `data_key`),
   `selectie` met de opgeloste aanroep, vaste `voorbehouden` per weergave (NSE-jaar en schaal, onzekerheid onder 30
   respondenten, 1cijferHO-jaar, wat de percentages betekenen, de SOI-rubriek, en bij een sortering op een cijfer dat
-  het een rangorde op één cijfer is en geen kwaliteitsoordeel), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
+  het een rangorde op één cijfer is en geen kwaliteitsoordeel), `toolbeperkingen` (#979: wat deze weergave weglaat in
+  vaste woorden, als keuze van de tool en niet als gat in de bron: de landelijke thema's bij `opleidingen`, de thema's
+  bij meer dan drie rijen), `bestand` (de app zet de tabel als CSV onder het antwoord, met de knop "Download data als
+  CSV"; het model zegt dus niet dat het geen bestand kan geven), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
   met de verplichte bronregel van LCSK en het versienummer van de export. Afronden, sorteren en het landelijke oordeel
   doet de code; zie de [verantwoording](databronnen.md#verantwoording-hoe-de-app-selecteert-sorteert-en-afrondt).
 - **Niet uit deze tool (afspraken #878):** aantallen studenten en eerstejaars (DUO: `get_maat`, `get_duo_data`), het
@@ -665,15 +670,21 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   die niet in de export staat, voor een onbekende studie, voor `opleidingen` zonder instelling, opleiding, plaats of
   numerus fixus, en voor een leeg veld in de bron (geen 0). Zonder sleutel, of als de export een andere vorm heeft, een
   bronfout.
-- **Bronregel:** "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}. Er is
-  gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar
+- **Bronregel:** "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum},
+  opgehaald op {laaddatum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar
   lcsk.nl/over-ons/studiekeuzedata-raadplegen (art. 4.1 en 4.2 van de leveringsvoorwaarden v25.1). De herkomst per
   weergave (`_HERKOMST`): `opleidingen` "NSE {jaar}; studieverloop uit 1cijferHO {jaar}, bewerkt door LCSK"; `studie`
   daarbij "arbeidsmarkt uit CBS-microdata en de NAE/HBO-monitor"; `toelating` "vooropleidingseisen uit de regeling
   (RATHO)"; `numerus_fixus` "capaciteit uit Studielink"; `doorstroom_mbo_hbo` "doorstroombestand mbo-hbo, bewerkt door
-  LCSK"; `doorstroom_bachelor_master` zonder toevoeging.
+  LCSK"; `doorstroom_bachelor_master` zonder toevoeging. Onder het antwoord en op het dashboard zet de app de sha256
+  van de geladen export erbij (", sha256 {12 tekens}" vóór de verplichte zin, `studiekeuze.met_hash`, uit de store);
+  het toolresultaat zelf heeft geen hash (#981).
+- **Herkomst in de store (#981):** `peilmoment` "versie {versie}, export van {datum}, opgehaald op {laaddatum}" plus de
+  verplichte zin, en `bronhash` de sha256 van het ZIP-bestand: in het manifest, de logregel en de CSV-kop.
 - **Snippet:** dezelfde functie van `onderwijsbronnen.skdb` met de opgeloste argumenten (`pakketaanroep`), op een
-  export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker.
+  export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker. De kop noemt de export die de app las
+  (versie, exportdatum, laaddatum en sha256), en de snippet print een waarschuwing als de export die hij leest een
+  andere hash heeft.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|

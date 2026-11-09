@@ -335,18 +335,39 @@ def _financien_laadregels(args: dict) -> list[str]:
     ]
 
 
-def _skdb_laadregels(args: dict) -> list[str]:
+def _skdb_laadregels(args: dict, lading: tuple[str, str] | None = None) -> list[str]:
     """De Studiekeuzedatabase (#957): dezelfde pakketfunctie als de tool (`studiekeuze.pakketaanroep`), op de export van
     vandaag, met de BRIN- en opleidingscode waartoe de app de vraag herleidde. De sleutel komt uit de omgeving, nooit
-    uit de snippet."""
+    uit de snippet.
+
+    LCSK levert alleen de export van vandaag, dus de snippet leest live (#981). Met de `lading` van de app (peilmoment en
+    sha256 uit de store) noemt de kop welke export de app las, en waarschuwt de snippet als hij een andere leest: dan
+    kunnen de cijfers afwijken van wat de app toonde."""
     functie, kwargs = studiekeuze.pakketaanroep(args)
     argumenten = "".join(f", {naam}={_lit(waarde)}" for naam, waarde in kwargs.items())
+    sleutel = f"de sleutel komt uit {_lit('STUDIEKEUZEDATABASE_API_KEY')} (eigen sleutel van LCSK)"
+    if lading is None:
+        kop, controle = [f"# De export van vandaag; {sleutel}."], []
+    else:
+        beschrijving, sha256 = lading
+        kop = [
+            f"# De app las de export van LCSK met {beschrijving},",
+            f"# sha256 {sha256}.",
+            "# Deze code leest de export van vandaag; een andere hash is een andere export.",
+            f"# {sleutel[0].upper()}{sleutel[1:]}.",
+        ]
+        controle = [
+            f"if export.herkomst.sha256 != {_lit(sha256)}:",
+            '    print(f"Let op: een andere export dan de app las (versie {export.herkomst.versie} van '
+            '{export.herkomst.datum}); de cijfers kunnen afwijken.")',
+        ]
     return [
         "import pandas as pd",
         "from onderwijsbronnen import skdb",
         "",
-        f"# De export van vandaag; de sleutel komt uit {_lit('STUDIEKEUZEDATABASE_API_KEY')} (eigen sleutel van LCSK).",
+        *kop,
         "export = skdb.lees(*skdb.haal_op())",
+        *controle,
         f"df = pd.DataFrame(skdb.{functie}(export{argumenten}))",
         f"# {studiekeuze.skdb.VERPLICHTE_ZIN} ({studiekeuze.skdb.DOCUMENTATIE})",
     ]
@@ -454,6 +475,13 @@ def _rio_zonder_peildag(laad: tuple[str, dict], known) -> list[str]:
     ]
 
 
+def _skdb_lading(laad: tuple[str, dict], known) -> dict:
+    """De lading die de app las, voor de kop van een SKDB-snippet (#981); leeg bij een andere bron of zonder lading."""
+    if laad[0] != TOOL_GET_STUDIEKEUZE or (gevonden := studiekeuze.lading(known)) is None:
+        return {}
+    return {"lading": gevonden}
+
+
 def _laadregels(data_key: str, recept_van: Receptbron | None = None, stappen: int = 0) -> list[str]:
     """Regels die `df` zetten voor een key, zonder `store`."""
     recept = recept_van(data_key) if recept_van else None
@@ -473,7 +501,7 @@ def _laadregels(data_key: str, recept_van: Receptbron | None = None, stappen: in
         ]
     laad = known.laad if known and known.laad else _recept_laad(recept) or _bron_van_key(data_key)
     if laad:
-        regels = _LAADREGELS[laad[0]](*_met_geldig_op(laad, known))
+        regels = _LAADREGELS[laad[0]](*_met_geldig_op(laad, known), **_skdb_lading(laad, known))
         return [*regels, *_rio_zonder_peildag(laad, known)]
     return [
         "import pandas as pd",

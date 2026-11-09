@@ -7,8 +7,8 @@ meestal gelijk aan de CROHO-code, niet altijd: samengevoegde studies).
 
 - `opleidingen`: per opleiding van een instelling en per vorm (voltijd/deeltijd/duaal): NSE-oordeel naast het
   landelijke oordeel van dezelfde studie, doorstroom naar jaar 2, diplomarendement en numerus fixus;
-- `studie`: per landelijke studie en vorm: NSE, rendement, aantal aanbieders, het ROA-opleidingstype en de
-  arbeidsmarkt van de SOI-rubriek;
+- `studie`: per landelijke studie en vorm: NSE (met de landelijke thema's), rendement, aantal aanbieders, het
+  ROA-opleidingstype en de arbeidsmarkt van de SOI-rubriek;
 - `toelating`: de wettelijke vooropleidingseisen (havo, vwo, mbo) per opleiding;
 
 Wat een andere bron al leidend heeft, staat hier niet (afspraken #878): aantallen studenten en eerstejaars (DUO telt
@@ -253,9 +253,10 @@ def zoek_studies(export: Export, tekst: str, *, soort_ho: str | None = None, gra
     return sorted(uit, key=lambda r: (str(r["studie"]), str(r["soort_ho"]), str(r["graad"])))
 
 
-def studie(export: Export, studiecode: int) -> list[dict]:
-    """Eén landelijke studie per vorm: NSE, rendement, aantal aanbieders, het ROA-opleidingstype (de sleutel naar de
-    ROA-cijfers) en de arbeidsmarkt van haar SOI-rubriek (per rubriek, niet per studie)."""
+def studie(export: Export, studiecode: int, *, themas: bool = True) -> list[dict]:
+    """Eén landelijke studie per vorm: NSE (algemeen oordeel en de tien thema's), rendement, aantal aanbieders, het
+    ROA-opleidingstype (de sleutel naar de ROA-cijfers) en de arbeidsmarkt van haar SOI-rubriek (per rubriek, niet per
+    studie). Het aantal respondenten is dat van het algemeen oordeel: per thema heeft de bron geen aantal (#979)."""
     studies = {_code(r.get("studieOpleidingCodeSkdb")): r for r in export.rijen("studies")}
     s = studies.get(studiecode)
     if s is None:
@@ -289,6 +290,8 @@ def studie(export: Export, studiecode: int) -> list[dict]:
                 for veld, uit in ARBEIDSMARKT.items()
             },
         }
+        if themas:
+            rij.update({uit: _getal(v.get(veld), 2) for veld, uit in NSE_THEMAS.items()})
         rijen.append(rij)
     return sorted(rijen, key=lambda r: list(VORMEN.values()).index(r["vorm"]) if r["vorm"] in VORMEN.values() else 9)
 

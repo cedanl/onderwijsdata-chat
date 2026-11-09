@@ -140,12 +140,21 @@ def _bestand(tool: str, result: str) -> dict | None:
     return bron if isinstance(bron, dict) else None
 
 
+def _met_hash(regel: str, result: str) -> str:
+    """De bronregel van de Studiekeuzedatabase met de sha256 van de geladen export uit de store (#981): niet uit het
+    toolresultaat, waar de cijferreeksen van een hash als bewijsgetal zouden gelden."""
+    for key in stapkeys(result):
+        if gevonden := studiekeuze.lading(store.meta(laadkey(key))):
+            return studiekeuze.met_hash(regel, gevonden[1])
+    return regel
+
+
 def _bestandsbron(tool: str, result: str) -> list[Bronregel]:
     if (bron := _bestand(tool, result)) is None:
         return []
     if isinstance(regel := bron.get("regel"), str) and regel:
         # Een bron met een voorgeschreven bronregel (WOPI: "WOPI 2025, Universiteiten van Nederland, …", #936).
-        return [(regel, None)]
+        return [(_met_hash(regel, result), None)]
     delen = [_BESTANDSBRONNEN[tool]]
     delen += [f"{woord} {bron[veld]}" for veld, woord in _BRONVELDEN.items() if bron.get(veld)]
     return [(", ".join(delen), None)]

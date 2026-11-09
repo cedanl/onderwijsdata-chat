@@ -5,6 +5,8 @@ Er staat geen data van LCSK in de repo; `skdb.proefbestand` bouwt een export met
 
 from __future__ import annotations
 
+import hashlib
+
 import httpx
 import pytest
 
@@ -91,6 +93,16 @@ def test_een_onbekende_bestandsnaam_geeft_geen_versie():
     assert skdb.herkomst(b"x", "iets.zip").versie is None
 
 
+def test_de_herkomst_legt_editie_hash_en_laaddatum_vast():
+    """#981: versie en exportdatum (uit de bestandsnaam), de sha256 van het geladen bestand en de laaddatum."""
+    inhoud, herkomst = proefbestand.standaard()
+    assert (herkomst.versie, herkomst.datum) == ("26.6", "2026-11-06")
+    assert herkomst.sha256 == hashlib.sha256(inhoud).hexdigest()
+    assert herkomst.laaddatum == herkomst.opgehaald[:10] and len(herkomst.laaddatum) == 10
+    # De proefexport is elke keer dezelfde bytes (vaste tijdstempels in de ZIP), dus dezelfde hash.
+    assert proefbestand.zip_bytes() == proefbestand.zip_bytes()
+
+
 # --- overzichten ------------------------------------------------------------------------------------------------
 
 
@@ -162,6 +174,16 @@ def test_studie_met_arbeidsmarkt_van_de_soi_rubriek(export):
     # Het ROA-opleidingstype als sleutel naar ROA; de aansluiting studie-baan zelf komt uit ROA-AIS (#878).
     assert voltijd["roa_opleidingstype"] == "hbo - ict" and "aansluiting_studie_baan" not in voltijd
     assert skdb.studie(export, 12345) == []
+
+
+def test_studie_geeft_de_landelijke_nse_themas(export):
+    """#979: de landelijke thema's staan in `studievormen`; de weergave gaf ze niet door, en het antwoord noemde dat
+    een gat in de bron. Het aantal respondenten is dat van het algemeen oordeel: per thema heeft de bron er geen."""
+    voltijd, deeltijd = skdb.studie(export, 30020)
+    assert set(skdb.NSE_THEMAS.values()) <= set(voltijd)
+    assert (voltijd["nse_docenten"], voltijd["nse_inhoud_opzet"], voltijd["nse_respondenten"]) == (3.59, 3.55, 1000)
+    assert deeltijd["nse_docenten"] is None  # leeg in de bron blijft leeg
+    assert not set(skdb.NSE_THEMAS.values()) & set(skdb.studie(export, 30020, themas=False)[0])
 
 
 def test_zoek_studies_op_naam_of_code(export):

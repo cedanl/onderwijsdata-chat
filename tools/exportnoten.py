@@ -14,10 +14,23 @@ ONVOLLEDIG_EXPORT = (
     "Aantallen, sommen en totalen die je hieruit berekent, kloppen dus niet."
 )
 
+# De hash van het geladen bronbestand (KeyMeta.bronhash) per bron: de md5 van een DUO-bestand (#717), de sha256 van de
+# export van de Studiekeuzedatabase (#981). Een SKDB-hash heet nooit "md5 van het DUO-bestand".
+_BRONHASH = {
+    "duo": (
+        "md5 van het DUO-bestand{welke}: {hash} (zoals DUO het levert, na te rekenen met md5sum; "
+        "zie docs/reproducibility.md)"
+    ),
+    "skdb": (
+        "sha256 van de export van de Studiekeuzedatabase{welke}: {hash} (het ZIP-bestand van LCSK zoals de app het "
+        "ophaalde, na te rekenen met sha256sum; zie docs/reproducibility.md)"
+    ),
+}
+
 
 def _hashregels(bron: str, meerdere: bool) -> list[str]:
-    """De inhoudshash of DUO-md5 van één geladen tabel; bij meer bronnen met de dataset erbij, anders zijn ze niet uit
-    elkaar te houden."""
+    """De inhoudshash of de hash van het bronbestand (DUO-md5, SKDB-sha256) van één geladen tabel; bij meer bronnen
+    met de dataset erbij, anders zijn ze niet uit elkaar te houden."""
     known = store.meta(bron)
     welke = f" ({known.dataset})" if meerdere and known is not None else ""
     regels = []
@@ -27,18 +40,16 @@ def _hashregels(bron: str, meerdere: bool) -> list[str]:
             "zie docs/reproducibility.md)"
         )
     if known is not None and known.bronhash:
-        regels.append(
-            f"md5 van het DUO-bestand{welke}: {known.bronhash} (zoals DUO het levert, na te rekenen met md5sum; "
-            "zie docs/reproducibility.md)"
-        )
+        regels.append(_BRONHASH.get(known.bron, _BRONHASH["duo"]).format(welke=welke, hash=known.bronhash))
     return regels
 
 
 def herkomstregels(key: str) -> list[str]:
-    """Bron, selecties, afronding, inhoudshash of DUO-md5, afkap en onderdrukte cellen van `key`, zonder '#'.
+    """Bron, selecties, afronding, inhoudshash of de hash van het bronbestand (DUO-md5, SKDB-sha256), afkap en
+    onderdrukte cellen van `key`, zonder '#'.
 
     Over elke geladen tabel achter `key`, niet alleen die van de eerste ouder (#977): een koppeling van SKDB met DUO
-    noemt LCSK en de md5 van het DUO-bestand, in welke volgorde het script ze ook las.
+    noemt LCSK met de sha256 van haar export en de md5 van het DUO-bestand, in welke volgorde het script ze ook las.
     """
     regels = store.herkomst(key)
     bronnen = store.bronkeys(key)
