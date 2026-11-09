@@ -500,6 +500,61 @@ def test_een_gesprek_zonder_exporteerbare_tabel_kent_bij_heropenen_toch_zijn_dat
     assert store.get(bron) is not None
 
 
+@pytest.fixture
+def skdb_proef(monkeypatch):
+    """De Studiekeuzedatabase met de proefexport, met sleutel, zonder netwerk (#957)."""
+    from onderwijsbronnen import skdb
+    from onderwijsbronnen.skdb import proefbestand
+
+    from core import config
+    from data import instellingen
+    from tools import studiekeuze
+
+    monkeypatch.setattr(config, "STUDIEKEUZEDATABASE_API_KEY", "proefsleutel")
+    monkeypatch.setattr(skdb, "haal_op", lambda *a, **k: proefbestand.standaard())
+    hu = {"naam": "Hogeschool Utrecht", "sector": "hbo", "instellingscode": "25DW"}
+    monkeypatch.setattr(instellingen, "instellingsprofiel", lambda naam: hu if naam.lower() == "hu" else None)
+    studiekeuze._export.cache_clear()
+    yield skdb
+    studiekeuze._export.cache_clear()
+
+
+def test_de_csv_van_een_koppeling_noemt_lcsk_ook_na_heropenen_van_het_gesprek(client, skdb_proef):
+    """#977: DUO vooraan, SKDB via store_get. Na heropenen en nadat de store de SKDB-tabel kwijt was (TTL, #864) komt
+    die uit haar recept terug, en de CSV van de koppeling noemt LCSK met versie en link."""
+    from tools.schemas import TOOL_GET_STUDIEKEUZE
+    from tools.studiekeuze import get_studiekeuze
+
+    session = {"username": "alice"}
+    with _bronnen():
+        duo = _stap(session, *_ROOTS["duo"])
+        args = {"instelling": "HU", "opleiding": "ICT", "vorm": "voltijd"}
+        nse = _stap(
+            session, TOOL_GET_STUDIEKEUZE, args, get_studiekeuze(instelling="HU", opleiding="ICT", vorm="voltijd")
+        )
+        code = f"nse = store_get('{nse}')\nresult = df.head(1).assign(NSE=nse['nse_oordeel'].iloc[0]).to_dict(orient='records')"
+        koppeling = _stap(
+            session, TOOL_RUN_ANALYSIS, {"code": code, "data_key": duo}, _analyse(code=code, data_key=duo)
+        )
+        recepten.bewaar(
+            "alice",
+            "c1",
+            [{"role": "assistant", "tools": [{"dataKey": duo}, {"dataKey": nse}, {"exportKey": koppeling}]}],
+        )
+        store._verwijder(nse, "leeftijd")
+
+        heropend, _ = _heropen("alice", "c1")
+        assert set(heropend["data_keys"]) == {duo, nse, koppeling}
+        assert not herstel_data_keys(heropend, "alice").onherstelbaar
+        resp = _csv(client, koppeling)
+
+    assert resp.status_code == 200
+    kop = [r.removeprefix("# ") for r in resp.text.lstrip("﻿").splitlines() if r.startswith("# ")]
+    (lcsk,) = [r for r in kop if skdb_proef.VERPLICHTE_ZIN in r]
+    assert lcsk.startswith("bron: SKDB, ") and "versie 26.6" in lcsk and skdb_proef.DOCUMENTATIE in lcsk
+    assert any(r.startswith("bron: DUO, dataset p01hoinges") for r in kop)
+
+
 def test_een_heropend_gesprek_kent_zijn_data_weer_en_herlaadt_haar_voor_een_rapport(database):
     with _bronnen():
         session = {"username": "alice"}

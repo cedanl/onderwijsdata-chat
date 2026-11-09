@@ -121,7 +121,12 @@ def _controle(run: _Run) -> afhankelijkheid.Toets | None:
 
 
 def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:
-    """Rijen als resultaat krijgen een eigen key, afgeleid van de eerste bron; een los getal niet."""
+    """Rijen als resultaat krijgen een eigen key, afgeleid van de eerste bron; een los getal niet.
+
+    De eerste bron geeft de vorm van de meta, maar de key rust op elke gelezen tabel (#977): de herkomst loopt via
+    `gelezen` (store.herkomst), de afkap telt over alle (#210) en de key is zo oud als de oudste, zodat hij na de TTL
+    (#864) niet langer blijft dan een bron waar zijn herkomst op rust.
+    """
     if not (isinstance(run.result, list) and run.result):
         return None
     store_df = pd.DataFrame(run.result)
@@ -129,13 +134,16 @@ def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:
     if not run.bronnen:
         store.put(result_key, store_df)
         return result_key
+    gelezen = [m for k in run.bronnen if (m := store.meta(k)) is not None]
     store.derive(
         run.bronnen[0],
         result_key,
         store_df,
         stap="eigen berekening (run_analysis)",
         gelezen=run.bronnen,
+        volledig=run.complete,
         scriptconstanten=controle.constanten if controle else (),
+        **({"opgehaald_op": min(m.opgehaald_op for m in gelezen)} if gelezen else {}),
         **dekking.van(store_df, store.meta(run.bronnen[0])),
     )
     return result_key
