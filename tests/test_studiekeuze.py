@@ -24,7 +24,8 @@ from agent.meetwaarden import meetwaarden
 from agent.selectie import ontbrekende_instellingen
 from core import config
 from data import instellingen
-from tools import beschikbaarheid, catalog, snippet, store, studiekeuze
+from prompts import SYSTEM_PROMPT
+from tools import beschikbaarheid, catalog, csv_export, snippet, store, studiekeuze
 from tools.query import query_data
 from tools.schemas import SCHEMA_GET_STUDIEKEUZE, TOOL_GET_STUDIEKEUZE, TOOL_SCHEMAS
 
@@ -110,6 +111,54 @@ def test_studie_met_arbeidsmarkt():
         ("deeltijd", None),
     ]
     assert studiekeuze.ARBEIDSMARKT in uit["voorbehouden"]
+
+
+def test_de_studie_geeft_de_landelijke_nse_themas_met_het_aantal_respondenten():
+    """#979 (B1): "De bron geeft de thema's alleen voor HU, niet landelijk" was een keuze van de tool, geen gat in de
+    bron. De weergave studie geeft ze nu, met het aantal respondenten van het algemeen oordeel."""
+    voltijd, deeltijd = _uit(weergave="studie", opleiding="ICT")["rijen"]
+    assert (voltijd["nse_docenten"], voltijd["nse_respondenten"]) == (3.59, 1000)
+    assert deeltijd["nse_docenten"] is None
+
+
+def test_een_toolbeperking_heet_een_toolbeperking_niet_een_gat_in_de_bron(monkeypatch):
+    """#979 (B1): wat de weergave weglaat, zegt de toolmelding in vaste woorden: 'deze weergave', niet 'de bron'."""
+    uit = _uit(instelling="HU", opleiding="ICT", vorm="voltijd")
+    assert studiekeuze.LANDELIJKE_THEMAS in uit["toolbeperkingen"]
+    assert "deze weergave geeft de landelijke thema's niet door" in studiekeuze.LANDELIJKE_THEMAS
+    assert "weergave studie" in studiekeuze.LANDELIJKE_THEMAS
+    assert studiekeuze.NIET_IN_DE_BRON in uit["toolbeperkingen"]
+    assert "niet dat de bron het niet heeft" in studiekeuze.NIET_IN_DE_BRON
+    assert "thema" not in " ".join(_uit(weergave="studie", opleiding="ICT")["toolbeperkingen"])
+    # Meer rijen dan MAX_THEMARIJEN: de thema's vallen weg uit het resultaat, en dat staat er dan bij.
+    monkeypatch.setattr(studiekeuze, "MAX_THEMARIJEN", 1)
+    veel = _uit(opleiding="ICT")
+    assert "nse_docenten" not in veel["rijen"][0]
+    assert studiekeuze.THEMAS_WEGGELATEN in veel["toolbeperkingen"]
+    assert "niet uit de bron" in studiekeuze.THEMAS_WEGGELATEN
+
+
+def test_de_toolmelding_wijst_naar_de_csv_knop_in_plaats_van_geen_bestand():
+    """#979 (S1): het antwoord zei geen bestand te kunnen klaarzetten; de app zet de tabel als CSV onder het antwoord."""
+    uit = _uit(instelling="HU", opleiding="ICT")
+    assert uit["bestand"] == studiekeuze.BESTAND.format(n=uit["aantal_rijen"])
+    assert csv_export.KNOP in uit["bestand"] and "niet dat je geen bestand kunt geven" in uit["bestand"]
+    assert "bestand" not in _uit(instelling="21PB", opleiding="ICT")  # geen rijen, geen tabel, geen knop
+    # Het label is dat van de knop in de frontend, en de prompt noemt dezelfde knop.
+    assert f"'{csv_export.KNOP}'" in (ROOT / "frontend/src/components/DataExport.jsx").read_text()
+    assert csv_export.KNOP in SYSTEM_PROMPT and "geen bestand" in SYSTEM_PROMPT
+
+
+def test_de_kleine_n_bewaking_geldt_ook_voor_de_themas():
+    """#979: een thema zonder algemeen oordeel heeft geen bekend aantal respondenten: onzeker, net als n < 30."""
+
+    def onzeker(**rij) -> bool:
+        return studiekeuze.met_onzekerheid(rij).get("nse_onzeker", False)
+
+    assert onzeker(nse_oordeel=None, nse_docenten=3.5, nse_respondenten=None)
+    assert onzeker(nse_oordeel=None, nse_docenten=3.5, nse_respondenten=12)
+    assert not onzeker(nse_docenten=3.5, nse_respondenten=300)
+    assert not onzeker(nse_oordeel=None, nse_respondenten=None)  # geen NSE-cijfer, niets om onzeker te noemen
 
 
 def test_toelating_per_opleiding_met_vaste_zin():

@@ -81,11 +81,13 @@ STUDIES = [
 
 
 def _studievorm(code, vorm_id, graad, soort, rubriek, oordeel, eerstejaars):
+    # De landelijke NSE-thema's alleen bij voltijd: bij deeltijd leeg, zoals een thema in de bron leeg kan zijn.
+    themas = {"docentenGewogenGemiddelde": 3.5857, "inhoudOpzetGewogenGemiddelde": 3.5512} if vorm_id == 1 else {}
     return {
         "studieOpleidingCodeSkdb": code, "studieVormId": vorm_id, "studieVorm": {1: "Voltijd", 2: "Deeltijd"}[vorm_id],
         "graad": graad, "soortHo": soort, "rubriekCode": rubriek, "algemeenOordeelGewogenGemiddelde": oordeel,
         "algemeenOordeelAantal": 1000, "eersteJaarAantal": eerstejaars, "doorstroomJaar2Perc": 75.55,
-        "opleidingDiplomasPerc": 50.0,
+        "opleidingDiplomasPerc": 50.0, **themas,
     }
 
 

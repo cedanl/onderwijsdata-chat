@@ -543,7 +543,9 @@ duaal) zijn het er ruim 4.400.
 - **Wat er niet in staat:** mbo-opleidingen (van het mbo alleen waar mbo-4-gediplomeerden in het hbo naartoe gaan);
   een vraag over een mbo-instelling krijgt een vaste melding. Reeksen: de export is de stand van nu, één NSE-jaar en
   één 1cijferHO-jaar. Het aantal respondenten per NSE-thema: alleen het algemeen oordeel heeft een aantal; bij een
-  thema noemt de chat dat aantal, met de zin dat het aantal per thema onbekend is. Arbeidsmarktcijfers bestaan alleen
+  thema noemt de chat dat aantal, met de zin dat het aantal per thema onbekend is. De landelijke thema's staan wel in
+  de bron (`studievormen`) en in de weergave `studie` (#979); de weergave `opleidingen` geeft alleen het landelijke
+  algemeen oordeel, en zegt dat als beperking van de weergave, niet van de bron. Arbeidsmarktcijfers bestaan alleen
   voor voltijd hbo-bachelor, associate degree en wo-master, gaan over een SOI-rubriek, niet over één studie, en vormen
   geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
@@ -616,8 +618,9 @@ doet de code, en het model neemt de getallen letterlijk over.
 - **Landelijk oordeel:** naast het NSE-oordeel van een opleiding staat `nse_oordeel_landelijk`, het oordeel over
   dezelfde landelijke studie in dezelfde vorm over alle instellingen samen, zoals LCSK het berekent (tabel
   `studievormen`). Het is geen gemiddelde van de getoonde rijen.
-- **Onzekerheid:** het antwoord noemt het aantal respondenten. Een oordeel op minder dan 30 respondenten markeert de
-  code zelf als onzeker (`nse_onzeker`), en een verschil van een paar honderdsten heet geen verschil.
+- **Onzekerheid:** het antwoord noemt het aantal respondenten. Een oordeel of thema op minder dan 30 respondenten, of
+  een thema zonder bekend aantal (geen algemeen oordeel in die rij), markeert de code zelf als onzeker (`nse_onzeker`,
+  #979), en een verschil van een paar honderdsten heet geen verschil.
 - **Omvang:** het toolresultaat toont hooguit 15 rijen (de thema's van de NSE alleen bij hooguit 3) en zegt hoeveel er
   zijn; de hele selectie staat in de store (`skdb:<weergave>:…`, dataset `skdb:studiekeuzedatabase`).
 - **Dashboard Opleidingen:** dezelfde rijen per opleiding van één instelling, op naam en zonder rangorde; wat het toont

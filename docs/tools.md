@@ -633,8 +633,10 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   - `opleidingen`: per opleiding van een instelling en per vorm het NSE-oordeel met `nse_respondenten` en
     `nse_oordeel_landelijk` (dezelfde studie en vorm over alle instellingen, van LCSK), `doorstroom_jaar2_pct`,
     `diploma_opleiding_pct` en numerus fixus met capaciteit; de NSE-thema's alleen bij hooguit drie rijen, met het
-    aantal respondenten van het algemeen oordeel (het aantal per thema is onbekend, dat zegt een vaste zin).
-  - `studie`: één landelijke studie per vorm, met het aantal aanbieders, `roa_opleidingstype` (de sleutel naar de
+    aantal respondenten van het algemeen oordeel (het aantal per thema is onbekend, dat zegt een vaste zin). De
+    landelijke thema's geeft deze weergave niet; die staan bij `studie`.
+  - `studie`: één landelijke studie per vorm, met het NSE-oordeel en de tien landelijke NSE-thema's (met het aantal
+    respondenten van het algemeen oordeel, #979), het aantal aanbieders, `roa_opleidingstype` (de sleutel naar de
     ROA-cijfers van `get_roa_benchmark`) en de arbeidsmarkt van de SOI-rubriek.
   - `toelating`: per opleiding de wettelijke vooropleidingseisen (`havo`, `vwo`, `mbo`, `aanvullend_havo`,
     `aanvullend_vwo`, uit RATHO via LCSK), één rij per gelijke set eisen met `instellingen` en `aantal_instellingen`.
@@ -644,7 +646,10 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 - **Resultaat:** `rijen` (hooguit 15; `afgekapt` zegt hoeveel er zijn, de hele tabel staat onder `data_key`),
   `selectie` met de opgeloste aanroep, vaste `voorbehouden` per weergave (NSE-jaar en schaal, onzekerheid onder 30
   respondenten, 1cijferHO-jaar, wat de percentages betekenen, de SOI-rubriek, en bij een sortering op een cijfer dat
-  het een rangorde op één cijfer is en geen kwaliteitsoordeel), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
+  het een rangorde op één cijfer is en geen kwaliteitsoordeel), `toolbeperkingen` (#979: wat deze weergave weglaat in
+  vaste woorden, als keuze van de tool en niet als gat in de bron: de landelijke thema's bij `opleidingen`, de thema's
+  bij meer dan drie rijen), `bestand` (de app zet de tabel als CSV onder het antwoord, met de knop "Download data als
+  CSV"; het model zegt dus niet dat het geen bestand kan geven), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
   met de verplichte bronregel van LCSK en het versienummer van de export. Afronden, sorteren en het landelijke oordeel
   doet de code; zie de [verantwoording](databronnen.md#verantwoording-hoe-de-app-selecteert-sorteert-en-afrondt).
 - **Niet uit deze tool (afspraken #878):** aantallen studenten en eerstejaars (DUO: `get_maat`, `get_duo_data`), het

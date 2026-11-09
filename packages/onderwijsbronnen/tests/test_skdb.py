@@ -164,6 +164,16 @@ def test_studie_met_arbeidsmarkt_van_de_soi_rubriek(export):
     assert skdb.studie(export, 12345) == []
 
 
+def test_studie_geeft_de_landelijke_nse_themas(export):
+    """#979: de landelijke thema's staan in `studievormen`; de weergave gaf ze niet door, en het antwoord noemde dat
+    een gat in de bron. Het aantal respondenten is dat van het algemeen oordeel: per thema heeft de bron er geen."""
+    voltijd, deeltijd = skdb.studie(export, 30020)
+    assert set(skdb.NSE_THEMAS.values()) <= set(voltijd)
+    assert (voltijd["nse_docenten"], voltijd["nse_inhoud_opzet"], voltijd["nse_respondenten"]) == (3.59, 3.55, 1000)
+    assert deeltijd["nse_docenten"] is None  # leeg in de bron blijft leeg
+    assert not set(skdb.NSE_THEMAS.values()) & set(skdb.studie(export, 30020, themas=False)[0])
+
+
 def test_zoek_studies_op_naam_of_code(export):
     assert [(r["studiecode"], r["graad"]) for r in skdb.zoek_studies(export, "psycho")] == [(56604, "Bachelor"), (60260, "Master")]
     assert [r["studiecode"] for r in skdb.zoek_studies(export, "psycho", graad="master")] == [60260]
