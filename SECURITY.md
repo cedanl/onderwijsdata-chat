@@ -409,10 +409,12 @@ elke instelling er onbegrensd bij kunnen en kon één consument de chat voor ied
   sleutel), een bovengrens op gelijktijdige verzoeken (503), een tijdslimiet per toolaanroep en een begrensd resultaat.
   Toolaanroepen draaien in eigen threads, zodat een hangende aanroep de threads van de rest van de app niet opmaakt.
 - Alleen POST, stateless: geen GET-stroom die open blijft, geen sessies in het geheugen.
-- Alleen de catalogustools: openbare metadata, geen datastore, geen modelaanroep. Toolargumenten alleen als kenmerk in
-  het log.
+- Alleen de catalogustools en twee sessieloze datatools (#708): openbare metadata en open DUO-aantallen, geen
+  modelaanroep, geen `run_analysis`, geen `data_key` naar buiten. Een datatool laadt open brondata in de gedeelde,
+  begrensde cache van de app (`STORE_MAX_MB`), dezelfde als de chat; een vergelijking is begrensd op acht instellingen,
+  geweigerd vóór het laden. Toolargumenten alleen als kenmerk in het log.
 
-Tests: `tests/test_mcp_http.py`.  
+Tests: `tests/test_mcp_http.py`, `tests/test_mcp_datatools.py`.  
 **Open:** de per-IP-grens ziet achter de ingress het adres van de ingress zolang `FORWARDED_ALLOW_IPS` niet gezet is
 (zie S5) en werkt dan als totaalgrens voor `/mcp`. De definitieve waarden van de limieten volgen uit de
 belastingsmeting (#942).

@@ -130,4 +130,4 @@ uv sync
 uv run python mcp_server.py
 ```
 
-Drie tools met dezelfde schema's als in de chat: `search_catalog` (altijd één JSON-envelope met `status`, `kandidaten` en `vervolgstap`), `dataset_details` en `dataset_counts`. Geen API-sleutel nodig; de datatools blijven bij de chat. Dezelfde server staat ook op `/mcp` in de app (streamable HTTP, voor SURF AI Chat), alleen met sleutels in `MCP_API_KEYS`. Zie [docs/mcp.md](docs/mcp.md) voor de clientconfiguratie.
+Drie catalogustools met dezelfde schema's als in de chat: `search_catalog` (altijd één JSON-envelope met `status`, `kandidaten` en `vervolgstap`), `dataset_details` en `dataset_counts`. Daarnaast twee sessieloze datatools die in één aanroep ophalen en rekenen met de code van de chat: `aantallen_per_jaar` (studenten, eerstejaars of inschrijvingen van een instelling of opleiding per studiejaar, met verloop) en `vergelijk_instellingen`. Geen API-sleutel nodig. Dezelfde server staat ook op `/mcp` in de app (streamable HTTP, voor SURF AI Chat), alleen met sleutels in `MCP_API_KEYS`. Zie [docs/mcp.md](docs/mcp.md) voor de clientconfiguratie.

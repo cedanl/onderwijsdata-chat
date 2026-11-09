@@ -282,6 +282,9 @@ class Plan:
     bestand: int | None  # DUO: de index van het bestand
     opleiding: str | None = None  # geslacht per opleiding (#742): de opleiding zoals het model haar noemde
     bestanden: tuple[int, int] | None = None  # en dan het niveau- en het geslachtsbestand
+    # Aantallen van één opleiding (#708, `per_opleiding`): de opleiding die de code koos; `bestand` is dan het
+    # niveaubestand.
+    per_opleiding: geslacht_opleiding.Opleiding | None = None
 
 
 def _jaren(schooljaren) -> tuple[int, ...] | str:
@@ -325,15 +328,19 @@ def _landelijkplan(
     return Plan(recept, sector, vorm, jaren, None, None)
 
 
+def _sectorbestand(recept: DuoRecept, sector: str, soort: str) -> int | None:
+    """Het bestand van deze maat en sector met `soort` in de titel ("niveau opleiding", "geslacht")."""
+    return _bestand(recept.dataset, (recept.bestand[sector][0], soort))
+
+
 def _geslachtplan(p: Plan, opleiding: str) -> Plan | str:
     """Geslacht per opleiding (#742): het niveau- en het geslachtsbestand van dezelfde maat en sector."""
     recept = p.recept
     assert isinstance(recept, DuoRecept)
     if p.vorm != ALLE:
         return "Het geslachtsbestand kent geen opleidingsvorm: laat vorm weg bij opleiding_naar_geslacht."
-    sectorwoord = recept.bestand[p.sector][0]
-    niveau = _bestand(recept.dataset, (sectorwoord, "niveau opleiding"))
-    geslacht = _bestand(recept.dataset, (sectorwoord, "geslacht"))
+    niveau = _sectorbestand(recept, p.sector, "niveau opleiding")
+    geslacht = _sectorbestand(recept, p.sector, "geslacht")
     if niveau is None or geslacht is None:
         return (
             f"{recept.dataset} heeft voor {p.sector} geen niveau- en geslachtsbestand; geslacht per opleiding kan niet."
@@ -379,13 +386,43 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None, opleid
     return _geslachtplan(gewoon, opleiding) if opleiding else gewoon
 
 
+def per_opleiding(p: Plan, opleiding: str) -> Plan | str:
+    """Hetzelfde plan voor één opleiding (#708): het niveaubestand van de maat, met de opleiding die de code kiest.
+
+    De opleiding komt uit de rijen van de instelling in dat bestand, op CROHO-code of naam, zoals bij geslacht per
+    opleiding (`geslacht_opleiding.kies_opleiding`): meer passende opleidingen of geen is een melding, geen gok. Laden
+    gaat met get_duo_data, dus met de scopegrens en het maskeren van -1; het rekenen daarna met query_data (`_duo`).
+    Alleen de MCP-datatools (`tools/kernvragen.py`) gebruiken dit; de chat kiest hier nog zelf een bestand.
+    """
+    r = p.recept
+    if not isinstance(r, DuoRecept) or p.instelling is None:
+        return "Per opleiding kan alleen bij een hbo- of wo-instelling: DUO telt mbo-opleidingen in een ander bestand."
+    if p.vorm != ALLE:
+        return "Het bestand per opleiding kent geen opleidingsvorm: laat vorm weg bij een opleiding."
+    bestand = _sectorbestand(r, p.sector, "niveau opleiding")
+    if bestand is None:
+        return f"{r.dataset} heeft voor {p.sector} geen bestand per opleiding."
+    geladen = _json(get_duo_data(r.dataset, bestand))
+    if not isinstance(geladen, dict) or "data_key" not in geladen:
+        return _melding(geladen)
+    df = store.get(str(geladen["data_key"]))
+    if df is None:
+        return f"{r.dataset}, bestand {bestand}, is net uit het geheugen verdwenen; probeer het opnieuw."
+    opl = geslacht_opleiding.kies_opleiding(df[df[r.instellingskolom] == p.instelling["instellingscode"]], opleiding)
+    if isinstance(opl, str):
+        return f"{opl} (instelling {p.instelling['naam']}, {r.dataset})"
+    return replace(p, bestand=bestand, per_opleiding=opl)
+
+
 def filters(p: Plan) -> dict:
-    """De query_data-filters van een DUO-plan: instellingscode, vorm (tenzij alle) en schooljaren."""
+    """De query_data-filters van een DUO-plan: instellingscode, vorm (tenzij alle), opleiding en schooljaren."""
     recept = p.recept
     assert not isinstance(recept, CbsRecepten) and p.instelling is not None
     uit: dict[str, Any] = {recept.instellingskolom: p.instelling["instellingscode"]}
     if isinstance(recept, DuoRecept) and p.vorm != ALLE:
         uit[recept.vormkolom] = recept.vormen[p.vorm]
+    if p.per_opleiding is not None:
+        uit[geslacht_opleiding.CODE] = p.per_opleiding.code
     if p.jaren:
         uit[recept.periodekolom] = list(p.jaren)
     return uit
@@ -656,6 +693,11 @@ def get_maat(
     p = plan(maat, instelling, sector, vorm, schooljaren, opleiding_naar_geslacht)
     if isinstance(p, str):
         return p
+    return resultaat(p)
+
+
+def resultaat(p: Plan) -> str:
+    """Laad en reken een plan uit: het resultaat van get_maat, of de melding als tekst."""
     uit = _cbs(p) if isinstance(p.recept, CbsRecepten) else _duo(p)
     if isinstance(uit, str):
         return uit
@@ -672,6 +714,7 @@ def get_maat(
         **store.rijtelling(len(rijen), True),
         "rijen": rijen,
         "recept": uit.pop("recept", None) or _recept(p),
+        **({"opleiding": asdict(p.per_opleiding)} if p.per_opleiding else {}),
         **uit,
     }
     if ontbrekend := _ontbrekend(p, rijen):

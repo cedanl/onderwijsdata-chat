@@ -17,18 +17,19 @@ De koppeling is voorbereid, niet live. Wat er is en wat nog moet:
 | `bewijs` en `vervolg` in elk resultaat, brontekst ontsmet (#707) | Er ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)) |
 | Deep link naar de chat met een vraag in de invoer (#709) | Er ([Deep link naar de chat](api.md#deep-link-naar-de-chat)) |
 | Streamable-http-transport op `/mcp` in de app (#706), met API-sleutel (#939) en limieten (#940) | Er, alleen met sleutels in `MCP_API_KEYS`; nog op geen omgeving (#941); belastingsmeting #942 |
-| Datatools voor de kernvragen (#708) | Nog niet; zonder deze tools levert de koppeling metadata, geen cijfers |
+| Datatools voor de kernvragen (#708): `aantallen_per_jaar` en `vergelijk_instellingen` | Er, via stdio en `/mcp` ([Cijfers](mcp.md#cijfers-aantallen-en-vergelijken)); aantallen per instelling of opleiding en jaar uit DUO, met verloop, en instellingen vergelijken |
 | Afspraken met Npuls: globale MCP-entry, egress, DPIA, naam, SLA (#711) | Open |
 | Productie die de ladder volgt (#674) | Open; tot dan wijst de koppeling naar playground |
 
 ## Wat de koppeling doet, en wat niet
 
 **Wel:** de catalogus van open onderwijsdata van CBS, DUO en RIO doorzoeken, per dataset de kolommen, definities en
-methodiek tonen en de catalogus tellen, binnen de scopegrens mbo, hbo en wo (#355). Straks ook cijfers ophalen voor de
-kernvragen (#708). Elk resultaat noemt zijn herkomst in een `bewijs`-blok en heeft een `vervolg` met een link naar de
+methodiek tonen en de catalogus tellen, binnen de scopegrens mbo, hbo en wo (#355). Cijfers voor de kernvragen (#708):
+het aantal studenten, eerstejaars of inschrijvingen van een instelling of opleiding per studiejaar met het verloop, en
+instellingen naast elkaar, gerekend met dezelfde code als de chat. Elk resultaat noemt zijn herkomst in een `bewijs`-blok en heeft een `vervolg` met een link naar de
 volledige app, met een vraag die de gebruiker daar zelf verstuurt.
 
-**Niet:** rapporten, dashboards, exports en uploads; die blijven in de eigen app. Gesprekken en geheugen regelt
+**Niet:** rapporten, dashboards, exports, uploads, landelijke cijfers en arbeidsmarkt; die blijven in de eigen app. Gesprekken en geheugen regelt
 EduGenAI zelf. Grafieken komen voorlopig niet mee: in EduGenAI hooguit een tabel in Markdown, de grafiek via de link.
 
 ## Een andere betrouwbaarheidsklasse
@@ -101,13 +102,14 @@ Voor de DPIA en de verwerkersafspraken met Npuls (#711). De stappen gelden voor 
 | Stap | Wat gaat er | Wat niet |
 |---|---|---|
 | Gebruiker → EduGenAI | De vraag en het gesprek, onder de voorwaarden van EduGenAI | Wij zien die niet |
-| EduGenAI → onze server | Per toolaanroep de argumenten: `query` (2 tot 4 zoekwoorden die het model van EduGenAI kiest, vaak woorden uit de vraag), `top_n`, `geo_niveau` of `dataset_id` | Geen vraagtekst, geen gesprek, geen account van de gebruiker. Wij vragen niets van de gebruiker en zien alleen de server van EduGenAI als afzender |
-| Onze server → bronnen | Eenmalig, bij de eerste zoekactie, open data van DUO voor het instellingenregister; de catalogus en de CBS-metadata zitten in het image | Geen zoekwoorden, geen gegevens van de gebruiker |
-| Onze server → EduGenAI | Open metadata uit de catalogus, `bewijs` en `vervolg` | Geen persoonsgegevens: de catalogus bevat ze niet |
+| EduGenAI → onze server | Per toolaanroep de argumenten: `query` (2 tot 4 zoekwoorden die het model van EduGenAI kiest, vaak woorden uit de vraag), `top_n`, `geo_niveau` of `dataset_id`; bij de datatools namen van instellingen en eventueel een opleiding, een telling, een vorm en schooljaren | Geen vraagtekst, geen gesprek, geen account van de gebruiker. Wij vragen niets van de gebruiker en zien alleen de server van EduGenAI als afzender |
+| Onze server → bronnen | Eenmalig, bij de eerste zoekactie, open data van DUO voor het instellingenregister; de catalogus en de CBS-metadata zitten in het image. Bij een datatool het DUO-bestand van de maat (open data, daarna uit de cache) en een vraag aan RIO naar fusies van de instelling | Geen zoekwoorden, geen gegevens van de gebruiker |
+| Onze server → EduGenAI | Open metadata uit de catalogus, aantallen uit open DUO-data, `bewijs` en `vervolg` | Geen persoonsgegevens: de catalogus bevat ze niet |
 | Link → volledige app | De vraag uit `vervolg` in het fragment van de link (`#vraag=`), in de browser van de gebruiker | De vraag gaat niet naar onze server tot de gebruiker hem in de chat verstuurt; vanaf dan geldt [Privacy](privacy.md) |
 
-**Wat de server bewaart.** De catalogustools zijn stateless: geen database, geen sessie, niets per gebruiker. Wat
-overblijft is het log. Daarin staat op INFO van een zoekopdracht alleen de lengte en een hash (`tekst_kenmerk`, #475),
+**Wat de server bewaart.** De tools zijn stateless: geen database, geen sessie, niets per gebruiker. Een datatool
+houdt de geladen DUO-bestanden in dezelfde begrensde cache als de chat: open brondata, gedeeld en zonder iets van de
+vraag of de gebruiker. Wat verder overblijft is het log. Daarin staat op INFO van een zoekopdracht alleen de lengte en een hash (`tekst_kenmerk`, #475),
 van een bekend dataset-ID het ID en van een onbekend ID de lengte en een hash, met toolnaam en duur. Zonder
 `LOG_HASH_SECRET` is die hash een afgekapte SHA-256 zonder geheim, en is een korte zoekterm terug te rekenen. Voor de
 koppeling moet `LOG_HASH_SECRET` daarom op de omgeving gezet zijn (#678). De bewaartermijn van het logplatform van SDP
@@ -115,7 +117,10 @@ is een open punt, net als voor de app zelf ([Privacy → Open punten](privacy.md
 
 **Persoonsgegevens.** Wij vragen er geen. Typt een gebruiker toch een naam in zijn vraag en neemt het model van
 EduGenAI die als zoekwoord over, dan komt die alleen als hash in ons log en gaat er geen resultaat over die persoon
-terug: de catalogus kent alleen datasets. De gebruikersvoorwaarden van EduGenAI vragen al om geen persoonsgegevens te
+terug: de catalogus kent alleen datasets, en de datatools alleen instellingen uit het register (een andere naam is
+een fout zonder resultaat) en open, geaggregeerde aantallen per instelling, opleiding en jaar (DUO publiceert een
+aantal onder de vijf niet exact, maar als 4 of -1). De
+gebruikersvoorwaarden van EduGenAI vragen al om geen persoonsgegevens te
 delen.
 
 ## Open punten

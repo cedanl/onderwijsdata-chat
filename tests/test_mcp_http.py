@@ -72,10 +72,10 @@ def test_initialize_noemt_naam_versie_en_instructies(maak_app):
     assert init.instructions == mcp_server.INSTRUCTIES
 
 
-def test_list_tools_geeft_de_catalogustools_met_het_chatschema(maak_app):
+def test_list_tools_geeft_de_catalogus_en_datatools_met_hun_schema(maak_app):
     _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools())
     per_naam = {t.name: t for t in resultaat.tools}
-    assert list(per_naam) == ["search_catalog", "dataset_details", "dataset_counts"]
+    assert list(per_naam) == list(mcp_server.MCP_TOOLS)
     for definitie in mcp_server.tooldefinities():
         assert per_naam[definitie["name"]].input_schema == definitie["input_schema"]
 
@@ -355,3 +355,80 @@ def test_limieten_van_mcp_en_chat_raken_elkaar_niet(maak_app, grenzen, monkeypat
     antwoorden = _drie_keer(maak_app(SLEUTEL), [_bearer(SLEUTEL)] * 2)
     assert [a.status_code for a in antwoorden] == [200, 429], "een volle chat houdt /mcp niet tegen"
     assert chat._berichtlimiter.is_allowed("iemand-anders"), "een volle /mcp telt niet bij de chat"
+
+
+# ── Datatools (#708): eind tot eind met de client van de SDK ────────────────────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("gouden")
+def test_datatool_over_http_geeft_hetzelfde_als_stdio_en_de_chat(maak_app):
+    """aantallen_per_jaar over /mcp: dezelfde envelope als stdio en dezelfde getallen als get_maat in de chat."""
+    import tools
+
+    argumenten = {"instelling": "Universiteit Utrecht", "vorm": "voltijd"}
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("aantallen_per_jaar", argumenten))
+    assert not resultaat.is_error
+    envelop = json.loads(resultaat.content[0].text)
+    assert envelop == json.loads(mcp_server.voer_uit("aantallen_per_jaar", argumenten)[0])
+    chat = json.loads(tools.dispatch("get_maat", {"maat": "ingeschreven_personen_ho", **argumenten})[0])
+    assert [r["aantal"] for r in envelop["reeks"]] == [r["AANTAL_INGESCHREVENEN"] for r in chat["rijen"]]
+    assert list(envelop["bewijs"]) == list(mcp_server.BEWIJS_SLEUTELS) and envelop["bewijs"]["bron"] == "DUO"
+
+
+@pytest.mark.usefixtures("gouden")
+def test_vergelijken_over_http(maak_app):
+    argumenten = {"instellingen": ["Albeda", "Zadkine"]}
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("vergelijk_instellingen", argumenten))
+    assert not resultaat.is_error
+    envelop = json.loads(resultaat.content[0].text)
+    assert [d["instelling"]["naam"] for d in envelop["instellingen"]] == ["Albeda", "Zadkine"]
+    assert envelop["volgorde"]["schooljaar"] == "2025/26"
+
+
+@pytest.mark.usefixtures("gouden")
+def test_datatool_buiten_scope_is_een_fout_over_http(maak_app):
+    argumenten = {"instelling": "Amadeus Lyceum voor Vwo Havo Mavo"}
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("aantallen_per_jaar", argumenten))
+    assert resultaat.is_error
+    assert "alleen mbo-, hbo- en wo-instellingen" in resultaat.content[0].text
+
+
+@pytest.mark.usefixtures("gouden")
+def test_een_te_groot_datatoolresultaat_wordt_begrensd_met_bewijs(maak_app, grenzen):
+    """De grens van /mcp (#940) geldt ook voor de datatools: afgekapt, één JSON-object, bewijs en vervolg heel."""
+    grens = 3000
+    grenzen(MCP_MAX_TEKENS=grens)
+    argumenten = {"instellingen": ["Albeda", "Zadkine", "ROC Mondriaan", "Deltion College"]}
+    tekst, _ = mcp_server.voer_uit("vergelijk_instellingen", argumenten)
+    volledig = json.loads(tekst)
+    assert len(tekst) > grens
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.call_tool("vergelijk_instellingen", argumenten))
+    tekst = resultaat.content[0].text
+    assert not resultaat.is_error and len(tekst) <= grens
+    envelop = json.loads(tekst)
+    assert "afgekapt" in envelop["melding"].lower()
+    assert envelop["bewijs"] == volledig["bewijs"] and envelop["vervolg"] == volledig["vervolg"]
+
+
+@pytest.mark.usefixtures("gouden")
+def test_een_trage_datatool_stopt_op_de_tijdslimiet(maak_app, grenzen, monkeypatch):
+    """De tijdslimiet van /mcp (#940) geldt ook voor de datatools."""
+    import threading
+
+    from tools import kernvragen
+
+    los = threading.Event()
+
+    def traag(**_):
+        los.wait(10)
+        return "niet bereikt"
+
+    grenzen(MCP_TOOL_TIMEOUT_S=0.2)
+    monkeypatch.setitem(kernvragen._UITVOERING, "aantallen_per_jaar", traag)
+    try:
+        _, resultaat = via_mcp(
+            maak_app(SLEUTEL), lambda sessie: sessie.call_tool("aantallen_per_jaar", {"instelling": "Albeda"})
+        )
+    finally:
+        los.set()
+    assert resultaat.is_error and "aantallen_per_jaar" in resultaat.content[0].text

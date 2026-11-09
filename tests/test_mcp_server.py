@@ -18,16 +18,21 @@ def _functie(naam: str) -> dict:
     return next(s["function"] for s in TOOL_SCHEMAS if s["function"]["name"] == naam)
 
 
-def test_alleen_de_stateless_catalogustools():
+CATALOGUS = ["search_catalog", "dataset_details", "dataset_counts"]
+DATATOOLS = ["aantallen_per_jaar", "vergelijk_instellingen"]
+
+
+def test_alleen_stateless_tools():
+    """De catalogustools van de chat en de sessieloze datatools (#708); geen tool met een data_key."""
     definities = mcp_server.tooldefinities()
-    assert [d["name"] for d in definities] == ["search_catalog", "dataset_details", "dataset_counts"]
+    assert [d["name"] for d in definities] == CATALOGUS + DATATOOLS
     for definitie in definities:
-        assert definitie["name"] in tools._HANDLERS
+        assert definitie["name"] in tools._HANDLERS or definitie["name"] in DATATOOLS
         assert "data_key" not in definitie["input_schema"]["properties"], "een datastore-tool is niet stateless"
 
 
 def test_definities_volgen_het_toolschema_van_de_chat():
-    for definitie in mcp_server.tooldefinities():
+    for definitie in mcp_server.tooldefinities()[: len(CATALOGUS)]:
         functie = _functie(definitie["name"])
         assert definitie["description"] == f"{functie['description']} {mcp_server.REGEL_GETALLEN}"
         assert definitie["input_schema"] == functie["parameters"]
@@ -105,7 +110,7 @@ RESULTATEN = [
     ("dataset_details", {"dataset_id": "onbekend123"}),
     ("dataset_counts", {}),
 ]
-BEWIJS_SLEUTELS = ["bron", "dataset_id", "selectie", "maat", "waarde", "peildatum", "versie", "verwijzing"]
+BEWIJS_SLEUTELS = list(mcp_server.BEWIJS_SLEUTELS)
 
 
 def _teksten(waarde):
@@ -229,12 +234,12 @@ def test_protocol_noemt_naam_versie_en_instructies():
     assert "search_catalog" in (init.instructions or "")
 
 
-def test_protocol_toont_de_catalogustools_met_het_chatschema():
+def test_protocol_toont_de_tools_met_hun_schema():
     _, resultaat = _via_protocol(lambda sessie: sessie.list_tools())
     per_naam = {t.name: t for t in resultaat.tools}
-    assert set(per_naam) == {"search_catalog", "dataset_details", "dataset_counts"}
-    for naam, tool in per_naam.items():
-        assert tool.input_schema == _functie(naam)["parameters"]
+    assert list(per_naam) == CATALOGUS + DATATOOLS
+    for definitie in mcp_server.tooldefinities():
+        assert per_naam[definitie["name"]].input_schema == definitie["input_schema"]
 
 
 def test_protocol_voert_een_zoekactie_uit():
