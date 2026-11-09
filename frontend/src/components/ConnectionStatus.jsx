@@ -5,8 +5,8 @@ import { connectionStatus, connectionStatusText, wachtOpGebruiker } from '../con
 // empty while the connection is fine: a region mounted together with its text is often not announced.
 // Once the hook stopped trying (#783), a button in the same line reconnects. It sits inside the region, so on a
 // phone it stays with the status above the composer, and "Geen verbinding. Opnieuw verbinden" is read as one.
-export default function ConnectionStatus({ connected, opgegeven = null, onOpnieuw }) {
-  const status = connectionStatus({ online: useOnline(), connected, opgegeven })
+export default function ConnectionStatus({ connected, opgegeven = null, bijwerken = false, onOpnieuw }) {
+  const status = connectionStatus({ online: useOnline(), connected, opgegeven, bijwerken })
   return (
     <span className="ws-reconnecting" role="status" aria-live="polite">
       {status !== 'ok' && (

@@ -6,6 +6,7 @@ import { messageLengthState } from '../messageLength'
 export default function ChatInputFooter({
   connected,
   opgegeven,
+  bijwerken,
   onVerbindOpnieuw,
   busy,
   models,
@@ -20,7 +21,7 @@ export default function ChatInputFooter({
   const length = messageLengthState(text, max)
   return (
     <div className="chat-input-footer">
-      <ConnectionStatus connected={connected} opgegeven={opgegeven} onOpnieuw={onVerbindOpnieuw} />
+      <ConnectionStatus connected={connected} opgegeven={opgegeven} bijwerken={bijwerken} onOpnieuw={onVerbindOpnieuw} />
       <MessageCounter {...length} />
       {busy ? (
         <button type="button" className="send-btn" onClick={onStop} title="Stop genereren" aria-label="Stop genereren">

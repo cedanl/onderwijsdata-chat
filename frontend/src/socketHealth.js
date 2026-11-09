@@ -22,6 +22,12 @@ export const STABIEL_MS = 5000
 const OPGEVEN_BIJ = { 1013: 'te_veel', 4003: 'weg' }
 export const opgevenBij = (code) => OPGEVEN_BIJ[code] ?? null
 
+// De server stopt voor een uitrol of herstart (#677): uvicorn sluit elke chatsocket met 1012 (Service Restart). Er draait
+// één pod, dus de app is weg tot de nieuwe pod klaar is (start plus startupProbe; op test 8 minuten bij Recreate). Zo
+// lang blijft de hook proberen, in plaats van na MAX_RETRIES op te geven; een socket die opent, beëindigt het.
+export const HERSTART = 1012
+export const HERSTART_MS = 12 * 60 * 1000
+
 // The heartbeat pings over the open socket; any incoming message counts as proof of life.
 // When nothing comes back in time it closes the socket and calls onDead(ws) at once: a
 // real close() is asynchronous, and its onclose only follows after the closing handshake.
@@ -65,10 +71,12 @@ export function createHeartbeat(getWs, onDead) {
 // `opgegeven` is called (#783): the status then says so, with a way to try again, instead of "herstellen" forever.
 // opened() cancels a pending attempt; the count starts over only once the socket stayed open STABIEL_MS.
 // reset() cancels everything and starts the count over (the network came back, the user asked, or the hook unmounts).
+// herstart() (after 1012) keeps it trying until HERSTART_MS have passed, at the longest pause; opened() or reset() ends it.
 export function createRetry(connect, { opgegeven = () => {} } = {}) {
   let count = 0
   let timeout = null
   let stabiel = null
+  let herstartTot = null
 
   const wachtNiet = () => {
     clearTimeout(stabiel)
@@ -80,18 +88,26 @@ export function createRetry(connect, { opgegeven = () => {} } = {}) {
     timeout = null
     wachtNiet()
     count = 0
+    herstartTot = null
   }
 
   const opened = () => {
     clearTimeout(timeout)
     timeout = null
     wachtNiet()
+    herstartTot = null
     stabiel = setTimeout(() => { stabiel = null; count = 0 }, STABIEL_MS)
+  }
+
+  const herstart = () => {
+    herstartTot = Date.now() + HERSTART_MS
   }
 
   const schedule = () => {
     wachtNiet()
-    if (count >= MAX_RETRIES) {
+    const wachtOpHerstart = herstartTot !== null && Date.now() < herstartTot
+    if (count >= MAX_RETRIES && !wachtOpHerstart) {
+      herstartTot = null
       opgegeven()
       return
     }
@@ -100,7 +116,7 @@ export function createRetry(connect, { opgegeven = () => {} } = {}) {
     timeout = setTimeout(connect, delay)
   }
 
-  return { schedule, reset, opened }
+  return { schedule, reset, opened, herstart }
 }
 
 const isLive = (ws) => ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING

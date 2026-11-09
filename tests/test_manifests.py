@@ -34,10 +34,12 @@ def test_middleware_van_de_ingress_wordt_meegeleverd(omgeving):
 @pytest.mark.parametrize("omgeving", _OMGEVINGEN, ids=lambda p: p.name)
 def test_een_pod_zolang_de_staat_in_het_geheugen_leeft(omgeving):
     # tools/store.py en de rate limiters zijn per pod: een tweede pod kent de tabel
-    # achter een CSV-download niet.
+    # achter een CSV-download niet. Eén pod is het besluit voor de eerste productie (ADR-011, #677); opschalen is #984.
     values = _values(omgeving)
     assert values.get("replicaCount", _CHART["replicaCount"]) == 1
-    assert not (values.get("autoscaling") or _CHART["autoscaling"]).get("enabled")
+    # Geen HPA-knop: de chart had `autoscaling.enabled` zonder HPA-template; aan liet hij alleen `replicas` weg.
+    assert "autoscaling" not in values
+    assert "autoscaling" not in _CHART
 
 
 # ── Opschoning na de bewaartermijn (#485): CronJob in de chart, per omgeving aan of uit ──
@@ -172,11 +174,43 @@ def test_geen_serviceaccount_token_en_geen_nepsleutels_in_de_chart():
     assert not [e for e in _CHART["env"] if e["name"].endswith("_API_KEY")]
 
 
-def test_uvicorn_stopt_binnen_de_termijn_van_kubernetes():
+def _uvicorn_termijn() -> int:
     cmd = (_ROOT / "Dockerfile").read_text().split("CMD ")[-1]
     argumenten = yaml.safe_load(cmd)
-    termijn = int(argumenten[argumenten.index("--timeout-graceful-shutdown") + 1])
-    assert termijn < _CHART["terminationGracePeriodSeconds"]
+    return int(argumenten[argumenten.index("--timeout-graceful-shutdown") + 1])
+
+
+def test_uvicorn_stopt_binnen_de_termijn_van_kubernetes():
+    assert _uvicorn_termijn() < _CHART["terminationGracePeriodSeconds"]
+
+
+@pytest.mark.parametrize("omgeving", [p.name for p in _OMGEVINGEN])
+def test_elke_omgeving_rendert_een_pod_zonder_hpa(omgeving):
+    """Wat Flux uitrolt, niet alleen wat de values zeggen (#677): één replica, geen HPA en geen PDB.
+
+    Een PDB met één pod blokkeert een node-drain (minAvailable 1) of beschermt niets (maxUnavailable 1).
+    """
+    documenten = _gerenderd(omgeving)
+    soorten = {d["kind"] for d in documenten}
+    assert not soorten & {"HorizontalPodAutoscaler", "PodDisruptionBudget"}
+    deployment = next(d for d in documenten if d["kind"] == "Deployment")
+    assert deployment["spec"]["replicas"] == 1
+
+
+@pytest.mark.parametrize("omgeving", [p.name for p in _OMGEVINGEN])
+def test_stoppen_wacht_eerst_tot_de_ingress_de_pod_loslaat(omgeving):
+    """preStop vóór SIGTERM (#677): Kubernetes haalt de pod uit de endpoints terwijl de container nog luistert.
+
+    Zonder die pauze stopt uvicorn met luisteren terwijl Traefik nog verkeer naar de pod stuurt (bij RollingUpdate een
+    korte reeks 502's). De pauze, de 45 s van uvicorn en wat uitloop passen samen binnen de termijn.
+    """
+    deployment = next(d for d in _gerenderd(omgeving) if d["kind"] == "Deployment")
+    pod = deployment["spec"]["template"]["spec"]
+    commando = pod["containers"][0]["lifecycle"]["preStop"]["exec"]["command"]
+    assert commando[0] == "sleep"
+    pauze = int(commando[1])
+    assert 0 < pauze <= 15
+    assert pauze + _uvicorn_termijn() < pod["terminationGracePeriodSeconds"]
 
 
 def test_zonder_helm_faalt_ci_en_slaat_lokaal_over(monkeypatch):

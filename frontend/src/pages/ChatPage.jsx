@@ -76,7 +76,7 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, bronnen = {}, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
   // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
   const bewaak = useBewaak()
   const runSoort = reportBusy ? 'rapport' : busy ? 'antwoord' : null
@@ -913,6 +913,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
               hasMessages={hasMessages}
               connected={connected}
               opgegeven={opgegeven}
+              bijwerken={bijwerken}
               onVerbindOpnieuw={verbindOpnieuw}
               busy={busy}
               resetting={resetting}

@@ -32,10 +32,19 @@ Waarden uit `manifests/<omgeving>/values.yaml`, met de chart (`charts/onderwijsd
 | Opschonen (CronJob) | aan | aan | uit | uit |
 | `APP_ENV` | `test` | `playground` | `development` | `production` |
 
-**Eén pod, bewust.** De datastore (`tools/store.py`), de rate limiters en de SRAM-gebruikerscache leven in het
-procesgeheugen; een tweede pod kent die niet (`tests/test_manifests.py` bewaakt `replicaCount: 1`). Gevolg: een deploy
-of herstart is een korte onderbreking, en open chats krijgen "Verbinding verbroken". Het besluit over schaalbaarheid
-staat in #677.
+**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de limieten (login, berichten,
+feedback, gelijktijdige verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod
+kent die niet. De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py` bewaakt per omgeving één
+replica. Wat dat betekent:
+
+- **Elke uitrol of herstart is een onderbreking.** Bij `Recreate` (test, playground) is de app weg tot de nieuwe pod
+  gestart is en de startupProbe haalt; op test duurde dat op 29-10 8 minuten (harde 503). Bij RollingUpdate
+  (productie, als het quotum een tweede pod toelaat) blijft de app bereikbaar, maar open chats verliezen hun lopende
+  antwoord en verbinden opnieuw.
+- **Limieten tellen per proces.** Na een herstart begint iedereen weer op nul (login- en berichtlimiet).
+- **Een node-drain of OOM is een storing voor iedereen**, tot Kubernetes de pod elders opnieuw heeft gestart.
+
+Opschalen naar twee pods is de vervolgepic #984.
 
 **Quotum.** Test en playground hebben `limits.cpu 1`, `requests.cpu 1`, `requests.memory 1Gi`, `limits.memory 4Gi` en
 `limits.ephemeral-storage 5Gi`. Daarom `Recreate` (een tweede pod tijdens een rolling update past niet, #537) en 900m
@@ -45,13 +54,51 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
 
 - **Probes** (#675): `startupProbe` op `/health` (tot 150 s), `livenessProbe` op `/health` (5 s time-out, drie
   missers), `readinessProbe` op `/ready`: die toetst de database en of er een modelsleutel is, en geeft anders 503.
-- **Stoppen**: `terminationGracePeriodSeconds: 60`; uvicorn geeft lopende HTTP-verzoeken 45 s. Een chat-WebSocket sluit
-  uvicorn direct met code 1012; een lopend antwoord gaat bij een deploy verloren.
+- **Stoppen** (#675, #677): eerst `preStop` (5 s `sleep`, zodat Traefik de pod loslaat voordat uvicorn stopt met
+  luisteren), dan SIGTERM; uvicorn geeft lopende HTTP-verzoeken 45 s, binnen `terminationGracePeriodSeconds: 60`. Een
+  chat-WebSocket sluit uvicorn direct met code 1012; een lopend antwoord gaat verloren en krijgt "Verbinding verbroken
+  — antwoord onvolledig" met "Probeer opnieuw". Op 1012 zegt de voettekst "De app wordt bijgewerkt. De verbinding
+  komt vanzelf terug." en blijft de frontend tot 12 minuten herverbinden (`HERSTART_MS` in
+  `frontend/src/socketHealth.js`); daarna "Geen verbinding." met een knop.
 - **Bestandssysteem**: read-only, behalve een `emptyDir` op `/tmp` (werkmappen van `run_analysis`).
 - **Image**: non-root `appuser`, base-images op digest, geen compiler of git in het runtime-image (#681).
 - **Login** (#787): buiten `APP_ENV=local` start de app niet zonder login. Is `CHAT_USERS` in het secret leeg of ontbreekt `OIDC_PROVIDER`, dan stopt de pod bij het opstarten met een melding in het log (`start niet zonder login`) in plaats van stil als `gast` te draaien. Voor een bewust openbare demo zet je `ALLOW_ANONYMOUS=true`; het startlog geeft dan een WARNING. Een lege waarde komt voor na een rotatie van het secret: controleer `CHAT_USERS` vóór je uitrolt.
 - **Logs**: JSON op elke SDP-omgeving (`APP_ENV`, #676); vraag- en antwoordtekst alleen als lengte en hash
   (`Agents.md`, "Logs").
+
+## Beschikbaarheid
+
+Vastgesteld 09-11-2026 (ADR-011, #677). Deze tekst is publiek op de documentatiesite en is de input voor de afspraken
+met Npuls en SURF AI Chat (#711). Hij staat niet in de app.
+
+EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je kunt het als gebruiker merken.
+
+- **Beschikbaarheid: best effort.** We streven ernaar dat EDUdata bereikbaar is, maar er is geen afgesproken
+  percentage en geen garantie. EDUdata is in de demofase.
+- **Updates komen wanneer ze nodig zijn.** Er zijn geen vaste onderhoudsvensters. Tijdens een update is EDUdata even
+  niet bereikbaar. Wat je dan ziet:
+    - Een antwoord dat op dat moment wordt geschreven, breekt af met "Verbinding verbroken — antwoord onvolledig".
+      Je gesprek en je rapporten blijven bewaard.
+    - Onder het invoerveld staat "De app wordt bijgewerkt. De verbinding komt vanzelf terug." De app verbindt zelf
+      opnieuw zodra de nieuwe versie draait; je hoeft de pagina niet te verversen.
+    - Is de verbinding terug, dan stel je de afgebroken vraag opnieuw met "Probeer opnieuw".
+    - Duurt het langer dan 12 minuten, dan staat er "Geen verbinding." met de knop "Opnieuw verbinden".
+- **Bij een storing van de server** start het platform de server vanzelf opnieuw. Tot die weer draait, is EDUdata
+  niet bereikbaar en zie je dezelfde meldingen als bij een update.
+- **Hoe we reageren.** Een storing die we zelf merken of die aan ons wordt gemeld, pakken we zo snel als het kan op.
+  Er is geen afgesproken reactie- of hersteltijd en geen bereikbaarheidsdienst buiten werktijd.
+
+*Wat er gemeten is (de basis voor deze tekst):*
+
+| | Gemeten |
+|---|---|
+| Duur van een uitrol met `Recreate` (test, 29-10) | 8 minuten harde 503 ("no available server"), daarna tot ± 18:25 wisselend de oude en de nieuwe frontend (vermoedelijk de oude shell uit de service worker, #670) |
+| Uitrol met RollingUpdate (productie, als het quotum het toelaat) | niet gemeten; verwacht: geen 503, wel het verlies van lopende antwoorden |
+| Hoe vaak test uitrolt | bij elke merge naar `main` |
+| Hoe vaak playground uitrolt | alleen bij een promotie-MR (`docs/promoten.md`) |
+
+Korter onderbreken kan met een snellere start of een kleinere pod. Zonder onderbreking kan het pas met twee pods
+(#984).
 
 ## Secrets
 
