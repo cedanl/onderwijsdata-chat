@@ -13,6 +13,7 @@ import pytest
 
 from core import config
 from persistence import db, opschonen
+from tests import oude_antwoordfeedback
 
 NU = datetime(2026, 10, 21, 3, 30, tzinfo=UTC)
 _DAG = 24 * 3600
@@ -69,7 +70,7 @@ def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: f
 
 
 def _oordeel(pad, user: str, conv: str, index: int, dagen_geleden: float) -> None:
-    db.upsert_answer_feedback(user, conv, index, "down", "klopt niet", {"vraag": "x", "antwoord": "y"})
+    oude_antwoordfeedback.voeg_toe(user, conv, index, "down", "klopt niet", {"vraag": "x", "antwoord": "y"})
     _sql(
         pad,
         "UPDATE answer_feedback SET created_at = ? WHERE username = ? AND conversation_id = ? AND message_index = ?",

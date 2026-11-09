@@ -74,7 +74,6 @@ const FIELDS = [
   ['.login-input'],
   ['.instelling-search'],
   ['.history-search'],
-  ['.answer-feedback-form textarea'],
   ['.feedback-question textarea'],
   ['.model-picker select'],
   // Inline rename in the history list, and of a report title (it also carries .wb-viewer-title).
@@ -141,7 +140,7 @@ describe('checks of the parser itself', () => {
   })
 
   it('ranks a more specific selector above a later, plainer one', () => {
-    expect(compare(specificity('.answer-feedback-form textarea'), specificity('.answer-feedback-form'))).toBeGreaterThan(0)
+    expect(compare(specificity('.feedback-question textarea'), specificity('.feedback-question'))).toBeGreaterThan(0)
     expect(compare(specificity(':where(.x) textarea'), specificity('textarea'))).toBe(0)
   })
 

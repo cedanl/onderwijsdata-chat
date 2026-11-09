@@ -26,7 +26,7 @@ function expectAtLeastTouch(value, selector) {
 // The targets the UX review measured too small on phones (#490), plus every button in
 // the sidebar and the settings dialog.
 const NAMED = [
-  '.resend-btn', '.copy-btn', '.modal-close', '.modal-overlay-close', '.answer-feedback-btn',
+  '.resend-btn', '.copy-btn', '.modal-close', '.modal-overlay-close',
   '.scroll-to-bottom-btn', '.message-continue', '.data-export-btn',
   '.chat-sidebar button', '.settings-modal button',
   // "Anders formuleren" on a clarification card (#494).

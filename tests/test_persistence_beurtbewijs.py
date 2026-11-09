@@ -134,15 +134,6 @@ def test_een_bestaande_database_zonder_de_tabel_krijgt_hem(tmp_path, monkeypatch
     assert set(db.beurtbewijs_voor("alice", "c1")) == {"h1"}
 
 
-def test_de_controle_per_antwoord_zonder_de_rest_van_de_rij(db):
-    """Voor de feedbacktrace (#876): welke antwoorden een rij hebben en wat hun controle meldde."""
-    db.save_beurtbewijs("alice", "c1", {"h1": _rij(), "h2": _rij(controle=[])})
-    db.save_beurtbewijs("bob", "c1", {"h3": _rij()})
-
-    assert db.beurtbewijs_controles("alice", "c1") == {"h1": _CONTROLE, "h2": []}
-    assert db.beurtbewijs_controles("alice", "c2") == {}
-
-
 def test_een_bestaande_tabel_zonder_controle_krijgt_de_kolom(tmp_path, monkeypatch):
     """Rijen van vóór #876 hebben geen controle-uitkomst: ze krijgen een lege lijst, de rest blijft."""
     pad = tmp_path / "oud.db"
@@ -164,7 +155,6 @@ def test_een_bestaande_tabel_zonder_controle_krijgt_de_kolom(tmp_path, monkeypat
     db.init_db()
 
     assert db.beurtbewijs_voor("alice", "c1")["h1"]["controle"] == []
-    assert db.beurtbewijs_controles("alice", "c1") == {"h1": []}
 
 
 class _Cursor:

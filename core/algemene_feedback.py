@@ -1,7 +1,6 @@
 """Algemene feedback via de Feedback-link (#600): een idee, probleem of compliment los van een antwoord of rapport.
 
-Naast de feedback per antwoord (#248, core/answer_feedback.py) en op een rapport (#250, core/feedback.py). De tekst
-is verplicht; de soort kiest de gebruiker optioneel; de pagina vult de app zelf in, zodat het team weet waar het
+Naast de feedback op een rapport (#250, core/feedback.py). De tekst is verplicht; de soort kiest de gebruiker optioneel; de pagina vult de app zelf in, zodat het team weet waar het
 bericht vandaan kwam.
 """
 

@@ -1,8 +1,7 @@
 """Isolatie tussen accounts (#488, privacy H2): wat Anna opslaat, ziet, wijzigt of exporteert Bert niet.
 
 De testomgeving had één gedeeld account, dus dit was nooit getoetst. Hier twee accounts in CHAT_USERS
-en elke API die per gebruiker opslaat: gesprekken, werkboeken, rapportfeedback, antwoordfeedback en de
-CSV-export. Een vreemde key of een vreemd gesprek krijgt dezelfde 404 als een onbestaand: de API
+en elke API die per gebruiker opslaat: gesprekken, werkboeken, rapportfeedback en de CSV-export. Een vreemde key of een vreemd gesprek krijgt dezelfde 404 als een onbestaand: de API
 bevestigt niet dat het bestaat.
 """
 
@@ -85,20 +84,6 @@ def test_rapportfeedback_alleen_op_een_eigen_werkboek(client):
 
     _als(client, "bert")
     assert client.get("/api/feedback/given").json() == []
-
-
-def test_antwoordfeedback_alleen_op_een_eigen_gesprek(client):
-    oordeel = {"conversation_id": "c1", "message_index": 1, "oordeel": "down", "toelichting": "klopt niet"}
-    _als(client, "anna")
-    assert client.put("/api/conversations/c1", json=_GESPREK).status_code == 200
-    assert client.post("/api/answer-feedback", json=oordeel).status_code == 200
-
-    _als(client, "bert")
-    assert client.get("/api/answer-feedback", params={"conversation_id": "c1"}).json() == {}
-    assert client.post("/api/answer-feedback", json=oordeel).status_code == 404
-
-    _als(client, "anna")
-    assert client.get("/api/answer-feedback", params={"conversation_id": "c1"}).json() == {"1": "down"}
 
 
 def test_csv_export_alleen_met_een_eigen_recept(client):

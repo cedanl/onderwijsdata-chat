@@ -1444,29 +1444,6 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 /* De tekstkleur van de dialoog: een knop erft die niet vanzelf, en was in het donkere thema donker op donker (#751). */
 .confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--gray-200); background: none; color: inherit; cursor: pointer; }
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
-.answer-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.answer-feedback-btn {
-  background: none; border: 1px solid transparent; border-radius: 4px;
-  padding: 2px 6px; font-size: .85rem; cursor: pointer; opacity: .55; filter: grayscale(1);
-}
-.answer-feedback-btn:hover, .answer-feedback-btn[aria-pressed="true"] { opacity: 1; filter: none; }
-.answer-feedback-btn[aria-pressed="true"] { border-color: var(--gray-200); background: var(--gray-50); }
-.answer-feedback-note { font-size: .75rem; color: var(--muted-text); margin-left: 4px; }
-.answer-feedback-confirm { font-size: .875rem; font-weight: 500; color: var(--gray-700); }
-.answer-feedback-confirm:not(:empty) { margin-left: 4px; }
-.answer-feedback-bewaard { font-size: .75rem; color: var(--muted-text); line-height: 1.4; }
-/* Na 👍 (#807): de bedankt naast de knoppen, de bewaarzin eronder in dezelfde kolom. Op de basislijn, zodat de knoppen
-   bovenaan blijven staan in plaats van naar het midden van de hogere rij te zakken. De scrollmarge houdt de zin vrij
-   van de knop Scroll naar beneden (36 px, 12 px van de rand). */
-.answer-feedback--bewaard { align-items: baseline; }
-.answer-feedback--bewaard .answer-feedback-confirm { flex: 1 1 12em; scroll-margin-bottom: 56px; }
-.answer-feedback-confirm .answer-feedback-bewaard { display: block; max-width: 480px; margin-top: 2px; font-weight: 400; }
-.answer-feedback-form { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-width: 480px; }
-.answer-feedback-form textarea {
-  font: inherit; font-size: .85rem; padding: 6px 8px; resize: vertical;
-  border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); color: inherit;
-}
-.answer-feedback-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .confirm-primary { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-700); color: white; cursor: pointer; font-weight: 600; }
 .export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
 .export-option:last-of-type { margin-bottom: 20px; }
@@ -1882,7 +1859,7 @@ html.dark .suggested-btn:hover {
    Last in the file, so no rule above lowers them again. */
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .navbar-zoek-btn, .wb-delete-btn, .wb-fav-btn,
-  .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
+  .resend-btn, .copy-btn, .modal-close, .modal-overlay-close,
   .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
@@ -1946,7 +1923,7 @@ html.dark .suggested-btn:hover {
    The chat input takes line-height 1.5, so one row stays 24px as before (15px x 1.6) in the compact area (#527). */
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-input, .login-input, .instelling-search, .history-search, .title-edit-input,
-  .answer-feedback-form textarea, .feedback-question textarea, .feedback-other, .model-picker select,
+  .feedback-question textarea, .feedback-other, .model-picker select,
   .onderzoeksvraag-veld { font-size: 16px; }
   .chat-input { line-height: 1.5; }
 }

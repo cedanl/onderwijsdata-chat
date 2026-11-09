@@ -66,10 +66,10 @@ export default function PrivacyInhoud() {
           <strong>Feedback</strong>: je antwoorden op de vragen bij een rapport of dashboard, met de titel van het
           rapport en de instelling die je in de app koos (als je er een koos). De vragen over je instelling krijg je
           alleen na een eigen keuze (Help ons verder); de vragen over het rapport kun je zonder die vragen versturen.
-          Per antwoord bewaren we je duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder
-          je het gesprek, dan wordt
-          die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
-          de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
+          Gaf je vóór 9 november 2026 een duim bij een antwoord, dan bewaren we die met je toelichting plus een kopie
+          van vraag, antwoord en stappen; duimpjes geven kan niet meer. Verwijder je het gesprek, dan wordt die kopie
+          losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via de link
+          Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
           Feedback wordt {gesprek} dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog
           bestaat), of eerder als je al je gegevens verwijdert.
         </li>
@@ -81,9 +81,8 @@ export default function PrivacyInhoud() {
           <strong>Bewijs per antwoord</strong>: bij elk antwoord op data bewaart de server waar de data vandaan kwam
           (bron en selectie), de uitkomsten van berekeningen, de kolommen van kaarten en de meldingen van de controles
           onder het antwoord, onder een hash van de antwoordtekst. Zo geeft een rapport op een heropend gesprek hetzelfde
-          resultaat als in het gesprek zelf, en weten we bij feedback of het antwoord van ons kwam. Je vraag en het
-          antwoord staan er niet in. Gaat weg met het gesprek, of na {gesprek} dagen als het gesprek er
-          niet meer is, of eerder als je al je gegevens verwijdert.
+          resultaat als in het gesprek zelf. Je vraag en het antwoord staan er niet in. Gaat weg met het gesprek, of na
+          {gesprek} dagen als het gesprek er niet meer is, of eerder als je al je gegevens verwijdert.
         </li>
         <li>
           <strong>Inloggen</strong>: met een gebruikersnaam en wachtwoord bewaart de server alleen je

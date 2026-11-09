@@ -84,9 +84,9 @@ def test_handlers_met_databaseaanroepen_zijn_geen_coroutines():
     """Het patroon zelf vastgepind: een nieuwe `async def` met een databaseaanroep valt hier."""
     from fastapi.routing import APIRoute
 
-    from routes import answer_feedback, feedback, persistence
+    from routes import feedback, persistence
 
-    routes = [r for router in (persistence.router, feedback.router, answer_feedback.router) for r in router.routes]
+    routes = [r for router in (persistence.router, feedback.router) for r in router.routes]
     assert routes and all(isinstance(r, APIRoute) for r in routes)
     for route in routes:
         assert isinstance(route, APIRoute)

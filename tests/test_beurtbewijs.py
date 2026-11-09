@@ -207,7 +207,7 @@ def test_een_rij_draagt_wat_de_beurt_opleverde(monkeypatch):
 
 
 def test_een_rij_draagt_de_controle_van_haar_message_end(monkeypatch):
-    """De feedbacktrace leest de controle uit de rij, niet uit het gesprek dat de client schreef (#876)."""
+    """De rij bewaart de controle van de server, niet die uit het gesprek dat de client schreef (#876)."""
     sessie = _sessie()
     melding = "28.355 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
 

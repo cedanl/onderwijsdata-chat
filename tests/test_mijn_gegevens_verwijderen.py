@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from agent import beurtbewijs, recepten
 from core import foutmeldingen
 from persistence import db, export, verwijderen
+from tests import oude_antwoordfeedback
 from tests.test_mijn_gegevens_export import _vul
 
 _URL = "/api/mijn-gegevens"
@@ -96,7 +97,7 @@ def _vul_anna() -> None:
     for i in range(4):
         db.add_algemene_feedback("anna", "probleem", f"extra-{i}", "/rapporten")
     for i in range(5):
-        db.upsert_answer_feedback("anna", "anna-c2", 10 + i, "omhoog", "", {"vraag": f"extra-trace-{i}"})
+        oude_antwoordfeedback.voeg_toe("anna", "anna-c2", 10 + i, "omhoog", "", {"vraag": f"extra-trace-{i}"})
     db.save_beurtbewijs(
         "anna",
         "anna-c2",
@@ -144,7 +145,7 @@ def _ingetrokken() -> int:
 def _maak_losgekoppelde_feedback() -> None:
     """Een gesprek van carla met feedback, verwijderd: de feedback hangt daarna aan `verwijderd` (#476)."""
     db.upsert_conversation("carla", "carla-c1", "Weg", 1_700_000_000, [])
-    db.upsert_answer_feedback("carla", "carla-c1", 1, "omlaag", "losgekoppeld-tekst", {"vraag": "losgekoppeld"})
+    oude_antwoordfeedback.voeg_toe("carla", "carla-c1", 1, "omlaag", "losgekoppeld-tekst", {"vraag": "losgekoppeld"})
     db.delete_conversation("carla", "carla-c1")
     assert _aantal("answer_feedback", db.VERWIJDERDE_GEBRUIKER) == 1
 

@@ -7,7 +7,7 @@ import { MAX_FEEDBACK_CHARS } from '../constants'
 import { useTermijnen, getal } from '../termijnen'
 
 const SOORTEN = [['idee', 'Idee'], ['probleem', 'Probleem'], ['compliment', 'Compliment']]
-// What the team gets (#600): the same pattern as the feedback per answer (AnswerFeedback).
+// What the team gets (#600).
 const bewaard = dagen =>
   `Het team krijgt je bericht met je accountnaam en de pagina waar je was, en bewaart het ${getal(dagen)} dagen. ` +
   'Zet er geen persoonsgegevens in.'

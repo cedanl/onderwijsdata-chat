@@ -17,11 +17,11 @@ verduidelijkingskaart krijgen geen rij; wat die aan lineage of rekenbewijs oplev
 afgeronde beurt (`session_data.neem_beurtbewijs`).
 """
 
+import hashlib
 import logging
 from collections import OrderedDict
 from datetime import UTC, datetime
 
-from core.tekst_hash import tekst_hash
 from persistence import db
 
 from .kaarten import kaarten_van_beurt
@@ -39,12 +39,17 @@ _klaar: OrderedDict[tuple[str, str], dict] = OrderedDict()
 _ZONDER_RIJ = "antwoorden_zonder_rij"
 
 
+def tekst_hash(tekst: str) -> str:
+    """De sleutel van een antwoord: sha256 (hex) van zijn UTF-8-tekst. Een onbruikbaar teken breekt de hash niet."""
+    return hashlib.sha256(tekst.encode("utf-8", errors="replace")).hexdigest()
+
+
 def zet_klaar(session: dict, turn: dict, tekst: str, controle: list[str] | None = None) -> None:
     """Zet de rij van een net afgeronde beurt klaar tot het gesprek wordt opgeslagen.
 
-    `tekst` is de `content` van haar `message_end`, `controle` de meldingen die dat event droeg (#876): zo leest de
-    feedbacktrace ze uit de rij en niet uit het gesprek dat de client schreef. Dezelfde tekst twee keer geeft één rij:
-    de tweede beurt voegt haar items toe (`voeg_samen`).
+    `tekst` is de `content` van haar `message_end`, `controle` de meldingen die dat event droeg (#876), zoals de server
+    ze vastlegde en niet zoals de client ze in het gesprek schreef. Dezelfde tekst twee keer geeft één rij: de tweede
+    beurt voegt haar items toe (`voeg_samen`).
     """
     username = session.get("username")
     if not username:
