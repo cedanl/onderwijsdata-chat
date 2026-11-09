@@ -284,6 +284,15 @@ Hetzelfde geldt voor DUO en RIO (#356): `duo:p01hoinges`, `DUO/P01HOINGES` en `r
 `get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde record (`tools/bron_ids.py::bron_id`); de evals en de packages
 spellen `<bron>:<id>`. Het detailrecord draagt dezelfde `status` als een zoekhit.
 
+De Studiekeuzedatabase (alleen waar haar sleutel staat, #978): `skdb:studiekeuzedatabase` geeft naast `via_tool` het
+schema uit de export van vandaag (`schema`: editie, betekenis van een leeg veld, en per tabel de omschrijving, het aantal
+kolommen en wat de chat ermee kan); `skdb:studiekeuzedatabase/<tabel>` het schema van één tabel (kolommen met type,
+korrel, sleutels naar andere bronnen, relaties, jaarkolommen), binnen hetzelfde detailbudget: past het niet, dan worden
+de kolomomschrijvingen korter en zegt `kolomdetail_weggelaten` dat. Elk antwoord draagt de bronregel van LCSK. Is de
+export er niet, dan staan de tabelnamen er met wat er kan en een `melding`. Een zoekhit op de bron heeft `schema` (de
+weg naar dit detail) en, als een zoekterm een tabelnaam raakt, `tabellen` met die tabel en wat de chat ermee kan.
+Zie [Databronnen](databronnen.md#studiekeuzedatabase-landelijk-centrum-studiekeuze-lcsk-alleen-test-en-playground).
+
 ---
 
 ## dataset_counts

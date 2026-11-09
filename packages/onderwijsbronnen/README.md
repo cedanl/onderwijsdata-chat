@@ -226,7 +226,15 @@ skdb.opleidingen(export, brin="25DW", croho=30020)   # per opleiding en vorm, me
 skdb.studie(export, 56604)                           # een landelijke studie, met de arbeidsmarkt van de SOI-rubriek
 skdb.toelating(export, naam="verpleegkunde")         # de vooropleidingseisen, per gelijke set eisen met de instellingen
 skdb.doorstroom_mbo_hbo(export, mbo="verpleeg")      # waar mbo-4-gediplomeerden in het hbo naartoe gaan
+skdb.schema(export)                                  # het schema uit de export zelf (45 tabellen, 639 kolommen)
 ```
+
+`skdb.schema` leest de beschrijving die elke export meelevert (`exporttabellen`, `exportkolommen`) en geeft per tabel
+de omschrijving, de kolommen met type, de korrel (de parameters van het endpoint), de relaties (tabellen waarvan de
+korrel in deze tabel staat), de jaarkolommen en wat er met de tabel kan: een van de zes overzichten, alleen `load`, of
+bewust niet omdat een andere bron leidend is (`schemakaart.MOGELIJKHEDEN`, met per kolom `ANDERE_BRON_KOLOMMEN`, #878).
+Daarbij de editie (versie, exportdatum, NSE- en 1cijferHO-jaar) en wat een leeg veld betekent. De omschrijvingen zijn
+het woordenboek van LCSK en staan niet in dit pakket; alleen de tabelnamen staan in de code (#978).
 
 `brin` en `croho` zijn de codes van RIO en DUO; `studiecode` is een code van LCSK en niet altijd een CROHO-code.
 Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v25.1). Bij elke uiting `skdb.VERPLICHTE_ZIN` ("Er is
