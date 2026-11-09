@@ -37,8 +37,8 @@ import json
 import re
 import sys
 
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # ty: ignore[unresolved-import]
-from playwright.sync_api import sync_playwright  # ty: ignore[unresolved-import]
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # ty: ignore[import-not-found]
+from playwright.sync_api import sync_playwright  # ty: ignore[import-not-found]
 
 AA_MIN = 24
 TOUCH_MIN = 44
