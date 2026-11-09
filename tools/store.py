@@ -255,29 +255,68 @@ def meta(key: str) -> KeyMeta | None:
     return _meta.get(key)
 
 
-def herkomst(key: str) -> list[str]:
-    """De bron van een key en de stappen ertussen, oudste eerst: wat een export over zichzelf zegt (#118)."""
-    stappen = []
-    known = _meta.get(key)
-    while known and known.afgeleid_van:
-        stappen.append(f"selectie: {known.stap}" if known.stap else "selectie: eerdere stap")
-        known = _meta.get(known.afgeleid_van)
-    if known is None:
-        return []
+def _keten(key: str) -> list[tuple[str, KeyMeta]]:
+    """`key` en elke key waar hij op rust, oudste eerst en elk één keer; alleen keys waarvan de meta bekend is.
+
+    Een afgeleide key rust op zijn ouder (`afgeleid_van`) en, bij een eigen berekening, op elke tabel die ze las
+    (`gelezen`, #201): ook een tabel die het script via store_get las, niet alleen de eerste (#977). Een selectie op
+    zo'n berekening erft `gelezen` van haar; die keys staan dan al in de keten.
+    """
+    keten: list[tuple[str, KeyMeta]] = []
+    gezien: set[str] = set()
+
+    def loop(k: str) -> None:
+        if k in gezien or (known := _meta.get(k)) is None:
+            return
+        gezien.add(k)
+        if known.afgeleid_van:
+            for ouder in (known.afgeleid_van, *(known.gelezen or ())):
+                loop(ouder)
+        keten.append((k, known))
+
+    loop(key)
+    return keten
+
+
+def bronkeys(key: str) -> list[str]:
+    """De geladen tabellen achter `key` (zonder ouder), in de volgorde van de herkomst; `key` zelf als hij geladen is."""
+    return [k for k, known in _keten(key) if not known.afgeleid_van]
+
+
+def _bronregel(known: KeyMeta) -> str:
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
     if etiket := bronetiketten(known.dataset, vo_context=known.vo_context):
         bron += f", {etiket}"
     if known.resource is not None:
         bron += f", resource {known.resource}"
     if known.peilmoment:
-        # Een momentopname of editie (UWV, ROA, WOPI, de financien) zegt wanneer; DUO welke versie van het bestand.
+        # Een momentopname of editie (UWV, ROA, WOPI, de financien) zegt wanneer; DUO welke versie van het bestand;
+        # de Studiekeuzedatabase de versie met de verplichte zin en link van LCSK (#957).
         bron += f", {known.peilmoment}"
-    regels = [bron, *reversed(stappen)]
-    if known.afronding:
-        from .cbs_afronding import noot  # lazy: cbs_afronding importeert store
+    return bron
 
-        regels.append(f"afronding: {noot(known.afronding)}")
-    return regels
+
+def herkomst(key: str) -> list[str]:
+    """De bronnen van een key en de stappen ertussen, oudste eerst: wat een export over zichzelf zegt (#118).
+
+    De unie over de hele keten (#977): een koppeling van twee tabellen noemt beide bronnen, elk met de stappen die
+    erop volgden, en daarna haar eigen stap. Elke bronregel één keer. Zonder bekende bron geen herkomst.
+    """
+    from .cbs_afronding import noot  # lazy: cbs_afronding importeert store
+
+    regels: list[str] = []
+    afronding: list[str] = []
+    for _, known in _keten(key):
+        if known.afgeleid_van:
+            regels.append(f"selectie: {known.stap}" if known.stap else "selectie: eerdere stap")
+            continue
+        if (bron := _bronregel(known)) not in regels:
+            regels.append(bron)
+        if known.afronding:
+            afronding.append(f"afronding: {noot(known.afronding)}")
+    if not any(regel.startswith("bron: ") for regel in regels):
+        return []
+    return regels + list(dict.fromkeys(afronding))
 
 
 def volledig(key: str) -> bool:
