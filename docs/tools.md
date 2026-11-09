@@ -196,9 +196,10 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
-Een hit met koppelsleutels heeft `koppelbaar_via`: de sleutels van de dataset, kort (`"brin, croho, gemeente,
-provincie, schooljaar, instellingsnaam, gemeentenaam"`), zodat het model een koppeling tussen bronnen plant vóór het
-laadt (#958). De kolommen per sleutel staan in `dataset_details`. Het veld scoort niet mee in de zoekscore.
+Een hit met koppelsleutels heeft `koppelbaar_via`: de codesleutels van de dataset, kort (`"brin, croho, gemeente,
+provincie, schooljaar"`), zodat het model een koppeling tussen bronnen plant vóór het laadt (#958). Namen
+(`instellingsnaam`, `gemeentenaam`) staan er niet in: op een naam plant het model geen koppeling. De kolommen per
+sleutel staan in `dataset_details`, ook daar alleen codes. Het veld scoort niet mee in de zoekscore.
 
 ### De envelope
 
@@ -807,7 +808,10 @@ zonder model (`tools/relaties.py`). De sleutels die bronnen delen staan in het p
 namen `instellingsnaam` en `gemeentenaam`, elk met de kolomnamen waaronder hij voorkomt en een pure vertaling van de
 waarden (`GM0344` ↔ `344`, `PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`, `30020.0` ↔ `30020`,
 `="00008"` ↔ `00008`). Dezelfde lijst geeft de catalogus per dataset (`koppelbaar_via` in `search_catalog` en
-`dataset_details`) en het datasetcontract (`join_sleutels`); `relatie` heeft geen eigen lijst meer. De kolom
+`dataset_details`, alleen de codes) en het datasetcontract (`join_sleutels`); `relatie` heeft geen eigen lijst meer.
+Een naam is een zwakke sleutel (`op_naam`): `relatie` noemt hem wel, maar elke sleutelkolom en koppelkandidaat op
+een naam draagt `waarschuwing` (spelling verschilt per bron, een fusie of naamswijziging breekt de naam; koppel liever
+op een code en controleer anders de rijen zonder match). De kolom
 `ERKENDEOPLEIDINGSCODE` (RIO, DUO) draagt in het ho de CROHO-code en in het mbo de crebo-code: `relatie` noemt hem als
 beide, de catalogus versmalt hem naar de sector van de dataset. `DIPLOMAJAAR` is geen schooljaar (CH-41). Een CBS-regiokolom (`RegioS`, `Regiokenmerken`) wordt aan de waarden herkend: de kolom mengt Nederland, landsdelen,
 provincies, COROP-gebieden en gemeenten, en geldt als gemeente- of provinciesleutel zodra minstens de helft van de

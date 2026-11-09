@@ -247,3 +247,16 @@ def test_een_skdb_tabel_koppelt_op_brin_en_croho_aan_duo():
     assert per[("brin", "INSTELLINGSCODE_ACTUEEL")]["overlap"]["gedeeld"] == 1
     assert per[("croho", "OPLEIDINGSCODE_ACTUEEL")]["overlap"]["gedeeld"] == 1
     assert "studiecode" in uit["zonder_sleutel"]
+
+
+def test_een_naam_is_een_zwakke_sleutel_met_een_waarschuwing():
+    """Besluit 09-11 (#958): relatie mag op naam koppelen, maar zegt erbij dat spelling en fusies een naam breken."""
+    _put("duo:t", _DUO)
+    _put("duo:namen", pd.DataFrame({"INSTELLINGSNAAM": ["fontys", "Avans"], "GEMEENTENAAM": ["Tilburg", "Breda"]}))
+    uit = json.loads(relatie("duo:t", andere_key="duo:namen"))
+    per = {s["kolom"]: s for s in uit["sleutels"]}
+    assert per["INSTELLINGSNAAM_ACTUEEL"]["waarschuwing"] == rel.NAAMWAARSCHUWING
+    assert "waarschuwing" not in per["INSTELLINGSCODE_ACTUEEL"]
+    naam = next(k for k in uit["koppelingen"] if k["sleutel"] == "instellingsnaam")
+    assert naam["overlap"]["gedeeld"] == 1 and naam["waarschuwing"] == rel.NAAMWAARSCHUWING
+    assert "fusie" in rel.NAAMWAARSCHUWING and "controleer" in rel.NAAMWAARSCHUWING.lower()

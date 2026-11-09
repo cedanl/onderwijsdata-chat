@@ -25,7 +25,17 @@ def test_elke_opvraagbare_dataset_en_elke_eigen_tool_heeft_sleutels_of_een_reden
 
 def test_een_zoekhit_noemt_de_sleutels_kort():
     hit = _hit("eerstejaars hbo instelling", "p02ho1ejrs")
-    assert hit["koppelbaar_via"] == "brin, croho, gemeente, provincie, schooljaar, instellingsnaam, gemeentenaam"
+    assert hit["koppelbaar_via"] == "brin, croho, gemeente, provincie, schooljaar"  # namen niet: alleen codes
+
+
+def test_namen_zijn_geen_sleutel_om_een_koppeling_op_te_plannen():
+    """Besluit 09-11 (#958): instellingsnaam en gemeentenaam blijven in het record, maar het model plant niet op een naam."""
+    record = next(e for e in catalog._rio_duo() if e.get("_ckan_id") == "p01hoinges")
+    assert {"kolom": "GEMEENTENAAM", "sleutel": "gemeentenaam"} in record["_sleutels"]
+    via = json.loads(dataset_details("p01hoinges"))["koppelbaar_via"]
+    assert "naam" not in via.split(".")[0]
+    zonder_codes = {**record, "_sleutels": [{"kolom": "Gemeentenaam", "sleutel": "gemeentenaam"}]}
+    assert catalog.koppelbaar_via(zonder_codes).startswith("geen sleutel naar een andere bron")
 
 
 def test_dataset_details_noemt_per_sleutel_de_kolom_en_hoe_te_koppelen():
