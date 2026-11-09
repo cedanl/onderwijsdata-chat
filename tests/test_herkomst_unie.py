@@ -4,6 +4,9 @@ Een koppeling van de Studiekeuzedatabase (LCSK) met DUO leidde haar key af van d
 vooraan en kwam SKDB via `store_get`, dan droeg het bestand alleen de DUO-regels: de verplichte zin van LCSK, de
 versie en de link ontbraken, terwijl de rijen NSE-waarden bevatten. Er staat geen data van LCSK in de repo;
 `onderwijsbronnen.skdb.proefbestand` bouwt een export met dezelfde vorm en verzonnen getallen.
+
+De herkomst wordt bij het afleiden vastgelegd (#985): de store kan een bron weggooien (boven STORE_MAX_MB) terwijl de
+koppeling blijft, en dan mag haar kop die bron, de LCSK-zin en de hash niet kwijtraken.
 """
 
 import json
@@ -88,8 +91,9 @@ def _lcsk(regels: list[str]) -> list[str]:
     return [r for r in regels if skdb.VERPLICHTE_ZIN in r]
 
 
-def _draagt_beide_bronnen(regels: list[str], skdb_key: str) -> None:
-    (skdb_bron,) = store.herkomst(skdb_key)[:1]
+def _draagt_beide_bronnen(regels: list[str], skdb_key: str, skdb_bron: str | None = None) -> None:
+    """`skdb_bron`: de bronregel van SKDB zoals hij was, als de store de tabel intussen kwijt is (#985)."""
+    (skdb_bron,) = [skdb_bron] if skdb_bron else store.herkomst(skdb_key)[:1]
     (lcsk,) = _lcsk(regels)  # precies één keer, ook als de tabel langs twee wegen gelezen is
     assert lcsk == skdb_bron
     assert "versie 26.6" in lcsk and skdb.DOCUMENTATIE in lcsk
@@ -232,3 +236,119 @@ def test_een_enkele_keten_houdt_haar_herkomst():
         'selectie: filters {"INSTELLINGSCODE": "25DW"}',
         f"md5 van het DUO-bestand: {_MD5} (zoals DUO het levert, na te rekenen met md5sum; zie docs/reproducibility.md)",
     ]
+
+
+# --- De herkomst is vastgelegd bij het afleiden (#985) ---
+
+
+def _weg(*keys: str) -> None:
+    """De store gooit `keys` weg, zoals de LRU boven STORE_MAX_MB doet (#13)."""
+    for key in keys:
+        store._verwijder(key, "bovengrens")
+        assert store.meta(key) is None, key
+
+
+def _csvkop(key: str) -> list[str]:
+    return [r.removeprefix("# ") for r in (naar_csv(key) or "").splitlines() if r.startswith("# ")]
+
+
+@pytest.mark.parametrize("weg", ["skdb", "duo", "beide"])
+def test_de_kop_van_een_koppeling_houdt_een_bron_die_de_store_kwijt_is(weg):
+    skdb_key, duo_key = _skdb(), _duo()
+    skdb_bron = store.herkomst(skdb_key)[0]
+    key = _koppeling(duo_key, skdb_key)
+    voor = herkomstregels(key)
+
+    _weg(*{"skdb": [skdb_key], "duo": [duo_key], "beide": [skdb_key, duo_key]}[weg])
+
+    assert herkomstregels(key) == voor
+    _draagt_beide_bronnen(_csvkop(key), skdb_key, skdb_bron)
+
+
+def test_een_kleine_bovengrens_gooit_de_bronnen_weg_en_de_kop_houdt_ze(monkeypatch):
+    """De koppeling zelf duwt beide bronnen eruit: daarna staat alleen zij nog in de store."""
+    skdb_key, duo_key = _skdb(), _duo()
+    skdb_bron = store.herkomst(skdb_key)[0]
+    monkeypatch.setattr(store, "_MAX_BYTES", 1)
+
+    key = _koppeling(duo_key, skdb_key)
+
+    assert store.list_keys() == [key]
+    regels = _csvkop(key)
+    _draagt_beide_bronnen(regels, skdb_key, skdb_bron)
+    assert any(r.startswith("md5 van het DUO-bestand (p01hoinges): ") for r in regels)
+    assert any(r.startswith(f"inhoudshash van de brontabel ({studiekeuze.DATASET}): ") for r in regels)
+
+
+def test_een_keten_van_meer_stappen_houdt_elke_bron_en_stap_als_de_store_ze_kwijt_is():
+    """Selectie op SKDB, dan is SKDB weg; koppeling, selectie, berekening; daarna is alles onder de som weg."""
+    skdb_key, duo_key = _skdb(), _duo()
+    nse_sel = json.loads(query_data(skdb_key, filters={"brin": "25DW"}))["data_key"]
+    lcsk = _lcsk(store.herkomst(skdb_key))
+    _weg(skdb_key)  # vóór de koppeling: haar selectie draagt de bron verder
+    koppeling = _koppeling(duo_key, nse_sel)
+    sel = json.loads(query_data(koppeling, filters={"AANTAL__gte": 100}))["data_key"]
+    som = _analyse("result = df.groupby('brin', as_index=False)['AANTAL'].sum().to_dict(orient='records')", sel)
+    voor = herkomstregels(som)
+
+    _weg(duo_key, nse_sel, koppeling, sel)
+
+    regels = herkomstregels(som)
+    assert regels == voor
+    assert _lcsk(regels) == lcsk
+    assert regels.count(_DUO_BRON) == 1 and sum(_MD5 in r for r in regels) == 1
+    assert 'selectie: filters {"brin": "25DW"}' in regels and 'selectie: filters {"AANTAL__gte": 100}' in regels
+    assert regels.count("selectie: eigen berekening (run_analysis)") == 2
+    assert any(r.startswith(f"inhoudshash van de brontabel ({studiekeuze.DATASET}): ") for r in regels)
+
+
+def test_een_opnieuw_geladen_bron_verandert_de_kop_van_een_eerdere_koppeling_niet():
+    """De koppeling is berekend op de stand van toen; een nieuwere lading van de bron is niet haar herkomst."""
+    skdb_key, duo_key = _skdb(), _duo()
+    key = _koppeling(duo_key, skdb_key)
+    voor = herkomstregels(key)
+
+    oud = _meta(skdb_key)
+    nieuw = pd.DataFrame({"brin": ["25DW"], "croho": [30020], "nse_oordeel": [1.0]})
+    store.put(skdb_key, nieuw, replace(oud, peilmoment=(oud.peilmoment or "").replace("26.6", "27.1")))
+
+    assert herkomstregels(key) == voor
+
+
+def test_een_enkele_keten_houdt_haar_herkomst_als_de_bron_weg_is():
+    duo_key = _duo()
+    sel = json.loads(query_data(duo_key, filters={"INSTELLINGSCODE": "25DW"}))["data_key"]
+    voor = herkomstregels(sel)
+
+    _weg(duo_key)
+
+    assert voor == herkomstregels(sel)
+    assert voor == [
+        _DUO_BRON,
+        'selectie: filters {"INSTELLINGSCODE": "25DW"}',
+        f"md5 van het DUO-bestand: {_MD5} (zoals DUO het levert, na te rekenen met md5sum; zie docs/reproducibility.md)",
+    ]
+
+
+def test_de_hash_van_een_brontabel_wordt_een_keer_berekend_en_bij_nieuwe_data_opnieuw(monkeypatch):
+    """Elke selectie legt de hash vast; een tweede selectie op dezelfde tabel rekent hem niet opnieuw uit, een tabel
+    die opnieuw gezet is wel."""
+    from tools import inhoudshash
+
+    berekend: list[str] = []
+    echt = inhoudshash.inhoudshash
+    monkeypatch.setattr(inhoudshash, "inhoudshash", lambda df: berekend.append("x") or echt(df))
+    oud = pd.DataFrame({"a": [1, 2]})
+    store.put("cbs:x", oud, KeyMeta(bron="cbs", dataset="x"))
+
+    store.derive("cbs:x", "cbs:x:1", oud.head(1), stap="een")
+    store.derive("cbs:x", "cbs:x:2", oud.tail(1), stap="twee")
+    assert len(berekend) == 1
+
+    nieuw = pd.DataFrame({"a": [3, 4]})
+    store.put("cbs:x", nieuw, KeyMeta(bron="cbs", dataset="x"))
+    store.derive("cbs:x", "cbs:x:3", nieuw.head(1), stap="drie")
+
+    assert len(berekend) == 2
+    hashes = {k: dict(_meta(k).keten)["cbs:x"].inhoudshash for k in ("cbs:x:1", "cbs:x:2", "cbs:x:3")}
+    assert hashes == {"cbs:x:1": echt(oud), "cbs:x:2": echt(oud), "cbs:x:3": echt(nieuw)}

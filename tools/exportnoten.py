@@ -28,18 +28,18 @@ _BRONHASH = {
 }
 
 
-def _hashregels(bron: str, meerdere: bool) -> list[str]:
+def _hashregels(bron: str, known: store.KeyMeta, meerdere: bool) -> list[str]:
     """De inhoudshash of de hash van het bronbestand (DUO-md5, SKDB-sha256) van één geladen tabel; bij meer bronnen
-    met de dataset erbij, anders zijn ze niet uit elkaar te houden."""
-    known = store.meta(bron)
-    welke = f" ({known.dataset})" if meerdere and known is not None else ""
+    met de dataset erbij, anders zijn ze niet uit elkaar te houden. Een hash die bij het afleiden is vastgelegd, gaat
+    voor (#985): de tabel kan al weg zijn."""
+    welke = f" ({known.dataset})" if meerdere else ""
     regels = []
-    if inhoud := inhoudshash.hash_van(bron):
+    if inhoud := known.inhoudshash or inhoudshash.hash_van(bron):
         regels.append(
             f"inhoudshash van de brontabel{welke}: {inhoud} (sha256 van df.to_csv(index=False), eerste 12 tekens; "
             "zie docs/reproducibility.md)"
         )
-    if known is not None and known.bronhash:
+    if known.bronhash:
         regels.append(_BRONHASH.get(known.bron, _BRONHASH["duo"]).format(welke=welke, hash=known.bronhash))
     return regels
 
@@ -50,11 +50,12 @@ def herkomstregels(key: str) -> list[str]:
 
     Over elke geladen tabel achter `key`, niet alleen die van de eerste ouder (#977): een koppeling van SKDB met DUO
     noemt LCSK met de sha256 van haar export en de md5 van het DUO-bestand, in welke volgorde het script ze ook las.
+    Ook als de store een van die tabellen intussen kwijt is: de keten staat vastgelegd in de meta van `key` (#985).
     """
     regels = store.herkomst(key)
-    bronnen = store.bronkeys(key)
-    for bron in bronnen:
-        regels += _hashregels(bron, len(bronnen) > 1)
+    bronnen = store.bronnen(key)
+    for bron, known in bronnen:
+        regels += _hashregels(bron, known, len(bronnen) > 1)
     known = store.meta(key)
     if known is not None and not known.volledig:
         regels.append(ONVOLLEDIG_EXPORT)
