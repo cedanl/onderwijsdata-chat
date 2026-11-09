@@ -88,6 +88,9 @@ WO_PERSONEEL_ENABLED = os.getenv("ENABLE_WO_PERSONEEL", "false").lower() == "tru
 # get_studiekeuze staat alleen in de toolset als de sleutel er is. Op test en playground uit de secret
 # (manifests/<omgeving>/values.yaml, optional); production en development hebben hem niet.
 STUDIEKEUZEDATABASE_API_KEY = os.getenv("STUDIEKEUZEDATABASE_API_KEY") or None
+# De catalogustools over streamable HTTP op /mcp (#706, routes/mcp_http.py). Kommagescheiden sleutels uit de secret;
+# zonder sleutels bestaat /mcp niet (404). Nooit in de repo.
+MCP_API_KEYS = tuple(s for s in (d.strip() for d in os.getenv("MCP_API_KEYS", "").split(",")) if s)
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

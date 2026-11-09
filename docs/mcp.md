@@ -1,7 +1,8 @@
 # MCP-server voor de catalogus
 
 De catalogus van de chat (CBS, DUO en RIO; mbo, hbo en wo) is ook te doorzoeken vanuit een MCP-client
-zoals Claude Desktop, Cursor of VS Code, zonder de chat-app te draaien. `mcp_server.py` biedt drie
+zoals Claude Desktop, Cursor of VS Code, zonder de chat-app te draaien, en vanuit SURF AI Chat (EduGenAI) via
+`/mcp` in de app ([Over HTTP](#over-http-mcp-in-de-app)). `mcp_server.py` biedt drie
 tools aan via het [Model Context Protocol](https://modelcontextprotocol.io/), met dezelfde JSON-schema's
 die het model in de chat ziet (`tools/schemas.py`) en dezelfde uitvoering (`tools.dispatch`). De
 scopegrens mbo/hbo/wo, de bron-ID's en de status per record zijn daardoor gelijk aan die in de chat.
@@ -90,7 +91,53 @@ Zonder client testen kan met de MCP Inspector:
 npx @modelcontextprotocol/inspector uv run python mcp_server.py
 ```
 
-## Clientconfiguratie
+## Over HTTP: /mcp in de app
+
+SURF AI Chat (aichat.surf.nl, voorheen EduGenAI) koppelt een extensie met een URL, een transporttype en een header; een
+stdio-server kan het niet aanroepen. Daarom biedt de chat-app dezelfde server ook aan op `/mcp`, als
+streamable-http-endpoint (#706). Eén pod en dezelfde ingress als de chat: `/health`, `/version` en de chat blijven
+werken zoals ze werkten, en er is geen tweede deployment.
+
+- **Stateless, JSON-antwoorden.** Elk verzoek krijgt een eigen transport: geen sessie per client (`Mcp-Session-Id`
+  ontbreekt), geen SSE-stroom en geen GET-stroom. Dat past bij de catalogustools, die geen datastore hebben, en bij
+  één pod. Elke `POST /mcp` draagt één JSON-RPC-bericht en krijgt één JSON-antwoord; `GET` en `DELETE` krijgen 405
+  (`Allow: POST`), zoals de spec voor een server zonder stroom voorschrijft.
+- **Dezelfde server als stdio.** Beide transporten bouwen hun server met `maak_server()`: dezelfde
+  `tooldefinities()`, `INSTRUCTIES` en `voer_uit()`, dus dezelfde envelope, scopegrens en statussen. Over HTTP draait
+  een aanroep in een thread, zodat de eerste zoekactie (het DUO-register laden) de chat niet ophoudt.
+- **Alleen met sleutels.** Zonder `MCP_API_KEYS` bestaat `/mcp` niet: elk verzoek, ook `GET`, krijgt 404 en het log
+  zegt bij de start één keer waarom.
+- **Log.** Per aanroep een regel `MCP TOOL <naam> args_len=… args_hash=… fout=… duur=…`: de argumenten (zoekwoorden,
+  vaak uit de vraag van de gebruiker) alleen als kenmerk, zoals in de chat.
+
+Lokaal, met de app op poort 8000 en een sleutel in `MCP_API_KEYS`:
+
+```bash
+npx @modelcontextprotocol/inspector --cli http://localhost:8000/mcp --transport http \
+  --header "Authorization: Bearer $MCP_SLEUTEL" --method tools/list
+```
+
+Zonder `--cli` opent de Inspector in de browser; kies daar transport "Streamable HTTP", URL `http://localhost:8000/mcp`
+en de header `Authorization`.
+
+### SURF AI Chat
+
+Een extensie in SURF AI Chat, of een globale entry in de LibreChat-config van een tenant (`mcpServers`, #711):
+
+```yaml
+mcpServers:
+  onderwijsdata:
+    type: streamable-http
+    url: https://onderwijsdata-chat.test.sdp.surf.nl/mcp
+    headers:
+      Authorization: "Bearer ${ONDERWIJSDATA_MCP_KEY}"
+    serverInstructions: true
+```
+
+In het formulier voor een eigen extensie: URL zoals hierboven, transport "Streamable HTTP", authenticatie "API Key" met
+de sleutel als Bearer. `/mcp` staat nog op geen enkele omgeving: eerst test (#941).
+
+## Clientconfiguratie (stdio)
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) en VS Code (`.vscode/mcp.json`)
 gebruiken hetzelfde formaat; vul het pad naar deze repository in:
@@ -116,3 +163,7 @@ gebruiken hetzelfde formaat; vul het pad naar deze repository in:
 - Een nieuwe catalogustool in de chat is in de MCP-server beschikbaar zodra hij in `CATALOGUS_TOOLS` staat.
   `tests/test_mcp_server.py` bewaakt dat de definities het chatschema volgen en toetst het protocol zelf
   (initialize, `tools/list`, `tools/call`) over een in-memory verbinding.
+- `routes/mcp_http.py` zet dezelfde server achter `/mcp`: de sessiemanager van de SDK in stateless modus met
+  JSON-antwoorden. Die heeft een taakgroep nodig die zo lang leeft als de app, dus `server.create_app` start hem in de
+  lifespan van de app; een gemounte Starlette-app krijgt geen eigen lifespan. `tests/test_mcp_http.py` toetst het
+  protocol eind tot eind tegen de app, met de client van de SDK.

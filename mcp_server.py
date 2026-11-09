@@ -8,8 +8,9 @@ per record gelden hier dus ook.
 
 Alleen tools zonder sessie: `search_catalog`, `dataset_details` en `dataset_counts` lezen de
 statische catalogus. De datatools (get_*_data, query_data, compute_kpi, get_maat) werken op de
-datastore per proces en horen bij stap 2, met auth en de limieten van de chat. Geen auth: de
-catalogus is openbaar. Transport: stdio, voor lokale clients.
+datastore per proces en horen bij stap 2 (#708). Transport: stdio voor lokale clients (hier, zonder auth: de
+catalogus is openbaar), en streamable HTTP op /mcp in de app (routes/mcp_http.py, #706). Beide bouwen hun server met
+`maak_server`; alleen de uitvoering van een aanroep verschilt.
 
 Bij MCP schrijft het model van de client het antwoord en draaien de controles van de chat niet (#707). Elk
 resultaat draagt daarom zelf een `bewijs`-blok en een `vervolg` met een link naar de volledige app (#709), en tekst
@@ -24,6 +25,7 @@ import os
 import sys
 import tomllib
 import urllib.parse
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -192,8 +194,21 @@ def voer_uit(naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
     return _envelop(naam, argumenten, tekst), False
 
 
-def maak_server():
-    """De MCP-server met de catalogustools; de mcp-package laadt pas hier, niet bij elke import van deze module."""
+# Hoe een toolaanroep draait: (naam, argumenten) → (tekst, is_fout), zoals voer_uit.
+Uitvoerder = Callable[[str, dict[str, Any] | None], Awaitable[tuple[str, bool]]]
+
+
+async def _direct(naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
+    """stdio: één client per proces, dus gewoon in de event loop."""
+    return voer_uit(naam, argumenten)
+
+
+def maak_server(uitvoerder: Uitvoerder = _direct):
+    """De MCP-server met de catalogustools; de mcp-package laadt pas hier, niet bij elke import van deze module.
+
+    Definities, instructies en voer_uit zijn voor elk transport gelijk; de uitvoerder bepaalt alleen hoe een aanroep
+    draait (HTTP: in een thread, met tijdslimiet, routes/mcp_http.py).
+    """
     from mcp import types
     from mcp.server.lowlevel import Server
 
@@ -201,7 +216,7 @@ def maak_server():
         return types.ListToolsResult(tools=[types.Tool(**definitie) for definitie in tooldefinities()])
 
     async def aanroep(_context, params: types.CallToolRequestParams) -> types.CallToolResult:
-        tekst, fout = voer_uit(params.name, params.arguments)
+        tekst, fout = await uitvoerder(params.name, params.arguments)
         return types.CallToolResult(content=[types.TextContent(type="text", text=tekst)], is_error=fout)
 
     return Server(NAAM, version=_versie(), instructions=INSTRUCTIES, on_list_tools=lijst, on_call_tool=aanroep)
