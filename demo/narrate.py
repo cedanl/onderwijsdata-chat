@@ -60,7 +60,7 @@ def download_voice():
 
 def generate_audio():
     # piper/imageio_ffmpeg zitten in de optionele group `demo`; CI installeert die niet.
-    from piper import PiperVoice  # ty: ignore[unresolved-import]
+    from piper import PiperVoice  # ty: ignore[import-not-found]
 
     onnx = VOICES_DIR / f"{VOICE}.onnx"
     print("Narratie genereren...")
@@ -73,7 +73,7 @@ def generate_audio():
 
 
 def combine():
-    import imageio_ffmpeg  # ty: ignore[unresolved-import]
+    import imageio_ffmpeg  # ty: ignore[import-not-found]
 
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     print("Video en audio samenvoegen...")

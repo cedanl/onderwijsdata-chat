@@ -1,5 +1,5 @@
 # Stage 1: Build React Frontend
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS frontend-builder
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS frontend-builder
 
 WORKDIR /frontend
 
@@ -17,7 +17,7 @@ RUN npm run build
 # Stage 2: Python-afhankelijkheden. De compiler staat alleen hier; het runtime-image krijgt alleen de .venv (#681).
 # git is er niet meer bij nodig: het bronpakket onderwijsbronnen staat als workspace-lid in packages/ en komt
 # niet meer als git-afhankelijkheid van GitHub (#885, #910).
-FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS python-builder
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS python-builder
 
 # uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
 COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /usr/local/bin/uv
@@ -46,7 +46,7 @@ RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --n
     && .venv/bin/python -c "import mcp.types"
 
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
-FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
 
 WORKDIR /app
 

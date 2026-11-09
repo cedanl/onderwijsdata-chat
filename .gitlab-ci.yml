@@ -28,15 +28,15 @@ include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0.10.10
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.5
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.5
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.1.0
     inputs:
       name: docker:docker-lint
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.1.0
     inputs:
       name: docker:docker-build
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
       build_args: --build-arg GIT_COMMIT=$CI_COMMIT_SHA
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.1.0
     inputs:
       name: docker:docker-promote
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
@@ -116,7 +116,7 @@ pytest:
     - if: $CI_COMMIT_TAG
   needs: []
   image:
-    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+    name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   variables:
     # Absoluut: test_release van de pakketten draait `uv build` in packages/<naam>, en een relatief pad landt dan in
     # die map; uv neemt de cache dan op in de sdist en die faalt ("Invalid tar file", #886).
@@ -171,7 +171,7 @@ frontend:
     - if: $CI_COMMIT_TAG
   needs: []
   image:
-    name: node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
+    name: node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
   cache:
     key:
       files:
@@ -203,7 +203,7 @@ eval:bronwaarheid:
   needs: []
   allow_failure: true
   image:
-    name: node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
+    name: node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
   variables:
     TEST_MODELS: azure_ai/claude-sonnet-5-5
     TEST_REPEATS: "3"
@@ -230,7 +230,7 @@ eval:bronwaarheid:
   stage: test
   needs: []
   image:
-    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+    name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   variables:
     UV_CACHE_DIR: .uv-cache
   cache: &uv-cache
@@ -407,7 +407,7 @@ harbor:onderhoud:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $HARBOR_ONDERHOUD == "1"
     - if: $CI_PIPELINE_SOURCE == "web" && $HARBOR_ONDERHOUD == "1"
   image:
-    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+    name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   variables:
     HARBOR_CLI_VERSIE: "0.0.27"
     HARBOR_CLI_SHA256: "9375f9c862aeb314ef070cd9345fd7a305596d7916c31551667a186019b8943b"
@@ -439,7 +439,7 @@ audit:python:
   needs: []
   allow_failure: true
   image:
-    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+    name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   before_script:
     - pip install --no-cache-dir uv
   script:
@@ -470,7 +470,7 @@ audit:npm:
   needs: []
   allow_failure: true
   image:
-    name: node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
+    name: node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
   script:
     # Leest alleen package-lock.json en de npm-advisorydatabase; geen npm ci nodig.
     - cd frontend
@@ -564,7 +564,7 @@ env:promotion-ladder:
     - if: $CI_MERGE_REQUEST_IID
   needs: []
   image:
-    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+    name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   variables:
     GIT_DEPTH: "0"
   before_script:
@@ -598,7 +598,7 @@ sync:github:
     - if: $CI_COMMIT_TAG
       when: always
   image:
-    name: alpine/git:v2.54.0@sha256:ac6c828f15d82775d204d3d75112e1d34af8945da80ccf922713c9891ba68e7a
+    name: alpine/git:v2.54.0@sha256:6a1fdb962814ca11508ca8d1bab94375b5b7ac4e4a9a40981c29fc32c02f095d
     entrypoint: [""]
   variables:
     GIT_STRATEGY: clone
