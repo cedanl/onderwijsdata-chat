@@ -659,15 +659,21 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   die niet in de export staat, voor een onbekende studie, voor `opleidingen` zonder instelling, opleiding, plaats of
   numerus fixus, en voor een leeg veld in de bron (geen 0). Zonder sleutel, of als de export een andere vorm heeft, een
   bronfout.
-- **Bronregel:** "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum}. Er is
-  gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar
+- **Bronregel:** "Studiekeuzedatabase {versie} ({herkomst}), Landelijk Centrum Studiekeuze, export van {datum},
+  opgehaald op {laaddatum}. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.", met een link naar
   lcsk.nl/over-ons/studiekeuzedata-raadplegen (art. 4.1 en 4.2 van de leveringsvoorwaarden v25.1). De herkomst per
   weergave (`_HERKOMST`): `opleidingen` "NSE {jaar}; studieverloop uit 1cijferHO {jaar}, bewerkt door LCSK"; `studie`
   daarbij "arbeidsmarkt uit CBS-microdata en de NAE/HBO-monitor"; `toelating` "vooropleidingseisen uit de regeling
   (RATHO)"; `numerus_fixus` "capaciteit uit Studielink"; `doorstroom_mbo_hbo` "doorstroombestand mbo-hbo, bewerkt door
-  LCSK"; `doorstroom_bachelor_master` zonder toevoeging.
+  LCSK"; `doorstroom_bachelor_master` zonder toevoeging. Onder het antwoord en op het dashboard zet de app de sha256
+  van de geladen export erbij (", sha256 {12 tekens}" vóór de verplichte zin, `studiekeuze.met_hash`, uit de store);
+  het toolresultaat zelf heeft geen hash (#981).
+- **Herkomst in de store (#981):** `peilmoment` "versie {versie}, export van {datum}, opgehaald op {laaddatum}" plus de
+  verplichte zin, en `bronhash` de sha256 van het ZIP-bestand: in het manifest, de logregel en de CSV-kop.
 - **Snippet:** dezelfde functie van `onderwijsbronnen.skdb` met de opgeloste argumenten (`pakketaanroep`), op een
-  export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker.
+  export die de snippet zelf ophaalt met de eigen sleutel van de gebruiker. De kop noemt de export die de app las
+  (versie, exportdatum, laaddatum en sha256), en de snippet print een waarschuwing als de export die hij leest een
+  andere hash heeft.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|

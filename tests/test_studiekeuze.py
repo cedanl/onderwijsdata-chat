@@ -25,7 +25,7 @@ from agent.selectie import ontbrekende_instellingen
 from core import config
 from data import instellingen
 from prompts import SYSTEM_PROMPT
-from tools import beschikbaarheid, catalog, csv_export, snippet, store, studiekeuze
+from tools import beschikbaarheid, catalog, csv_export, exportnoten, snippet, store, studiekeuze
 from tools.query import query_data
 from tools.schemas import SCHEMA_GET_STUDIEKEUZE, TOOL_GET_STUDIEKEUZE, TOOL_SCHEMAS
 
@@ -260,15 +260,34 @@ def test_een_geweigerde_sleutel_is_een_bronfout_zonder_de_sleutel(monkeypatch):
 # --- naden: bronregel, citaties, store, snippet ---------------------------------------------------------------------
 
 
+def _herkomst() -> skdb.Herkomst:
+    return studiekeuze._export().herkomst
+
+
 def test_de_bronregel_noemt_versie_en_de_verplichte_zin_van_lcsk():
     stap = (TOOL_GET_STUDIEKEUZE, studiekeuze.get_studiekeuze(instelling="HU", opleiding="ICT"))
-    # Versie en NSE-jaar (art. 4.2), de herkomst van het studieverloop (#878) en de verplichte zin met de link (art. 4.1).
+    herkomst = _herkomst()
+    # Versie en NSE-jaar (art. 4.2), de herkomst van het studieverloop (#878), de hash en laaddatum van de lading (#981)
+    # en de verplichte zin met de link (art. 4.1).
     regel = (
         "Studiekeuzedatabase 26.6 (NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK), Landelijk Centrum "
-        "Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
+        f"Studiekeuze, export van 2026-11-06, opgehaald op {herkomst.laaddatum}, sha256 {herkomst.sha256[:12]}. Er is "
+        "gebruik gemaakt van de data van Landelijk Centrum Studiekeuze."
     )
     assert bronnen_van([stap]) == [regel]
     assert bronlinks_van([stap]) == {regel: "https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/"}
+
+
+def test_het_toolresultaat_noemt_editie_en_laaddatum_maar_niet_de_hash():
+    """#981: versie, exportdatum en laaddatum staan in het toolresultaat; de sha256 niet. Het model heeft hem niet
+    nodig, en de cijferreeksen in een hash zouden als bewijsgetal gelden (agent/grounding.py). De bronvermelding
+    haalt hem uit de store."""
+    resultaat = studiekeuze.get_studiekeuze(instelling="HU", opleiding="ICT")
+    bron = json.loads(resultaat)["bron"]
+    herkomst = _herkomst()
+    assert (bron["versie"], bron["exportdatum"], bron["opgehaald"]) == ("26.6", "2026-11-06", herkomst.laaddatum)
+    assert f"opgehaald op {herkomst.laaddatum}" in bron["regel"]
+    assert herkomst.sha256[:12] not in resultaat
 
 
 @pytest.mark.parametrize(
@@ -320,10 +339,19 @@ def test_de_tabel_staat_met_haar_laadaanroep_in_de_store():
     assert meta is not None
     assert (meta.bron, meta.dataset) == ("skdb", studiekeuze.DATASET)
     assert meta.laad == (TOOL_GET_STUDIEKEUZE, uit["selectie"])
-    assert meta.peilmoment == f"versie 26.6; {skdb.VERPLICHTE_ZIN} ({skdb.DOCUMENTATIE})"
+    herkomst = _herkomst()
+    # Editie en laaddatum als peilmoment, de sha256 van de export als bronhash: het patroon van DUO-md5 en WOPI (#981).
+    assert meta.peilmoment == (
+        f"versie 26.6, export van 2026-11-06, opgehaald op {herkomst.laaddatum}; {skdb.VERPLICHTE_ZIN} "
+        f"({skdb.DOCUMENTATIE})"
+    )
+    assert meta.bronhash == herkomst.sha256
     assert meta.instellingen == ("25DW",)
-    # De kop van een CSV-export noemt de bron met de verplichte zin.
-    assert skdb.VERPLICHTE_ZIN in store.herkomst(uit["data_key"])[0]
+    # De kop van een CSV-export noemt de bron met editie, laaddatum en de verplichte zin, en de sha256 van de export.
+    kop = exportnoten.herkomstregels(uit["data_key"])
+    assert skdb.VERPLICHTE_ZIN in kop[0] and "export van 2026-11-06" in kop[0]
+    assert any(r.startswith(f"sha256 van de export van de Studiekeuzedatabase: {herkomst.sha256}") for r in kop)
+    assert not any("md5" in r for r in kop)
     # Herladen met de laadaanroep geeft dezelfde rijen.
     assert _uit(**uit["selectie"])["rijen"] == uit["rijen"]
 
@@ -358,6 +386,23 @@ def test_de_snippet_geeft_dezelfde_tabel_als_de_app(args, monkeypatch):
     assert "geheim" not in code
     if uit["selectie"].get("instelling"):
         assert f'brin="{uit["selectie"]["instelling"]}"' in code  # de BRIN van de app, niet de naam uit de vraag
+
+
+def test_de_snippet_noemt_de_export_van_de_app_en_waarschuwt_bij_een_andere(monkeypatch, capsys):
+    """#981: de snippet leest de export van vandaag; de kop noemt wat de app las (exportdatum, versie, sha256 en
+    laaddatum), en bij een andere export (een andere hash) waarschuwt de snippet dat de cijfers kunnen afwijken."""
+    herkomst = _herkomst()
+    code, _, _ = _snippet_df({"weergave": "studie", "opleiding": "ICT"}, monkeypatch)
+    assert f"export van 2026-11-06, opgehaald op {herkomst.laaddatum}" in code and "versie 26.6" in code
+    assert f'"{herkomst.sha256}"' in code
+    assert "Let op" not in capsys.readouterr().out  # dezelfde export: geen waarschuwing
+
+    nieuw = proefbestand.zip_bytes({**proefbestand.TABELLEN, "instellingen": proefbestand.INSTELLINGEN[:3]})
+    andere = "export-skdb-26.7-api-v1-all-2026-11-10-json.zip"
+    monkeypatch.setattr(skdb, "haal_op", lambda *a, **k: (nieuw, skdb.herkomst(nieuw, andere)))
+    exec(compile(code, "<snippet>", "exec"), {})
+    uit = capsys.readouterr().out
+    assert "Let op: een andere export dan de app las (versie 26.7 van 2026-11-10)" in uit
 
 
 def test_een_weigering_geeft_geen_snippet():

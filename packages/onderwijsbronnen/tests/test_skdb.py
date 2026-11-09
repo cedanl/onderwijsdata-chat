@@ -5,6 +5,8 @@ Er staat geen data van LCSK in de repo; `skdb.proefbestand` bouwt een export met
 
 from __future__ import annotations
 
+import hashlib
+
 import httpx
 import pytest
 
@@ -89,6 +91,16 @@ def test_de_ingekorte_bestandsnaam_heet_voluit(export):
 
 def test_een_onbekende_bestandsnaam_geeft_geen_versie():
     assert skdb.herkomst(b"x", "iets.zip").versie is None
+
+
+def test_de_herkomst_legt_editie_hash_en_laaddatum_vast():
+    """#981: versie en exportdatum (uit de bestandsnaam), de sha256 van het geladen bestand en de laaddatum."""
+    inhoud, herkomst = proefbestand.standaard()
+    assert (herkomst.versie, herkomst.datum) == ("26.6", "2026-11-06")
+    assert herkomst.sha256 == hashlib.sha256(inhoud).hexdigest()
+    assert herkomst.laaddatum == herkomst.opgehaald[:10] and len(herkomst.laaddatum) == 10
+    # De proefexport is elke keer dezelfde bytes (vaste tijdstempels in de ZIP), dus dezelfde hash.
+    assert proefbestand.zip_bytes() == proefbestand.zip_bytes()
 
 
 # --- overzichten ------------------------------------------------------------------------------------------------

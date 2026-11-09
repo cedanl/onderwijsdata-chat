@@ -66,14 +66,21 @@ class GeenSleutel(SkdbFout):
 
 @dataclass(frozen=True)
 class Herkomst:
-    """Waar een export vandaan komt: de bestandsnaam van LCSK, met de dataversie en de exportdatum."""
+    """Waar een export vandaan komt: de bestandsnaam van LCSK, met de dataversie en de exportdatum, de sha256 van het
+    geladen bestand en het moment van ophalen (#981). LCSK levert alleen de export van vandaag: een andere hash is een
+    andere export."""
 
     url: str
     bestand: str
     versie: str | None  # "26.6": het versienummer dat bij de bronvermelding hoort (art. 4.2)
     datum: str | None  # "2026-11-06": de dag van de export
-    sha256: str
-    opgehaald: str
+    sha256: str  # van de ZIP zoals opgehaald, na te rekenen met sha256sum op hetzelfde bestand
+    opgehaald: str  # ISO-tijdstip (UTC) van het ophalen
+
+    @property
+    def laaddatum(self) -> str:
+        """De dag (jjjj-mm-dd, UTC) waarop de export is opgehaald."""
+        return self.opgehaald[:10]
 
 
 def sleutel(waarde: str | None = None) -> str:

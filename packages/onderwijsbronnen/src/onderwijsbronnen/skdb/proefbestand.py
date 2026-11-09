@@ -183,13 +183,22 @@ TABELLEN = {
 }
 
 
+# Een vast tijdstempel per bestand, zoals in de echte export: dezelfde tabellen geven dezelfde bytes en dus dezelfde
+# sha256 (#981), ook als een test de export twee keer bouwt.
+_TIJDSTEMPEL = (2026, 11, 6, 2, 2, 58)
+
+
+def _bestand(pad: str) -> zipfile.ZipInfo:
+    return zipfile.ZipInfo(pad, _TIJDSTEMPEL)
+
+
 def zip_bytes(tabellen: dict[str, list[dict]] | None = None, weglaten: tuple[str, ...] = ()) -> bytes:
     """De ZIP met `data/<tabel>.json` per tabel; `weglaten` haalt tabellen weg (voor de vormtoets)."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
         for naam, rijen in (tabellen or TABELLEN).items():
             if naam not in weglaten:
-                z.writestr(f"data/{naam}.json", json.dumps(rijen, ensure_ascii=False))
+                z.writestr(_bestand(f"data/{naam}.json"), json.dumps(rijen, ensure_ascii=False))
     return buffer.getvalue()
 
 

@@ -93,7 +93,8 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
 - **LCSK** (Opleidingen): `editie` is het versienummer van de export (26.6), `peilmoment` versie, exportdatum, NSE-jaar
   en 1cijferHO-jaar ("versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26"), en `vermelding` de bronregel
   van de chat (die van de weergave `studie`: NSE-jaar, studieverloop uit 1cijferHO en arbeidsmarkt uit CBS-microdata
-  en de NAE/HBO-monitor) met de zin die LCSK verplicht stelt. De footer toont die zin letterlijk, met de link naar
+  en de NAE/HBO-monitor), met de laaddatum en de eerste twaalf tekens van de sha256 van de geladen export (#981), en
+  met de zin die LCSK verplicht stelt. De footer toont die zin letterlijk, met de link naar
   lcsk.nl/over-ons/studiekeuzedata-raadplegen.
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.

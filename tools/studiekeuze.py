@@ -399,7 +399,8 @@ _HERKOMST = {
 
 def bronregel(herkomst: skdb.Herkomst, jaren: dict | None = None, weergave: str | None = None) -> str:
     """'Studiekeuzedatabase 26.6 (NSE 2026; studieverloop uit 1cijferHO 2025, bewerkt door LCSK), Landelijk Centrum
-    Studiekeuze, export van 2026-11-06. Er is gebruik gemaakt …': versie en NSE-jaar zijn verplicht (art. 4.2)."""
+    Studiekeuze, export van 2026-11-06, opgehaald op 2026-11-09. Er is gebruik gemaakt …': versie en NSE-jaar zijn
+    verplicht (art. 4.2); de exportdatum en de laaddatum zeggen welke lading het was (#981)."""
     jaren = jaren or {}
     delen = [f"NSE {jaren['nse']}"] if jaren.get("nse") and weergave in (None, "opleidingen", "studie") else []
     if weergave in _HERKOMST:
@@ -408,7 +409,33 @@ def bronregel(herkomst: skdb.Herkomst, jaren: dict | None = None, weergave: str 
     versie = f" {herkomst.versie}" if herkomst.versie else ""
     toelichting = f" ({'; '.join(delen)})" if delen else ""
     datum = f", export van {herkomst.datum}" if herkomst.datum else ""
-    return f"{BRONTITEL}{versie}{toelichting}, {BRONNAAM}{datum}. {skdb.VERPLICHTE_ZIN}"
+    return (
+        f"{BRONTITEL}{versie}{toelichting}, {BRONNAAM}{datum}, opgehaald op {herkomst.laaddatum}. {skdb.VERPLICHTE_ZIN}"
+    )
+
+
+def met_hash(regel: str, sha256: str) -> str:
+    """De bronregel met de eerste twaalf tekens van de sha256 van de geladen export, vóór de verplichte zin (#981). Voor
+    de bronvermelding onder het antwoord en op het dashboard, niet voor het toolresultaat: het model heeft de hash niet
+    nodig, en de cijferreeksen erin zouden als bewijsgetal gelden (agent/grounding.py)."""
+    return regel.replace(f". {skdb.VERPLICHTE_ZIN}", f", sha256 {sha256[:12]}. {skdb.VERPLICHTE_ZIN}", 1)
+
+
+def peilmoment(herkomst: skdb.Herkomst) -> str:
+    """'versie 26.6, export van 2026-11-06, opgehaald op 2026-11-09': de lading in woorden, voor de store (#981)."""
+    delen = [f"versie {herkomst.versie or 'onbekend'}", f"export van {herkomst.datum}" if herkomst.datum else None]
+    return ", ".join([*(d for d in delen if d), f"opgehaald op {herkomst.laaddatum}"])
+
+
+# Het peilmoment in de store is de lading plus de verplichte vermelding; de snippet neemt alleen de lading over.
+_VERMELDING = "; "
+
+
+def lading(known: store.KeyMeta | None) -> tuple[str, str] | None:
+    """De lading achter een SKDB-tabel in de store: (peilmoment zonder de vermelding, sha256); None zonder (#981)."""
+    if known is None or known.bron != "skdb" or not known.peilmoment or not known.bronhash:
+        return None
+    return known.peilmoment.partition(_VERMELDING)[0], known.bronhash
 
 
 def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: skdb.Herkomst) -> str:
@@ -419,9 +446,11 @@ def _bewaar(df: pd.DataFrame, keuze: Keuze, herkomst: skdb.Herkomst) -> str:
         bron="skdb",
         dataset=DATASET,
         laad=(TOOL_GET_STUDIEKEUZE, args),
-        # De vermelding van LCSK is verplicht bij elke uiting (art. 4.1): zo staat ze ook in de kop van een CSV-export
-        # en in de bronregel van een selectie op deze tabel.
-        peilmoment=f"versie {herkomst.versie or 'onbekend'}; {skdb.VERPLICHTE_ZIN} ({skdb.DOCUMENTATIE})",
+        # De lading (#981) en de vermelding van LCSK, die verplicht is bij elke uiting (art. 4.1): zo staan ze ook in de
+        # kop van een CSV-export en in de bronregel van een selectie op deze tabel.
+        peilmoment=f"{peilmoment(herkomst)}{_VERMELDING}{skdb.VERPLICHTE_ZIN} ({skdb.DOCUMENTATIE})",
+        # De sha256 van de export-ZIP, zoals de md5 van een DUO-bestand: manifest, logregel en CSV-kop (#981).
+        bronhash=herkomst.sha256,
         instellingskolom="brin" if "brin" in df.columns else None,
         instellingen=tuple(sorted(df["brin"].dropna().unique())) if "brin" in df.columns else None,
     )
@@ -493,6 +522,7 @@ def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
             "url": skdb.DOCUMENTATIE,
             "versie": herkomst.versie,
             "exportdatum": herkomst.datum,
+            "opgehaald": herkomst.laaddatum,
         },
     }
     if keuze.instelling:
