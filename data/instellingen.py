@@ -37,7 +37,10 @@ REGIO_VIA_LOCATIES = (
 # waarvandaan (#316). Pas de datum aan bij elke wijziging aan een lijst;
 # tests/test_referentielijsten.py bewaakt dit en de botsingen tussen de lijsten.
 REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
-    "ALIASSEN": {"bijgewerkt": "2026-10-19", "bron": "handmatig: gangbare afkortingen per instelling"},
+    "ALIASSEN": {
+        "bijgewerkt": "2026-11-09",
+        "bron": "handmatig: gangbare afkortingen per instelling; de namen in de Studiekeuzedatabase (#980)",
+    },
     "SRAM_ORGS": {
         "bijgewerkt": "2026-09-08",
         "bron": "SURF, Institutions using SRAM (servicedesk.surf.nl/wiki/spaces/IAM/pages/74226143)",
@@ -45,6 +48,8 @@ REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
     "DOMEINEN": {"bijgewerkt": "2026-09-26", "bron": "handmatig: e-maildomeinen van de instellingen"},
 }
 
+# Naast de afkortingen de naam die de Studiekeuzedatabase (LCSK) gebruikt waar die afwijkt van DUO, zodat het dashboard
+# Opleidingen ook op die naam de instelling vindt (#980; gemeten met scripts/meet_skdb_dekking.py).
 ALIASSEN: dict[str, list[str]] = {
     # WO
     "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit", "VU Amsterdam"],
@@ -54,11 +59,11 @@ ALIASSEN: dict[str, list[str]] = {
     "Universiteit Twente": ["UT"],
     "Universiteit Utrecht": ["UU"],
     "Universiteit Leiden": ["UL", "Leiden University"],
-    "Universiteit Maastricht": ["UM"],
+    "Universiteit Maastricht": ["UM", "Maastricht University"],
     "Technische Universiteit Delft": ["TU Delft"],
     "Technische Universiteit Eindhoven": ["TU/e", "TU Eindhoven"],
-    "Wageningen University": ["WUR", "Wageningen"],
-    "Radboud Universiteit Nijmegen": ["Radboud", "RU"],
+    "Wageningen University": ["WUR", "Wageningen", "Wageningen University & Research"],
+    "Radboud Universiteit Nijmegen": ["Radboud", "RU", "Radboud Universiteit"],
     "Tilburg University": ["UvT", "Tilburg"],
     "Open Universiteit Nederland": ["OU", "Open Universiteit"],
     # HBO
@@ -71,15 +76,21 @@ ALIASSEN: dict[str, list[str]] = {
     "Fontys Hogeschool": ["Fontys"],
     "Saxion Hogeschool": ["Saxion"],
     "Avans Hogeschool": ["Avans"],
-    "Hogeschool van Arnhem en Nijmegen": ["HAN"],
+    "Hogeschool van Arnhem en Nijmegen": ["HAN", "HAN University of Applied Sciences"],
     "Christelijke Hogeschool Windesheim": ["Windesheim"],
     "NHL Stenden Hogeschool": ["NHL Stenden", "NHL", "Stenden"],
     "Zuyd Hogeschool": ["Zuyd"],
     "Hogeschool Leiden": ["HL"],
     "Breda University of Applied Sciences": ["BUas", "NHTV"],
     "HZ University of Applied Sciences": ["HZ"],
-    "Codarts, Hogeschool voor de Kunsten": ["Codarts"],
+    "Codarts, Hogeschool voor de Kunsten": ["Codarts", "Codarts Hogeschool voor de Kunsten"],
     "Hogeschool voor de Kunsten Utrecht": ["HKU"],
+    "ArtEZ": ["ArtEZ University of the Arts"],
+    "Driestar educatief": ["Driestar Hogeschool"],
+    "Pedagogische Hogeschool De Kempel": ["Hogeschool De Kempel"],
+    "Hogeschool IPABO Amsterdam Alkmaar": ["Hogeschool IPABO"],
+    "Hogeschool Thomas More": ["Thomas More Hogeschool"],
+    "Hogeschool Van Hall Larenstein": ["Van Hall Larenstein"],
     # MBO
     "ROC van Amsterdam": ["ROCvA"],
     "ROC Midden Nederland": ["ROC MN"],

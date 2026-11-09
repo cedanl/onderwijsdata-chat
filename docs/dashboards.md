@@ -342,6 +342,16 @@ hieronder wat voor het dashboard geldt.
 - **Instelling:** dezelfde `?instelling=` als Mijn instelling: het register geeft naam, type en BRIN-code
   (`instellingsprofiel`). Een mbo-instelling krijgt een vaste melding (de bron heeft alleen hbo en wo) en de export
   wordt niet geladen; een hogeschool of universiteit die niet in de export staat, krijgt de melding met haar BRIN-code.
+- **Registergrens (#980, besluit B):** de export kent 109 instellingen, het DUO-register van de dashboards alleen de
+  bekostigde: 54 ervan op BRIN-code (export 26.6). Een naam die het register niet kent maar de export wel (BRIN-code
+  of woordbegin, hetzelfde zoekpad als de chat, #971), zoals Nyenrode of de Open Universiteit, krijgt een vaste melding
+  (`BUITEN_REGISTER`): de instelling staat niet in het DUO-register waarop dit dashboard steunt, de Studiekeuzedatabase
+  heeft er wel gegevens over, vraag ernaar in de chat. Geen tabellen, wel het bronblok van LCSK. Een naam uit de export
+  voor een instelling die wel in het register staat, geeft "niet gevonden" met de registernaam als eerste suggestie;
+  laadt de export niet, dan blijft het "niet gevonden". De namen die de export anders schrijft dan DUO ("Maastricht
+  University", "HAN University of Applied Sciences", elf in totaal) staan als alias in `data/instellingen.ALIASSEN`.
+  `scripts/meet_skdb_dekking.py` meet registerdekking en naamdekking apart (exitcode 1 bij een naam zonder alias); de
+  numerieke juistheid meten de tests hieronder.
 - **Eén lading:** de export (ongeveer 18 MB) is die van de chat, `tools.studiekeuze._export` met de TTL van
   `core/actualiteit.py`: chat en dashboard halen haar samen één keer per 24 uur. Rekenen gebeurt in
   `onderwijsbronnen.skdb` (`opleidingen`, `studie`, `numerus_fixus`, `jaren`), dezelfde functies als de chat en de
@@ -397,7 +407,7 @@ hieronder wat voor het dashboard geldt.
   een afdruk.
 
 **Payload** (`/api/dashboard/opleidingen`): `instelling`, `gevonden`, `type` (hbo, wo of mbo), `brin`, `melding` (mbo,
-of niet in de export), `jaren` (`nse`, `1cijferho`), `min_respondenten`, `themas` (veld en naam), `uitleg`,
+niet in de export, of buiten het DUO-register), `jaren` (`nse`, `1cijferho`), `min_respondenten`, `themas` (veld en naam), `uitleg`,
 `opleidingen` (de velden van `KOLOMMEN` in `data/dashboard_opleidingen.py`, de thema's, `nse_onzeker`,
 `diploma_opleiding_pct_landelijk`, `aanbieders_landelijk`), `arbeidsmarkt`, `numerus_fixus`, `aantallen` en `bronnen`.
 Een onbekende naam geeft `gevonden: false` met `beschikbare_instellingen`, zoals Mijn instelling. De tests staan in

@@ -638,3 +638,46 @@ def test_api_dashboard_regio_op_code(client):
     assert resp.status_code == 200
     assert resp.json()["gevonden"] is True
     assert resp.json()["instelling"] == _HU
+
+
+# ─── De namen van de Studiekeuzedatabase (#980) ──────────────────────────────
+
+# De elf instellingen die in de export van de Studiekeuzedatabase (26.6, 06-11-2026) een andere naam hebben dan in het
+# DUO-register, terwijl hun BRIN-code er wel in staat. Gemeten met scripts/meet_skdb_dekking.py; de export zelf staat
+# niet in de repo (leveringsvoorwaarden van LCSK).
+_SKDB_NAMEN = [
+    ("27NF", "ArtEZ University of the Arts", "ArtEZ"),
+    ("14NI", "Codarts Hogeschool voor de Kunsten", "Codarts, Hogeschool voor de Kunsten"),
+    ("15BK", "Driestar Hogeschool", "Driestar educatief"),
+    ("25KB", "HAN University of Applied Sciences", "Hogeschool van Arnhem en Nijmegen"),
+    ("08OK", "Hogeschool De Kempel", "Pedagogische Hogeschool De Kempel"),
+    ("21UG", "Hogeschool IPABO", "Hogeschool IPABO Amsterdam Alkmaar"),
+    ("21PJ", "Maastricht University", "Universiteit Maastricht"),
+    ("21PM", "Radboud Universiteit", "Radboud Universiteit Nijmegen"),
+    ("30VP", "Thomas More Hogeschool", "Hogeschool Thomas More"),
+    ("30HD", "Van Hall Larenstein", "Hogeschool Van Hall Larenstein"),
+    ("21PI", "Wageningen University & Research", "Wageningen University"),
+]
+
+
+@pytest.fixture
+def register_met_skdb_instellingen(monkeypatch):
+    """Het register met alleen de elf instellingen, onder hun DUO-naam, zonder DUO-bestanden."""
+    from data import instellingen
+
+    register: dict[str, dict] = {}
+    for code, _, naam in _SKDB_NAMEN:
+        instellingen._voeg_toe(register, naam, code, "wo" if code.startswith("21P") else "hbo", {})
+    monkeypatch.setattr(instellingen, "_cache", sorted(register.values(), key=lambda i: i["naam"].lower()))
+    monkeypatch.setattr(instellingen, "_alias_lookup", None)
+
+
+@pytest.mark.parametrize(("code", "skdb_naam", "naam"), _SKDB_NAMEN, ids=[n for _, n, _ in _SKDB_NAMEN])
+def test_de_naam_uit_de_studiekeuzedatabase_vindt_de_registerinstelling(
+    register_met_skdb_instellingen, code, skdb_naam, naam
+):
+    """Naamdekking (#980): wie de naam uit de Studiekeuzedatabase typt, krijgt dezelfde instelling als met de BRIN-code."""
+    from data.instellingen import instellingsprofiel
+
+    profiel = instellingsprofiel(skdb_naam)
+    assert profiel is not None and profiel["naam"] == naam and profiel["instellingscode"] == code

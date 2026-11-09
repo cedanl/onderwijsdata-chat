@@ -36,7 +36,9 @@ def _profiel(naam: str) -> dict | None:
 
 
 def _register() -> list[dict]:
-    return [{"naam": n, "type": t, "instellingscode": c} for n, t, c in set(_REGISTER.values())]
+    return [
+        {"naam": n, "type": t, "instellingscode": c, "instellingscodes": [c]} for n, t, c in set(_REGISTER.values())
+    ]
 
 
 @pytest.fixture(autouse=True)
@@ -234,6 +236,40 @@ def test_een_hogeschool_die_niet_in_de_studiekeuzedatabase_staat():
     )
 
 
+# Besluit B op #980: de Studiekeuzedatabase kent ook instellingen buiten het DUO-register (niet-bekostigde hogescholen,
+# Nyenrode, de Open Universiteit). Het dashboard noemt die grens, in plaats van "niet gevonden in DUO-data".
+@pytest.mark.parametrize("invoer", ["Proefuniversiteit", "proefuniversiteit", "98ZZ"])
+def test_een_instelling_buiten_het_duo_register_die_de_studiekeuzedatabase_kent(invoer):
+    uit = opleidingen.load_dashboard_opleidingen(invoer)
+
+    assert uit["gevonden"] is True and uit["instelling"] == "Proefuniversiteit" and uit["brin"] == "98ZZ"
+    assert uit["melding"] == (
+        "Proefuniversiteit (98ZZ) staat niet in het DUO-register waarop dit dashboard steunt; de Studiekeuzedatabase "
+        "heeft er wel gegevens over. Vraag ernaar in de chat."
+    )
+    assert uit["opleidingen"] == [] and "aantallen" not in uit
+    assert [b["bron"] for b in uit["bronnen"]] == ["LCSK"]
+
+
+def test_een_naam_uit_de_studiekeuzedatabase_voor_een_instelling_in_het_register_geeft_haar_registernaam():
+    # "Leiden" is in de export alleen Universiteit Leiden, en die staat in het register: geen grensmelding, wel haar naam.
+    uit = opleidingen.load_dashboard_opleidingen("Leiden")
+
+    assert uit["gevonden"] is False
+    assert uit["beschikbare_instellingen"][0] == "Universiteit Leiden"
+
+
+def test_een_onbekende_naam_zonder_export_blijft_niet_gevonden(monkeypatch):
+    # De grens kan alleen de export zien; laadt die niet, dan klopt "niet gevonden in DUO-data" nog steeds.
+    def kapot(*a, **k):
+        raise skdb.SkdbFout("HTTP 502")
+
+    monkeypatch.setattr(skdb, "haal_op", kapot)
+    uit = opleidingen.load_dashboard_opleidingen("Proefuniversiteit")
+
+    assert uit["gevonden"] is False
+
+
 def test_een_onbekende_instelling_is_niet_gevonden_met_suggesties():
     uit = opleidingen.load_dashboard_opleidingen("Hogeschool Utrect")
 
@@ -357,6 +393,7 @@ _FIXTURE_INSTELLINGEN = {
     "wo": "Universiteit Leiden",
     "onzeker": "Proefhogeschool Particulier",
     "mbo": "ROC Midden Nederland",
+    "buiten_register": "Proefuniversiteit",
 }
 
 

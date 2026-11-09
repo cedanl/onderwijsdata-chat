@@ -40,6 +40,13 @@ ALLEEN_HO = (
     "mbo-instelling staan er geen cijfers in."
 )
 NIET_IN_SKDB = "{naam} ({brin}) staat niet in de Studiekeuzedatabase: er zijn geen cijfers per opleiding."
+# Besluit B op #980: de export kent 109 instellingen, het DUO-register van de dashboards alleen de bekostigde (54 ervan,
+# op BRIN). Voor de rest, zoals Nyenrode en de Open Universiteit, noemt het dashboard die grens in plaats van "niet
+# gevonden in DUO-data": dat las alsof er geen studiekeuzedata bestond.
+BUITEN_REGISTER = (
+    "{naam} ({brin}) staat niet in het DUO-register waarop dit dashboard steunt; de Studiekeuzedatabase heeft er wel "
+    "gegevens over. Vraag ernaar in de chat."
+)
 EXPORT_NIET_BESCHIKBAAR = (
     "De Studiekeuzedatabase van LCSK is nu niet beschikbaar. Probeer het over een paar minuten opnieuw."
 )
@@ -231,22 +238,54 @@ def _export() -> tuple[skdb.Export, dict]:
     return export, jaren
 
 
-def _niet_gevonden(instelling: str) -> dict:
-    """Een naam die het register niet kent: de namen die erop lijken, zoals bij Mijn instelling (#901, #929)."""
-    namen = {i["naam"].lower(): i["naam"] for i in instellingen.get_all()}
-    if not namen:  # het register (DUO) laadde niet: een storing, geen onbekende naam
-        raise BronNietBeschikbaar
-    dichtst = difflib.get_close_matches(instelling.lower(), list(namen), n=_MAX_SUGGESTIONS, cutoff=0.5)
-    uit = {"instelling": instelling, "gevonden": False, "beschikbare_instellingen": [namen[n] for n in dichtst]}
+def _niet_gevonden(instelling: str, register: list[dict], eerst: str | None = None) -> dict:
+    """Een naam die het register niet kent: de namen die erop lijken, zoals bij Mijn instelling (#901, #929). `eerst`
+    is de registernaam van de instelling die de export onder deze naam kent (#980)."""
+    namen = {i["naam"].lower(): i["naam"] for i in register}
+    dichtst = [
+        namen[n] for n in difflib.get_close_matches(instelling.lower(), list(namen), n=_MAX_SUGGESTIONS, cutoff=0.5)
+    ]
+    if eerst:
+        dichtst = [eerst, *(n for n in dichtst if n != eerst)][:_MAX_SUGGESTIONS]
+    uit = {"instelling": instelling, "gevonden": False, "beschikbare_instellingen": dichtst}
     if not dichtst:
         uit["geen_suggesties"] = _GEEN_SUGGESTIES
     return uit
 
 
+def _buiten_register(instelling: str) -> dict:
+    """Een naam die het register niet kent (#980). Kent de export haar, op hetzelfde zoekpad als de chat (BRIN-code of
+    woordbegin, #971), en staat haar BRIN-code niet in het register, dan de grensmelding; staat die er wel, dan is het
+    een andere naam van een registerinstelling en komt die naam bovenaan de suggesties. Anders "niet gevonden"."""
+    register = instellingen.get_all()
+    if not register:  # het register (DUO) laadde niet: een storing, geen onbekende naam
+        raise BronNietBeschikbaar
+    try:
+        export, _ = _export()
+    except StudiekeuzeNietBeschikbaar:  # dan is alleen te zeggen wat waar blijft: DUO kent de naam niet
+        return _niet_gevonden(instelling, register)
+    gevonden = studiekeuze._instelling(instelling, export)
+    if not isinstance(gevonden, tuple):
+        return _niet_gevonden(instelling, register)
+    brin, naam = gevonden
+    in_register = next((i["naam"] for i in register if brin in i["instellingscodes"]), None)
+    if in_register:
+        return _niet_gevonden(instelling, register, eerst=in_register)
+    return {
+        "instelling": naam,
+        "gevonden": True,
+        "brin": brin,
+        "melding": BUITEN_REGISTER.format(naam=naam, brin=brin),
+        "opleidingen": [],
+        "arbeidsmarkt": [],
+        "numerus_fixus": [],
+    }
+
+
 def _laad(instelling: str) -> dict:
     profiel = instellingen.instellingsprofiel(instelling)
     if profiel is None:
-        return _niet_gevonden(instelling)
+        return _buiten_register(instelling)
     naam, soort, brin = profiel["naam"], profiel["sector"], str(profiel.get("instellingscode") or "")
     result: dict = {"instelling": naam, "gevonden": True, "type": soort, "brin": brin}
     if soort == "mbo":

@@ -166,6 +166,16 @@ describe('melding en bronvermelding', () => {
     expect(container.querySelector('table')).toBeNull()
   })
 
+  // #980, besluit B: een instelling die de Studiekeuzedatabase kent maar het DUO-register niet, is niet "niet gevonden".
+  it('noemt bij een instelling buiten het DUO-register de grens, niet "niet gevonden in DUO-data"', async () => {
+    await dashboard(payloads.buiten_register)
+    expect(container.textContent).toContain(payloads.buiten_register.melding)
+    expect(container.textContent).toContain('de Studiekeuzedatabase heeft er wel gegevens over')
+    expect(container.textContent).not.toContain('niet gevonden')
+    expect(container.querySelector('table')).toBeNull()
+    expect(container.querySelector('.dashboard-sources').textContent).toContain(VERPLICHTE_ZIN)
+  })
+
   it('noemt LCSK met versie, jaren, link en de verplichte zin', async () => {
     await dashboard(payloads.hbo)
     const bronnen = container.querySelector('.dashboard-sources')
@@ -204,6 +214,15 @@ describe('in de galerij', () => {
     await toon(createElement(DashboardLadingen, null, createElement(DashboardMiniatuur, { wb: BUILTIN_OPLEIDINGEN, instelling: 'ROC Midden Nederland' })))
     await act(async () => { zie([{ isIntersecting: true }]) })
     expect(container.querySelector('.wb-miniatuur-melding').textContent).toBe(payloads.mbo.melding)
+  })
+
+  it('toont in de miniatuur van een instelling buiten het DUO-register de grensmelding', async () => {
+    let zie
+    globalThis.IntersectionObserver = class { constructor(cb) { zie = cb } observe() {} disconnect() {} }
+    api.fetchDashboardData.mockResolvedValue(payloads.buiten_register)
+    await toon(createElement(DashboardLadingen, null, createElement(DashboardMiniatuur, { wb: BUILTIN_OPLEIDINGEN, instelling: 'Proefuniversiteit' })))
+    await act(async () => { zie([{ isIntersecting: true }]) })
+    expect(container.querySelector('.wb-miniatuur-melding').textContent).toBe(payloads.buiten_register.melding)
   })
 
   it('opent via een link niet waar de bron ontbreekt, en zegt waarom', async () => {
