@@ -37,9 +37,16 @@ def get_answer_feedback(conversation_id: str, username: str = Depends(get_curren
 
 @router.post("/api/answer-feedback", dependencies=[Depends(_require_enabled)])
 def post_answer_feedback(body: AnswerFeedbackIn, username: str = Depends(get_current_user)) -> dict:
-    """👍/👎 op een antwoord (#248); de trace komt uit het eigen opgeslagen gesprek."""
+    """👍/👎 op een antwoord (#248); de trace komt uit het eigen opgeslagen gesprek, en of het antwoord van de server
+    kwam en wat zijn controle meldde, uit de rijen van dat gesprek in beurtbewijs (ADR-009, #876)."""
     messages = persistence_db.conversation_messages(username, body.conversation_id)
-    trace = antwoord_trace(messages, body.message_index) if messages is not None else None
+    trace = (
+        antwoord_trace(
+            messages, body.message_index, persistence_db.beurtbewijs_controles(username, body.conversation_id)
+        )
+        if messages is not None
+        else None
+    )
     if trace is None:
         raise HTTPException(status_code=404, detail="Antwoord niet gevonden")
     persistence_db.upsert_answer_feedback(

@@ -206,6 +206,23 @@ def test_een_rij_draagt_wat_de_beurt_opleverde(monkeypatch):
     assert rij["created_at"].endswith("+00:00")
 
 
+def test_een_rij_draagt_de_controle_van_haar_message_end(monkeypatch):
+    """De feedbacktrace leest de controle uit de rij, niet uit het gesprek dat de client schreef (#876)."""
+    sessie = _sessie()
+    melding = "28.355 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
+
+    async def met_controle(messages, session, emit, stop_event, model=None):
+        await emit({"type": "message_end", "content": "Nee.", "actions": [], "bronnen": [], "controle": [melding]})
+        return "Nee."
+
+    monkeypatch.setattr(chat, "agent_run", met_controle)
+    asyncio.run(chat._process_message("Toch 28355?", sessie, _niets, None))
+    _beurt(monkeypatch, sessie, "En verder?", "Zonder melding.")
+
+    assert beurtbewijs._klaar["alice", beurtbewijs.tekst_hash("Nee.")]["controle"] == [melding]
+    assert beurtbewijs._klaar["alice", beurtbewijs.tekst_hash("Zonder melding.")]["controle"] == []
+
+
 def test_een_rij_bevat_wat_sinds_de_vorige_beurt_bijkwam(monkeypatch):
     sessie = _sessie()
     _beurt(monkeypatch, sessie, "Eerste?", "Eerste antwoord.", laad=_KEY, reken=True)
@@ -266,11 +283,18 @@ def test_dezelfde_tekst_twee_keer_geeft_een_rij_met_beide_beurten(monkeypatch):
 
 
 def test_samenvoegen_kan_zo_vaak_als_je_wilt():
-    a = {"lineage": {"k": 1}, "rekenbewijs": [{"r": 1}], "kaarten": {"k": {"v": 1}}, "created_at": "eerst"}
+    a = {
+        "lineage": {"k": 1},
+        "rekenbewijs": [{"r": 1}],
+        "kaarten": {"k": {"v": 1}},
+        "controle": ["eerste melding"],
+        "created_at": "eerst",
+    }
     b = {
         "lineage": {"k": 2, "l": 3},
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},
+        "controle": ["eerste melding", "tweede melding"],
         "created_at": "laat",
     }
 
@@ -280,6 +304,7 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "lineage": {"k": 1, "l": 3},  # de eerste maker wint
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},  # de latere kaart wint
+        "controle": ["eerste melding", "tweede melding"],  # elke melding één keer
         "created_at": "eerst",
     }
     assert beurtbewijs.voeg_samen(samen, b) == samen

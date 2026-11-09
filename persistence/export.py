@@ -121,13 +121,14 @@ def data_recipes(username: str) -> Iterator[dict]:
 
 
 def beurtbewijs(username: str) -> Iterator[dict]:
-    """Wat de server per antwoord vastlegde voor het rapport: herkomst, rekenbewijs en kaarten (ADR-009, #875)."""
+    """Wat de server per antwoord vastlegde: herkomst, rekenbewijs en kaarten voor het rapport (ADR-009, #875), en de
+    meldingen van de controles voor de feedbacktrace (#876)."""
     for row in _rijen(
-        "SELECT conv_id, tekst_hash, lineage, rekenbewijs, kaarten, created_at FROM beurtbewijs "
+        "SELECT conv_id, tekst_hash, lineage, rekenbewijs, kaarten, controle, created_at FROM beurtbewijs "
         "WHERE username = ? ORDER BY created_at, conv_id, tekst_hash",
         (username,),
     ):
-        for kolom in ("lineage", "rekenbewijs", "kaarten"):
+        for kolom in ("lineage", "rekenbewijs", "kaarten", "controle"):
             row[kolom] = _json_of_tekst(row[kolom])
         yield row
 

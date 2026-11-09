@@ -29,7 +29,7 @@ More orchestration, and the checks reduce the risk; they do not eliminate it. Kn
 
 - Numbers under four digits and years are not checked; percentages are matched as value or fraction, in chat answers and in the model text of a report (not in the definitions a report quotes from the source). A percentage that matches some value in the data counts as sourced, whatever that value measures, and its sign is not checked.
 - Binding only works when a sentence names exactly one year and one institution.
-- Numbers from earlier assistant messages in the conversation count as sourced. Numbers the user gave do not (#211): they are a claim to test, not evidence (`agent/controles.py`, `agent/grounding.py`). The assistant turns come from the history the client stores and sends back, so they count as covered without the server having written them. ADR-009 (#784) keeps the conversation with the client and has the server store a hash of every answer it checked, so that after reopening only its own turns can count; until that is built (#876), a reopened conversation's turns still count as covered.
+- Numbers from earlier assistant messages in the conversation count as sourced. Numbers the user gave do not (#211): they are a claim to test, not evidence (`agent/controles.py`, `agent/grounding.py`). In a live session every assistant message counts: the server put it there itself. After reopening or reconnecting, the history comes from the client, so only an assistant message whose text hash has a row in `beurtbewijs` (ADR-009, #876) counts; one without a row (a conversation from before the table, a restart before the save, a stopped answer, or a text the client added or changed) does not, also not as "earlier conversation" for the refusal. A follow-up on such a conversation therefore gets a rewrite or an omitted number more often, until it fetches the data again. Identical text is the only link: an answer the server wrote and the client then copied verbatim into another place still counts.
 - `run_analysis` executes model-written Python in a separate process (AST check, resource limits, audit hook blocking network, writes and subprocesses; #62). That sandbox limits damage but is not a kernel-level security boundary (#443).
 - Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision (see ADR-007 for when).
 
@@ -294,8 +294,9 @@ databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41)
 
 ## ADR-009: Het gesprek blijft van de client; de server bewaart per beurt wat rapport en controles nodig hebben
 
-**Date:** 2026-11-03 (besluit 2026-10-30)  
-**Status:** Decided; stap 1 gebouwd (#875: tabel, schrijven, herstellen, levenscyclus), stap 2 nog niet (#876)  
+**Date:** 2026-11-03 (besluit 2026-10-30); bijgewerkt 2026-11-09 (besluiten op open vragen 1 en 2)  
+**Status:** Decided; stap 1 gebouwd (#875: tabel, schrijven, herstellen, levenscyclus), stap 2 gebouwd (#876: alleen
+eigen beurten als bewijs na heropenen, de controle in de rij en `server_beurt` in de feedbacktrace)  
 **Issue:** #784 (raakt #472, #677, #760, #785)
 
 ### Problem
@@ -355,6 +356,7 @@ Nieuwe tabel `beurtbewijs`, in `_SCHEMA` van `persistence/db.py` (dezelfde DDL v
 | `rekenbewijs` | TEXT NOT NULL | JSON-lijst van `{tool, argumenten, resultaat}`: wat `record_rekenbewijs` sinds de vorige beurt toevoegde |
 | `kaarten` | TEXT NOT NULL | JSON `{data_key: {...}}`: de kaarten die deze beurt tekende, alleen met de velden van `_KAARTREGEL_ARGUMENTEN` (geen titel en geen rijen, #211) |
 | `created_at` | TEXT NOT NULL | ISO-tijd van `message_end` |
+| `controle` | TEXT NOT NULL DEFAULT `'[]'` | JSON-lijst met de meldingen die `message_end` als `controle` droeg (#876, besluit 2). Toegevoegd met `_voeg_kolom_toe` in `_migrate`; een rij van daarvóór heeft een lege lijst |
 
 Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvragen: per gesprek, en per gesprek en hash.
 
@@ -391,12 +393,17 @@ Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvrage
   kaarten). Alleen `_kaarten_in_gesprek` leest naast `turns` ook de kaarten uit de rijen. Een gesprek zonder rijen geeft
   hetzelfde rapport als nu.
 - **Controles.** In een live sessie verandert niets: daar zette de server de berichten zelf in `session["messages"]`. Na
-  heropenen of herverbinden telt een assistentbericht alleen als bewijs in `earlier` als het een rij heeft. Wat er met
-  een bericht zonder rij gebeurt, is open vraag 1.
+  heropenen of herverbinden telt een assistentbericht alleen als bewijs in `earlier` als het een rij heeft (besluit 1):
+  `zet_terug` onthoudt de hashes van de berichten zonder rij, en `eerdere_antwoorden` (`agent/beurtbewijs.py`) laat ze
+  weg uit `earlier` in `agent/run.py`. Dat geldt voor de getalcontrole (`maak_getalcontrole`) en voor het "eerdere
+  gesprek" van `weigering`. Wat de server na heropenen in dezelfde sessie schrijft, telt wel. De controles zelf
+  (`agent/controles.py`) veranderen niet.
 - **Feedback.** De sleutel van `answer_feedback` blijft `(username, conversation_id, message_index)`. `antwoord_trace`
-  zoekt de rij van het bericht op die index op via de hash, en de trace krijgt de hash en of de tekst van de server kwam
-  (`server_beurt`). Zo is ook na een verschoven index na te gaan bij welk antwoord de melding hoort. Of feedback op een
-  tekst zonder rij geweigerd wordt, is open vraag 2.
+  zoekt de rij van het bericht op die index op via de hash (`beurtbewijs_controles`, alleen hash en controle), en de
+  trace krijgt `tekst_hash` en `server_beurt`. Zo is ook na een verschoven index na te gaan bij welk antwoord de melding
+  hoort. De `controle` in de trace komt uit de rij, niet uit de blob; feedback op een tekst zonder rij wordt aangenomen
+  met `server_beurt: false` en zonder controle (besluit 2). `als_markdown` toont beide. Vraag, antwoord, stappen en
+  ingetrokken tekst blijven uit de blob komen.
 
 ### Bewaren en verwijderen
 Dezelfde termijn als het gesprek. `docs/privacy.md` krijgt een rij voor `beurtbewijs`, in de tabel en in de tekst in de
@@ -409,7 +416,7 @@ app.
 - **"Verwijder al mijn gegevens"** (`persistence/verwijderen.py`): één `DELETE ... WHERE username = ?` in `DELETES`, en
   de klaarstaande rijen van de gebruiker gaan uit het geheugen, zoals bij `recepten.vergeet_gebruiker`.
 - **Export** (`persistence/export.py`): een soort `beurtbewijs` met `conv_id`, `tekst_hash`, `lineage`, `rekenbewijs`,
-  `kaarten` en `created_at`, in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
+  `kaarten`, `controle` (sinds #876) en `created_at`, in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
 - **Log:** op INFO alleen aantallen en kenmerken, nooit lineage, argumenten of resultaten (#475).
 
 ### Migratie
@@ -441,12 +448,18 @@ app.
     - feedback of controles hebben een vast bericht-ID nodig dat de hash niet kan geven;
     - de blob haalt de verzoeklimiet van 4 MiB (#785).
 
+### Besluiten op de open vragen (2026-11-09, #876)
+1. **Een assistentbericht zonder rij telt niet als bewijs** na heropenen of herverbinden: niet voor `earlier` en de
+   getalcontrole, en niet als "eerder gesprek" voor de weigering. Dat geldt voor een gesprek van vóór de migratie, een
+   herstart vóór de PUT, een gestopt antwoord en een tekst die de client toevoegde of veranderde. Alleen een bericht
+   waarvan de hash een rij vindt (in de database of klaarstaand) telt. Een levende sessie blijft gelijk. De prijs: een
+   vervolgvraag op zo'n gesprek krijgt vaker een herschrijving, een weggelaten getal of de weigering, tot de vraag
+   opnieuw data ophaalt.
+2. **Feedback op een antwoord zonder rij wordt aangenomen**, met `server_beurt: false`; de trace krijgt `tekst_hash`
+   en `server_beurt`. **De controle-uitkomst staat in de rij** (kolom `controle`), zodat de trace haar niet uit de blob
+   leest die de client schreef. Zonder rij heeft de trace geen controle.
+
 ### Open vragen
-1. Telt een assistentbericht zonder rij na heropenen nog als bewijs voor de getalcontrole? "Nee" sluit gevolg 1
-   helemaal, maar een vervolgvraag op een gesprek van vóór de migratie (of na een herstart vóór de PUT) krijgt dan vaker
-   een herschrijving of een weggelaten getal. "Ja" houdt voor die berichten het gedrag van nu.
-2. Feedback op een antwoord zonder rij: aannemen met `server_beurt: false` in de trace, of weigeren? En hoort de
-   controle-uitkomst (`controle`) in de rij, zodat de trace haar niet uit de blob leest?
 3. De instelling per beurt (`turns[].instelling`, #543) valt buiten de vier velden van het besluit. Na heropenen weet
    `_beurtcontext` daardoor niet dat de instelling in het gesprek wisselde. Hoort die in de rij? (Zonder besluit niet
    meegenomen in #875.)

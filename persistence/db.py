@@ -352,21 +352,25 @@ def _migrate(conn: Any) -> None:
             )
             conn.commit()
 
-    _voeg_feedback_instelling_toe(conn)
+    _voeg_kolom_toe(conn, "feedback", "instelling", "TEXT NOT NULL DEFAULT ''")
+    _voeg_kolom_toe(conn, "beurtbewijs", "controle", _BEURTBEWIJS_CONTROLE)
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
 
 
-def _voeg_feedback_instelling_toe(conn: Any) -> None:
-    """Feedback van vóór de kolom `instelling` krijgt een lege waarde; idempotent, dus veilig bij elke start."""
+def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
+    """Een kolom die later bij een bestaande tabel kwam; bestaande rijen krijgen de standaardwaarde uit `definitie`.
+
+    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `controle` bij beurtbewijs (#876).
+    """
     if _USE_POSTGRES:
         cursor = conn.cursor()
-        cursor.execute("ALTER TABLE feedback ADD COLUMN IF NOT EXISTS instelling TEXT NOT NULL DEFAULT ''")
+        cursor.execute(f"ALTER TABLE {tabel} ADD COLUMN IF NOT EXISTS {kolom} {definitie}")
         conn.commit()
         cursor.close()
-    elif "instelling" not in {row[1] for row in conn.execute("PRAGMA table_info(feedback)")}:
-        conn.execute("ALTER TABLE feedback ADD COLUMN instelling TEXT NOT NULL DEFAULT ''")
+    elif kolom not in {row[1] for row in conn.execute(f"PRAGMA table_info({tabel})")}:
+        conn.execute(f"ALTER TABLE {tabel} ADD COLUMN {kolom} {definitie}")
         conn.commit()
 
 
@@ -444,8 +448,10 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 # Wat de server zelf vastlegde bij een afgerond antwoord, zodat een heropend gesprek hetzelfde rapport geeft als het
 # levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
 # client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en kaarten zijn JSON; de
-# kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211).
-_BEURTBEWIJS_TABLE = """
+# kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211). controle is de JSON-lijst met de
+# meldingen die message_end droeg, voor de feedbacktrace (#876); een rij van daarvóór heeft een lege lijst.
+_BEURTBEWIJS_CONTROLE = "TEXT NOT NULL DEFAULT '[]'"
+_BEURTBEWIJS_TABLE = f"""
     CREATE TABLE IF NOT EXISTS beurtbewijs (
         username    TEXT NOT NULL,
         conv_id     TEXT NOT NULL,
@@ -454,6 +460,7 @@ _BEURTBEWIJS_TABLE = """
         rekenbewijs TEXT NOT NULL,
         kaarten     TEXT NOT NULL,
         created_at  TEXT NOT NULL,
+        controle    {_BEURTBEWIJS_CONTROLE},
         PRIMARY KEY (username, conv_id, tekst_hash)
     )
 """
@@ -833,7 +840,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, created_at FROM beurtbewijs "
+            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, controle, created_at FROM beurtbewijs "
             "WHERE username = ? AND conv_id = ?",
             (username, conv_id),
         ).fetchall()
@@ -844,8 +851,29 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
                 "lineage": json.loads(r["lineage"]),
                 "rekenbewijs": json.loads(r["rekenbewijs"]),
                 "kaarten": json.loads(r["kaarten"]),
+                "controle": json.loads(r["controle"]),
                 "created_at": r["created_at"],
             }
+        except ValueError:
+            continue
+    return uit
+
+
+def beurtbewijs_controles(username: str, conv_id: str) -> dict[str, list[str]]:
+    """Per tekst-hash de controle-uitkomst van een eigen gesprek, zonder lineage en rekenbewijs te lezen (#876).
+
+    Voor de feedbacktrace: een hash die hier staat, is een antwoord van de server. Een onleesbare rij slaat ze over.
+    """
+    with _connection() as conn:
+        rows = _execute(
+            conn,
+            "SELECT tekst_hash, controle FROM beurtbewijs WHERE username = ? AND conv_id = ?",
+            (username, conv_id),
+        ).fetchall()
+    uit: dict[str, list[str]] = {}
+    for r in rows:
+        try:
+            uit[r["tekst_hash"]] = json.loads(r["controle"])
         except ValueError:
             continue
     return uit
@@ -870,9 +898,11 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
         for tekst_hash, rij in rijen.items():
             _execute(
                 conn,
-                "INSERT INTO beurtbewijs (username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
-                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten",
+                "INSERT INTO beurtbewijs "
+                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, controle, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
+                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten, "
+                "controle=excluded.controle",
                 (
                     username,
                     conv_id,
@@ -880,6 +910,7 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
                     json.dumps(rij["lineage"], ensure_ascii=False, default=str),
                     json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
                     json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
+                    json.dumps(rij["controle"], ensure_ascii=False),
                     rij["created_at"],
                 ),
             )

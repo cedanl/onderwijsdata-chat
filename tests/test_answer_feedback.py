@@ -10,6 +10,7 @@ import json
 import pytest
 
 from core.answer_feedback import als_markdown, antwoord_trace
+from core.tekst_hash import tekst_hash
 
 GESPREK = [
     {"id": 1, "role": "user", "content": "Hoeveel studenten heeft de HU?"},
@@ -32,18 +33,38 @@ GESPREK = [
 # ── De trace ─────────────────────────────────────────────────────────────────
 
 
-def test_trace_bevat_vraag_antwoord_stappen_en_controle():
-    trace = antwoord_trace(GESPREK, 1)
+_HASH = tekst_hash("De HU had 38.000 studenten.")
+# De rij van het antwoord in beurtbewijs: de controle die de server bij message_end vastlegde (ADR-009, #876).
+_VAN_DE_SERVER = {_HASH: ["2025 staat niet in de opgehaalde data."]}
+
+
+def test_trace_bevat_vraag_antwoord_stappen_en_de_controle_uit_de_rij():
+    trace = antwoord_trace(GESPREK, 1, _VAN_DE_SERVER)
     assert trace == {
         "vraag": "Hoeveel studenten heeft de HU?",
         "antwoord": "De HU had 38.000 studenten.",
-        "controle": ["2025 staat niet in de data"],
+        "tekst_hash": _HASH,
+        "server_beurt": True,
+        "controle": ["2025 staat niet in de opgehaalde data."],
         "stappen": [
             {"name": "get_duo_data", "label": "Data opgehaald", "status": None, "snippet": "df = laad()"},
             {"name": "query_data", "label": "Data gefilterd", "status": "empty", "snippet": None},
         ],
         "ingetrokken": [],
     }
+
+
+def test_zonder_rij_is_het_geen_serverbeurt_en_leest_de_trace_geen_controle_uit_het_gesprek():
+    """Besluit 2 op ADR-009 (09-11): aannemen met `server_beurt: false`; de controle in de blob schreef de client."""
+    trace = antwoord_trace(GESPREK, 1, {})
+    assert trace is not None
+    assert (trace["tekst_hash"], trace["server_beurt"], trace["controle"]) == (_HASH, False, [])
+    assert trace["antwoord"] == "De HU had 38.000 studenten."
+
+
+def test_een_rij_van_een_andere_tekst_telt_niet():
+    trace = antwoord_trace(GESPREK, 1, {tekst_hash("De HU had 40.000 studenten."): []})
+    assert trace is not None and trace["server_beurt"] is False
 
 
 # Het eindbericht heeft vaak zelf geen stappen: die staan aan het tussenbericht van
@@ -70,6 +91,7 @@ def test_trace_neemt_de_stappen_van_de_hele_beurt():
             *BEURT,
         ],
         5,
+        {},
     )
     assert trace is not None
     assert [s["name"] for s in trace["stappen"]] == ["get_duo_data", "compute_kpi"]
@@ -79,7 +101,7 @@ def test_trace_neemt_de_stappen_van_de_hele_beurt():
 
 def test_overzicht_noemt_de_ingetrokken_tekst():
     rij = {"oordeel": "down", "created_at": "t", "username": "u", "conversation_id": "c", "toelichting": ""}
-    trace = antwoord_trace(BEURT, 3)
+    trace = antwoord_trace(BEURT, 3, {})
     assert trace is not None
     tekst = als_markdown([{**rij, "trace": json.dumps(trace)}])
     assert "Ingetrokken na controle: Het zijn er 99." in tekst
@@ -89,10 +111,10 @@ def test_overzicht_noemt_de_ingetrokken_tekst():
 
 
 def test_alleen_een_afgerond_antwoord_heeft_een_trace():
-    assert antwoord_trace(GESPREK, 0) is None  # een vraag
-    assert antwoord_trace(GESPREK, 3) is None  # een foutmelding
-    assert antwoord_trace(GESPREK, 9) is None
-    assert antwoord_trace(GESPREK, -1) is None
+    assert antwoord_trace(GESPREK, 0, {}) is None  # een vraag
+    assert antwoord_trace(GESPREK, 3, {}) is None  # een foutmelding
+    assert antwoord_trace(GESPREK, 9, {}) is None
+    assert antwoord_trace(GESPREK, -1, {}) is None
 
 
 def test_overzicht_voor_het_team_is_reproduceerbaar():
@@ -102,15 +124,30 @@ def test_overzicht_voor_het_team_is_reproduceerbaar():
         "message_index": 1,
         "oordeel": "down",
         "toelichting": "HU had er 40.000",
-        "trace": json.dumps(antwoord_trace(GESPREK, 1)),
+        "trace": json.dumps(antwoord_trace(GESPREK, 1, _VAN_DE_SERVER)),
         "created_at": "2026-10-05T20:00:00+00:00",
     }
     tekst = als_markdown([rij])
     assert tekst.startswith("## 👎 2026-10-05T20:00:00+00:00 · anna · gesprek c1")
     assert "> HU had er 40.000" in tekst
     assert "**Vraag:** Hoeveel studenten heeft de HU?" in tekst
+    assert f"Van de server: ja (tekst-hash `{_HASH}`)" in tekst
+    assert "Controle: 2025 staat niet in de opgehaalde data." in tekst
     assert "2. Data gefilterd (empty)" in tekst
     assert "```python\ndf = laad()\n```" in tekst
+
+
+def test_overzicht_zegt_of_het_antwoord_van_de_server_kwam():
+    rij = {"oordeel": "up", "created_at": "t", "username": "u", "conversation_id": "c", "toelichting": ""}
+    trace = antwoord_trace(GESPREK, 1, {})
+    assert trace is not None
+
+    tekst = als_markdown([{**rij, "trace": json.dumps(trace)}])
+    assert f"Van de server: nee, geen beurtbewijs bij deze tekst (tekst-hash `{_HASH}`)" in tekst
+    assert "Controle:" not in tekst
+    # Een melding van vóór #876 heeft de velden nog niet en zegt er niets over.
+    oud = {k: v for k, v in trace.items() if k not in ("tekst_hash", "server_beurt")}
+    assert "Van de server" not in als_markdown([{**rij, "trace": json.dumps(oud)}])
 
 
 def test_leeg_overzicht():
@@ -162,7 +199,49 @@ def test_duim_omlaag_slaat_trace_en_toelichting_op(app):
     assert rij["message_index"] == 1
     assert rij["oordeel"] == "down"
     assert rij["toelichting"] == "HU had er 40.000"
-    assert json.loads(rij["trace"])["stappen"][0]["snippet"] == "df = laad()"
+    trace = json.loads(rij["trace"])
+    assert trace["stappen"][0]["snippet"] == "df = laad()"
+    # Het gesprek staat er zonder rij in beurtbewijs: de client schreef het (besluit 2 op ADR-009).
+    assert (trace["server_beurt"], trace["tekst_hash"], trace["controle"]) == (False, _HASH, [])
+
+
+def test_de_trace_van_een_antwoord_met_een_rij_komt_van_de_server(app):
+    client, db = app
+    db.save_beurtbewijs(
+        "anna",
+        "c1",
+        {
+            _HASH: {
+                "lineage": {},
+                "rekenbewijs": [],
+                "kaarten": {},
+                "controle": ["2025 staat niet in de opgehaalde data."],
+                "created_at": "2026-11-09T10:00:00+00:00",
+            }
+        },
+    )
+    _als(client, "anna", "pw1")
+
+    resp = client.post("/api/answer-feedback", json={"conversation_id": "c1", "message_index": 1, "oordeel": "down"})
+
+    assert resp.status_code == 200
+    [rij] = db.all_answer_feedback()
+    trace = json.loads(rij["trace"])
+    assert (trace["server_beurt"], trace["tekst_hash"]) == (True, _HASH)
+    assert trace["controle"] == ["2025 staat niet in de opgehaalde data."]
+
+
+def test_een_rij_van_een_ander_gesprek_of_een_ander_maakt_geen_serverbeurt(app):
+    client, db = app
+    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "controle": [], "created_at": "2026-11-09T10:00:00+00:00"}
+    db.save_beurtbewijs("anna", "c2", {_HASH: rij})
+    db.save_beurtbewijs("bob", "c1", {_HASH: rij})
+    _als(client, "anna", "pw1")
+
+    client.post("/api/answer-feedback", json={"conversation_id": "c1", "message_index": 1, "oordeel": "down"})
+
+    [opgeslagen] = db.all_answer_feedback()
+    assert json.loads(opgeslagen["trace"])["server_beurt"] is False
 
 
 def test_een_nieuw_oordeel_vervangt_het_oude(app):
@@ -308,7 +387,7 @@ def test_twee_verwijderde_gesprekken_met_hetzelfde_id_botsen_niet(app):
 def test_feedback_van_eerder_verwijderde_gesprekken_wordt_bij_de_start_ontkoppeld(app):
     # Vóór #476 bleef de rij met naam en gesprek-id staan; een gesprek dat niet meer bestaat is verwijderd.
     _, db = app
-    trace = antwoord_trace(GESPREK, 1)
+    trace = antwoord_trace(GESPREK, 1, {})
     assert trace is not None
     db.upsert_answer_feedback("anna", "al-weg", 1, "down", "klopt niet", trace)
     db.upsert_answer_feedback("anna", "c1", 1, "up", "", trace)

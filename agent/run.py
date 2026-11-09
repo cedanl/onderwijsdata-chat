@@ -22,6 +22,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 from . import manifest, recepten, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
+from .beurtbewijs import eerdere_antwoorden
 from .bronkeuze import met_bronregel
 from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, vervolgbronnen, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
@@ -577,7 +578,8 @@ async def run(
         )
 
     # Vóór de loop: dan maakt het correctiebericht met de verdachte getallen ze geen bron.
-    earlier = [str(m.get("content") or "") for m in history if m.get("role") == "assistant"]
+    # Na heropenen alleen de eigen beurten: een antwoord zonder rij in beurtbewijs schreef de client (#876).
+    earlier = eerdere_antwoorden(history, session)
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.

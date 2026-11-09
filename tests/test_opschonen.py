@@ -64,7 +64,7 @@ def _gesprek(
 
 def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: float) -> None:
     """Bewijsrijen van een gesprek (ADR-009), met de tijd van hun antwoord `dagen_geleden`."""
-    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": _iso(dagen_geleden)}
+    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "controle": [], "created_at": _iso(dagen_geleden)}
     db.save_beurtbewijs(user, conv, dict.fromkeys(hashes, rij))
 
 
