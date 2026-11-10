@@ -867,7 +867,11 @@ De koppeling draait in het serverproces, niet in de sandbox van `run_analysis`. 
 de join zou geven (per gedeelde sleutelwaarde links × rechts, plus de rijen zonder match of zonder sleutel). Boven
 `MAX_RIJEN` (200.000) gaat hij niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies
 op meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Dat
-gebeurt bij veel-op-veel op een grove sleutel (alleen `schooljaar` of `brin`): een kruisproduct per waarde.
+gebeurt bij veel-op-veel op een grove sleutel (alleen `schooljaar` of `brin`): een kruisproduct per waarde. Ook een
+brede koppeling onder die grens kan te groot zijn, dus telt de code ook de cellen (rijen × kolommen van het resultaat:
+beide tabellen, de sleutels één keer, plus `koppelstatus`). Boven `MAX_CELLEN` (5.000.000, zo'n 335 MB aan tekstcellen,
+onder de storegrens van 512 MB) volgt dezelfde `melding`, met ook `verwachte_cellen` en het advies alleen de nodige
+kolommen te houden (`columns` in `query_data`). Zijn beide grenzen overschreden, dan noemt de melding de rijgrens.
 
 Het resultaat is een nieuwe key (`koppel:<hash>`, deterministisch: de hash gaat over beide tabellen en de gekozen
 kolommen) met `rijen` (begrensd zoals bij `run_analysis`),
