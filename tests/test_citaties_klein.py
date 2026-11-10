@@ -104,6 +104,15 @@ def test_twijfel_tussen_maten_geeft_geen_citatie():
     assert citatie["maat"] == "eerstejaars"
 
 
+def test_in_een_tabelcel_kiest_de_kolomkop_de_maat():
+    """#1002: de rij "| ICT | 40 |" noemt geen maat, de kop "Eerstejaars" wel."""
+    stappen = _skdb({"instelling": "Hogeschool Utrecht", "opleiding": "ICT", "studenten": 40, "eerstejaars": 40})
+
+    [citatie] = citaties("| Opleiding | Eerstejaars |\n|---|---|\n| ICT | 40 |", stappen)
+
+    assert (citatie["vastgesteld"], citatie["maat"]) == (True, "eerstejaars")
+
+
 def test_gelijke_waarde_in_twee_rijen_van_dezelfde_maat_volgt_de_bronhierarchie():
     """B3 op test: 71 plaatsen in 2026 en in 2027; de tabelrij noemt geen jaar. Dezelfde maat, dezelfde tabel."""
     rij = {"instelling": "Universiteit Leiden", "opleiding": "Biomedische Wetenschappen", "capaciteit": 71}
