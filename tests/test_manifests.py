@@ -42,6 +42,14 @@ def test_een_pod_zolang_de_staat_in_het_geheugen_leeft(omgeving):
     assert "autoscaling" not in _CHART
 
 
+def test_app_url_van_test_is_de_testapp():
+    """`vervolg` in een /mcp-resultaat wijst naar APP_URL; zonder zet staat dat op playground (#941)."""
+    values = _values(_ROOT / "manifests" / "test")
+    env = {e["name"]: e.get("value") for e in values["env"]}
+    host = values["ingress"]["web"]["hosts"][0]["host"]
+    assert env["APP_URL"] == f"https://{host}"
+
+
 # ── Opschoning na de bewaartermijn (#485): CronJob in de chart, per omgeving aan of uit ──
 
 # De opschoning draait op test, playground en de OTC-omgevingen (#674): de bewaartermijn van docs/privacy.md geldt
