@@ -12,3 +12,10 @@
   filteren of te groeperen. De hover toont het aantal en het aandeel van de herkomst.
 - `x` en `y` zijn niet meer verplicht in het schema; een ander type zonder `x` of `y` krijgt een duidelijke melding. Het
   recept (snippet) tekent de sankey ook, en "maak een sankey" of "stroomdiagram" wordt op een sankey getoetst.
+
+### De rapporttitel houdt haar periode, ook bij een lange vraag (#1003)
+- Of de titel een jaar noemt, telt nu na het inkorten tot 80 tekens: kapt de grens het jaar uit de vraag weg, dan komt
+  het schooljaar uit de data erachter, met ruimte ervoor. Een jaar dat blijft staan, komt er niet nog eens bij.
+- Is de titel te lang, dan valt eerst een tussenzin tussen haakjes weg ("(ingeschreven personen, hoofdinschrijvingen)");
+  een tussenzin met een getal, of in een korte titel, blijft. "In het meest recente studiejaar, 2025/2026," wordt
+  "in 2025/26", zonder het jaar twee keer.
