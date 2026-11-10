@@ -156,7 +156,7 @@ def test_accreditatie_verlengd_met_grond_en_een_uiterste_indiening_in_het_verled
         "besluitdatum": {"datum": "09-09-2019"},
         "begindatum": {"datum": "09-09-2019"},
         "uiterste_indiening_volgende_beoordeling": {"datum": "01-05-2025"},
-        "verlengd_tot": {"datum": "02-05-2027", "grond": "artikel 5.16 lid 4 WHW"},
+        "verlengd_tot": {"datum": "02-05-2027", "grond": "artikel 5.16 lid 4 WHW", "verstreken": False},
     }
     assert "01-05-2025" in uit["noot"] and "niet dat de accreditatie is verlopen" in uit["noot"]
     assert uit["bron"]["peilmoment"] == "versie van 02-11-2026"
@@ -178,6 +178,6 @@ def test_accreditatie_van_een_nieuwe_opleiding_met_vervaldatum_en_grond_zonder_d
 
     assert _datums(uit) == {
         "besluitdatum": {"datum": "28-04-2026"},
-        "vervaldatum_nieuwe_opleiding": {"datum": "01-09-2028"},
+        "vervaldatum_nieuwe_opleiding": {"datum": "01-09-2028", "verstreken": False},
         "verlengd_tot": {"datum": None, "grond": "artikel 5.31 lid 3 WHW"},
     }

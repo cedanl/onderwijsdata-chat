@@ -564,6 +564,10 @@ De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit D
     niet verlopen is.
   - `uiterste_indiening_voorwaarden`, `verlengd_tot` (met de WHW-grond), `intrekking` en `afbouw`, als DUO ze vult.
   - `vervaldatum_nieuwe_opleiding`: alleen met de uitleg dat hij bij de termijn van een nieuwe opleiding hoort.
+  - Een datum die een termijn afsluit (`verlengd_tot`, `intrekking`, `afbouw`, `vervaldatum_nieuwe_opleiding`) krijgt
+    `verstreken`: ligt hij vóór de dag van het peilmoment (zonder peilmoment: vandaag). Een verstreken `verlengd_tot`
+    krijgt in de `noot` een vaste zin: de verlenging liep tot die datum, het overzicht toont geen nieuwer besluit en de
+    status daarna staat niet in de bron (#1005). De uiterste indieningen krijgen geen `verstreken`.
   - Verder: niveau en vormen, of de erkenning actueel of toekomstig is, `geen_oordeel` (er zit geen NVAO-oordeel in)
     en de bron met peilmoment.
 - **Geen datums:** een vaste melding voor een onbekende instelling, een mbo-instelling, een onbekende opleiding, een

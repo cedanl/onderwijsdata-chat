@@ -53,6 +53,9 @@ ACTUEEL, HISTORISCH = "ACTUEEL", "HISTORISCH"  # en TOEKOMSTIG: een registratie 
 class Datumveld:
     sleutel: str  # de naam in het resultaat: wat de datum is, niet de DUO-kolom
     betekenis: str
+    # Sluit de datum een termijn af? Dan krijgt hij `verstreken` tegen het peilmoment (#1005). Een uiterste indiening
+    # doet dat niet: een verstreken indiening zegt niets over de status van de accreditatie.
+    einde: bool = False
 
 
 # De accreditatiedatums, met hun betekenis volgens de DUO-toelichting v1.8. Een lege datum blijft weg uit het resultaat.
@@ -72,18 +75,19 @@ DATUMS: dict[str, Datumveld] = {
         "Uiterste datum waarop de instelling met een rapport bij de NVAO aantoont dat aan de voorwaarden is voldaan.",
     ),
     "ACCREDITATIE_UITSTELDATUM": Datumveld(
-        "verlengd_tot", "Datum tot wanneer de NVAO of de minister de accreditatie heeft verlengd."
+        "verlengd_tot", "Datum tot wanneer de NVAO of de minister de accreditatie heeft verlengd.", einde=True
     ),
     "ACCREDITATIE_INTREKKINGSDATUM": Datumveld(
-        "intrekking", "Datum waarop het intrekkingsbesluit van de NVAO of de minister in werking treedt."
+        "intrekking", "Datum waarop het intrekkingsbesluit van de NVAO of de minister in werking treedt.", einde=True
     ),
     "ACCREDITATIE_AFBOUWDATUM": Datumveld(
-        "afbouw", "Uiterste datum tot wanneer zittende studenten de opleiding kunnen afronden."
+        "afbouw", "Uiterste datum tot wanneer zittende studenten de opleiding kunnen afronden.", einde=True
     ),
     "ACCREDITATIE_VERVALDATUM": Datumveld(
         "vervaldatum_nieuwe_opleiding",
         "Einde van de accreditatietermijn van een nieuwe opleiding. Hoort alleen bij nieuwe opleidingen: noem hem "
         "niet als einddatum van de accreditatie van een bestaande opleiding.",
+        einde=True,
     ),
 }
 VERPLICHT = (INSTELLING, CROHO, OPLEIDINGSNAAM, STATUS, NIVEAU, VORM, BEGIN_RECORD, EINDE_RECORD, UITSTELREDEN, *DATUMS)
@@ -110,6 +114,13 @@ GEEN_OORDEEL = (
     "app. Noem geen oordeel en leid er geen af."
 )
 GEEN_RANGLIJST = "De datums zeggen niets over kwaliteit: vergelijk of rangschik opleidingen of instellingen er niet op."
+# Een verlenging die op het peilmoment voorbij is (#1005): het overzicht zegt niet wat er daarna geldt.
+VERLENGING_VERSTREKEN = (
+    "De verlenging liep tot {tot}; het DUO-overzicht van {peildag:%d-%m-%Y} toont geen nieuwer besluit. De status na "
+    "die datum staat niet in deze bron."
+)
+# De dag in het peilmoment van een DUO-bestand: "versie van 30-10-2026".
+_PEILMOMENT = re.compile(r"\b(\d{2})-(\d{2})-(\d{4})\b")
 
 
 def _leeg(waarde) -> bool:
@@ -133,6 +144,17 @@ def _dag(waarde) -> date | None:
         return date.fromisoformat(str(waarde).strip()[:10])
     except ValueError:
         return None
+
+
+def peildag(peilmoment: str | None, vandaag: date) -> date:
+    """De dag van het DUO-overzicht uit zijn peilmoment ("versie van 30-10-2026"); `vandaag` als die er niet in staat."""
+    if peilmoment and (gevonden := _PEILMOMENT.search(peilmoment)):
+        dag, maand, jaar = (int(deel) for deel in gevonden.groups())
+        try:
+            return date(jaar, maand, dag)
+        except ValueError:
+            pass
+    return vandaag
 
 
 def datum(waarde) -> str | None:
@@ -228,15 +250,23 @@ def _kies(rijen: pd.DataFrame, gevraagd: str) -> Opleiding | str:
     return kies_uit(opleidingen, gevraagd)
 
 
-def _datums(paar: pd.DataFrame) -> dict | None:
+def _datumveld(veld: Datumveld, waarde, peil: date) -> dict[str, str | bool | None]:
+    """Eén datum met zijn betekenis; een einde van een termijn ook met `verstreken`: ligt hij vóór de peildag (#1005)."""
+    uit: dict[str, str | bool | None] = {"datum": datum(waarde), "betekenis": veld.betekenis}
+    if veld.einde and (dag := _dag(waarde)) is not None:
+        uit["verstreken"] = dag < peil
+    return uit
+
+
+def _datums(paar: pd.DataFrame, peil: date) -> dict | None:
     """De accreditatiedatums van het paar met hun betekenis; None als de rijen elkaar tegenspreken."""
     kolommen = [*DATUMS, UITSTELREDEN]
     uniek = paar[kolommen].drop_duplicates()
     if len(uniek) != 1:
         return None
     rij = uniek.iloc[0]
-    uit: dict[str, dict[str, str | None]] = {
-        v.sleutel: {"datum": d, "betekenis": v.betekenis} for k, v in DATUMS.items() if (d := datum(rij[k]))
+    uit: dict[str, dict[str, str | bool | None]] = {
+        v.sleutel: _datumveld(v, rij[k], peil) for k, v in DATUMS.items() if datum(rij[k])
     }
     if reden := uitstelreden(rij[UITSTELREDEN]):
         # Een grond zonder datum komt ook voor (78 actuele rijen op 30-10): dan staat de grond er alleen bij.
@@ -260,8 +290,9 @@ def _erkenning(paar: pd.DataFrame) -> str:
     )
 
 
-def _noten(paar: pd.DataFrame, vandaag: date) -> list[str]:
-    """De vaste noten: geen ranglijst, en een uiterste indiening in het verleden is geen verlopen accreditatie."""
+def _noten(paar: pd.DataFrame, datums: dict, vandaag: date, peil: date) -> list[str]:
+    """De vaste noten: geen ranglijst, een uiterste indiening in het verleden is geen verlopen accreditatie, en een
+    verlenging die op het peilmoment voorbij is, zegt niet wat er daarna geldt (#1005)."""
     noten = [GEEN_RANGLIJST]
     dag = _dag(paar[INLEVERDATUM].iloc[0])
     if dag is not None and dag < vandaag:
@@ -270,13 +301,17 @@ def _noten(paar: pd.DataFrame, vandaag: date) -> list[str]:
             "dat de accreditatie is verlopen: de beoordeling kan lopen of verlengd zijn. Trek er geen conclusie uit "
             "over de status."
         )
+    verlengd = datums.get("verlengd_tot", {})
+    if verlengd.get("verstreken"):
+        noten.append(VERLENGING_VERSTREKEN.format(tot=verlengd["datum"], peildag=peil))
     return noten
 
 
 def _uitkomst(
     profiel: dict, opl: Opleiding, paar: pd.DataFrame, meta: store.KeyMeta | None, key: str, vandaag: date
 ) -> dict | str:
-    datums = _datums(paar)
+    peil = peildag(meta.peilmoment if meta is not None else None, vandaag)
+    datums = _datums(paar, peil)
     if datums is None:
         return (
             f"{BRONNAAM} geeft voor {opl.naam} ({opl.code}) bij {profiel['naam']} verschillende accreditatiedatums per "
@@ -293,7 +328,7 @@ def _uitkomst(
         "erkenning": _erkenning(paar),
         "datums": datums,
         "geen_oordeel": GEEN_OORDEEL,
-        "noot": " ".join(_noten(paar, vandaag)),
+        "noot": " ".join(_noten(paar, datums, vandaag, peil)),
         "bron": bron,
     }
 

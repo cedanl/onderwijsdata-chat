@@ -9,6 +9,7 @@ Een kleine synthetische fixture via het gewone DUO-laadpad (riodata's `load` gep
 """
 
 import json
+from datetime import date
 
 import pandas as pd
 import pytest
@@ -57,25 +58,36 @@ _RIJEN = [
     _rij("25DW", 30020, "ICT", besluitdatum="2025-02-21", inleverdatum="2030-11-01"),
     _rij("25DW", 30020, "ICT", vorm="DEELTIJD", besluitdatum="2024-02-21", inleverdatum="2030-11-01"),
     _rij("21PD", 56551, "Geneeskunde", niveau="WO-BA", besluitdatum="2023-03-01", inleverdatum="2029-05-01"),
+    _rij("21PD", 50206, "Scheikunde", niveau="WO-BA", besluitdatum="2020-03-01", uitstelreden="ART_5_16_LID_4"),
+    # N14 uit de review (#1005): een verlenging die op het peilmoment van 10-11-2026 al voorbij is.
+    _rij("21PB", 56604, "Psychologie", niveau="WO-BA", besluitdatum="2019-11-02", begindatum="2019-11-02",
+         inleverdatum="2025-05-01", uitsteldatum="2026-11-02", uitstelreden="ART_5_16_LID_4"),
 ]  # fmt: skip
 
 _PROFIELEN = {
     "hu": {"naam": "Hogeschool Utrecht", "sector": "hbo", "instellingscode": "25DW"},
     "uu": {"naam": "Universiteit Utrecht", "sector": "wo", "instellingscode": "21PD"},
+    "universiteit leiden": {"naam": "Universiteit Leiden", "sector": "wo", "instellingscode": "21PB"},
     "roc midden nederland": {"naam": "ROC Midden Nederland", "sector": "mbo", "instellingscode": "25PZ"},
     "lege hogeschool": {"naam": "Lege Hogeschool", "sector": "hbo", "instellingscode": "99XX"},
 }
 
 
-@pytest.fixture
-def tool(monkeypatch):
+def _versie(monkeypatch, last_modified: str | None) -> None:
+    """Het DUO-laadpad met de fixture, als bestand dat DUO op `last_modified` verving: dat geeft het peilmoment."""
+
     def laad(dataset_id, resource=0, **_):
         assert (dataset_id, resource) == (accreditatie.DATASET, accreditatie.BESTAND)
         df = pd.DataFrame(_RIJEN)
-        df.attrs["bron"] = {"last_modified": "2026-10-30T03:04:43", "md5": None}
+        df.attrs["bron"] = {"last_modified": last_modified, "md5": None}
         return df
 
     monkeypatch.setattr("tools.duo._duo.load", laad)
+
+
+@pytest.fixture
+def tool(monkeypatch):
+    _versie(monkeypatch, "2026-10-30T03:04:43")
     monkeypatch.setattr(
         accreditatie.instellingen, "instellingsprofiel", lambda naam: _PROFIELEN.get(naam.strip().lower())
     )
@@ -220,3 +232,102 @@ def test_de_tool_staat_in_de_dispatch_en_de_bron_onder_het_antwoord(tool):
     assert bronnen_van([stap]) == [regel]
     assert bronlinks_van([stap]) == {regel: documentatie_url(accreditatie.DATASET)}
     assert TOOL_GET_ACCREDITATIE in tools.LABELS
+
+
+# ─── #1005: een verstreken termijn staat in code, niet in de rekenkunde van het model ────────────────────────────────
+
+_N14_ZIN = (
+    "De verlenging liep tot 02-11-2026; het DUO-overzicht van 10-11-2026 toont geen nieuwer besluit. "
+    "De status na die datum staat niet in deze bron."
+)
+
+
+def test_een_verlenging_voor_het_peilmoment_is_verstreken_met_een_vaste_zin(tool, monkeypatch):
+    _versie(monkeypatch, "2026-11-10T03:12:00")
+    uit = json.loads(tool("Universiteit Leiden", "Psychologie"))
+
+    assert uit["bron"]["peilmoment"] == "versie van 10-11-2026"
+    verlengd = uit["datums"]["verlengd_tot"]
+    assert verlengd["datum"] == "02-11-2026" and verlengd["verstreken"] is True
+    assert verlengd["grond"] == "artikel 5.16 lid 4 WHW"
+    assert _N14_ZIN in uit["noot"]
+    assert uit["noot"].count("De verlenging liep tot") == 1
+
+
+def test_een_verlenging_na_het_peilmoment_is_niet_verstreken(tool):
+    uit = json.loads(tool("HU", "34035"))  # verlengd tot 02-05-2027, peilmoment 30-10-2026
+
+    assert uit["datums"]["verlengd_tot"]["verstreken"] is False
+    assert "De verlenging liep tot" not in uit["noot"]
+
+
+def test_elke_einddatum_van_een_termijn_krijgt_verstreken_tegen_het_peilmoment(tool):
+    datums = json.loads(tool("HU", "34035"))["datums"]
+
+    assert {k: v.get("verstreken") for k, v in datums.items()} == {
+        "besluitdatum": None,
+        "begindatum": None,
+        "uiterste_indiening_volgende_beoordeling": None,
+        "uiterste_indiening_voorwaarden": None,
+        "verlengd_tot": False,
+        "intrekking": False,
+        "afbouw": False,
+        "vervaldatum_nieuwe_opleiding": True,  # 03-06-2025, vóór 30-10-2026
+    }
+    assert not [k for k in ("besluitdatum", "begindatum") if "verstreken" in datums[k]]
+
+
+def test_een_verlenging_met_alleen_een_grond_heeft_geen_verstreken(tool):
+    uit = json.loads(tool("UU", "Scheikunde"))
+
+    assert uit["datums"]["verlengd_tot"] == {
+        "datum": None,
+        "betekenis": accreditatie.DATUMS["ACCREDITATIE_UITSTELDATUM"].betekenis,
+        "grond": "artikel 5.16 lid 4 WHW",
+    }
+    assert "De verlenging liep tot" not in uit["noot"]
+
+
+def test_de_uiterste_indiening_blijft_zoals_hij_was(tool, monkeypatch):
+    _versie(monkeypatch, "2026-11-10T03:12:00")
+    uit = json.loads(tool("Universiteit Leiden", "Psychologie"))
+
+    assert uit["datums"]["uiterste_indiening_volgende_beoordeling"] == {
+        "datum": "01-05-2025",
+        "betekenis": accreditatie.DATUMS[accreditatie.INLEVERDATUM].betekenis,
+    }
+    assert (
+        "De uiterste indiening voor de volgende beoordeling (01-05-2025) ligt vóór vandaag. Dat betekent niet dat de "
+        "accreditatie is verlopen: de beoordeling kan lopen of verlengd zijn. Trek er geen conclusie uit over de status."
+    ) in uit["noot"]
+    assert "liep tot 01-05-2025" not in uit["noot"]
+
+
+@pytest.mark.parametrize(
+    ("peilmoment", "dag"),
+    [
+        ("versie van 10-11-2026", date(2026, 11, 10)),
+        (None, date(2026, 1, 5)),
+        ("", date(2026, 1, 5)),
+        ("versie onbekend", date(2026, 1, 5)),
+        ("versie van 31-02-2026", date(2026, 1, 5)),
+    ],
+)
+def test_de_peildag_komt_uit_het_peilmoment_en_anders_vandaag(peilmoment, dag):
+    assert accreditatie.peildag(peilmoment, date(2026, 1, 5)) == dag
+
+
+class _Op10November(date):
+    @classmethod
+    def today(cls):
+        return cls(2026, 11, 10)
+
+
+def test_zonder_peilmoment_telt_vandaag(tool, monkeypatch):
+    _versie(monkeypatch, None)
+    monkeypatch.setattr(accreditatie, "date", _Op10November)
+    uit = json.loads(tool("Universiteit Leiden", "Psychologie"))
+
+    assert "peilmoment" not in uit["bron"]
+    assert uit["datums"]["verlengd_tot"]["verstreken"] is True
+    assert _N14_ZIN in uit["noot"]
