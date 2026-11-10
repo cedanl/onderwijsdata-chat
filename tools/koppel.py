@@ -186,7 +186,7 @@ def omvang(a_ok: pd.DataFrame, b_ok: pd.DataFrame, sleutels: list[str]) -> int:
     van de kant die haar heeft. Kost één telling per tabel."""
     links, rechts = (t.groupby(sleutels, sort=False).size() for t in (a_ok, b_ok))
     links, rechts = links.align(rechts, join="outer")
-    return int((links.fillna(1) * rechts.fillna(1)).sum())
+    return int((links.fillna(1) * rechts.fillna(1)).to_numpy(dtype="int64").sum())
 
 
 def _te_groot(links: _Kant, rechts: _Kant, sleutels: list[str], rijen: int, korrel: str) -> _Melding:
@@ -245,8 +245,8 @@ def _koppelkey(links: _Kant, rechts: _Kant) -> str:
     De hash gaat over de invoer, niet over het resultaat: dat kan veel groter zijn dan beide tabellen samen.
     """
     plan = json.dumps([links.key, links.kolommen, rechts.key, rechts.kolommen])
-    tabellen = "".join(k.df.to_json(orient="split", default_handler=str) for k in (links, rechts))
-    inhoud = f"{plan}{tabellen}"
+    inhoud = f"{plan}{links.df.to_json(orient='split', default_handler=str)}"
+    inhoud += f"{rechts.df.to_json(orient='split', default_handler=str)}"
     return f"koppel:{hashlib.sha256(inhoud.encode()).hexdigest()[:12]}"
 
 
