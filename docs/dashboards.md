@@ -267,6 +267,12 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   vergelijking beloofde; een grafiek zonder gemiddelde zegt dat nu). Een peer met in elk jaar 0 of een lege cel telt
   niet mee in gemiddelde, aantal, totaal en `onderdrukt`; hij staat per reeks in `benchmark.geen_gegevens` en in de
   concurrententabel met "geen gegevens" (#925). Een peer met één echt nuljaar telt wel mee.
+- **Te weinig peers met cijfers** (#1007): de drempel van de vergelijkingsgroep (`_MIN_PEERS`) geldt ook per reeks.
+  Hebben in het laatste jaar van een reeks minder dan drie peers een waarde (`n_per_jaar` van dat jaar, niet de
+  grootte van de groep), dan staat de reden onder `benchmark.te_weinig_peers` ("te weinig vergelijkbare instellingen
+  met cijfers") en toont die kerncijfertegel de reden in plaats van een gemiddelde. De Universiteit Utrecht heeft drie
+  andere universiteiten in Midden-Utrecht, maar maar één met eerstejaarscijfers: dat "gemiddelde" was die ene
+  instelling. De reeks zelf blijft in de payload; de grafieken in de andere secties veranderen niet.
 - **Regiototaal** (`benchmark.totaal_regio`): per jaar de ingeschrevenen van de eigen instelling plus die van de peers,
   alleen voor jaren met beide. Het is de tegel "Regio totaal" (of "Landelijk totaal" bij een landelijke vergelijking)
   met "Curio en 6 andere mbo-instellingen in provincie Noord-Brabant", en de noemer van het marktaandeel. Tot #951 was

@@ -5,7 +5,12 @@ import { SectionHeader, fmt, fmtProcent, Sparkline, JaarNoot, eerstejaarsNoot, g
 // De kerncijfers bovenaan "Mijn instelling": de eigen instelling tegenover het gemiddelde van het benchmark. Een eigen
 // component, omdat de galerijkaart dezelfde rij toont als miniatuur van het dashboard (#933).
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot, nootId, opmaak = fmt }) {
+// "1 instelling", "3 instellingen": het aantal peers achter een gemiddelde (#1007).
+const aantalInstellingen = n => `${n} ${n === 1 ? 'instelling' : 'instellingen'}`
+
+// `regioReden`: waarom er geen gemiddelde staat (te weinig peers met cijfers, #1007); dan staat de reden op de plek
+// van het getal.
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, regioReden, sparkValues, color, icon, suffix, ondergrens, regioOndergrens, noot, nootId, opmaak = fmt }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
@@ -17,6 +22,9 @@ function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkVa
         <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>
           {regioLabel}: <TenMinste actief={regioOndergrens} />{opmaak(regioWaarde)}
         </div>
+      )}
+      {regioWaarde == null && regioReden && (
+        <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>{regioLabel}: {regioReden}</div>
       )}
       <JaarNoot noot={noot} testid={nootId} />
       {sparkValues && <Sparkline values={sparkValues} color={color} />}
@@ -45,13 +53,16 @@ export function Kerncijfers({ data, instelling, c }) {
   const od = data?.onderdrukt || {}
   const bmOd = bm.onderdrukt || {}
   const bmLaatste = sleutel => sortedEntries(bm[sleutel]).at(-1) ?? [null, null]
+  // Te weinig peers met een waarde in het laatste jaar (#1007): geen gemiddelde, wel de reden van de server.
+  const reden = sleutel => bm.te_weinig_peers?.[sleutel]
+  const gemiddelde = (sleutel, waarde) => (waarde && !reden(sleutel) ? Math.round(waarde) : null)
   const [bmIngesJaar, bmInges] = bmLaatste('ingeschrevenen')
   const [bmEjJaar, bmEj] = bmLaatste('eerstejaars')
   const [bmDiplJaar, bmDipl] = bmLaatste('gediplomeerden')
   // Het aantal peers achter het gemiddelde van dat jaar (#903): niet elke peer heeft elk jaar data.
   const gemLabel = (sleutel, jaar) => {
     const n = perJaar(bm.n_per_jaar?.[sleutel], jaar)
-    return `Gem. ${bm.populatie || 'vergelijkingsgroep'}${n != null ? ` (${n} instellingen)` : ''}`
+    return `Gem. ${bm.populatie || 'vergelijkingsgroep'}${n != null ? ` (${aantalInstellingen(n)})` : ''}`
   }
 
   // De kop noemt de vergelijkingsgroep met regio, aantal, type en een eventuele terugval met reden (#926).
@@ -63,8 +74,9 @@ export function Kerncijfers({ data, instelling, c }) {
           <SamenvattingTile
             label={`Ingeschrevenen ${jaarLabel(c.lastInges[0], perioden?.ingeschrevenen)}`}
             eigenWaarde={c.lastInges[1]}
-            regioWaarde={bmInges ? Math.round(bmInges) : null}
+            regioWaarde={gemiddelde('ingeschrevenen', bmInges)}
             regioLabel={gemLabel('ingeschrevenen', bmIngesJaar)}
+            regioReden={reden('ingeschrevenen')}
             sparkValues={c.ingesEntries.map(([, v]) => v)}
             color={COLOR_EIGEN}
             icon={iconPersons(COLOR_EIGEN)}
@@ -76,8 +88,9 @@ export function Kerncijfers({ data, instelling, c }) {
           <SamenvattingTile
             label={`Eerstejaars ${jaarLabel(c.lastEj[0], perioden?.eerstejaars)}`}
             eigenWaarde={c.lastEj[1]}
-            regioWaarde={bmEj ? Math.round(bmEj) : null}
+            regioWaarde={gemiddelde('eerstejaars', bmEj)}
             regioLabel={gemLabel('eerstejaars', bmEjJaar)}
+            regioReden={reden('eerstejaars')}
             sparkValues={c.ejEntries.map(([, v]) => v)}
             color={COLOR_EERSTEJAARS}
             icon={iconChart(COLOR_EERSTEJAARS)}
@@ -90,8 +103,9 @@ export function Kerncijfers({ data, instelling, c }) {
           <SamenvattingTile
             label={`Gediplomeerden ${jaarLabel(c.lastDipl[0], perioden?.gediplomeerden)}`}
             eigenWaarde={c.lastDipl[1]}
-            regioWaarde={bmDipl ? Math.round(bmDipl) : null}
+            regioWaarde={gemiddelde('gediplomeerden', bmDipl)}
             regioLabel={gemLabel('gediplomeerden', bmDiplJaar)}
+            regioReden={reden('gediplomeerden')}
             sparkValues={c.diplEntries.map(([, v]) => v)}
             color={COLOR_DIPLOM}
             icon={iconDiploma(COLOR_DIPLOM)}

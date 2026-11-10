@@ -290,6 +290,8 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 
 # Een gemiddelde over één andere instelling is die instelling, over twee nog erg smal: daarom ten minste drie (#948).
 _MIN_PEERS = 3
+# Waarom een kerncijfer geen gemiddelde toont: in het laatste jaar hebben te weinig peers een waarde (#1007).
+TE_WEINIG_PEERS = "te weinig vergelijkbare instellingen met cijfers"
 _TREDEN = ("arbeidsmarktregio", "provincie")  # van smal naar breed; daarna landelijk
 _ONDERWIJSTYPEN = {"ho": ("hbo", "wo"), "mbo": ("mbo",)}
 # Het type van een instelling als zelfstandig naamwoord: enkelvoud, meervoud.
@@ -483,6 +485,14 @@ def _met_aantal_peers(bm: dict, sleutel: str, n_per_jaar: dict[int, int]) -> Non
         bm["n_instellingen"] = n_per_jaar[max(n_per_jaar)] if n_per_jaar else 0
 
 
+def _met_peerdrempel(bm: dict, sleutel: str, n_per_jaar: dict[int, int]) -> None:
+    """Hebben in het laatste jaar minder dan _MIN_PEERS peers een waarde, dan staat de reden onder
+    bm["te_weinig_peers"][sleutel]: het kerncijfer toont dan geen gemiddelde (#1007). De groep kan groot genoeg zijn
+    terwijl maar één peer cijfers heeft; dan is het "gemiddelde" die ene instelling. De reeks zelf blijft staan."""
+    if n_per_jaar and n_per_jaar[max(n_per_jaar)] < _MIN_PEERS:
+        bm.setdefault("te_weinig_peers", {})[sleutel] = TE_WEINIG_PEERS
+
+
 def _met_geen_gegevens(bm: dict, sleutel: str, reeks: _PeerReeks) -> None:
     if reeks.geen_gegevens:
         bm.setdefault("geen_gegevens", {})[sleutel] = reeks.geen_gegevens
@@ -492,6 +502,7 @@ def _met_gemiddelde(bm: dict, sleutel: str, reeks: _PeerReeks) -> None:
     """Het regiogemiddelde van een reeks in de benchmark: per jaar, met het aantal peers en de lege cellen erachter."""
     bm[sleutel] = reeks.gemiddelde
     _met_aantal_peers(bm, sleutel, reeks.n_per_jaar)
+    _met_peerdrempel(bm, sleutel, reeks.n_per_jaar)
     _met_onderdrukt(bm, sleutel, reeks.leeg)
     _met_geen_gegevens(bm, sleutel, reeks)
 

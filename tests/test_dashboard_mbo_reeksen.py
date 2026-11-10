@@ -10,6 +10,7 @@ De verwachte getallen zijn met pandas nagerekend uit de bevroren DUO-fixtures (#
 getallen van Curio en BBO de Schalm staan ook in de dashboardaudit van 04-11-2026 (V-02, V-05, bijlage D).
 """
 
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -318,3 +319,65 @@ def test_het_ho_gemiddelde_sluit_een_peer_zonder_gegevens_uit():
     assert bm["totaal_regio"] == {2024: 450, 2025: 460}
     # Het label telt dezelfde peers als het gemiddelde (#926, #903): de peer zonder gegevens niet.
     assert bm["label"] == "Provincie Testland, 2 andere hogescholen"
+
+
+# ─── #1007: een kerncijfergemiddelde over te weinig instellingen met cijfers ─────────────────────────────────────────
+
+
+def test_een_gemiddelde_over_te_weinig_instellingen_met_cijfers_krijgt_een_reden():
+    # Het UU-geval: drie andere universiteiten in de groep, maar maar één met eerstejaarscijfers. Het "gemiddelde" van
+    # de eerstejaars is dan die ene universiteit; ingeschrevenen en gediplomeerden hebben er drie.
+    peers = (("P1", "Peer 1", 100), ("P2", "Peer 2", 200), ("P3", "Peer 3", 300))
+
+    def df(jaar_col, kolom, met_cijfers=("P1", "P2", "P3")):
+        return pd.DataFrame(
+            [
+                {"CODE": c, "NAAM": n, jaar_col: j, kolom: v if c in met_cijfers else 0, "ONDERDEEL": "x"}
+                for c, n, v in peers
+                for j in (2024, 2025)
+            ]
+        )
+
+    ctx = SimpleNamespace(
+        peer_codes=frozenset({"P1", "P2", "P3"}),
+        regio_type="nationaal",
+        regio_naam="Nederland",
+        soort="wo",
+        terugval=None,
+    )
+    bm = dashboard._ho_regio_benchmark(
+        ctx,
+        df("STUDIEJAAR", "AANTAL_INGESCHREVENEN"),
+        df("STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN", met_cijfers=("P2",)),
+        df("DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
+        "CODE",
+        "NAAM",
+        {2024: 50, 2025: 60},
+    )
+
+    # Het aantal dat telt, is het aantal instellingen met een waarde in het getoonde jaar, niet de grootte van de groep.
+    assert bm["n_per_jaar"]["eerstejaars"] == {2024: 1, 2025: 1}
+    assert bm["te_weinig_peers"] == {"eerstejaars": "te weinig vergelijkbare instellingen met cijfers"}
+    for sleutel in ("ingeschrevenen", "gediplomeerden"):
+        assert bm[sleutel] == {2024: 200.0, 2025: 200.0}, sleutel
+        assert bm["n_per_jaar"][sleutel] == {2024: 3, 2025: 3}, sleutel
+    # De reeks zelf blijft: de grafieken in de andere secties tonen hem zoals voorheen.
+    assert bm["eerstejaars"] == {2024: 200.0, 2025: 200.0}
+    assert bm["n_instellingen"] == 3
+
+
+def test_de_drempel_kijkt_naar_het_laatste_jaar_van_de_reeks():
+    bm: dict = {}
+    reeks = dashboard._PeerReeks(
+        gemiddelde={2024: 10.0, 2025: 12.0},
+        n_per_jaar={2024: 1, 2025: dashboard._MIN_PEERS},
+        per_peer={},
+        leeg={},
+        totaal={},
+        geen_gegevens=[],
+    )
+    dashboard._met_gemiddelde(bm, "eerstejaars", reeks)
+    assert "te_weinig_peers" not in bm
+
+    dashboard._met_gemiddelde(bm, "gediplomeerden", replace(reeks, n_per_jaar={2024: 3, 2025: 2}))
+    assert bm["te_weinig_peers"] == {"gediplomeerden": dashboard.TE_WEINIG_PEERS}
