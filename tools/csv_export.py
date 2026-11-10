@@ -1,6 +1,6 @@
 """CSV van de tabel achter een antwoord, voor Excel (#269).
 
-De export is de tabel die query_data, run_analysis of get_maat in de store legde,
+De export is de tabel die query_data, run_analysis, koppel_data of get_maat in de store legde,
 of de selectie van een lader als het toolresultaat haar helemaal toonde (#605), of de tabel achter
 get_bestuursfinancien, get_wo_personeel of get_studiekeuze (#956, #957);
 niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
@@ -28,6 +28,7 @@ from .schemas import (
     TOOL_GET_RIO_DATA,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
+    TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
@@ -37,8 +38,8 @@ from .schemas import (
 KNOP = "Download data als CSV"
 
 # De stappen die een selectie in de store leggen en `data_key` plus `rijen` teruggeven. get_maat selecteert zelf
-# (#188) en gaf daardoor geen CSV-knop (#538).
-_EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}
+# (#188) en gaf daardoor geen CSV-knop (#538). koppel_data legt de koppeling van twee tabellen neer (#988).
+_EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_KOPPEL_DATA, TOOL_GET_MAAT}
 # De laders leggen een hele selectie in de store en tonen het model alleen de eerste rijen (`preview`). Toonde
 # het resultaat álle rijen, dan is die selectie de tabel achter het antwoord: het model schreef zijn tabel eruit
 # en er kwam geen query_data meer aan te pas (#605: een CBS-selectie van twee schooljaren gaf geen knop). Een

@@ -118,8 +118,9 @@ Past geen maat, of weigert `get_maat` (bijvoorbeeld een onbekende instelling), d
 1. Laad elke bron via route 1 of 2.
 2. `relatie(data_key, andere_key)` — welke kolommen dezelfde sleutel dragen, hoe de waarden vertalen
    (GM0344 ↔ 344, 2021SJ00 ↔ 2021) en hoe groot de overlap is.
-3. Alleen met een gedeelde sleutel: `run_analysis` met `df` en `store_get('<key>')` voor de koppeling. Zonder gedeelde
-   sleutel koppelt het model niet en antwoordt het per bron apart.
+3. Alleen met een gedeelde sleutel: `koppel_data(data_key, andere_key, sleutels)` koppelt in code (#988). Zonder gedeelde
+   sleutel koppelt het model niet en antwoordt het per bron apart. Een eigen `merge` in `run_analysis` is niet de weg:
+   die verloor rijen zonder match.
 4. `create_plot` op de `data_key` van het resultaat; één y-as, `color_by` voor groepen.
 
 Arbeidsmarkt-context (`get_uwv_vacatures`, `get_roa_benchmark`) komt als tekst bij een onderwijsantwoord, niet als
@@ -136,7 +137,7 @@ Bij elke vraag bepaalt het LLM automatisch:
 | **search_catalog nodig?** | Vraag noemt geen specifieke dataset |
 | **dataset_details nodig?** | Onzeker over beschikbare filters/dimensies |
 | **query_data nodig?** | Data moet gefilterd, gegroepeerd of geclusterd |
-| **run_analysis nodig?** | Complexe berekeningen, transformaties, joins |
+| **run_analysis nodig?** | Complexe berekeningen en transformaties; koppelen van twee tabellen is `koppel_data` |
 | **Visualisatie nodig?** | Vraag vraagt om grafiek/kaart, OF data is complex |
 | **clarify_scope nodig?** | Vraag heeft meerdere geldige interpretaties |
 
@@ -826,10 +827,57 @@ Met één key: per sleutelkolom `koppelt_aan` (register, gebiedsindeling, RIO), 
 `confidence` (1.0 voor codes met vaste vertaling, 0.8 voor namen) en `dekking` (hoeveel waarden het
 instellingsregister, de arbeidsmarktregio-indeling of de provinciecodes kennen). Met twee keys ook
 `koppelingen`: de kolomparen met dezelfde sleutel, `type` (one_to_one … many_to_many) en `overlap` van de
-genormaliseerde waarden, en bij minstens één kandidaat de vaste `koppelregel` (#962): koppel met `how="left"` vanuit
-de tabel van de vraag, een rij zonder match houdt een leeg veld met uitleg, nooit 0, en geen `dropna` of inner join op
-de koppelkolommen. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`, zonder waarden) en de
-koppeling zelf is een stap in `query_data` of `run_analysis`.
+genormaliseerde waarden, en bij minstens één kandidaat de vaste `koppelregel` (#962, #988): koppel met `koppel_data`,
+niet met een eigen `merge` of `how="left"` in `run_analysis`; een rij zonder match houdt een leeg veld met uitleg,
+nooit 0, en geen `dropna` of inner join. De tool koppelt niets; de kandidaten staan in het log
+(`RELATIE kandidaten=…`, zonder waarden) en de koppeling zelf is de volgende stap, `koppel_data`.
+
+---
+
+## koppel_data
+
+Koppelt twee geladen tabellen in code (`tools/koppel.py`, #988): het model kiest de twee keys en de sleutels, de code
+koppelt. Een koppeling die het model zelf in `run_analysis` schreef, verloor rijen (een draaitabel met `dropna=True`,
+een filter op een lege score vóór de koppeling, `how="left"` vanuit de verkeerde kant; reaudit A02/A03).
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | De eerste tabel |
+| `andere_key` | string | De tweede tabel |
+| `sleutels` | array | Sleutelnamen uit `relatie` die beide tabellen dragen, bijv. `["brin", "croho"]` |
+| `kolommen_links` | object | Optioneel: sleutel → kolom, als een sleutel in de eerste tabel in meer kolommen staat |
+| `kolommen_rechts` | object | Optioneel: hetzelfde voor de tweede tabel |
+
+De kolommen per sleutel komen uit dezelfde herkenning als bij `relatie` (`relaties.sleutelkolommen`). Heeft een tabel
+de sleutel niet, of staat hij in meer kolommen zonder opgave, dan is de uitkomst een `melding` met de `kandidaten` en
+komt er niets in de store. De koppeling is een outer join over de vereniging van de genormaliseerde sleutelwaarden
+(`30020.0` = `30020`, `2021SJ00` = `2021`): elke rij van beide tabellen blijft, ook een rij met een lege of onleesbare
+sleutel (die kan niet matchen en telt in `zonder_sleutel`). Een rij zonder match houdt lege cellen voor de andere kant,
+nooit 0. Vooraan staan de sleutels in hun genormaliseerde vorm en `koppelstatus`: `beide`, `alleen <bron A>` of
+`alleen <bron B>` (het label is de bron in hoofdletters, bij twee tabellen van dezelfde bron de key). Een kolomnaam die
+botst (met een sleutel, met `koppelstatus` of met een kolom van de andere tabel) krijgt het label ervoor, bijv.
+`SKDB_brin` (zo vaak als nodig om uniek te zijn). Ketenen kan: het resultaat is een gewone key, en daarin kiest
+`koppel_data` voor een sleutel vanzelf de genormaliseerde kolom vooraan.
+
+De koppeling draait in het serverproces, niet in de sandbox van `run_analysis`. Daarom telt de code eerst hoeveel rijen
+de join zou geven (per gedeelde sleutelwaarde links × rechts, plus de rijen zonder match of zonder sleutel). Boven
+`MAX_RIJEN` (200.000) gaat hij niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies
+op meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Dat
+gebeurt bij veel-op-veel op een grove sleutel (alleen `schooljaar` of `brin`): een kruisproduct per waarde.
+
+Het resultaat is een nieuwe key (`koppel:<hash>`, deterministisch: de hash gaat over beide tabellen en de gekozen
+kolommen) met `rijen` (begrensd zoals bij `run_analysis`),
+`telling` per status, `uniek` (unieke sleutelwaarden per kant en samen), `kolommen` (de gebruikte kolom per kant),
+`toelichting` per status (wat een rij zonder match betekent: andere bron of andere afbakening) en `korrel`: per kant
+`one` of `many` en de kardinaliteit van de koppeling (`one_to_many` …). Bij `many` staat er een `waarschuwing`: een
+waarde van de andere kant staat dan per rij herhaald en telt niet zonder meer op (zie `dataset_profiel`). Een
+naamsleutel draagt de naamwaarschuwing van `relatie`.
+
+De key is afgeleid van de eerste tabel en rust op beide (`gelezen`): de herkomst en de CSV-kop noemen beide bronnen,
+bij de Studiekeuzedatabase met de verplichte zin van LCSK (#977, #985), en de CSV-knop staat eronder zoals bij
+`run_analysis`. `query_data`, `run_analysis` en `create_plot` werken op de key als op elke afgeleide key. Na een
+herstart komt een koppeling niet vanzelf terug (haar recept is niet herlaadbaar) en een snippet op haar key toont de
+rijen als kopie: `koppel_data` heeft nog geen eigen snippet.
 
 ---
 

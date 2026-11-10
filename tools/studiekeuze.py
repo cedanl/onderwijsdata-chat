@@ -117,10 +117,10 @@ DOORSTROOM_MASTER = (
 KOPPELEN = (
     "brin en croho zijn de codes van RIO en DUO: met BRIN-code en opleidingscode vind je dezelfde opleiding in de "
     "DUO-bestanden (inschrijvingen, diploma's) en in RIO. Koppel zo: eerst relatie(data_key, andere_key) voor de "
-    'koppelkolommen en de overlap; dan how="left" vanuit de tabel van de vraag, zodat elke rij blijft. Een rij zonder '
-    "match houdt een leeg veld: zeg welke en waarom (andere bron, andere afbakening), vul nooit 0 in, en gooi geen rijen "
-    "weg met dropna of een inner join op de koppelkolommen. studiecode is een code van LCSK en niet altijd een "
-    "CROHO-code."
+    "koppelkolommen en de overlap; dan koppel_data(data_key, andere_key, sleutels), zodat elke rij blijft, en geen "
+    'eigen merge of how="left" in run_analysis. Filter vóór de koppeling niet op een lege score. Een rij zonder match '
+    "houdt een leeg veld: zeg welke en waarom (andere bron, andere afbakening), vul nooit 0 in, en gooi geen rijen weg "
+    "met dropna of een inner join. studiecode is een code van LCSK en niet altijd een CROHO-code."
 )
 # Review 08-B5 (#961): na "Meer studies passen …" haalde het model zelf drie studies op en beantwoordde ze allemaal.
 # Na drie keuzevragen is clarify_scope niet meer in de toolset (agent/run.py); dan stelt het model de keuze in tekst (#970).

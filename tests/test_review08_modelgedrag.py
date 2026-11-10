@@ -5,7 +5,8 @@
 - #961: de tool vond meer studies en vroeg om een keuze; het model haalde zelf drie studies op. Nu staat er een vaste
   instructie in de melding en vangt een controle het op.
 - #962: een koppeling met een tweede bron liet rijen zonder match verdwijnen (inner join, dropna). Nu zeggen de
-  koppelzin van de Studiekeuzedatabase, de uitkomst van `relatie` en de systeemprompt hoe het moet.
+  koppelzin van de Studiekeuzedatabase, de uitkomst van `relatie` en de systeemprompt hoe het moet: sinds #988 met
+  `koppel_data`, dat in code koppelt, en niet met een eigen merge.
 
 Er staat geen data van LCSK in de repo: `onderwijsbronnen.skdb.proefbestand` bouwt een export met dezelfde vorm.
 """
@@ -28,6 +29,7 @@ from agent.stream import StreamResult
 from data import instellingen
 from tools import relaties, store, studiekeuze
 from tools.schemas import TOOL_GET_STUDIEKEUZE
+from tools.schemas import TOOL_SCHEMAS as SCHEMAS
 from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
@@ -234,9 +236,10 @@ def test_de_systeemprompt_zegt_eerst_kiezen_bij_meer_studies():
 # --- #962: koppelen zonder rijen te verliezen ---------------------------------------------------------------------
 
 
-def test_de_koppelzin_zegt_eerst_relatie_dan_left_join_zonder_nul_of_dropna():
+def test_de_koppelzin_zegt_eerst_relatie_dan_koppel_data_zonder_nul_of_dropna():
     zin = studiekeuze.KOPPELEN
-    assert zin.index("relatie") < zin.index('how="left"')
+    assert zin.index("relatie") < zin.index("koppel_data")
+    assert 'geen eigen merge of how="left"' in zin and "lege score" in zin
     assert "leeg" in zin and "nooit 0" in zin and "dropna" in zin
 
 
@@ -248,7 +251,8 @@ def test_relatie_met_koppelkandidaten_geeft_de_koppelregel(monkeypatch):
     store.put("duo:p01hoinges:0:proef962", duo_df, KeyMeta(bron="duo", dataset="duo:p01hoinges"))
     uit = json.loads(relaties.relatie("skdb:opleidingen:proef962", "duo:p01hoinges:0:proef962"))
     assert uit["koppelingen"] and uit["koppelregel"] == relaties.KOPPELREGEL
-    assert 'how="left"' in relaties.KOPPELREGEL and "nooit 0" in relaties.KOPPELREGEL
+    assert "koppel_data" in relaties.KOPPELREGEL and "nooit 0" in relaties.KOPPELREGEL
+    assert 'geen eigen merge of how="left"' in relaties.KOPPELREGEL
 
 
 def test_relatie_zonder_tweede_tabel_of_zonder_kandidaat_geeft_geen_koppelregel():
@@ -262,5 +266,12 @@ def test_relatie_zonder_tweede_tabel_of_zonder_kandidaat_geeft_geen_koppelregel(
 
 def test_de_systeemprompt_zegt_hoe_te_koppelen():
     regel = next(r for r in SYSTEM.splitlines() if r.startswith("- **Koppelen**"))
-    assert 'how="left"' in regel and "nooit 0" in regel and "dropna" in regel
-    assert regel.index("relatie") < regel.index('how="left"')
+    assert "nooit 0" in regel and "dropna" in regel
+    assert regel.index("`relatie`") < regel.index("`koppel_data(") < regel.index('geen eigen `merge` of `how="left"`')
+    assert "`pivot_table`" in regel and "`dropna=False`" in regel
+    assert "vóór de koppeling niet op een lege score" in regel
+
+
+def test_de_relatiebeschrijving_verwijst_naar_koppel_data():
+    beschrijving = next(s for s in SCHEMAS if s["function"]["name"] == "relatie")["function"]["description"]
+    assert "koppel_data" in beschrijving and "merge" in beschrijving

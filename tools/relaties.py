@@ -9,8 +9,8 @@ wat de chat eraan hangt: het instellingsregister (`data/instellingen.py`), de CB
 
 `relatie(data_key)` zegt per sleutelkolom van een geladen tabel wat eraan hangt en hoeveel waarden het register of de
 indeling kent. `relatie(data_key, andere_key)` noemt de kolommen die beide tabellen als dezelfde sleutel dragen, met
-kardinaliteit en overlap: kandidaten voor een koppeling. De tool koppelt zelf niets; dat blijft een expliciete stap
-(query_data of run_analysis). Elke uitkomst draagt `basis` en `confidence`: handmatig vastgelegd is 1.0.
+kardinaliteit en overlap: kandidaten voor een koppeling. De tool koppelt zelf niets; dat doet daarna koppel_data
+(tools/koppel.py, #988) in code. Elke uitkomst draagt `basis` en `confidence`: handmatig vastgelegd is 1.0.
 """
 
 import json
@@ -31,12 +31,14 @@ GEDETECTEERD = "gedetecteerd"
 # Zoveel waarden hoogstens per kolom genormaliseerd voor dekking en overlap; genoeg voor elke bron in de chat.
 _MAX_WAARDEN = 200_000
 
-# Hoe een koppeling rijen bewaart (#962): review 08-C1/C4 verloor instellingen en opleidingen zonder match door een
-# inner join en dropna. Bij elke uitkomst met koppelkandidaten, zodat het model de regel ziet op het moment dat hij koppelt.
+# Hoe een koppeling rijen bewaart (#962, #988): review 08-C1/C4 verloor instellingen en opleidingen zonder match door een
+# inner join en dropna, en een eigen merge in run_analysis bleef dat doen. Bij elke uitkomst met koppelkandidaten, zodat
+# het model de regel ziet op het moment dat hij koppelt.
 KOPPELREGEL = (
-    'Koppel met how="left" vanuit de tabel van de vraag (links) op de kolommen van één kandidaat, zodat elke rij blijft. '
-    "Een rij zonder match houdt een leeg veld: noem welke rijen geen match hebben en waarom (andere bron, andere "
-    "afbakening), vul nooit 0 in, en gooi geen rijen weg met dropna of een inner join op de koppelkolommen."
+    "Koppel met koppel_data(data_key, andere_key, sleutels) op de sleutel van één kandidaat: de code houdt elke rij van "
+    'beide tabellen, met koppelstatus. Schrijf geen eigen merge of how="left" in run_analysis. Een rij zonder match '
+    "houdt een leeg veld: noem welke rijen geen match hebben en waarom (andere bron, andere afbakening), vul nooit 0 "
+    "in, en gooi geen rijen weg met dropna of een inner join."
 )
 
 # Bij elke sleutelkolom en koppelkandidaat op een naam (besluit 09-11, #958): een naam is een zwakke sleutel.

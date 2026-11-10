@@ -78,6 +78,7 @@ from tools.schemas import (
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
+    TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
     TOOL_RELATIE,
     TOOL_RUN_ANALYSIS,
@@ -104,6 +105,8 @@ _ZONDER_LAADSTAP = {
     TOOL_DATASET_PROFIEL: "profileert een geladen key, laadt zelf niets",
     TOOL_GET_CBS_DIMENSION: "codes van een CBS-dimensie, geen tabel",
     TOOL_RELATIE: "relaties tussen geladen keys, laadt zelf niets",
+    # #988: zonder laadaanroep; een snippet op haar key krijgt de rijen als kopie (snippet._afgeleide_regels).
+    TOOL_KOPPEL_DATA: "koppelt twee geladen keys in code, laadt zelf niets en heeft geen eigen snippet",
     TOOL_GET_RIO_INSTELLING: "één instelling uit RIO, zonder laadaanroep in de store",
     TOOL_GET_INSPECTIEOORDEEL: "Inspectiebestand, zonder laadaanroep in de store",
     TOOL_GET_INSPECTIEOORDEEL_VO: "Inspectiebestand vo, zonder laadaanroep in de store",
