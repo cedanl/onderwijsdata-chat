@@ -878,14 +878,38 @@ def test_create_plot_snippet_tekent_lange_namen_liggend_zoals_de_app():
 
 def test_get_cbs_data_snippet_toont_het_compilaat_van_een_gesloten_selectie():
     """Het model stuurt een selectie, de server bouwt de filter (#343): de snippet laadt met die filter (#531)."""
-    snippet = generate(
-        "get_cbs_data",
-        {"dataset_id": "85353NED", "selectie": {"dimensies": {"Geslacht": "4000"}, "periode": ["2021/22"]}},
-    )
+    defs = {"Geslacht": {"type": "Dimension", "title": "Geslacht"}, "Perioden": {"type": "TimeDimension"}}
+    with patch("tools.cbs.definitions", return_value=defs):
+        snippet = generate(
+            "get_cbs_data",
+            {"dataset_id": "85353NED", "selectie": {"dimensies": {"Geslacht": "4000"}, "periode": ["2021/22"]}},
+        )
     assert snippet is not None
     assert 'data("85353NED"' in snippet
     assert "trim(Geslacht) eq '4000'" in snippet and "trim(Perioden) eq '2021SJ00'" in snippet
     assert "selectie" not in snippet
+
+
+def test_get_cbs_data_snippet_filtert_op_de_sleutel_als_het_model_de_titel_gaf():
+    """#1012: de app laadde op `GeboortelandOuders`, dus de snippet ook; `trim(Geboorteland (ouders))` bestaat niet."""
+    defs = {
+        "GeboortelandOuders": {"type": "Dimension", "title": "Geboorteland (ouders)"},
+        "Perioden": {"type": "TimeDimension", "title": "Perioden"},
+    }
+    args = {"dataset_id": "85357NED", "selectie": {"dimensies": {"Geboorteland (ouders)": "T001638"}, "periode": "*"}}
+    with patch("tools.cbs.definitions", return_value=defs):
+        snippet = generate("get_cbs_data", args)
+    assert snippet is not None
+    assert "trim(GeboortelandOuders) eq 'T001638'" in snippet
+    assert "trim(Geboorteland (ouders))" not in snippet
+
+
+def test_get_cbs_data_snippet_bouwt_ook_als_de_metadata_uitvalt():
+    args = {"dataset_id": "85357NED", "selectie": {"dimensies": {"Geboorteland (ouders)": "T001638"}, "periode": "*"}}
+    with patch("tools.cbs.definitions", side_effect=RuntimeError("CBS onbereikbaar")):
+        snippet = generate("get_cbs_data", args)
+    assert snippet is not None
+    assert 'data("85357NED"' in snippet
 
 
 def test_create_plot_snippet_zet_de_y_as_op_nul_zoals_de_app():
