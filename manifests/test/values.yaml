@@ -129,6 +129,9 @@ env:
         name: onderwijsdata-chat-secrets
         key: MCP_API_KEYS
         optional: true
+  # De app waar `vervolg` in een /mcp-resultaat heen wijst (#941): op test de testapp, niet de default (playground).
+  - name: APP_URL
+    value: "https://onderwijsdata-chat.test.sdp.surf.nl"
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
   # Dashboards staan op test en playground aan (vlag uit 47e7727f); production houdt ze uit.

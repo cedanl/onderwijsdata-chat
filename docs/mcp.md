@@ -98,7 +98,7 @@ een nieuw gesprek ([deep link](api.md#deep-link-naar-de-chat)): bij `search_cata
 `dataset_details` "Welke cijfers staan er in <ID>?", bij de datatools dezelfde vraag in woorden ("Hoeveel studenten
 voltijd had Universiteit Utrecht per studiejaar?"). Een dataset die de catalogus niet kent of die buiten mbo, hbo en wo
 valt, en `dataset_counts` krijgen de link zonder vraag. De link wijst naar playground; zet `APP_URL` voor een andere
-omgeving. De vraag is ten hoogste 500 tekens, dezelfde grens als de app.
+omgeving (op test staat hij op de testapp, #941). De vraag is ten hoogste 500 tekens, dezelfde grens als de app.
 
 **Ontsmet.** Titels, beschrijvingen en definities komen van CBS, DUO en RIO en gaan naar een client die Markdown toont.
 In elke tekst van een resultaat, ook in sleutels, krijgen `[` en `]` een backslash en worden `<` en `>` `&lt;` en
@@ -189,6 +189,23 @@ leest hem `optional` (zonder sleutel geen `/mcp`). Sjabloon: `manifests/test/sec
 SOPS zoals in [Deployment → Secrets](deployment.md#3-secrets-configuration). De sleutel van een consument gaat via een
 eigen, veilig kanaal naar de beheerder van die consument (bij een globale entry: Npuls/SURF, #711), nooit in een issue
 of chat.
+
+**Op test zetten (#941).** Eenmalig, door de beheerder, in een eigen terminal (de sleutel komt nergens in een LLM-sessie, issue
+of MR):
+
+```bash
+# 1. Een sleutel voor deze consument zetten in het versleutelde test-secret, zonder hem te tonen
+sops set manifests/test/secret.yaml '["stringData"]["MCP_API_KEYS"]' "\"$(python -c 'import secrets; print(secrets.token_urlsafe(32))')\""
+# 2. Via een MR naar main; Flux (onderwijsdata-chat-sync, elke minuut) zet het secret in het cluster
+# 3. De pod leest de sleutel bij de start: herstart hem
+kubectl --context testing -n services-onderwijsdata-chat rollout restart deploy/fn-onderwijsdata-chat
+```
+
+Controle: zonder `Authorization` geeft `https://onderwijsdata-chat.test.sdp.surf.nl/mcp` 401 (voor de sleutel was het 404); met
+de sleutel (`sops -d --extract '["stringData"]["MCP_API_KEYS"]' manifests/test/secret.yaml`) werken `search_catalog`,
+`dataset_details` en `dataset_counts` in de MCP Inspector (`npx @modelcontextprotocol/inspector`, transport *Streamable HTTP*,
+header `Authorization: Bearer <sleutel>`). `/health`, `/version` en de chat blijven werken. De sleutel voor #705 gaat via een
+veilig kanaal naar de beheerder van SURF AI Chat.
 
 **Roteren.** Zet de nieuwe sleutel naast de oude (`oud,nieuw`), rol uit, laat de consument overstappen en haal daarna
 de oude weg. Een sleutel intrekken is hetzelfde zonder de nieuwe. Na een wijziging van de secret herstart de pod niet
