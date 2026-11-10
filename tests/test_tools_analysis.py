@@ -2,6 +2,7 @@ import json
 from typing import Any
 
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 from tools import store
@@ -318,7 +319,13 @@ def _hogescholen(naam) -> None:
     _put("test:hs", [{"K": "Avans", "N": 3.5}, {"K": "Fontys", "N": 3.2}, {"K": naam, "N": 3.85}])
 
 
-@pytest.mark.parametrize("naam", [None, "nan", "None"])
+def _met_figuur(figuurcode: str) -> tuple[str, go.Figure]:
+    uitkomst = run_analysis(code=f"{figuurcode}\nresult = {{'ok': True}}", data_key="test:hs")
+    assert isinstance(uitkomst, tuple)
+    return uitkomst
+
+
+@pytest.mark.parametrize("naam", [None, float("nan"), "nan", "None"])
 @pytest.mark.parametrize(
     "code",
     [
@@ -331,10 +338,8 @@ def _hogescholen(naam) -> None:
 )
 def test_figuur_uit_run_analysis_heeft_geen_categorie_zonder_naam(naam, code):
     _hogescholen(naam)
-    uitkomst = run_analysis(code=f"{code}\nresult = {{'ok': True}}", data_key="test:hs")
+    tekst, fig = _met_figuur(code)
 
-    assert isinstance(uitkomst, tuple)
-    tekst, fig = uitkomst
     assert [_categorieen(t) for t in fig.data] == [["Avans", "Fontys"]]
     assert not [n for t in fig.data if (n := t.name) and _leeg(n)]
     waarden = fig.data[0].x if fig.data[0].orientation == "h" else fig.data[0].y
@@ -344,12 +349,9 @@ def test_figuur_uit_run_analysis_heeft_geen_categorie_zonder_naam(naam, code):
 
 def test_parallelle_lijsten_worden_samen_gefilterd():
     _hogescholen(float("nan"))
-    _, fig = run_analysis(
-        code=(
-            "figure = go.Figure(go.Bar(x=list(df['K']), y=list(df['N']), text=['a', 'b', 'c'],"
-            " customdata=[[1], [2], [3]], marker_color=['red', 'green', 'blue']))\nresult = {'ok': True}"
-        ),
-        data_key="test:hs",
+    _, fig = _met_figuur(
+        "figure = go.Figure(go.Bar(x=list(df['K']), y=list(df['N']), text=['a', 'b', 'c'],"
+        " customdata=[[1], [2], [3]], marker_color=['red', 'green', 'blue']))"
     )
     trace = fig.data[0]
     assert list(trace.text) == ["a", "b"]
@@ -359,22 +361,19 @@ def test_parallelle_lijsten_worden_samen_gefilterd():
 
 def test_een_reeks_zonder_naam_valt_weg():
     _put("test:hs", [{"K": "a", "G": "VT", "N": 1}, {"K": "b", "G": "VT", "N": 2}, {"K": "a", "G": "nan", "N": 3}])
-    tekst, fig = run_analysis(
-        code="figure = px.bar(df, x='K', y='N', color='G')\nresult = {'ok': True}",
-        data_key="test:hs",
-    )
+    tekst, fig = _met_figuur("figure = px.bar(df, x='K', y='N', color='G')")
     assert [t.name for t in fig.data] == ["VT"]
     assert "1 rij zonder naam weggelaten" in json.loads(tekst)["grafiek"]
 
 
 def test_de_exportrijen_van_een_eigen_figuur_missen_de_rij_zonder_naam():
     _hogescholen(None)
-    _, fig = run_analysis(code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}", data_key="test:hs")
+    _, fig = _met_figuur("figure = px.bar(df, x='K', y='N')")
     assert fig.layout.meta["data"] == [{"K": "Avans", "N": 3.5}, {"K": "Fontys", "N": 3.2}]
 
 
 def test_een_figuur_met_alleen_namen_houdt_zijn_tekst_zonder_grafiekmelding():
     _hogescholen("Saxion")
-    tekst, fig = run_analysis(code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}", data_key="test:hs")
+    tekst, fig = _met_figuur("figure = px.bar(df, x='K', y='N')")
     assert list(fig.data[0].x) == ["Avans", "Fontys", "Saxion"]
     assert json.loads(tekst) == {"gelezen": ["test:hs"], "resultaat": {"ok": True}}
