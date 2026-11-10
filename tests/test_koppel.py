@@ -300,6 +300,59 @@ def test_de_telling_vooraf_is_precies_het_aantal_rijen(monkeypatch, vul, sleutel
     assert _koppel(sleutels=sleutels)["verwachte_rijen"] == rijen
 
 
+def _breed(rijen: int, kolommen: int) -> None:
+    """Twee tabellen van `rijen` rijen op één brin, elk met `kolommen` tekstkolommen: onder de rijgrens, toch breed."""
+    df = pd.DataFrame({"brin": ["25DW"] * rijen, **{f"c{i}": [f"tekst {i}"] * rijen for i in range(kolommen)}})
+    store.put(_SKDB, df, _SKDB_META)
+    store.put(_DUO, df.copy(), _DUO_META)
+
+
+def test_een_te_brede_koppeling_onder_de_rijgrens_gaat_niet_door_en_laat_niets_achter():
+    """#1011: 447 x 447 = 199.809 rijen (onder MAX_RIJEN) met 40 tekstkolommen per kant; weigeren vóór de join."""
+    _breed(447, 40)
+    voor = store.list_keys()
+    uit = _koppel(sleutels=["brin"])
+    assert "data_key" not in uit and "rijen" not in uit
+    assert uit["verwachte_rijen"] == 199_809 < koppel.MAX_RIJEN
+    assert uit["korrel"] == "many_to_many"
+    # brin één keer, per kant de eigen brin en c0..c39, plus koppelstatus
+    assert uit["verwachte_cellen"] == 199_809 * (1 + 41 + 41 + 1) > koppel.MAX_CELLEN
+    melding = uit["melding"]
+    assert str(koppel.MAX_CELLEN) in melding and str(uit["verwachte_cellen"]) in melding
+    assert "niets gekoppeld" in melding and "query_data" in melding and "meer sleutels" in melding
+    assert store.list_keys() == voor
+
+
+@pytest.mark.parametrize(
+    ("vul", "sleutels"),
+    [
+        (_hu, ["croho"]),
+        (_ict, ["brin", "croho"]),
+        (lambda: _veel_op_veel(4), ["brin"]),
+        (_sleutelloos, ["brin"]),
+        (lambda: _breed(5, 3), ["brin"]),
+    ],
+)
+def test_de_celtelling_vooraf_is_precies_rijen_maal_kolommen(monkeypatch, vul, sleutels):
+    """De celgrens telt wat de join zou geven: precies op de grens gaat hij door, één cel eronder niet."""
+    vul()
+    cellen = store.get(_koppel(sleutels=sleutels)["data_key"]).size
+    monkeypatch.setattr(koppel, "MAX_CELLEN", cellen)
+    assert "data_key" in _koppel(sleutels=sleutels)
+    monkeypatch.setattr(koppel, "MAX_CELLEN", cellen - 1)
+    uit = _koppel(sleutels=sleutels)
+    assert "data_key" not in uit and uit["verwachte_cellen"] == cellen
+
+
+def test_boven_beide_grenzen_gaat_de_rijmelding_voor():
+    """Eén melding: bij een kruisproduct boven MAX_RIJEN helpen minder kolommen niet, dus geen celmelding."""
+    _veel_op_veel(1500)
+    uit = _koppel(sleutels=["brin"])
+    assert uit["verwachte_rijen"] > koppel.MAX_RIJEN and uit["verwachte_cellen"] > koppel.MAX_CELLEN
+    assert str(koppel.MAX_RIJEN) in uit["melding"]
+    assert "cellen" not in uit["melding"] and str(koppel.MAX_CELLEN) not in uit["melding"]
+
+
 def test_een_koppeling_ketenen_kiest_de_genormaliseerde_sleutelkolom():
     """Een koppeling heeft brin twee keer (de eigen kolom en vooraan de genormaliseerde): geen melding bij ketenen."""
     _ict()

@@ -32,7 +32,14 @@ _EEN, _VEEL = "one", "many"
 # run_analysis (1 GiB, 10 s): veel-op-veel op een grove sleutel (alleen schooljaar of brin) is een kruisproduct per
 # waarde en groeit kwadratisch (2 x 1500 rijen op één waarde: 2,25 miljoen rijen, 1 GB). Daarom eerst tellen, dan
 # koppelen. Dezelfde orde als relaties._MAX_WAARDEN; een één-op-veel van twee gewone loads blijft er ver onder.
+# Rijen alleen is niet genoeg: een brede koppeling onder MAX_RIJEN kan toch te groot zijn, zie MAX_CELLEN.
 MAX_RIJEN = 200_000
+# Zoveel cellen (rijen x kolommen) mag een koppeling hooguit geven, ook onder MAX_RIJEN (#1011). Twee tabellen van 447
+# rijen met 40 tekstkolommen op één brin gaven 199.809 rijen x 81 kolommen: ruim 16 miljoen cellen, in de store
+# ongeveer 1.070 MB (zo'n 67 bytes per tekstcel), boven STORE_MAX_MB (512), en de store gooide elke andere key weg.
+# 5 miljoen tekstcellen is ongeveer 335 MB, onder die grens met ruimte over; een één-op-veel van twee gewone loads
+# (honderdduizenden rijen x zo'n 10 kolommen) blijft eronder.
+MAX_CELLEN = 5_000_000
 
 
 class _Melding(Exception):
@@ -189,14 +196,33 @@ def omvang(a_ok: pd.DataFrame, b_ok: pd.DataFrame, sleutels: list[str]) -> int:
     return int((links.fillna(1) * rechts.fillna(1)).to_numpy(dtype="int64").sum())
 
 
-def _te_groot(links: _Kant, rechts: _Kant, sleutels: list[str], rijen: int, korrel: str) -> _Melding:
+def _te_groot(
+    links: _Kant, rechts: _Kant, sleutels: list[str], rijen: int, kolommen: int, korrel: str
+) -> _Melding | None:
+    """De melding als de koppeling boven MAX_RIJEN of MAX_CELLEN uitkomt, anders None. Eén melding: de rijgrens gaat
+    voor, want dan is het een kruisproduct en helpen minder kolommen niet."""
+    cellen = rijen * kolommen
+    if rijen > MAX_RIJEN:
+        grens = (
+            f"{rijen} rijen geven (korrel {korrel}), meer dan {MAX_RIJEN}: elke waarde van {links.label} staat dan "
+            f"bij elke rij van {rechts.label} met dezelfde sleutel."
+        )
+        kolomtip = ""
+    elif cellen > MAX_CELLEN:
+        grens = (
+            f"{rijen} rijen van {kolommen} kolommen geven, {cellen} cellen (korrel {korrel}), meer dan {MAX_CELLEN} "
+            f"cellen: elke rij draagt de kolommen van {links.label} en {rechts.label} samen."
+        )
+        kolomtip = " Houd met columns in query_data alleen de kolommen die je nodig hebt."
+    else:
+        return None
     return _Melding(
         _melding(
-            f"Deze koppeling op {', '.join(sleutels)} zou {rijen} rijen geven (korrel {korrel}), meer dan "
-            f"{MAX_RIJEN}: elke waarde van {links.label} staat dan bij elke rij van {rechts.label} met dezelfde "
-            f"sleutel. Er is niets gekoppeld. Koppel op meer sleutels (zie relatie, bijv. ook croho of schooljaar) "
-            "of maak een tabel eerst kleiner met query_data (filters, group_by) en koppel die data_key.",
+            f"Deze koppeling op {', '.join(sleutels)} zou {grens} Er is niets gekoppeld. Koppel op meer sleutels "
+            "(zie relatie, bijv. ook croho of schooljaar) of maak een tabel eerst kleiner met query_data (filters, "
+            f"group_by) en koppel die data_key.{kolomtip}",
             verwachte_rijen=rijen,
+            verwachte_cellen=cellen,
             korrel=korrel,
         )
     )
@@ -205,7 +231,7 @@ def _te_groot(links: _Kant, rechts: _Kant, sleutels: list[str], rijen: int, korr
 def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     """De outer join; een rij met een lege of onleesbare sleutel kan niet matchen en blijft met haar eigen status.
 
-    Een join boven MAX_RIJEN gaat niet door (_Melding): eerst tellen, dan pas koppelen.
+    Een join boven MAX_RIJEN of MAX_CELLEN gaat niet door (_Melding): eerst tellen, dan pas koppelen.
     """
     bezet = {*sleutels, KOPPELSTATUS}
     a = _genormaliseerd(links, sleutels, bezet | set(rechts.df.columns))
@@ -213,8 +239,10 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     a_ok, b_ok = (t[t[sleutels].notna().all(axis=1)] for t in (a, b))
     korrel = {links.label: _korrel(a_ok, sleutels), rechts.label: _korrel(b_ok, sleutels)}
     rijen = omvang(a_ok, b_ok, sleutels) + (len(a) - len(a_ok)) + (len(b) - len(b_ok))
-    if rijen > MAX_RIJEN:
-        raise _te_groot(links, rechts, sleutels, rijen, "_to_".join(korrel.values()))
+    kolommen = len(a.columns) + len(b.columns) - len(sleutels) + 1  # de sleutels één keer, plus koppelstatus
+    melding = _te_groot(links, rechts, sleutels, rijen, kolommen, "_to_".join(korrel.values()))
+    if melding is not None:
+        raise melding
     # pd.merge koppelt NaN aan NaN: rijen zonder sleutel gaan er daarom buitenom.
     gekoppeld = a_ok.merge(b_ok, on=sleutels, how="outer", indicator=_HERKOMST)
     status = {"both": BEIDE, "left_only": links.alleen, "right_only": rechts.alleen}
