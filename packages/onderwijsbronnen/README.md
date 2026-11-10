@@ -255,6 +255,10 @@ bewust niet omdat een andere bron leidend is (`schemakaart.MOGELIJKHEDEN`, met p
 Daarbij de editie (versie, exportdatum, NSE- en 1cijferHO-jaar) en wat een leeg veld betekent. De omschrijvingen zijn
 het woordenboek van LCSK en staan niet in dit pakket; alleen de tabelnamen staan in de code (#978).
 
+`spec.ontbreekt(spec.haal_spec())` (`from onderwijsbronnen.skdb import spec`) toetst de openbare OpenAPI-spec (zonder sleutel) tegen wat het pakket
+leest: `/export/json` als ZIP en de tabellen van de zes overzichten, als eigen pad of als lijst in het antwoord van een
+ander pad. De dagelijkse bron-ping van de chat gebruikt het (#878).
+
 `brin` en `croho` zijn de codes van RIO en DUO; `studiecode` is een code van LCSK en niet altijd een CROHO-code.
 Licentie: de Algemene Leveringsvoorwaarden Data van LCSK (v25.1). Bij elke uiting `skdb.VERPLICHTE_ZIN` ("Er is
 gebruik gemaakt van de data van Landelijk Centrum Studiekeuze.") met een link naar `skdb.DOCUMENTATIE`
