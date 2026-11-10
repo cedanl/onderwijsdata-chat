@@ -15,14 +15,23 @@ from tools.catalog import bron_naam
 from .probleem import Probleem
 from .selectie import bladeren, data_keys
 
-# CBS-totaalcodes beginnen met T00 (T001038 'Totaal'); een label dat met 'Totaal' begint
-# is dat niet altijd: 'Totaal (speciaal) basisonderwijs' is een deeltotaal.
+# CBS-totaalcodes beginnen met T00 (T001038 'Totaal'), maar niet elk totaal heeft zo'n code: 'Opleidingsfase totaal'
+# is A045745 en 'Totaal mbo (incl extranei)' A025290 (#998). Alleen is_totaal gebruikt deze twee patronen.
 _TOTAALCODE = re.compile(r"^T00")
+_TOTAALWOORD = re.compile(r"\btotaal\b", re.IGNORECASE)
 _LABEL = "_label"
 # Onderwijssoorten met leerlingen, niet studenten: po, so en vo. "Leerjaar 1" en "Vso ..." zijn vo-posities in de
 # doorstroomtabel 85566NED (#558); geen ho-term als "wo" of "hoger onderwijs" erbij.
 _LEERLINGEN = re.compile(
     r"basisonderwijs|speciaal onderwijs|voortgezet|vmbo|havo|vwo|praktijkonderwijs|\bleerjaar\b|\bvso\b", re.IGNORECASE
+)
+# Een 'Totaal ...' over een groep onderwijssoorten is een deeltotaal: 'Totaal (speciaal) basisonderwijs' (A025279),
+# 'Totaal voortgezet onderwijs (vo)', 'Totaal hoger onderwijs'. Net zo een totaal dat iets uitsluit: 'Totaal mbo
+# (excl. extranei)' (A041867) naast het totaal inclusief extranei (#653). Mbo staat er bewust niet in: zie is_totaal.
+_DEELTOTAAL = re.compile(
+    rf"{_LEERLINGEN.pattern}|\b[pv]o\b|hoger\s+(?:beroeps)?onderwijs|wetenschappelijk|\bhbo\b|\bwo\b"
+    r"|\bexcl\b|\bexclusief\b|\bzonder\b",
+    re.IGNORECASE,
 )
 _STUDENTEN = re.compile(r"\bstudenten\b", re.IGNORECASE)
 _LEERLINGWOORD = re.compile(r"\bleerlingen\b", re.IGNORECASE)
@@ -51,12 +60,28 @@ def _gekozen(key: str) -> dict[str, tuple[str | None, str]]:
     return gekozen
 
 
+def is_totaal(code: str | None, label: str) -> bool:
+    """Is deze dimensiewaarde het totaal van haar dimensie: een T00-code, of een label met het woord 'totaal' (#998).
+
+    'Opleidingsfase totaal' (A045745) en 'Totaal mbo (incl extranei)' (A025290) zijn totalen zonder T00-code. Een
+    'totaal' over een groep onderwijssoorten is een deeltotaal en telt niet: 'Totaal (speciaal) basisonderwijs'
+    (A025279), 'Totaal voortgezet onderwijs (vo)', 'Totaal hoger onderwijs', 'Totaal hbo'; een totaal dat iets
+    uitsluit ook niet: 'Totaal mbo (excl. extranei)'.
+
+    Grens: het label alleen zegt niet in welke dimensie het staat. 'Totaal mbo' is in de dimensie Leerweg van een
+    mbo-tabel het totaal, maar in een dimensie Onderwijssoort een deeltotaal; deze regel telt het altijd als totaal.
+    """
+    if code and _TOTAALCODE.match(code):
+        return True
+    return bool(_TOTAALWOORD.search(label)) and not _DEELTOTAAL.search(label)
+
+
 def vaste_waarden(key: str) -> list[str]:
-    """De labels van de dimensies die in de data achter `key` op één waarde liggen, zonder totaal (T00…).
+    """De labels van de dimensies die in de data achter `key` op één waarde liggen, zonder totaal (is_totaal).
 
     Een totaal legt niets vast; zonder eenduidige code is niet te zeggen of het er een is, dus dan ook niet (#620).
     """
-    return [label for code, label in _gekozen(key).values() if code and not _TOTAALCODE.match(code)]
+    return [label for code, label in _gekozen(key).values() if code and not is_totaal(code, label)]
 
 
 def _selecties(tool_results: list[str]) -> dict[str, dict[str, tuple[str | None, str]]]:
@@ -79,7 +104,7 @@ def selectie_regels(tool_results: list[str]) -> list[str]:
 
 def _ruimer_dan_gekozen(tekst: str, dataset: str, dim: str, code: str | None, label: str) -> Probleem | None:
     """'Alle onderwijssoorten' terwijl de selectie één deelwaarde is."""
-    if not code or _TOTAALCODE.match(code):
+    if not code or is_totaal(code, label):
         return None
     m = re.search(rf"\balle\s+{re.escape(dim.lower().rstrip('s'))}\w*", tekst, re.IGNORECASE)
     if not m:
