@@ -925,3 +925,35 @@ def test_cijferresource_en_app_kiezen_hetzelfde():
 
     for resource in ("4", " 4", 4, "0"):
         assert cijferresource(resource) == _resource_index("p04hogdipl", resource)
+
+
+def test_sankey_snippet_tekent_dezelfde_stromen_als_de_app(monkeypatch):
+    """Geen px.bar-terugval: het recept tekent de sankey met dezelfde knopen en stromen als create_plot (#995)."""
+    rijen = [
+        {"mbo": "Mbo-Verpleegkundige", "hbo": "Verpleegkunde", "n": 412},
+        {"mbo": "Mbo-Verpleegkundige", "hbo": "Social Work", "n": 98},
+        {"mbo": "Mbo-Verpleegkundige", "hbo": "Logopedie", "n": 0},
+        {"mbo": "Mbo-Pedagogisch medewerker", "hbo": "Social Work", "n": 120},
+    ]
+    args = {"data": rijen, "chart_type": "sankey", "source": "mbo", "target": "hbo", "value": "n", "title": "Stromen"}
+    monkeypatch.setattr(go.Figure, "show", lambda self, *a, **k: None)
+
+    snippet = generate("create_plot", args)
+    assert snippet is not None
+    fig = _run(snippet)["fig"]
+
+    assert "px.bar" not in snippet and "go.Sankey" in snippet
+    [trace] = fig.data
+    assert trace.type == "sankey"
+    assert list(trace.node.label) == [
+        "Mbo-Verpleegkundige",
+        "Mbo-Pedagogisch medewerker",
+        "Verpleegkunde",
+        "Social Work",
+    ]
+    assert (list(trace.link.source), list(trace.link.target), list(trace.link.value)) == (
+        [0, 0, 1],
+        [2, 3, 3],
+        [412, 98, 120],
+    )
+    assert fig.layout.title.text == "Stromen"

@@ -695,7 +695,36 @@ def _frame_regels(args: dict, data_key: str | None, recept_van: Receptbron | Non
     return [*regels, "import plotly.express as px", ""]
 
 
+def _sankey_regels(args: dict, title: str) -> list[str]:
+    """De sankey zoals create_plot hem tekent (#995): alleen stromen boven 0, eerst de herkomsten en dan de
+    bestemmingen als knopen, elk van groot naar klein."""
+    bron, doel, aantal = (_lit(args.get(k) or k) for k in ("source", "target", "value"))
+    return [
+        "import plotly.graph_objects as go",
+        "",
+        "# Een rij met een aantal boven 0, een herkomst en een bestemming is een stroom.",
+        f"df = df[(df[{aantal}] > 0) & df[{bron}].notna() & df[{doel}].notna()]",
+        f"bronnen = df.groupby({bron})[{aantal}].sum().sort_values(ascending=False).index.tolist()",
+        f"doelen = df.groupby({doel})[{aantal}].sum().sort_values(ascending=False).index.tolist()",
+        "fig = go.Figure(",
+        "    go.Sankey(",
+        '        node={"label": [str(naam) for naam in bronnen + doelen]},',
+        "        link={",
+        f'            "source": [bronnen.index(b) for b in df[{bron}]],',
+        f'            "target": [len(bronnen) + doelen.index(d) for d in df[{doel}]],',
+        f'            "value": df[{aantal}].tolist(),',
+        "        },",
+        "    )",
+        ")",
+        f'fig.update_layout(title={_lit(title)}, separators=",.")',
+    ]
+
+
 def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
+    if args.get("chart_type") == "sankey":
+        data_key = args.get("data_key")
+        regels = _frame_regels(args, data_key, recept_van) + _sankey_regels(args, schone_titel(args.get("title", "")))
+        return "\n".join([*regels, "fig.show()"])
     x = args.get("x", "x")
     y = args.get("y", "y")
     title = schone_titel(args.get("title", ""))

@@ -866,13 +866,20 @@ Maakt een interactieve Plotly-grafiek.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `chart_type` | string | `"bar"`, `"line"`, `"scatter"`, `"pie"` of `"histogram"` |
-| `x` | string | Veldnaam voor de x-as (of labels bij pie) |
-| `y` | string | Veldnaam voor de y-as (of waarden bij pie) |
+| `chart_type` | string | `"auto"`, `"bar"`, `"line"`, `"scatter"`, `"pie"`, `"histogram"` of `"sankey"` |
+| `x` | string | Veldnaam voor de x-as (of labels bij pie); verplicht, behalve bij sankey |
+| `y` | string | Veldnaam voor de y-as (of waarden bij pie); verplicht, behalve bij sankey |
+| `source`, `target`, `value` | string | Alleen bij sankey: de kolommen van herkomst, bestemming en aantal per stroom |
+| `color` | string | Alleen bij sankey, optioneel: de kolom waarnaar de stromen gekleurd worden |
 | `title` | string | Titel van de grafiek |
 | `data_key` | string | Data_key van eerder opgehaalde data (optioneel, alternatief voor `data`) |
 | `data` | array | Lijst van datarijen als objecten (optioneel, alternatief voor `data_key`) |
 | `color_by` | string | Veldnaam voor groepering (optioneel) |
+
+**Sankey (#995).** Voor stromen van een herkomst naar een bestemming (doorstroom mbo → hbo, bachelor → master). De
+knopen zijn de unieke herkomsten en bestemmingen, elk van groot naar klein; een rij met aantal 0 of leeg tekent geen
+stroom, en het toolbericht zegt hoeveel rijen dat waren. Boven 40 knopen komt er geen figuur, maar een melding om te
+filteren of te groeperen. De hover toont het aantal, en bij een herkomst met meer stromen het aandeel van die stroom.
 
 De grafiek wordt direct in de chat weergegeven. In een rapport staat onder elke grafiek een bronregel uit code
 (`agent/figuurbron.py`, #569): bron en catalogustitel, dataset-ID, bij meer bestanden het bestand, de periode en de

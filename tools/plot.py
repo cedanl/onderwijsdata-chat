@@ -3,6 +3,8 @@ import logging
 import math
 import re
 import urllib.request
+from collections import Counter
+from dataclasses import dataclass
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -27,6 +29,7 @@ _CHART_TYPE_LABELS = {
     "scatter": "Spreidingsdiagram",
     "pie": "Taartdiagram",
     "histogram": "Histogram",
+    "sankey": "Sankey-diagram",
 }
 
 _MARGE = {"t": 60, "b": 50, "l": 70, "r": 20}
@@ -426,6 +429,12 @@ def _afgekapte_astitel(tekst: str) -> str:
     return f"{tekst}<br>({AS_NIET_BIJ_NUL})"
 
 
+GEEN_ASSEN = (
+    "Geef x en y mee: de kolom voor de as (of de labels bij pie) en de kolom met de waarden. "
+    "Alleen chart_type 'sankey' tekent zonder x en y, met source, target en value."
+)
+
+
 def create_plot(
     data: list[dict] | None = None,
     chart_type: str = "auto",
@@ -437,6 +446,10 @@ def create_plot(
     data_key: str | None = None,
     is_share: bool = False,
     y_vanaf_nul: bool | None = None,
+    source: str | None = None,
+    target: str | None = None,
+    value: str | None = None,
+    color: str | None = None,
 ) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
@@ -453,6 +466,11 @@ def create_plot(
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
     title = schone_titel(title)
+    if chart_type == "sankey":
+        # Stromen van herkomst naar bestemming: geen x- en y-as (#995).
+        return _sankey(data, title, _Stroomkolommen(source, target, value, color), data_key)
+    if not x or not y:
+        return GEEN_ASSEN, None
     if err := _validate_axes(data, x, y):
         return err, None
     if len(data) == 1 and chart_type != "bar":
@@ -581,6 +599,224 @@ def create_plot(
             " Ze staan wel in de data en in de export."
         )
     return uitkomst, fig
+
+
+# ── Sankey: stromen van herkomst naar bestemming, zoals doorstroom mbo → hbo (#995) ──
+
+# Boven dit aantal knopen schuiven de namen over elkaar en is een sankey niet meer te lezen.
+_MAX_SANKEYKNOPEN = 40
+TE_VEEL_KNOPEN = (
+    "Geen sankey gemaakt: {knopen} herkomsten en bestemmingen zijn te veel om te lezen (hooguit {grens}). "
+    "Filter de data op minder herkomsten of bestemmingen, of groepeer de kleine samen (query_data), "
+    "en maak de sankey dan opnieuw."
+)
+# Zwart valt weg op het donkere thema (#567); de rest van het palet blijft, met een naam voor het toolbericht.
+_STROOMKLEUREN = {
+    "#0072B2": "blauw",
+    "#E69F00": "oranje",
+    "#009E73": "groen",
+    "#CC79A7": "roze",
+    "#56B4E9": "lichtblauw",
+    "#D55E00": "rood",
+    "#F0E442": "geel",
+}
+_STROOM_DEKKING = 0.45
+_KNOOP_HOOGTE = 28  # px per knoop in de langste kolom
+
+
+@dataclass(frozen=True)
+class _Stroomkolommen:
+    source: str | None
+    target: str | None
+    value: str | None
+    color: str | None
+
+
+@dataclass(frozen=True)
+class _Stroom:
+    bron: str
+    doel: str
+    waarde: float
+    groep: str | None
+
+
+def _stroomkleur(i: int) -> str:
+    kleuren = list(_STROOMKLEUREN)
+    return kleuren[i % len(kleuren)]
+
+
+def _doorschijnend(kleur: str) -> str:
+    rood, groen, blauw = (int(kleur[i : i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({rood},{groen},{blauw},{_STROOM_DEKKING})"
+
+
+def _valideer_stromen(data: list[dict], kolommen: _Stroomkolommen) -> str | None:
+    """None als de kolommen een sankey geven; anders een toolmelding."""
+    nodig = {"source": kolommen.source, "target": kolommen.target, "value": kolommen.value}
+    if ontbreekt := [naam for naam, kolom in nodig.items() if not kolom]:
+        return (
+            f"Een sankey heeft {', '.join(ontbreekt)} nodig: de kolom van de herkomst (source), "
+            "die van de bestemming (target) en die met de aantallen (value)."
+        )
+    beschikbaar = {k for row in data for k in row}
+    gevraagd = [k for k in (kolommen.source, kolommen.target, kolommen.value, kolommen.color) if k]
+    if ontbrekend := [k for k in gevraagd if k not in beschikbaar]:
+        return f"Kolom(men) {ontbrekend} niet gevonden. Beschikbaar: {sorted(beschikbaar)}."
+    if any(isinstance(row.get(kolommen.value), str) for row in data):
+        return f"Kolom '{kolommen.value}' bevat tekst, geen getallen: gebruik een numerieke kolom voor value."
+    return None
+
+
+def _telt(waarde) -> bool:
+    """Een stroom met een aantal boven 0; 0, leeg of negatief tekent niets."""
+    return isinstance(waarde, int | float) and not isinstance(waarde, bool) and not _is_missing(waarde) and waarde > 0
+
+
+def _groep(kolom: str | None, waarde) -> str | None:
+    """De kleurgroep van een stroom: geen zonder kleurkolom, "onbekend" zonder waarde (zoals bij color_by)."""
+    if not kolom:
+        return None
+    return "onbekend" if _is_missing(waarde) else str(waarde)
+
+
+def _stromen(data: list[dict], kolommen: _Stroomkolommen, dataset: str | None) -> list[_Stroom]:
+    """De rijen als stromen, met de woorden uit de bron in plaats van codes (#418); zonder waarde of eindpunt geen."""
+
+    def woorden(kolom: str | None) -> list:
+        if not kolom:
+            return [None] * len(data)
+        return leesbaar([row.get(kolom) for row in data], waardelabels(kolom, dataset))
+
+    return [
+        _Stroom(str(bron), str(doel), row[kolommen.value], _groep(kolommen.color, groep))
+        for row, bron, doel, groep in zip(
+            data, woorden(kolommen.source), woorden(kolommen.target), woorden(kolommen.color), strict=True
+        )
+        if _telt(row.get(kolommen.value)) and not _is_missing(bron) and not _is_missing(doel)
+    ]
+
+
+def _op_grootte(stromen: list[_Stroom], kant: str) -> dict[str, float]:
+    """Per herkomst (kant "bron") of bestemming ("doel") het totaal, van groot naar klein."""
+    totaal: dict[str, float] = {}
+    for stroom in stromen:
+        naam = getattr(stroom, kant)
+        totaal[naam] = totaal.get(naam, 0) + stroom.waarde
+    return dict(sorted(totaal.items(), key=lambda kv: -kv[1]))
+
+
+def _stroomhover(stroom: _Stroom, maat: str, bron: tuple[int, float], groepkop: str | None) -> str:
+    """Wat een tik op een stroom toont: van waar naar waar, het aantal, en het aandeel van de herkomst. `bron` is
+    (aantal stromen, totaal) van de herkomst; met één stroom is het aandeel 100 % en zegt het niets."""
+    regels = [f"{stroom.bron} → {stroom.doel}", f"{maat}: {nl_getal(stroom.waarde)}"]
+    stromen_uit_bron, totaal = bron
+    if stromen_uit_bron > 1:
+        regels.append(f"{nl_getal(100 * stroom.waarde / totaal, 1)} % van de getoonde stromen uit {stroom.bron}")
+    if groepkop:
+        regels.append(f"{groepkop}: {stroom.groep}")
+    return "<br>".join(regels)
+
+
+def _sankey_trace(stromen: list[_Stroom], maat: str, groepkop: str | None) -> tuple[go.Sankey, list[str]]:
+    """(de sankey, de groepen in kleurvolgorde). Knopen: eerst de herkomsten, dan de bestemmingen, elk op grootte.
+
+    Een herkomst en een bestemming met dezelfde naam zijn twee knopen: de stroom gaat van links naar rechts.
+    Zonder kleurkolom kleurt elke stroom naar de knoop aan de kant met de meeste knopen; met kleurkolom naar haar groep.
+    """
+    bronnen, doelen = _op_grootte(stromen, "bron"), _op_grootte(stromen, "doel")
+    namen = [*bronnen, *doelen]
+    groottes = [*bronnen.values(), *doelen.values()]
+    plek_bron = {naam: i for i, naam in enumerate(bronnen)}
+    plek_doel = {naam: len(bronnen) + i for i, naam in enumerate(doelen)}
+    groepen = list(_op_grootte(stromen, "groep")) if groepkop else []
+    knoopkleuren = [_HIGHLIGHT_GREY if groepkop else _stroomkleur(i) for i in range(len(namen))]
+    per_bron = Counter(s.bron for s in stromen)
+
+    def stroomkleur(stroom: _Stroom) -> str:
+        if groepkop:
+            return _doorschijnend(_stroomkleur(groepen.index(stroom.groep or "")))
+        knoop = plek_doel[stroom.doel] if len(doelen) >= len(bronnen) else plek_bron[stroom.bron]
+        return _doorschijnend(knoopkleuren[knoop])
+
+    kort = _korte_namen(namen)
+    trace = go.Sankey(
+        node={
+            "label": [kort.get(n, n) for n in namen],
+            "color": knoopkleuren,
+            "pad": 12,
+            "thickness": 16,
+            "line": {"width": 0},
+            "customdata": [f"{n}<br>{maat}: {nl_getal(g)}" for n, g in zip(namen, groottes, strict=True)],
+            "hovertemplate": "%{customdata}<extra></extra>",
+        },
+        link={
+            "source": [plek_bron[s.bron] for s in stromen],
+            "target": [plek_doel[s.doel] for s in stromen],
+            "value": [s.waarde for s in stromen],
+            "color": [stroomkleur(s) for s in stromen],
+            "customdata": [_stroomhover(s, maat, (per_bron[s.bron], bronnen[s.bron]), groepkop) for s in stromen],
+            "hovertemplate": "%{customdata}<extra></extra>",
+        },
+    )
+    return trace, groepen
+
+
+def _sankey(
+    data: list[dict], title: str, kolommen: _Stroomkolommen, data_key: str | None
+) -> tuple[str, go.Figure | None]:
+    """Create_plot met chart_type "sankey": knopen uit de unieke herkomsten en bestemmingen, stromen uit de rijen."""
+    if err := _valideer_stromen(data, kolommen):
+        return err, None
+    known = store.meta(data_key) if data_key else None
+    titels = known.kolomtitels if known else None
+    stromen = _stromen(data, kolommen, known.dataset if known else None)
+    if not stromen:
+        return f"Geen sankey gemaakt: geen rij met een aantal boven 0 in '{kolommen.value}'.", None
+    knopen = len(_op_grootte(stromen, "bron")) + len(_op_grootte(stromen, "doel"))
+    if knopen > _MAX_SANKEYKNOPEN:
+        return TE_VEEL_KNOPEN.format(knopen=knopen, grens=_MAX_SANKEYKNOPEN), None
+
+    groepkop = kolomlabel(kolommen.color, titels) if kolommen.color else None
+    trace, groepen = _sankey_trace(stromen, kolomlabel(str(kolommen.value), titels), groepkop)
+    kolom = max(len(_op_grootte(stromen, "bron")), len(_op_grootte(stromen, "doel")))
+    fig = go.Figure(trace)
+    fig.update_layout(
+        **_LAYOUT_BASE,
+        title={"text": title, "font": {"size": 16, "color": "#222"}},
+        separators=_NL_SEPARATORS,
+        showlegend=False,
+        height=max(_MIN_HOOGTE, min(_MAX_HOOGTE, kolom * _KNOOP_HOOGTE + _HOOGTE_RAND)),
+        meta={
+            "data": data,
+            # De herkomst als as en de aantallen als waarde, voor de bronregel en de export (#569).
+            "x": kolommen.source,
+            "y": kolommen.value,
+            "chart_type": "sankey",
+            "source": kolommen.source,
+            "target": kolommen.target,
+            "value": kolommen.value,
+            "color_by": kolommen.color,
+            "herkomst": herkomstregels(data_key) if data_key else [],
+            **_dataset_meta(data_key),
+            **_noot_meta(data_key),
+        },
+    )
+    return _sankey_uitkomst(title, knopen, stromen, len(data), groepkop, groepen), fig
+
+
+def _sankey_uitkomst(
+    title: str, knopen: int, stromen: list[_Stroom], rijen: int, groepkop: str | None, groepen: list[str]
+) -> str:
+    uitkomst = f"{_CHART_TYPE_LABELS['sankey']} '{title}' aangemaakt ({knopen} knopen, {len(stromen)} stromen)."
+    if weggelaten := rijen - len(stromen):
+        uitkomst += (
+            f" {weggelaten} rij(en) niet getekend (aantal 0 of leeg, of geen herkomst of bestemming);"
+            " ze staan wel in de data en in de export."
+        )
+    if groepkop:
+        kleuren = ", ".join(f"{g} {_STROOMKLEUREN[_stroomkleur(i)]}" for i, g in enumerate(groepen))
+        uitkomst += f" Stromen gekleurd naar {groepkop}: {kleuren}."
+    return uitkomst
 
 
 def _dataset_meta(data_key: str | None) -> dict:

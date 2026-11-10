@@ -5,7 +5,8 @@ Vijf keer hetzelfde rapport gaf vijf titels ("Instroom HU", "Eerstejaars Hogesch
 
 Een opdrachtzin ("Maak een grafiek van ...") wordt het onderwerp dat erachter staat, en de periode komt uit de data
 van de figuren, niet uit het model (#893): "in het meest recente schooljaar" wordt het schooljaar, en een vraag zonder
-jaar krijgt het schooljaar erachter.
+jaar krijgt het schooljaar erachter. Of er een jaar in staat, telt na het inkorten: een jaar dat de grens van 80 tekens
+wegkapt, is er voor de lezer niet (#1003).
 """
 
 import re
@@ -37,10 +38,16 @@ _OPDRACHT = re.compile(
     r"(?:staaf|lijn|taart)?(?:grafiek|diagram|overzicht|rapport|visualisatie|tabel|kaart)\s+(?:van|over|met|voor)\s+",
     re.IGNORECASE,
 )
-# "in het meest recente schooljaar": relatief, en dus geen periode die een lezer later kan terugvinden.
+# "in het meest recente schooljaar": relatief, en dus geen periode die een lezer later kan terugvinden. Noemt de vraag
+# het jaar er als bijstelling achter ("studiejaar, 2025/2026,"), dan gaat dat mee: anders staat het jaar er twee keer.
 _RELATIEF_SCHOOLJAAR = re.compile(
-    r"\b(in\s+)?(?:het\s+)?(?:meest\s+recente|laatste|nieuwste|huidige)\s+(?:school|studie)jaar\b", re.IGNORECASE
+    r"\b(in\s+)?(?:het\s+)?(?:meest\s+recente|laatste|nieuwste|huidige)\s+(?:school|studie)jaar\b"
+    r"(?:,\s*20\d{2}(?:/(?:20)?\d{2})?(?:,|$))?",
+    re.IGNORECASE,
 )
+# "(ingeschreven personen, hoofdinschrijvingen)": een definitie, geen onderwerp. Valt weg als de titel te lang is (#1003);
+# een tussenzin met een getal (een jaar, een code) blijft.
+_TUSSENZIN = re.compile(r"\s*\([^()\d]*\)")
 _JAAR = re.compile(r"(?<!\d)20\d{2}(?!\d)")
 
 
@@ -56,15 +63,32 @@ def _zonder_opdracht(tekst: str) -> str:
     return rest[0].upper() + rest[1:] if rest else tekst
 
 
-def _met_periode(tekst: str, bereik: tuple[int, int] | None) -> tuple[str, str]:
-    """(tekst, achtervoegsel): een relatief schooljaar wordt het schooljaar uit de data, en een tekst zonder jaar
-    krijgt de periode erachter. Zonder periode of met een jaar in de vraag verandert er niets."""
-    if bereik is None:
-        return tekst, ""
+def _vast_schooljaar(tekst: str, bereik: tuple[int, int] | None) -> str:
+    """Een relatief schooljaar wordt het schooljaar uit de data, als de data één schooljaar is."""
+    if bereik is None or bereik[0] != bereik[1]:
+        return tekst
     label = periodelabel(bereik)
-    if bereik[0] == bereik[1]:
-        tekst = _RELATIEF_SCHOOLJAAR.sub(lambda m: f"{'in ' if m.group(1) else ''}{label}", tekst)
-    return tekst, "" if _JAAR.search(tekst) else f" ({label})"
+    return _RELATIEF_SCHOOLJAAR.sub(lambda m: f"{'in ' if m.group(1) else ''}{label}", tekst)
+
+
+def _achtervoegsel(tekst: str, label: str | None) -> str:
+    return "" if label is None or _JAAR.search(tekst) else f" ({label})"
+
+
+def _zonder_tussenzin(tekst: str, label: str | None) -> str:
+    """Past de titel niet, met de periode erachter als er geen jaar in staat, dan valt eerst een tussenzin weg."""
+    if len(tekst) + len(_achtervoegsel(tekst, label)) <= _MAX_TEKENS:
+        return tekst
+    return _TUSSENZIN.sub("", tekst).strip() or tekst
+
+
+def _met_periode(tekst: str, label: str | None) -> str:
+    """De tekst binnen de grens, met de periode erachter als er na het inkorten geen jaar meer in staat (#893, #1003).
+    De inkorting houdt dan ruimte voor de periode; een jaar dat de grens overleeft, komt er niet nog eens bij."""
+    kort = _ingekort(tekst)
+    if not (achter := _achtervoegsel(kort, label)):
+        return kort
+    return _ingekort(tekst, _MAX_TEKENS - len(achter)) + achter
 
 
 def _ingekort(tekst: str, ruimte: int = _MAX_TEKENS) -> str:
@@ -86,8 +110,9 @@ def rapporttitel(vraag: str, instelling: str | None, bereik: tuple[int, int] | N
     if persoonsgegevens.bevat(tekst):
         tekst = TITEL_ZONDER_PERSOONSGEGEVENS
     else:
-        tekst, achter = _met_periode(_zonder_opdracht(tekst[0].upper() + tekst[1:]), bereik)
-        tekst = _ingekort(tekst, _MAX_TEKENS - len(achter)) + achter
+        label = periodelabel(bereik) if bereik else None
+        tekst = _vast_schooljaar(_zonder_opdracht(tekst[0].upper() + tekst[1:]), bereik)
+        tekst = _met_periode(_zonder_tussenzin(tekst, label), label)
     instelling = " ".join((instelling or "").split())
     if instelling and instelling.casefold() not in tekst.casefold():
         return f"{tekst} – {instelling}"

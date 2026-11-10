@@ -20,6 +20,7 @@ _TYPEN: dict[str, str] = {
     "pie": r"(?:taart|cirkel)(?:grafiek|diagram)\w*|pie ?charts?",
     "scatter": r"spreidingsdiagram\w*|puntenwolk\w*|scatter ?plots?",
     "histogram": r"histogram\w*",
+    "sankey": r"sankey\w*|stroomdiagram\w*",
     "auto": r"grafiek\w*|diagram\w*|charts?|plot|visualis\w+|grafisch\w*",
 }
 _PATRONEN = {t: re.compile(rf"\b(?:{p})\b", re.IGNORECASE) for t, p in _TYPEN.items()}
@@ -35,13 +36,16 @@ _VERZOEK = re.compile(
 _BEPAALD = re.compile(r"\b(?:de|deze|die|dat|het|vorige|bovenstaande|getoonde)\s+$", re.IGNORECASE)
 
 # Wat create_plot teruggeeft als de grafiek er is; zie tools/plot.py (_CHART_TYPE_LABELS).
-_GEMAAKT = re.compile(r"^(Staafgrafiek|Lijngrafiek|Spreidingsdiagram|Taartdiagram|Histogram|Grafiek) '.*' aangemaakt")
+_GEMAAKT = re.compile(
+    r"^(Staafgrafiek|Lijngrafiek|Spreidingsdiagram|Taartdiagram|Histogram|Sankey-diagram|Grafiek) '.*' aangemaakt"
+)
 _TYPE_VAN_LABEL = {
     "Staafgrafiek": "bar",
     "Lijngrafiek": "line",
     "Spreidingsdiagram": "scatter",
     "Taartdiagram": "pie",
     "Histogram": "histogram",
+    "Sankey-diagram": "sankey",
 }
 _NAAM = {
     "bar": "staafgrafiek",
@@ -49,6 +53,7 @@ _NAAM = {
     "pie": "taartdiagram",
     "scatter": "spreidingsdiagram",
     "histogram": "histogram",
+    "sankey": "sankey-diagram",
 }
 
 # Grafiekcode als tekst is nooit de grafiek die gevraagd is.
