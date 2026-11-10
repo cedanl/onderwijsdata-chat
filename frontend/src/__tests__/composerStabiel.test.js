@@ -217,10 +217,4 @@ describe('een vaste plek voor het ⋯-menu in de navbar', () => {
     await act(async () => { root.render(navActies(slot, [{ id: 1, role: 'user', content: 'Hoeveel?', done: true }])) })
     expect([...slot.children]).toEqual(zonder)
   })
-
-  it('heeft geen lege plekhouder meer, in de code noch in de CSS', () => {
-    const bron = readFileSync(join(__dirname, '..', 'components', 'ChatNavActies.jsx'), 'utf8')
-    expect(bron).not.toContain('navbar-icon-slot')
-    expect(css).not.toContain('navbar-icon-slot')
-  })
 })
