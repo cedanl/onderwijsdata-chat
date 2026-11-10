@@ -10,7 +10,7 @@ import json
 import pandas as pd
 import pytest
 
-from agent.dimensielabels import selectie_regels, verkeerde_dimensielabels
+from agent.dimensielabels import is_totaal, selectie_regels, vaste_waarden, verkeerde_dimensielabels
 from agent.telling import telling_blok
 from tools import cbs, store
 from tools.store import KeyMeta
@@ -164,3 +164,93 @@ def test_studenten_bij_alleen_een_ho_label_is_in_orde(label):
     key = _contextselectie("85566NED", "OnderwijsPositieVolgendSchooljaar", label)
 
     assert verkeerde_dimensielabels("Een jaar later waren het 2.000 studenten.", _beurt(key)) == []
+
+
+# --- totalen zonder T00-code (#998): letterlijke zinnen uit de reaudit van 10-11 (P03, P04) ---
+
+
+def _vaste_selectie(dataset: str, dim: str, code: str, label: str) -> str:
+    """Een CBS-key waarin alleen `dim` op (`code`, `label`) ligt; Geslacht heeft twee waarden."""
+    df = pd.DataFrame(
+        {
+            dim: [code] * 2,
+            dim + "_label": [label] * 2,
+            "Geslacht": ["3000", "4000"],
+            "Geslacht_label": ["Mannen", "Vrouwen"],
+            "Perioden": ["2024JJ00"] * 2,
+            "Aantal_1": [1200, 800],
+        }
+    )
+    cbs.register_dimensions(dataset, [dim, "Geslacht", "Perioden"])
+    store.put(f"cbs:{dataset}", df, KeyMeta(bron="cbs", dataset=dataset, periodekolom="Perioden"))
+    return f"cbs:{dataset}"
+
+
+def test_p03_alle_opleidingsfasen_bij_opleidingsfase_totaal_is_in_orde():
+    key = _vaste_selectie("85525NED", "Opleidingsfase", "A045745", "Opleidingsfase totaal")
+    tekst = "Dit is het totaal over alle opleidingsfasen, vormen en geslachten."
+
+    assert verkeerde_dimensielabels(tekst, _beurt(key)) == []
+
+
+def test_p04_alle_leerwegen_bij_totaal_mbo_is_in_orde():
+    key = _vaste_selectie("85526NED", "Leerweg", "A025290", "Totaal mbo (incl extranei)")
+    tekst = "Het gaat om alle niveaus, alle leerwegen inclusief extranei."
+
+    assert verkeerde_dimensielabels(tekst, _beurt(key)) == []
+
+
+def test_alle_onderwijssoorten_bij_alleen_hbo_blijft_een_probleem():
+    key = _vaste_selectie("85527NED", "Onderwijssoort", "A025295", "Hoger beroepsonderwijs")
+
+    [probleem] = verkeerde_dimensielabels("Dat zijn alle onderwijssoorten samen.", _beurt(key))
+
+    assert "alle onderwijssoorten" in probleem and "Hoger beroepsonderwijs" in probleem
+
+
+def test_vaste_waarden_laat_een_totaal_zonder_t00_code_weg():
+    fase = _vaste_selectie("85525NED", "Opleidingsfase", "A045745", "Opleidingsfase totaal")
+    leerweg = _vaste_selectie("85526NED", "Leerweg", "A025290", "Totaal mbo (incl extranei)")
+    deel = _vaste_selectie("85527NED", "Onderwijssoort", "A025279", "Totaal (speciaal) basisonderwijs")
+    zonder = _vaste_selectie("85528NED", "Leerweg", "A041867", "Totaal mbo (excl. extranei)")
+
+    assert vaste_waarden(fase) == [] and vaste_waarden(leerweg) == []
+    assert vaste_waarden(deel) == ["Totaal (speciaal) basisonderwijs"]
+    assert vaste_waarden(zonder) == ["Totaal mbo (excl. extranei)"]
+
+
+@pytest.mark.parametrize(
+    ("code", "label"),
+    [
+        ("T001038", "Totaal onderwijssoorten"),
+        ("T001038", "Totaal mannen en vrouwen"),
+        ("A045745", "Opleidingsfase totaal"),
+        ("A025290", "Totaal mbo (incl extranei)"),
+        ("A000001", "Totaal leerwegen"),
+        (None, "Totaal"),
+    ],
+)
+def test_is_totaal(code, label):
+    assert is_totaal(code, label)
+
+
+# Een 'totaal' over een groep onderwijssoorten is een deeltotaal; 'subtotaal' en 'totaalscore' zijn het woord niet.
+@pytest.mark.parametrize(
+    ("code", "label"),
+    [
+        ("A025279", "Totaal (speciaal) basisonderwijs"),
+        ("A000002", "Totaal voortgezet onderwijs (vo)"),
+        ("A000003", "Totaal voortgezet speciaal onderwijs"),
+        ("A000004", "Totaal hoger onderwijs"),
+        ("A000005", "Totaal hbo"),
+        ("A000006", "Totaal wo"),
+        ("A000007", "Totaal vo"),
+        ("A041867", "Totaal mbo (excl. extranei)"),
+        ("A000008", "Subtotaal mbo"),
+        ("A000009", "Totaalscore"),
+        ("A025295", "Hoger beroepsonderwijs"),
+        (None, "Basisonderwijs"),
+    ],
+)
+def test_is_geen_totaal(code, label):
+    assert not is_totaal(code, label)

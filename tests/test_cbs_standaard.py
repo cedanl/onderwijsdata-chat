@@ -161,7 +161,9 @@ def test_twee_runs_met_een_andere_modelkeuze_geven_dezelfde_telling_en_uitgangsp
 
     assert aantallen == [[157450], [157450]]
     assert regels[0] == regels[1]
-    assert regels[0] is not None and "Totaal mbo (incl. extranei)" in regels[0]
+    # Het totaal inclusief extranei legt niets vast, dus het uitgangspunt noemt het niet (#998); de smallere telling
+    # zonder extranei is een deeltotaal en zou er wel staan.
+    assert regels[0] is not None and "extranei" not in regels[0]
 
 
 def test_het_model_hoort_waarom_de_telling_anders_is_dan_gevraagd():

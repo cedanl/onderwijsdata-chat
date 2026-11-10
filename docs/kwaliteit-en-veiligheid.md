@@ -48,7 +48,7 @@ Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, 
 
 | Soort | Voorbeelden | Chat | Rapport |
 |-------|-------------|------|---------|
-| **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
+| **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode, een uitgeschreven rekensom die niet klopt (alleen chat, #1001) | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
 | **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook), antwoord in de andere taal dan de vraag, u-vorm die de code niet kon omzetten | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
 
 Een uitzondering in de chat (#619): is het enige harde probleem na de herkansing een getal dat niet in de data staat, dan vervalt alleen de zin of tabelrij met dat getal (`agent/schrappen.py`). De rest wordt opnieuw gecontroleerd en de gebruiker ziet "Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten." Valt er meer dan de helft weg, of blijft de rest hard, dan wordt het antwoord ingehouden zoals hierboven.
