@@ -559,8 +559,59 @@ _SCHEMA = (
 )
 
 
+# Het slot waaronder één pod tegelijk het schema aanmaakt en migreert (#984). Willekeurig, alleen vast.
+_MIGRATIE_SLOT = 0x6F6E64657277696A
+_MIGRATIE_WACHT_S = 120  # langer dan een migratie hoort te duren; daarna is er iets mis en moet de start falen
+_MIGRATIE_POLL_S = 0.5
+
+
+def _slotvraag(conn: Any, sql: str) -> Any:
+    """Eén waarde uit een slot-query, met een gewone cursor (de eerste kolom, geen dict)."""
+    cursor = conn.cursor()
+    try:
+        cursor.execute(sql, (_MIGRATIE_SLOT,))
+        return cursor.fetchone()[0]
+    finally:
+        cursor.close()
+
+
+@contextmanager
+def _migratielock(conn: Any) -> Generator[None]:
+    """Op Postgres één pod tegelijk door het schema en de migraties (#984); op SQLite (één proces) niets.
+
+    Twee pods die samen starten (uitrol, node-drain) deden `CREATE TABLE IF NOT EXISTS` en `ALTER TABLE` door elkaar:
+    de ene kon op "tabel bestaat al" of een dubbele kolom stuiten en crashen. Een sessie-advisory-lock laat de tweede
+    wachten; die vindt daarna alles klaar en doet niets meer. Sessie-niveau, want de migraties committen zelf
+    tussendoor, wat een transactie-lock zou loslaten. Valt de verbinding weg, dan geeft Postgres het slot zelf vrij.
+    """
+    if not _USE_POSTGRES:
+        yield
+        return
+    einde = time.monotonic() + _MIGRATIE_WACHT_S
+    while not _slotvraag(conn, "SELECT pg_try_advisory_lock(%s)"):
+        if time.monotonic() >= einde:
+            raise RuntimeError(
+                f"Geen migratieslot binnen {_MIGRATIE_WACHT_S}s: draait een andere pod nog een migratie?"
+            )
+        time.sleep(_MIGRATIE_POLL_S)
+    try:
+        yield
+    finally:
+        # Na een fout staat de transactie afgebroken en weigert elk statement; het slot loslaten kan dan pas na een rollback.
+        try:
+            conn.rollback()
+            _slotvraag(conn, "SELECT pg_advisory_unlock(%s)")
+            conn.commit()
+        except Exception as exc:
+            # Een verbinding die het slot houdt, gaat terug de pool in en houdt de andere pods tegen: dicht, dan geeft
+            # Postgres het slot zelf vrij.
+            logger.warning("Migratieslot loslaten mislukt (%s): verbinding gesloten", type(exc).__name__)
+            with contextlib.suppress(Exception):
+                conn.close()
+
+
 def init_db() -> None:
-    with _connection() as conn:
+    with _connection() as conn, _migratielock(conn):
         if _USE_POSTGRES:
             cursor = conn.cursor()
             for ddl in _SCHEMA:
