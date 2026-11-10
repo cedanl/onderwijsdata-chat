@@ -15,7 +15,9 @@ het stoppen van de pod en het runbook staan in [`docs/operatie.md`](../docs/oper
 | **development** | traefik-external | 1 | 500m / 1Gi | open range `>=0.0.1-0.0`, volgt `main` zoals test; geen sport van de ladder | `onderwijsdata-chat.dev.sdp.surf.nl` |
 | **test** | traefik-external | 1 | 900m / 3Gi | open range `>=0.0.1-0.0`, volgt `main` | `onderwijsdata-chat.test.sdp.surf.nl` |
 | **playground** | traefik-external | 1 | 900m / 2Gi | vaste release-pin via promotie-MR | `onderwijsdata-chat.playground.sdp.surf.nl` |
-| **production** | traefik-external | 1 | 2000m / 4Gi | **niet uitrolbaar** (#674) | `onderwijsdata-chat.sdp.surf.nl` (resolvet niet) |
+| **staging-otc** | traefik-external | 1 | 900m / 2Gi | vaste release-pin; **nog niet uitgerold** (#674) | `onderwijsdata-chat.staging.sdp.surf.nl` |
+| **production-otc** | traefik-external | 1 | 900m / 2Gi | vaste release-pin; **nog niet uitgerold** (#674) | `onderwijsdata-chat.production.sdp.surf.nl` |
+| ~~production~~ | traefik-external | 1 | 2000m / 4Gi | cluster `production` is op 2026-09-15 uitgezet; map vervalt (#674) | `onderwijsdata-chat.sdp.surf.nl` (resolvet niet) |
 
 `playground` is de omgeving voor gebruikers (vaste release-pin, zie `docs/promoten.md`); `test` volgt elke push naar
 `main` en is ook publiek bereikbaar (allowlist `0.0.0.0/0`).
@@ -55,13 +57,25 @@ manifests/
 │   ├── secret.yaml               # SOPS-versleuteld (in git)
 │   ├── secret.yaml.example
 │   └── values.yaml               # Playground ingress (traefik-external)
-└── production/
+├── staging-otc/                  # OTC-cluster; production-otc is hetzelfde met host/doel `production`
+│   ├── helmrelease.yaml          # vaste release-pin (zoals playground)
+│   ├── helmrepo.yaml
+│   ├── kustomization.yaml        # secret.yaml pas opnemen als de tenant bestaat (zie #674)
+│   ├── secret.yaml.example       # sjabloon; secret.yaml volgt na de tenant (SOPS-sleutel van die tenant)
+│   └── values.yaml               # APP_ENV=production, quotum als playground, opschonen aan
+├── production-otc/               # idem
+└── production/                   # vervallen (#674): cluster is uitgezet, map weg na het ladderbesluit
     ├── helmrelease.yaml
     ├── helmrepo.yaml
-    ├── kustomization.yaml        # Production patches
+    ├── kustomization.yaml
     ├── middleware.yaml
-    └── values.yaml               # Production ingress (traefik-external); geen secret, zie #674
+    └── values.yaml
 ```
+
+`staging-otc` en `production-otc` staan nog niet in `services/*-otc-cluster/kustomization.yaml` van
+`kubernetes-clusters`: tot die registratie en de tenant (quotum, Postgres, minio-buckets, SRAM-registratie voor de
+nieuwe host) er zijn, rolt er niets naartoe uit. Het pad dat de replacement-config van die clusters gebruikt is
+`./manifests/staging-otc` resp. `./manifests/production-otc`.
 
 ## Ingress tiers
 

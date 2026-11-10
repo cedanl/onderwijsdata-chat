@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - helmrelease.yaml
+  - helmrepo.yaml
+  # - secret.yaml  # pas toevoegen als de tenant op staging-otc bestaat en secret.yaml met de SOPS-sleutel van die
+  #                # tenant is versleuteld (secret.yaml.example, docs/deployment.md); zonder secret start de pod niet.
+
+configMapGenerator:
+  - name: base-config
+    files:
+      - values.yaml=../base/values-base.yaml
+  - name: staging-otc-config
+    files:
+      - values.yaml=values.yaml
+
+configurations:
+  - ../base/kustomizeconfig.yaml
