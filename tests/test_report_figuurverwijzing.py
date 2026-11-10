@@ -40,7 +40,7 @@ def test_de_zin_uit_het_rapport_naast_een_staafgrafiek_is_hard():
     problemen = report_problems(_met_toelichting(_ZIN_0573FF89, _BAR), [_BAR], [_HU_RESULT])
 
     assert {"verkeerde_figuurverwijzing", "gesprek_als_vindplaats"} <= set(controlenamen(problemen))
-    figuur = [p for p in problemen if p.controle == "verkeerde_figuurverwijzing"]
+    figuur = [p for p in problemen if getattr(p, "controle", None) == "verkeerde_figuurverwijzing"]
     assert figuur and harde(figuur) == figuur
     assert "sankey-diagram" in figuur[0] and "Sankey-visualisatie" in figuur[0]
 
@@ -68,9 +68,9 @@ def test_dezelfde_zin_naast_een_sankey_noemt_geen_verkeerde_figuur():
 def test_het_gesprek_als_vindplaats_is_hard_bij_elke_figuur(tekst, figuur):
     problemen = report_problems(_spec(beantwoordt=["Voltijdstudenten HU per studiejaar", tekst]), [figuur], [])
 
-    gesprek = [p for p in problemen if p.controle == "gesprek_als_vindplaats"]
+    gesprek = [p for p in problemen if getattr(p, "controle", None) == "gesprek_als_vindplaats"]
     assert gesprek and harde(gesprek) == gesprek
-    assert "ziet het gesprek niet" in gesprek[0].melding
+    assert "ziet het gesprek niet" in gesprek[0]
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ niet maken. Nu kiest het model chart_type "sankey" met source, target en value.
 import asyncio
 import importlib
 import json
+from typing import Any
 
 import pandas as pd
 import plotly.io as pio
@@ -52,7 +53,7 @@ _RIJEN = [
     # Omgekeerd: de volgorde van de knopen komt uit de grootte, niet uit de rijen.
     for doel, aantal in reversed(_DOELEN.items())
 ]
-_SANKEY = {
+_SANKEY: dict[str, Any] = {
     "chart_type": "sankey",
     "data_key": _KEY,
     "source": "mbo_opleiding",
@@ -209,7 +210,7 @@ def test_een_onbekende_kolom_voor_de_sankey_noemt_de_beschikbare():
 
 @pytest.mark.parametrize("ontbreekt", ["x", "y"])
 def test_andere_typen_zonder_x_of_y_krijgen_een_duidelijke_melding(ontbreekt):
-    args = {"data_key": _KEY, "chart_type": "bar", "x": "hbo_studie", "y": "doorstromers", "title": "t"}
+    args: dict[str, Any] = {"data_key": _KEY, "chart_type": "bar", "x": "hbo_studie", "y": "doorstromers", "title": "t"}
     del args[ontbreekt]
 
     assert create_plot(**args) == (GEEN_ASSEN, None)

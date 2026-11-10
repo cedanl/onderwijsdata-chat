@@ -939,6 +939,7 @@ def test_sankey_snippet_tekent_dezelfde_stromen_als_de_app(monkeypatch):
     monkeypatch.setattr(go.Figure, "show", lambda self, *a, **k: None)
 
     snippet = generate("create_plot", args)
+    assert snippet is not None
     fig = _run(snippet)["fig"]
 
     assert "px.bar" not in snippet and "go.Sankey" in snippet

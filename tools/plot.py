@@ -734,7 +734,7 @@ def _sankey_trace(stromen: list[_Stroom], maat: str, groepkop: str | None) -> tu
 
     def stroomkleur(stroom: _Stroom) -> str:
         if groepkop:
-            return _doorschijnend(_stroomkleur(groepen.index(stroom.groep)))
+            return _doorschijnend(_stroomkleur(groepen.index(stroom.groep or "")))
         knoop = plek_doel[stroom.doel] if len(doelen) >= len(bronnen) else plek_bron[stroom.bron]
         return _doorschijnend(knoopkleuren[knoop])
 
