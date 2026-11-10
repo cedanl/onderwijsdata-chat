@@ -856,9 +856,17 @@ sleutel (die kan niet matchen en telt in `zonder_sleutel`). Een rij zonder match
 nooit 0. Vooraan staan de sleutels in hun genormaliseerde vorm en `koppelstatus`: `beide`, `alleen <bron A>` of
 `alleen <bron B>` (het label is de bron in hoofdletters, bij twee tabellen van dezelfde bron de key). Een kolomnaam die
 botst (met een sleutel, met `koppelstatus` of met een kolom van de andere tabel) krijgt het label ervoor, bijv.
-`SKDB_brin`.
+`SKDB_brin` (zo vaak als nodig om uniek te zijn). Ketenen kan: het resultaat is een gewone key, en daarin kiest
+`koppel_data` voor een sleutel vanzelf de genormaliseerde kolom vooraan.
 
-Het resultaat is een nieuwe key (`koppel:<hash>`, deterministisch) met `rijen` (begrensd zoals bij `run_analysis`),
+De koppeling draait in het serverproces, niet in de sandbox van `run_analysis`. Daarom telt de code eerst hoeveel rijen
+de join zou geven (per gedeelde sleutelwaarde links × rechts, plus de rijen zonder match of zonder sleutel). Boven
+`MAX_RIJEN` (200.000) gaat hij niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies
+op meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Dat
+gebeurt bij veel-op-veel op een grove sleutel (alleen `schooljaar` of `brin`): een kruisproduct per waarde.
+
+Het resultaat is een nieuwe key (`koppel:<hash>`, deterministisch: de hash gaat over beide tabellen en de gekozen
+kolommen) met `rijen` (begrensd zoals bij `run_analysis`),
 `telling` per status, `uniek` (unieke sleutelwaarden per kant en samen), `kolommen` (de gebruikte kolom per kant),
 `toelichting` per status (wat een rij zonder match betekent: andere bron of andere afbakening) en `korrel`: per kant
 `one` of `many` en de kardinaliteit van de koppeling (`one_to_many` …). Bij `many` staat er een `waarschuwing`: een

@@ -9,3 +9,5 @@
 - Geeft de sleutel aan één kant meer rijen per waarde, dan waarschuwt de uitkomst dat waarden van de andere kant per
   rij herhaald staan en niet zomaar opgeteld mogen worden. De download van een koppeling noemt beide bronnen, ook de
   verplichte zin van LCSK, en bevat de kolom `koppelstatus`.
+- Een koppeling die te groot zou worden (meer dan 200.000 rijen, bijvoorbeeld twee tabellen op alleen een jaar),
+  gaat niet door: de app telt eerst en vraagt dan om een extra sleutel of een kleinere selectie.
