@@ -6,13 +6,15 @@ import json
 import time
 
 import pytest
+from onderwijsbronnen import skdb
 
-from agent.getalnotatie import engels_gelezen, nl_notatie
+from agent.getalnotatie import engels_gelezen, nl_notatie, versienummers
 from agent.grounding import getallen_met_positie, unverified
 from agent.loop import LoopResult
 from agent.meetwaarden import identificaties, meetwaarden
 from agent.stream import StreamResult
 from agent.telling import met_telling
+from tools import studiekeuze
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -106,6 +108,72 @@ def test_decimale_punt_wordt_een_komma_ook_in_tabellen(tekst, verwacht):
 )
 def test_decimale_punt_in_datums_versies_codes_en_code_blijft_staan(tekst):
     assert nl_notatie(tekst) == tekst
+
+
+_SKDB = skdb.Herkomst(
+    url="https://example.nl/export-skdb-26.6-api-v1-all-2026-11-06-json.zip",
+    bestand="export-skdb-26.6-api-v1-all-2026-11-06-json.zip",
+    versie="26.6",
+    datum="2026-11-06",
+    sha256="3f2a9c0b1d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8",
+    opgehaald="2026-11-09T08:00:00+00:00",
+)
+_SKDB_REGEL = studiekeuze.met_hash(studiekeuze.bronregel(_SKDB, {"nse": 2026, "1cijferho": 2025}), _SKDB.sha256)
+
+
+@pytest.mark.parametrize(
+    ("tekst", "verwacht"),
+    [
+        # Het versienummer uit de bronregel van de beurt blijft staan; LCSK verplicht het (#1004).
+        (
+            "Landelijk Centrum Studiekeuze, Studiekeuzedatabase 26.6, export van 10 november 2026.",
+            "Landelijk Centrum Studiekeuze, Studiekeuzedatabase 26.6, export van 10 november 2026.",
+        ),
+        # Andere decimalen krijgen nog een komma.
+        ("Een daling van 3.5 procent.", "Een daling van 3,5 procent."),
+        ("Ratio 6.4", "Ratio 6,4"),
+        ("Bron: Studiekeuzedatabase 26.6, ratio 6.4.", "Bron: Studiekeuzedatabase 26.6, ratio 6,4."),
+        # Ook in een tabelcel.
+        ("| Bron | Ratio |\n|---|---|\n| SKDB 26.6 | 1.29 |", "| Bron | Ratio |\n|---|---|\n| SKDB 26.6 | 1,29 |"),
+    ],
+)
+def test_versie_uit_de_bronregel_van_de_beurt_blijft_staan(tekst, verwacht):
+    assert nl_notatie(tekst, versies=versienummers([_SKDB_REGEL])) == verwacht
+
+
+def test_zonder_bronregels_krijgt_de_versie_een_komma():
+    """De bescherming volgt alleen wat de app van de beurt kent; een woordenlijst met bronnamen is er niet."""
+    assert nl_notatie("Studiekeuzedatabase 26.6") == "Studiekeuzedatabase 26,6"
+    assert nl_notatie("Studiekeuzedatabase 26.6", versies=versienummers([])) == "Studiekeuzedatabase 26,6"
+
+
+@pytest.mark.parametrize("tekst", ["De editie 26.6 geldt.", "Editie 3.2 van de gids.", "In edition 2.1."])
+def test_editie_nummert_ook(tekst):
+    assert nl_notatie(tekst) == tekst
+
+
+@pytest.mark.parametrize(
+    ("bronnen", "verwacht"),
+    [
+        ([_SKDB_REGEL], {"26.6"}),
+        # De store-meta van een vervolgantwoord (KeyMeta.peilmoment).
+        ([f"Studiekeuzedatabase ({studiekeuze.peilmoment(_SKDB)})"], {"26.6"}),
+        (["CBS StatLine, tabel 85423NED, gewijzigd op 2026-11-09."], set()),
+        # Een hash, een link, een datum met punten en een drie-delig getal zijn geen versie.
+        (["sha256 3f2a9c0b1d4e, https://example.nl/a?r=6.4 en www.x.nl/v=1.29, 12.03.2024, Python 3.14.8."], set()),
+        ([], set()),
+    ],
+)
+def test_versienummers_uit_bronregels(bronnen, verwacht):
+    assert versienummers(bronnen) == verwacht
+
+
+def test_een_hash_link_of_datum_in_de_bronregel_verandert_de_notatie_niet():
+    bron = "Bron, sha256 3f2a9c0b1d4e, https://example.nl/a?r=6.4, 2026-11-09, Python 3.14.8."
+    tekst = "Ratio 6.4 op 2026-11-09 met Python 3.14.8 en 12.03.2024."
+    assert (
+        nl_notatie(tekst, versies=versienummers([bron])) == "Ratio 6,4 op 2026-11-09 met Python 3.14.8 en 12.03.2024."
+    )
 
 
 def test_codekolom_houdt_haar_punt():
@@ -401,6 +469,21 @@ def test_de_chat_houdt_een_code_uit_de_tooluitvoer_van_de_beurt(monkeypatch):
     asyncio.run(run_module.run(gesprek, {}, emit, asyncio.Event(), model="openai/gpt-4o"))
     einde = next(e for e in events if e["type"] == "message_end")
     assert einde["content"].startswith("Rechten (50800) had 3.303 studenten.")
+
+
+@pytest.mark.parametrize(
+    "bronregel",
+    [_SKDB_REGEL, f"Studiekeuzedatabase ({studiekeuze.peilmoment(_SKDB)}). {skdb.VERPLICHTE_ZIN}"],
+    ids=["bronregel-van-de-beurt", "vervolgbron-uit-de-store"],
+)
+def test_het_eindantwoord_houdt_de_versie_uit_de_bronregels(bronregel):
+    """_antwoordtekst geeft de versies uit de bronregels van de beurt (of de vervolgbronnen) aan de notatie (#1004)."""
+    antwoord = "Volgens de Studiekeuzedatabase 26.6 daalde het aandeel met 3.5 procent."
+    tekst = run_module._antwoordtekst(LoopResult(text=antwoord, finish_reason="stop"), antwoord, [], [bronregel])
+    assert "Studiekeuzedatabase 26.6" in tekst
+    assert "3,5 procent" in tekst
+    zonder = run_module._antwoordtekst(LoopResult(text=antwoord, finish_reason="stop"), antwoord, [], [])
+    assert "Studiekeuzedatabase 26,6" in zonder
 
 
 @pytest.mark.parametrize(

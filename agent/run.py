@@ -30,7 +30,7 @@ from .citaties import citaties
 from .codeverzoek import codeblok, is_codeverzoek, met_code, onthoud
 from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalcontrole
 from .genoemde_bronnen import genoemde_bronnen
-from .getalnotatie import heeft_tabel, nl_notatie
+from .getalnotatie import heeft_tabel, nl_notatie, versienummers
 from .history import afgeronde_stappen, trim
 from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import interpretatie_bij, is_vervolgvraag
@@ -398,7 +398,7 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
     tekst = buiten_bronnensectie(tekst, periodecode_als_label)
     if geschreven_taal(antwoord) != "en":
-        tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier), in_je_vorm)
+        tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier, versienummers(bronnen)), in_je_vorm)
     tekst = met_tabelnoot(met_telling(tekst, result.tool_results), result.tool_results)
     return met_bronregel(tekst, result.steps)
 
