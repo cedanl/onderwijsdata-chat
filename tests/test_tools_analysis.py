@@ -2,6 +2,7 @@ import json
 from typing import Any
 
 import pandas as pd
+import pytest
 
 from tools import store
 from tools.analysis import run_analysis
@@ -295,3 +296,85 @@ def test_resultaat_met_gelezen_key_heeft_een_bron():
         "gelezen": ["test:an"],
         "resultaat": 100,
     }
+
+
+# --- #1016: een eigen figuur tekent geen categorie zonder naam ---
+# Reaudit N07: de grafiek met "nan" als twaalfde hogeschool kwam uit eigen plotly-code, niet uit create_plot.
+
+_LEEG = {"", "nan", "none", "null"}
+
+
+def _leeg(waarde) -> bool:
+    if isinstance(waarde, str):
+        return waarde.strip().casefold() in _LEEG
+    return waarde is None or (isinstance(waarde, float) and waarde != waarde)
+
+
+def _categorieen(trace) -> list:
+    return list(trace.y if getattr(trace, "orientation", None) == "h" else trace.x)
+
+
+def _hogescholen(naam) -> None:
+    _put("test:hs", [{"K": "Avans", "N": 3.5}, {"K": "Fontys", "N": 3.2}, {"K": naam, "N": 3.85}])
+
+
+@pytest.mark.parametrize("naam", [None, "nan", "None"])
+@pytest.mark.parametrize(
+    "code",
+    [
+        "figure = px.bar(df, x='K', y='N', text='N')",
+        "figure = px.bar(df, x='N', y='K', orientation='h')",
+        "figure = px.bar(df.astype({'K': str}), x='K', y='N')",
+        "figure = go.Figure(go.Bar(x=list(df['K']), y=list(df['N']), marker_color=['red', 'green', 'blue']))",
+        "figure = px.line(df, x='K', y='N', markers=True)",
+    ],
+)
+def test_figuur_uit_run_analysis_heeft_geen_categorie_zonder_naam(naam, code):
+    _hogescholen(naam)
+    uitkomst = run_analysis(code=f"{code}\nresult = {{'ok': True}}", data_key="test:hs")
+
+    assert isinstance(uitkomst, tuple)
+    tekst, fig = uitkomst
+    assert [_categorieen(t) for t in fig.data] == [["Avans", "Fontys"]]
+    assert not [n for t in fig.data if (n := t.name) and _leeg(n)]
+    waarden = fig.data[0].x if fig.data[0].orientation == "h" else fig.data[0].y
+    assert list(waarden) == [3.5, 3.2]
+    assert "1 rij zonder naam weggelaten" in json.loads(tekst)["grafiek"]
+
+
+def test_parallelle_lijsten_worden_samen_gefilterd():
+    _hogescholen(float("nan"))
+    _, fig = run_analysis(
+        code=(
+            "figure = go.Figure(go.Bar(x=list(df['K']), y=list(df['N']), text=['a', 'b', 'c'],"
+            " customdata=[[1], [2], [3]], marker_color=['red', 'green', 'blue']))\nresult = {'ok': True}"
+        ),
+        data_key="test:hs",
+    )
+    trace = fig.data[0]
+    assert list(trace.text) == ["a", "b"]
+    assert [list(c) for c in trace.customdata] == [[1], [2]]
+    assert list(trace.marker.color) == ["red", "green"]
+
+
+def test_een_reeks_zonder_naam_valt_weg():
+    _put("test:hs", [{"K": "a", "G": "VT", "N": 1}, {"K": "b", "G": "VT", "N": 2}, {"K": "a", "G": "nan", "N": 3}])
+    tekst, fig = run_analysis(
+        code="figure = px.bar(df, x='K', y='N', color='G')\nresult = {'ok': True}",
+        data_key="test:hs",
+    )
+    assert [t.name for t in fig.data] == ["VT"]
+    assert "1 rij zonder naam weggelaten" in json.loads(tekst)["grafiek"]
+
+
+def test_de_exportrijen_van_een_eigen_figuur_missen_de_rij_zonder_naam():
+    _hogescholen(None)
+    _, fig = run_analysis(code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}", data_key="test:hs")
+    assert fig.layout.meta["data"] == [{"K": "Avans", "N": 3.5}, {"K": "Fontys", "N": 3.2}]
+
+
+def test_een_figuur_met_alleen_namen_houdt_zijn_tekst_zonder_grafiekmelding():
+    _hogescholen("Saxion")
+    tekst, fig = run_analysis(code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}", data_key="test:hs")
+    assert list(fig.data[0].x) == ["Avans", "Fontys", "Saxion"]
+    assert json.loads(tekst) == {"gelezen": ["test:hs"], "resultaat": {"ok": True}}
