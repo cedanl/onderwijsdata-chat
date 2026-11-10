@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 // #591 (mobiel B9): het welkomstscherm zette "Anders" als functienaam in de zin ("Als Anders krijg je …"),
 // en de functie Docent ontbrak. Een functie komt alleen in de zin als het er een uit de lijst is.
+// #1006: de zin zonder functie noemt de bronnen uit bronnenLijst.js, met de Studiekeuzedatabase alleen waar die aan staat.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { STORAGE_SETTINGS } from '../constants'
 import { FUNCTIES, welkomstSub } from '../functies'
+import { bronnenLijst, zetBronnenLijst } from '../bronnenLijst'
 
 vi.mock('../api', async importOriginal => ({
   ...await importOriginal(),
@@ -37,8 +39,8 @@ globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect
 window.matchMedia ??= q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
 
 const ROLLEN = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'IR-specialist', 'Onderzoeker', 'Docent']
-const ALGEMEEN = 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data ' +
-  'van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
+const ALGEMEEN = 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik geef je een ' +
+  'onderbouwd antwoord met data van CBS, DUO, RIO, UWV, ROA, de Onderwijsinspectie en wetten.nl (collegegeld).'
 const ZONDER_ROL = ['Anders', '', undefined, null, 'Rector', 'anders']
 
 describe('FUNCTIES (#591)', () => {
@@ -61,6 +63,18 @@ describe('welkomstSub (#591)', () => {
   it.each([...ROLLEN, ...ZONDER_ROL])('zegt bij %j nooit "Als Anders"', functie => {
     expect(welkomstSub(functie)).not.toMatch(/als anders/i)
   })
+
+  it('noemt de Studiekeuzedatabase en UNL alleen als ze in de lijst staan (#1006)', () => {
+    expect(welkomstSub('', bronnenLijst({}))).not.toMatch(/Studiekeuzedatabase|UNL|WOPI/)
+    expect(welkomstSub('', bronnenLijst({ studiekeuze: true }))).toContain('de Studiekeuzedatabase (LCSK)')
+    expect(welkomstSub('', bronnenLijst({ studiekeuze: true }))).not.toContain('UNL')
+    expect(welkomstSub('', bronnenLijst({ wo_personeel: true }))).toContain('UNL (WOPI)')
+    expect(welkomstSub('', bronnenLijst({ wo_personeel: true }))).not.toContain('Studiekeuzedatabase')
+  })
+
+  it('noemt de bronnen niet "open data" als de Studiekeuzedatabase erbij staat (#1006)', () => {
+    expect(welkomstSub('', bronnenLijst({ studiekeuze: true }))).not.toMatch(/open data/)
+  })
 })
 
 let root
@@ -78,6 +92,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  zetBronnenLijst({})
   if (!root) return
   act(() => root.unmount())
   container.remove()
@@ -88,6 +103,16 @@ describe('het welkomstscherm (#591)', () => {
   it.each([...ROLLEN, 'Anders'])('toont bij functie %s de tekst van welkomstSub', async functie => {
     await render(createElement(ChatPage, { settings: { functie }, user: 'gast' }))
     expect(container.querySelector('.chat-welcome p').textContent).toBe(welkomstSub(functie))
+  })
+
+  // #1006: App zet de lijst uit /api/config; tot dan staan alleen de vaste bronnen in de zin.
+  it('noemt de Studiekeuzedatabase met studiekeuze aan, en niet zonder', async () => {
+    await render(createElement(ChatPage, { settings: {}, user: 'gast' }))
+    expect(container.querySelector('.chat-welcome p').textContent).toBe(ALGEMEEN)
+    await act(async () => { zetBronnenLijst({ studiekeuze: true }) })
+    expect(container.querySelector('.chat-welcome p').textContent).toContain('de Studiekeuzedatabase (LCSK)')
+    await act(async () => { zetBronnenLijst({ studiekeuze: false }) })
+    expect(container.querySelector('.chat-welcome p').textContent).toBe(ALGEMEEN)
   })
 })
 

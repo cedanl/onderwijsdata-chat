@@ -14,6 +14,7 @@ import LoginPage from '../pages/LoginPage'
 import SettingsModal from '../components/SettingsModal'
 import HomePage from '../pages/HomePage'
 import ChatPage from '../pages/ChatPage'
+import { zetBronnenLijst } from '../bronnenLijst'
 
 // Keep the pages off the network and away from heavy children: only the privacy button matters here.
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
@@ -226,6 +227,17 @@ describe('one privacy text', () => {
 
     await render(createElement(PrivacyModal, { onClose: vi.fn() }))
     expect(privacyDialog().querySelector('.privacy-text').innerHTML).toBe(page)
+  })
+
+  // #1006: the popup reads the same source list as the page, without props.
+  it('the popup names the sources this environment has on', async () => {
+    zetBronnenLijst({ studiekeuze: true })
+    try {
+      await render(createElement(PrivacyModal, { onClose: vi.fn() }))
+      expect(privacyDialog().textContent).toContain('De Studiekeuzedatabase is gelicentieerde data van LCSK, geen open data')
+    } finally {
+      zetBronnenLijst({})
+    }
   })
 
   it('the text exists once in the source', () => {

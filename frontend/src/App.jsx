@@ -12,6 +12,7 @@ import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
 import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { zetTermijnen } from './termijnen'
+import { zetBronnenLijst } from './bronnenLijst'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { effectiefProfiel, zonderProfiel } from './profiel'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
@@ -173,7 +174,10 @@ function AppShell() {
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled === true)
-        setBronnen(config.bronnen && typeof config.bronnen === 'object' ? config.bronnen : {})
+        const aan = config.bronnen && typeof config.bronnen === 'object' ? config.bronnen : {}
+        setBronnen(aan)
+        // De bronnen die de welkomst-, home- en privacytekst noemen (#1006), ook op /privacy vóór het inloggen.
+        zetBronnenLijst(aan)
         setFeedbackEnabled(config.feedback_enabled === true)
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
         setMaxChatTurns(resolveMaxChatTurns(config.max_chat_turns))
