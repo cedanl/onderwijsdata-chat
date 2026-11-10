@@ -126,10 +126,13 @@ def _kolommen(label: str, df: pd.DataFrame, sleutels: list[str], opgave: object,
     return kolommen, problemen
 
 
-def _kanten(data_key: str, andere_key: str, sleutels: list[str], links_opgave, rechts_opgave) -> tuple[_Kant, _Kant]:
+def _kanten(data_key: str, andere_key: str, opgegeven: object, links_opgave, rechts_opgave) -> tuple[_Kant, _Kant]:
+    """Beide tabellen met hun kolom per sleutel. Een onbekende key gaat voor elke andere melding: dezelfde foutcode
+    als bij elke tool met een data_key (tests/test_tool_keten_contract.py)."""
+    links_df, rechts_df = _tabel(data_key), _tabel(andere_key)
     if data_key == andere_key:
         raise _Melding(_melding("Koppel twee verschillende tabellen: data_key en andere_key zijn dezelfde key."))
-    links_df, rechts_df = _tabel(data_key), _tabel(andere_key)
+    sleutels = _sleutelnamen(opgegeven)
     links_label, rechts_label = _labels(data_key, andere_key)
     links, p_links = _kolommen(links_label, links_df, sleutels, links_opgave, "kolommen_links")
     rechts, p_rechts = _kolommen(rechts_label, rechts_df, sleutels, rechts_opgave, "kolommen_rechts")
@@ -284,12 +287,12 @@ def koppel_data(
 ) -> str:
     """Koppel twee geladen tabellen op `sleutels` (namen uit relatie), als outer join; het resultaat is een nieuwe key."""
     try:
-        namen = _sleutelnamen(sleutels)
         links, rechts = _kanten(
-            store.canoniek(data_key), store.canoniek(andere_key), namen, kolommen_links, kolommen_rechts
+            store.canoniek(data_key), store.canoniek(andere_key), sleutels, kolommen_links, kolommen_rechts
         )
     except _Melding as melding:
         return str(melding)
+    namen = list(links.kolommen)  # de sleutels zoals _sleutelnamen ze las, in volgorde
     uitkomst = _koppel(links, rechts, namen)
     key = _koppelkey(links, rechts, uitkomst.df)
     volledig = _bewaar(key, uitkomst.df, links, rechts, _stap(links, rechts, namen, uitkomst.koppeling))

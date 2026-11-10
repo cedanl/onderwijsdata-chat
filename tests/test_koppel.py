@@ -399,3 +399,9 @@ def test_de_rijen_tellen_als_bewijs_en_de_stap_als_geslaagd():
     assert outcome(TOOL_KOPPEL_DATA, result) == {}
     gemeten = {c for w in meetwaarden(result, TOOL_KOPPEL_DATA) if w.maat == "AANTAL" for c in w.cijfers}
     assert str(_DUO_SOM - 90 * 69) in gemeten
+
+
+def test_een_onbekende_key_gaat_voor_een_ongeldige_sleutel():
+    """Dezelfde foutcode als elke tool met een data_key (tests/test_tool_keten_contract.py)."""
+    uit, _ = tools.dispatch(TOOL_KOPPEL_DATA, {"data_key": "duo:bestaat_niet", "andere_key": _DUO, "sleutels": "x"})
+    assert uit.startswith("Fout (onbekende_data_key)")
