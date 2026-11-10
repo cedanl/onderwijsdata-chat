@@ -144,10 +144,55 @@ describe('de chat op een telefoon', () => {
     expect(container.querySelector('.navbar-pagina').contains(knop('Gesprekken en suggesties'))).toBe(true)
   })
 
-  it('toont het ⋯-menu pas als er een gesprek is', async () => {
+  // #990: zonder gesprek stond er geen ⋯-menu, dus was de melding over de externe AI-dienst vóór de eerste vraag
+  // onbereikbaar. Het menu is er nu altijd; alleen het exporteren wacht op een gesprek.
+  it('toont het ⋯-menu ook zonder gesprek, met de melding en privacy maar zonder export', async () => {
+    smal.aan = true
+    await render(createElement(Pagina, { feedbackEnabled: true }))
+    const meer = knop('Meer acties')
+    expect(container.querySelector('.navbar-pagina').contains(meer)).toBe(true)
+    expect(meer.getAttribute('aria-expanded')).toBe('false')
+    await klik(meer)
+    expect(meer.getAttribute('aria-expanded')).toBe('true')
+    const menu = container.querySelector('#navbar-meer-menu')
+    expect(meer.getAttribute('aria-controls')).toBe(menu.id)
+    expect(menu.querySelector('.navbar-meer-noot').textContent).toBe(EXTERNE_AI_MELDING)
+    expect(menu.textContent).not.toContain('Exporteer gesprek')
+    expect(menu.querySelector('.navbar-menu-scheiding')).toBeNull()
+    const items = [...menu.querySelectorAll('.navbar-menu-item')].map(k => k.textContent)
+    expect(items).toEqual(['Privacy-informatie', 'Geef feedback'])
+  })
+
+  it('sluit het ⋯-menu zonder gesprek met Escape (focus terug op de knop) en met een tik ernaast', async () => {
     smal.aan = true
     await render(createElement(Pagina))
-    expect(knop('Meer acties')).toBeNull()
+    await klik(knop('Meer acties'))
+    await toets('Escape')
+    expect(container.querySelector('#navbar-meer-menu')).toBeNull()
+    expect(document.activeElement).toBe(knop('Meer acties'))
+
+    await klik(knop('Meer acties'))
+    await klik(container.querySelector('.navbar-menu-overlay'))
+    expect(container.querySelector('#navbar-meer-menu')).toBeNull()
+  })
+
+  it('noemt in het ⋯-menu de aanbieder van het gekozen model, net als de modelkiezer op desktop', async () => {
+    smal.aan = true
+    api.fetchSettingsConfig.mockResolvedValueOnce({
+      models: [{ id: 'x/sonnet', name: 'Sonnet', provider: 'Microsoft Foundry' }], default_model: 'x/sonnet',
+    })
+    await render(createElement(Pagina))
+    await klik(knop('Meer acties'))
+    const noten = [...container.querySelectorAll('#navbar-meer-menu .navbar-meer-noot')].map(p => p.textContent)
+    expect(noten).toEqual([EXTERNE_AI_MELDING, 'Via Microsoft Foundry'])
+  })
+
+  it('noemt geen aanbieder als het model er geen heeft', async () => {
+    smal.aan = true
+    api.fetchSettingsConfig.mockResolvedValueOnce({ models: [{ id: 'x/haiku', name: 'Haiku', provider: '' }], default_model: 'x/haiku' })
+    await render(createElement(Pagina))
+    await klik(knop('Meer acties'))
+    expect(container.querySelector('#navbar-meer-menu').textContent).not.toContain('Via ')
   })
 
   it('biedt het exporteren van het gesprek aan in het ⋯-menu, zodra er berichten zijn', async () => {

@@ -1772,8 +1772,6 @@ html.dark .suggested-btn:hover {
     width: fit-content; max-width: 100%; margin-inline: auto; padding: 4px 12px; border-radius: 999px;
     background: var(--white); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
   }
-  /* Zonder gesprek houdt een lege plek de ruimte van de ⋯-knop vrij, zodat de gesprekkenknop niet verspringt. */
-  .navbar-icon-slot { width: var(--tap-min); flex-shrink: 0; }
 
   /* Clarification buttons: allow wrapping on narrow screens */
   .clarification-btns { flex-direction: row; flex-wrap: wrap; }

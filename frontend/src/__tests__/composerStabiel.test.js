@@ -195,34 +195,32 @@ describe('de Composer meldt wat de pil boven zijn plek uitsteekt', () => {
 })
 
 describe('een vaste plek voor het ⋯-menu in de navbar', () => {
+  const navActies = (slot, exportMessages) => createElement(NavSlotContext.Provider, { value: slot },
+    createElement(ChatNavActies, { sidebarOpen: false, onToggleSidebar: () => {}, exportMessages }))
+
   async function renderNav(exportMessages) {
     const slot = document.createElement('div')
     slot.className = 'navbar-pagina'
     document.body.appendChild(slot)
-    await render(createElement(NavSlotContext.Provider, { value: slot },
-      createElement(ChatNavActies, { sidebarOpen: false, onToggleSidebar: () => {}, exportMessages })))
+    await render(navActies(slot, exportMessages))
     return slot
   }
 
-  it('houdt zonder gesprek een lege, verborgen plek vrij, zonder knop en zonder tabstop', async () => {
+  // #990: de ⋯-knop staat er nu ook zonder gesprek (voor de melding over de externe AI-dienst). De rij heeft dus
+  // met en zonder gesprek dezelfde kinderen, en de gesprekkenknop verspringt bij het eerste bericht niet (#649).
+  it('heeft met en zonder gesprek dezelfde knoppen in dezelfde volgorde', async () => {
     const slot = await renderNav(null)
-    expect(slot.querySelector('button[aria-label="Meer acties"]')).toBeNull()
-    const leeg = slot.querySelector('.navbar-icon-slot')
-    expect(leeg).not.toBeNull()
-    expect(leeg.getAttribute('aria-hidden')).toBe('true')
-    expect(leeg.childElementCount).toBe(0)
-    expect(leeg.matches('button, a, [tabindex]')).toBe(false)
-    expect([...slot.children].map(c => c.className)).toEqual(['navbar-icon-btn', 'navbar-icon-slot'])
-  })
-
-  it('zet de ⋯-knop op die plek zodra er een gesprek is', async () => {
-    const slot = await renderNav([{ id: 1, role: 'user', content: 'Hoeveel mbo-studenten?', done: true }])
+    const zonder = [...slot.children]
+    expect(zonder.map(c => c.className)).toEqual(['navbar-icon-btn', 'navbar-meer'])
     expect(slot.querySelector('button[aria-label="Meer acties"]')).not.toBeNull()
-    expect(slot.querySelector('.navbar-icon-slot')).toBeNull()
+
+    await act(async () => { root.render(navActies(slot, [{ id: 1, role: 'user', content: 'Hoeveel?', done: true }])) })
+    expect([...slot.children]).toEqual(zonder)
   })
 
-  it('maakt de plek op een telefoon even breed als de knop', () => {
-    expect(declOf('.navbar-icon-slot', COMPACT, 'width')).toBe('var(--tap-min)')
-    expect(declOf('.navbar-icon-slot', COMPACT, 'flex-shrink')).toBe('0')
+  it('heeft geen lege plekhouder meer, in de code noch in de CSS', () => {
+    const bron = readFileSync(join(__dirname, '..', 'components', 'ChatNavActies.jsx'), 'utf8')
+    expect(bron).not.toContain('navbar-icon-slot')
+    expect(css).not.toContain('navbar-icon-slot')
   })
 })
