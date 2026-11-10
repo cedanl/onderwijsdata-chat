@@ -181,6 +181,30 @@ def _is_missing(value) -> bool:
     return value is None or (isinstance(value, float) and math.isnan(value))
 
 
+# Een categorie zonder naam (#1016): leeg, NaN, of de tekst die pandas of JSON van een lege cel maakt. Alleen deze
+# vier; "Onbekend" of "Geen" is een echte naam.
+_LEGE_NAMEN = frozenset({"", "nan", "none", "null"})
+
+
+def _is_lege_naam(waarde) -> bool:
+    if isinstance(waarde, str):
+        return waarde.strip().casefold() in _LEGE_NAMEN
+    return _is_missing(_plain(waarde))
+
+
+def zonder_naam(aantal: int) -> str:
+    """Het aantal niet getekende rijen zonder categorienaam, voor de toolmelding (#1016)."""
+    rijen = "1 rij" if aantal == 1 else f"{aantal} rijen"
+    return f"{rijen} zonder naam weggelaten"
+
+
+def _met_naam(data: list[dict], chart_type: str, x: str) -> list[dict]:
+    """De rijen met een naam in de categoriekolom; bij scatter en histogram is de x-as een getal en blijft alles."""
+    if chart_type not in ("bar", "line", "pie"):
+        return data
+    return [row for row in data if not _is_lege_naam(row.get(x))]
+
+
 def _validate_axes(data: list[dict], x: str, y: str) -> str | None:
     """None als x/y bruikbaar zijn; anders een toolmelding in plaats van een lege figuur (#216)."""
     available = {k for row in data for k in row}
@@ -204,10 +228,11 @@ def _value_labels(y_vals: list, enabled: bool) -> list[str] | None:
 
 
 def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str, dict]:
-    """Group data rows by the *color_by* column."""
+    """Group data rows by the *color_by* column; een lege groep heet "onbekend", niet "nan" (#1016)."""
     groups: dict[str, dict] = {}
     for row in data:
-        key = str(row.get(color_by, "onbekend"))
+        groep = row.get(color_by)
+        key = "onbekend" if _is_lege_naam(groep) else str(groep)
         groups.setdefault(key, {"x": [], "y": []})
         groups[key]["x"].append(row.get(x))
         groups[key]["y"].append(row.get(y))
@@ -473,16 +498,20 @@ def create_plot(
         return GEEN_ASSEN, None
     if err := _validate_axes(data, x, y):
         return err, None
-    if len(data) == 1 and chart_type != "bar":
+    getekend_type = resolve_chart_type(data, chart_type, x, color_by, is_share)
+    # Een rij zonder categorienaam stond als "nan" op de as (#1016).
+    rijen = _met_naam(data, getekend_type, x)
+    if not rijen:
+        return f"Geen grafiek gemaakt: geen enkele rij heeft een naam in kolom '{x}'.", None
+    if len(rijen) == 1 and chart_type != "bar":
         # One point shows nothing a sentence cannot; let the answer state the value.
         # An explicit bar is what the user asked for, so it is drawn (#199).
-        value = data[0].get(y, "")
+        value = rijen[0].get(y, "")
         return (
-            f"Geen grafiek gemaakt: de data bevat één datapunt ({x}={data[0].get(x, '')}, {y}={value}). "
+            f"Geen grafiek gemaakt: de data bevat één datapunt ({x}={rijen[0].get(x, '')}, {y}={value}). "
             "Noem de waarde in je antwoord."
         ), None
-
-    chart_type = resolve_chart_type(data, chart_type, x, color_by, is_share)
+    chart_type = getekend_type
 
     # Titels en woorden uit de bron in plaats van kolomnamen en codes (#418); de rijen in
     # meta blijven zoals de bron ze geeft, voor de export.
@@ -496,7 +525,7 @@ def create_plot(
     # en een legenda die de as herhaalt: dat is één reeks met een kleur per staaf.
     groepkolom = color_by if color_by != x else None
     # De rijen om te tekenen; `data` blijft heel, voor de exportrijen in meta.
-    getekend, weggelaten = _ranglijst(data, x, y, chart_type, groepkolom, x_labels)
+    getekend, weggelaten = _ranglijst(rijen, x, y, chart_type, groepkolom, x_labels)
     show_labels = chart_type in ("bar", "line") and len(getekend) <= _MAX_LABELED_POINTS
     x_ruw = [row.get(x) for row in getekend]
     x_vals = leesbaar(x_ruw, x_labels)
@@ -598,6 +627,8 @@ def create_plot(
             f" Op waarde gesorteerd, aflopend. Weggelaten (waarde 0 of leeg): {', '.join(map(str, weggelaten))}."
             " Ze staan wel in de data en in de export."
         )
+    if zonder := len(data) - len(rijen):
+        uitkomst += f" {zonder_naam(zonder)} (leeg in '{x}'); ze staan wel in de data en in de export."
     return uitkomst, fig
 
 
@@ -867,6 +898,56 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
             rows.append({**row, x_name: _plain(x_val), y_name: _plain(y_val)})
     fig.update_layout(meta={"data": rows, "x": x_name, "y": y_name})
     return fig
+
+
+# Lijsten met een waarde per punt: wie een punt weghaalt, haalt het overal weg, anders schuift de figuur scheef.
+_PER_PUNT = (
+    "x",
+    "y",
+    "text",
+    "hovertext",
+    "customdata",
+    "ids",
+    "textposition",
+    "marker.color",
+    "marker.size",
+    "marker.symbol",
+    "marker.opacity",
+    "error_x.array",
+    "error_y.array",
+)
+
+
+def zonder_lege_categorieen(fig: go.Figure) -> tuple[go.Figure, int]:
+    """Een eigen figuur (run_analysis) zonder punten en reeksen zonder categorienaam, en hoeveel punten dat waren
+    (#1016). Alleen staven en lijnen; een heatmap, taart of sankey blijft zoals hij is."""
+    houden, weggelaten = [], 0
+    for trace in fig.data:
+        if trace.type not in ("bar", "scatter"):
+            houden.append(trace)
+            continue
+        categorieen = trace["y" if trace.type == "bar" and trace.orientation == "h" else "x"]
+        if any(isinstance(n, str) and n.strip() and _is_lege_naam(n) for n in (trace.name, trace.legendgroup)):
+            weggelaten += len(categorieen) if categorieen is not None else 0
+            continue
+        if categorieen is not None:
+            weggelaten += _zonder_lege_punten(trace, categorieen)
+        houden.append(trace)
+    fig.data = houden
+    return fig, weggelaten
+
+
+def _zonder_lege_punten(trace, categorieen) -> int:
+    """Haalt de punten zonder categorienaam uit elke lijst per punt; geeft terug hoeveel het er waren. Plotly leest
+    arrays als tuple of ndarray (ook na bdata); ze gaan terug als gewone lijsten."""
+    punten = [i for i, c in enumerate(categorieen) if not _is_lege_naam(c)]
+    if len(punten) == len(categorieen):
+        return 0
+    for pad in (p for p in _PER_PUNT if p in trace):
+        waarden = trace[pad]
+        if not isinstance(waarden, str) and hasattr(waarden, "__len__") and len(waarden) == len(categorieen):
+            trace[pad] = [w.tolist() if hasattr(w, "tolist") else w for w in (waarden[i] for i in punten)]
+    return len(categorieen) - len(punten)
 
 
 def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:

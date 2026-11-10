@@ -479,3 +479,130 @@ def test_y_vanaf_nul_bij_liggende_staven_geldt_voor_de_waardeas():
     rijen = [{"instelling": f"Instelling {i} met een lange naam", "waarde": 100 + i} for i in range(6)]
     _, fig = create_plot(rijen, "bar", "instelling", "waarde", "T", y_vanaf_nul=True)
     assert fig is not None and fig.layout.xaxis.rangemode == "tozero"
+
+
+# ── Een rij zonder categorienaam staat niet als "nan" op de as (#1016) ──
+# Reaudit N07: "nan" stond als twaalfde hogeschool in de grafiek.
+
+_LEGE_LABELS = {"", "nan", "none", "null"}
+
+
+def _is_leeg_label(waarde) -> bool:
+    if isinstance(waarde, str):
+        return waarde.strip().casefold() in _LEGE_LABELS
+    return waarde is None or (isinstance(waarde, float) and waarde != waarde)
+
+
+def _labels(fig: go.Figure) -> list:
+    """Elke categorie en elke waarde op een as of in een taart, plus de legendanamen."""
+    reeksen = [getattr(t, as_, None) for t in fig.data for as_ in ("x", "y", "labels")]
+    return [v for r in reeksen if r is not None for v in r] + [t.name for t in fig.data if t.name is not None]
+
+
+def _rijen_met_naam(naam) -> list[dict]:
+    return [{"naam": "A", "v": 3.5}, {"naam": "B", "v": 3.2}, {"naam": naam, "v": 3.85}]
+
+
+@pytest.mark.parametrize("naam", [float("nan"), "nan", "None", "", None, " NULL ", "NaN"])
+def test_staaf_zonder_naam_wordt_overgeslagen_en_geteld(naam):
+    msg, fig = create_plot(_rijen_met_naam(naam), "bar", "naam", "v", "T")
+
+    assert fig is not None
+    assert not [v for v in _labels(fig) if _is_leeg_label(v)]
+    assert list(fig.data[0].x) == ["A", "B"] and list(fig.data[0].y) == [3.5, 3.2]
+    assert "1 rij zonder naam weggelaten" in msg
+    assert "2 datapunten" in msg
+
+
+def test_meerdere_rijen_zonder_naam_staan_als_aantal_in_de_melding():
+    rijen = [*_rijen_met_naam(None), {"naam": "nan", "v": 1.0}]
+    msg, _ = create_plot(rijen, "bar", "naam", "v", "T")
+    assert "2 rijen zonder naam weggelaten" in msg
+
+
+def test_een_rij_met_naam_maar_zonder_waarde_is_niet_getekend_en_staat_in_de_melding():
+    rijen = [*_rijen_met_naam(float("nan")), {"naam": "C", "v": float("nan")}]
+    msg, fig = create_plot(rijen, "bar", "naam", "v", "T")
+
+    assert fig is not None
+    assert list(fig.data[0].x) == ["A", "B"]
+    assert "Weggelaten (waarde 0 of leeg): C." in msg
+    assert "1 rij zonder naam weggelaten" in msg
+
+
+def test_de_melding_noemt_nooit_een_leeg_label():
+    rijen = [
+        {"naam": "A", "v": 3.5},
+        {"naam": "B", "v": 0},
+        {"naam": float("nan"), "v": 0},
+        {"naam": "None", "v": None},
+        {"naam": "null", "v": 2.0},
+    ]
+    msg, _ = create_plot(rijen, "bar", "naam", "v", "T")
+
+    assert "Weggelaten (waarde 0 of leeg): B." in msg
+    assert "3 rijen zonder naam weggelaten" in msg
+    for woord in ("nan", "None", "null"):
+        assert woord not in msg.split()
+        assert f"{woord}," not in msg and f"{woord}." not in msg
+
+
+@pytest.mark.parametrize("chart_type", ["line", "pie"])
+def test_lijn_en_taart_slaan_een_rij_zonder_naam_ook_over(chart_type):
+    rijen = [{"jaar": "2020", "v": 1}, {"jaar": "2021", "v": 2}, {"jaar": "nan", "v": 3}, {"jaar": None, "v": 4}]
+    msg, fig = create_plot(rijen, chart_type, "jaar", "v", "T")
+
+    assert fig is not None
+    assert not [v for v in _labels(fig) if _is_leeg_label(v)]
+    assert "2 rijen zonder naam weggelaten" in msg
+
+
+def test_lijn_met_groepen_houdt_een_ontbrekende_waarde_als_gat():
+    rijen = [
+        {"jaar": "2020", "v": 1, "g": "A"},
+        {"jaar": "2021", "v": None, "g": "A"},
+        {"jaar": "2022", "v": 3, "g": "A"},
+        {"jaar": "2020", "v": 2, "g": "B"},
+        {"jaar": "", "v": 5, "g": "B"},
+    ]
+    msg, fig = create_plot(rijen, "line", "jaar", "v", "T", color_by="g")
+
+    assert fig is not None
+    reeksen = {t.name: (list(t.x), list(t.y)) for t in fig.data}
+    assert reeksen["A"] == (["2020", "2021", "2022"], [1, None, 3])
+    assert reeksen["B"] == (["2020"], [2])
+    assert "1 rij zonder naam weggelaten" in msg
+
+
+@pytest.mark.parametrize("groep", [float("nan"), None, "nan", "None", ""])
+def test_een_lege_groep_heet_onbekend_niet_nan(groep):
+    rijen = [
+        {"jaar": "2020", "v": 1, "g": "A"},
+        {"jaar": "2021", "v": 2, "g": "A"},
+        {"jaar": "2020", "v": 3, "g": groep},
+    ]
+    _, fig = create_plot(rijen, "bar", "jaar", "v", "T", color_by="g")
+
+    assert fig is not None
+    assert [t.name for t in fig.data] == ["A", "onbekend"]
+
+
+def test_de_exportrijen_houden_de_rij_zonder_naam():
+    rijen = _rijen_met_naam(None)
+    _, fig = create_plot(rijen, "bar", "naam", "v", "T")
+    assert fig is not None
+    assert fig.layout.meta["data"] == rijen
+
+
+def test_alleen_rijen_zonder_naam_geeft_een_melding_geen_lege_figuur():
+    msg, fig = create_plot([{"naam": None, "v": 1}, {"naam": "nan", "v": 2}], "bar", "naam", "v", "T")
+    assert fig is None
+    assert "naam" in msg and "Geen grafiek" in msg
+
+
+def test_een_echte_naam_die_op_een_leeg_woord_lijkt_blijft_staan():
+    rijen = [{"naam": "Onbekend", "v": 1}, {"naam": "Nanotech", "v": 2}, {"naam": "Geen", "v": 3}]
+    msg, fig = create_plot(rijen, "bar", "naam", "v", "T")
+    assert fig is not None
+    assert sorted(fig.data[0].x) == ["Geen", "Nanotech", "Onbekend"]
+    assert "zonder naam" not in msg

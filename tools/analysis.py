@@ -190,8 +190,9 @@ def _netjes(waarde):
     return duo.json_waarde(waarde)
 
 
-def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | None) -> str:
-    """Het toolresultaat voor het model: de uitkomst, waar hij op rust en wat er niet als bewijs telt."""
+def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | None, zonder_naam: int = 0) -> str:
+    """Het toolresultaat voor het model: de uitkomst, waar hij op rust en wat er niet als bewijs telt.
+    `zonder_naam` is het aantal punten dat zonder categorienaam uit de figuur ging (#1016)."""
     text_obj = _netjes(run.result) if run.result is not None else {}
     if result_key:
         text_obj = modelrijen(run.result, result_key, run.complete)
@@ -208,6 +209,10 @@ def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | 
         text_obj[SCRIPTCONSTANTEN] = list(controle.constanten)
     if controle and controle.soort == afhankelijkheid.ONBEPAALD:
         text_obj["afhankelijkheid"] = afhankelijkheid.ONBEPAALD_MELDING
+    if zonder_naam:
+        text_obj["grafiek"] = (
+            f"{plot.zonder_naam(zonder_naam)} uit de figuur: niet getekend en niet in de grafiekexport."
+        )
     return json.dumps(text_obj, ensure_ascii=False, default=str)
 
 
@@ -222,8 +227,10 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if not run.complete and run.result is not None and not isinstance(run.result, list):
         return store.ONVOLLEDIG
     controle = _controle(run)
-    text = _tekst(run, _bewaar(run, controle), controle)
     if run.figure is None:
-        return text
+        return _tekst(run, _bewaar(run, controle), controle)
+    # Vóór de exportrijen: een categorie zonder naam (#1016) staat dan ook niet in de grafiek-CSV.
+    figuur, zonder_naam = plot.zonder_lege_categorieen(run.figure)
+    text = _tekst(run, _bewaar(run, controle), controle, zonder_naam)
     known = store.meta(run.bronnen[0]) if run.bronnen else None
-    return text, plot.leesbare_titels(plot.with_export_rows(run.figure), known)
+    return text, plot.leesbare_titels(plot.with_export_rows(figuur), known)
