@@ -122,6 +122,18 @@ describe('axe-poort (#687)', () => {
     expect(await ernstigeBevindingen()).toEqual([])
   })
 
+  // #990: op een telefoon staat het ⋯-menu van de chat er ook zonder gesprek, met de melding over de externe AI-dienst.
+  it('/chat op een telefoon, zonder gesprek en met het ⋯-menu open, heeft geen ernstige bevindingen', APP_TEST, async () => {
+    window.matchMedia = q => ({ matches: q === '(max-width: 1024px)', media: q, addEventListener() {}, removeEventListener() {} })
+    await render('/chat', { ingelogd: true })
+    const meer = container.querySelector('.navbar-pagina button[aria-label="Meer acties"]')
+    await act(async () => { meer.click() })
+    expect(meer.getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelectorAll('#navbar-meer-menu')).toHaveLength(1)
+    expect(container.querySelector('#navbar-meer-menu .navbar-meer-noot')).not.toBeNull()
+    expect(await ernstigeBevindingen()).toEqual([])
+  })
+
   // #905: de dashboards zelf, met data en zonder ze weg te mocken. Wacht tot het dashboard getekend is (de laadstatus
   // en de laadvlakken van de kaarten zijn weg en er staat een grafiek of tabel). `kaarten`: wat er dan moet staan.
   // Een uitklap gaat open (#973), zodat axe ook de tabel erachter ziet (NSE-thema's, kengetaldefinities).
