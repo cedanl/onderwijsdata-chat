@@ -23,10 +23,14 @@ from .meetwaarden import Meetwaarde
 T = TypeVar("T")
 
 
+def selectiecellen(waarde: Meetwaarde) -> frozenset[str]:
+    """De waarden van de andere cellen van haar rij: "Bachelor" uit "Diplomasoort: Bachelor"."""
+    return frozenset(c for cel in waarde.selectie if (c := cel.split(": ", 1)[-1].strip()))
+
+
 def kenmerken(waarde: Meetwaarde) -> frozenset[str]:
     """Wat een zin over deze meetwaarde kan noemen: de waarden van haar rij en haar maat."""
-    cellen = {cel.split(": ", 1)[-1].strip() for cel in waarde.selectie}
-    return frozenset(c for c in (*cellen, kolomlabel(waarde.maat)) if c)
+    return selectiecellen(waarde) | ({maat} if (maat := kolomlabel(waarde.maat)) else set())
 
 
 def betekenis(waarde: Meetwaarde) -> Hashable:

@@ -491,3 +491,56 @@ def test_een_tabel_in_een_codeblok_is_geen_tabel():
     tekst = "```\n| Jaar | Bachelor |\n|---|---|\n| 2020 | 12.345 |\n```"
     [citatie] = citaties(tekst, _SOORTEN)
     assert citatie == {"getal": "12.345", "vastgesteld": False, "reden": "meerdere"}
+
+
+@pytest.fixture
+def rij_en_totaal():
+    """Twee selecties op dezelfde lading: een rij per instelling en een totaal met toevallig dezelfde waarde."""
+    store.clear()
+    store.put("cbs:L", pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="X"))
+    store.derive("cbs:L", "cbs:L:q1", pd.DataFrame({"x": [1]}))
+    store.derive("cbs:L", "cbs:L:q2", pd.DataFrame({"x": [1]}))
+    rij = {"Instelling": "Hogeschool A", "Jaar": "2020", "Aantal": 12345}
+    totaal = {"Jaar": "2020", "Aantal": 12345}
+    yield [
+        ("query_data", json.dumps({"data_key": "cbs:L:q1", "rijen": [rij]})),
+        ("query_data", json.dumps({"data_key": "cbs:L:q2", "rijen": [totaal]})),
+    ]
+    store.clear()
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_een_totaal_naast_een_rij_uit_dezelfde_lading_blijft_twijfel(rij_en_totaal, volgorde):
+    """Alleen een draaitabelcel (kolom Bachelor uit de selectiecel Diplomasoort: Bachelor) is de rij, afgeleid. Een
+    totaal met toevallig dezelfde waarde is een andere betekenis, ook als de rij alles noemt wat het totaal noemt."""
+    zin = "In 2020 waren er in totaal 12.345 studenten."
+    tabel = "Per jaar:\n\n| Jaar | Aantal |\n|---|---|\n| 2020 | 12.345 |"
+    for tekst in (zin, tabel):
+        [citatie] = citaties(tekst, rij_en_totaal[::volgorde])
+        assert citatie == {"getal": "12.345", "vastgesteld": False, "reden": "meerdere"}, tekst
+
+
+@pytest.fixture
+def m01_twee_kolommen_gelijk():
+    """Bachelor en wo-master met dezelfde waarde in 2020/'21, als query_data en als draaitabel op de lading."""
+    store.clear()
+    store.put(_M01_LAAD, pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="85424NED"))
+    store.derive(_M01_LAAD, _M01_QUERY, pd.DataFrame({"x": [1]}))
+    store.derive(_M01_LAAD, _M01_ANALYSE, pd.DataFrame({"x": [1]}), gelezen=(_M01_LAAD,))
+    rijen = [_m01_rij("Bachelor", 0, 47810), _m01_rij("Wo-master", 0, 47810)]
+    pivot = {"Perioden_label": _M01_JAREN[0], "Periodestatus": "Definitief", "Bachelor": 47810, "Wo-master": 47810}
+    yield [
+        ("query_data", json.dumps({"data_key": _M01_QUERY, "rijen": rijen})),
+        ("run_analysis", json.dumps({"data_key": _M01_ANALYSE, "rijen": [pivot]})),
+    ]
+    store.clear()
+
+
+def test_m01_de_kop_kiest_tussen_twee_kolommen_met_dezelfde_waarde(m01_twee_kolommen_gelijk):
+    """De draaitabel valt weg en beide rijen staan onder dezelfde key: alleen de kolomkop zegt welke cel welke
+    diplomasoort is."""
+    tekst = "| Studiejaar | Bachelor | Wo-master |\n|---|---|---|\n| 2020/21 | 47.810 | 47.810 |"
+    bachelor, master = citaties(tekst, m01_twee_kolommen_gelijk)
+    assert "Diplomasoort: Bachelor" in bachelor["selectie"]
+    assert "Diplomasoort: Wo-master" in master["selectie"]
+    assert bachelor["data_key"] == master["data_key"] == _M01_QUERY

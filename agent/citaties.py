@@ -23,10 +23,12 @@ agent/mdtabel.Cel, #1002), zoals in de tabelcontrole (agent/tabelbinding.py). Wi
 eerst de bronhiërarchie en daarna de maat die de tekst vóór de tabel het laatst noemt.
 
 Een draaitabel van run_analysis (kolom Bachelor) staat naast de selectie waaruit ze komt, vaak als zusje op dezelfde
-lading (M01). Noemt zo'n kandidaat niets dat een rij uit dezelfde lading niet ook noemt, dan is het die rij, afgeleid:
-de rij wint, zoals een selectie wint van de analyse erop (CH-38).
+lading (M01). Is haar kolom een selectiecel van een rij uit dezelfde lading (Diplomasoort: Bachelor) en noemt ze niets
+dat die rij niet ook noemt, dan is het die rij, gedraaid: de rij wint, zoals een selectie wint van de analyse erop
+(CH-38). Een totaal met toevallig dezelfde waarde als een rij blijft twijfel.
 """
 
+from bisect import bisect_right
 from collections import defaultdict
 from functools import partial
 
@@ -34,7 +36,7 @@ from tools import LABELS, store
 from tools.kolomlabel import kolomlabel
 
 from .binding import zin_op
-from .claimbinding import betekenis, kenmerken, kies, laatst_genoemde_maat, noemt_selectie
+from .claimbinding import betekenis, kenmerken, kies, laatst_genoemde_maat, noemt_selectie, selectiecellen
 from .grounding import decimalen_met_positie, getallen_met_positie, kleine_getallen_met_positie
 from .mdtabel import Cel, tabelcellen
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden, schrijft
@@ -78,23 +80,26 @@ def _zelfde_lading(a: Meetwaarde, b: Meetwaarde) -> bool:
     return bool(a.data_key and b.data_key) and laadkey(a.data_key) == laadkey(b.data_key)
 
 
-def _zonder_afgeleide_cellen(kandidaten: list[tuple[int, str, Meetwaarde]]) -> list[tuple[int, str, Meetwaarde]]:
-    """Zonder de kandidaten die niets noemen wat een rij uit dezelfde lading niet ook noemt, en minder (#1002): de
-    draaitabel met kolom Bachelor (2020/'21, Bachelor) naast de rij (Diplomasoort: Bachelor, 2020/'21, Gediplomeerden).
-    Losse selecties (instelling A en B) noemen elk iets wat de ander niet noemt: die blijven allebei."""
-    return [
-        k
-        for k in kandidaten
-        if not any(kenmerken(k[2]) < kenmerken(a[2]) and _zelfde_lading(k[2], a[2]) for a in kandidaten)
-    ]
+def _draaitabelcel_van(cel: Meetwaarde, rij: Meetwaarde) -> bool:
+    """`cel` is `rij`, gedraaid (#1002): uit dezelfde lading, haar kolom is een selectiecel van de rij (Bachelor uit
+    Diplomasoort: Bachelor) en ze noemt niets wat de rij niet ook noemt. Een totaal (2020, Aantal) naast een rij
+    (Hogeschool A, 2020, Aantal) is geen draaitabelcel: zijn kolom is de maat, geen selectiecel."""
+    return kolomlabel(cel.maat) in selectiecellen(rij) and kenmerken(cel) < kenmerken(rij) and _zelfde_lading(cel, rij)
+
+
+def _zonder_draaitabelcellen(kandidaten: list[tuple[int, str, Meetwaarde]]) -> list[tuple[int, str, Meetwaarde]]:
+    """Zonder de draaitabelcellen van een andere kandidaat: de cel met kolom Bachelor (2020/'21, Bachelor) naast de
+    rij (Diplomasoort: Bachelor, 2020/'21, Gediplomeerden). Losse selecties (instelling A en B) en een totaal naast
+    een rij met toevallig dezelfde waarde blijven allemaal."""
+    return [k for k in kandidaten if not any(_draaitabelcel_van(k[2], a[2]) for a in kandidaten)]
 
 
 def _dichtst_bij_de_bron(kandidaten: list[tuple[int, str, Meetwaarde]]) -> tuple[int, str, Meetwaarde] | None:
     """Bronhiërarchie bij twijfel (CH-38): staan alle kandidaten in één afleidingsketen, dan
     wint de stap die het dichtst bij de bron zit, zoals de selectie onder een analyse. Anders wint
-    de rij waar een afgeleide kandidaat uit dezelfde lading een deel van is (#1002).
+    de rij van wie een andere kandidaat een draaitabelcel uit dezelfde lading is (#1002).
     Losse selecties (instelling A en B) blijven twijfel: daar beslist de zin (CH-08)."""
-    return _in_een_keten(kandidaten) or _in_een_keten(_zonder_afgeleide_cellen(kandidaten))
+    return _in_een_keten(kandidaten) or _in_een_keten(_zonder_draaitabelcellen(kandidaten))
 
 
 def _in_tabel(kandidaten: list[tuple[int, str, Meetwaarde]], ervoor: str) -> tuple[int, str, Meetwaarde] | None:
@@ -112,7 +117,9 @@ def _onbepaald(geschreven: str, kandidaten: list) -> dict:
 
 
 def _cel_op(cellen: list[Cel], positie: int) -> Cel | None:
-    return next((cel for cel in cellen if cel.begin <= positie < cel.einde), None)
+    """De cel om `positie`; de cellen staan in tekstvolgorde en overlappen niet."""
+    i = bisect_right(cellen, positie, key=lambda cel: cel.begin) - 1
+    return cellen[i] if i >= 0 and positie < cellen[i].einde else None
 
 
 def _duiding(tekst: str, cellen: list[Cel], positie: int) -> tuple[str, Cel | None]:
