@@ -2,7 +2,7 @@
 
 De berichtlimiet (core/rate_limit.py) telt verzoeken in de tijd, niet wat er tegelijk loopt. Een client kon
 veel sockets openen en op elk een run starten; op één pod (#677) kost dat geheugen en CPU voor iedereen.
-Alles hier leeft in het geheugen van het proces, net als de andere limieten.
+Alles hier leeft in het geheugen van het proces; de tijdslimieten staan sinds #984 in de database (core/rate_limit.py).
 """
 
 import asyncio

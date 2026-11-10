@@ -6,8 +6,8 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 
 Elke omgeving draait **één pod** zonder HPA en zonder PDB, ook productie (ADR-011 in
 [`docs/architecture-decisions.md`](../docs/architecture-decisions.md), besluit 09-11 op #677). Waarom: datastore,
-limieten en SRAM-cache leven in het geheugen van het proces (#421). Gevolg: elke uitrol is een korte onderbreking, en
-de limieten tellen per proces en beginnen na een herstart op nul. Opschalen is #984. Resources, quotum, probes,
+gelijktijdigheidstellers en SRAM-cache leven in het geheugen van het proces (#421). Gevolg: elke uitrol is een korte
+onderbreking, en die tellers beginnen na een herstart op nul (de tijdslimieten staan sinds #984 in Postgres). Opschalen is #984. Resources, quotum, probes,
 het stoppen van de pod en het runbook staan in [`docs/operatie.md`](../docs/operatie.md); deze tabel is het overzicht.
 
 | Omgeving | Ingress Class | Replicas | Limits (CPU / RAM) | Chartversie | URL |

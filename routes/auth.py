@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import secrets
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
+_login_limiter = RateLimiter(max_attempts=5, window_seconds=60, naam="login")
 _LIMITER_NAAM_MAX = 64
 _OIDC_STATE_COOKIE = "oidc_state"
 
@@ -201,8 +202,7 @@ async def login(body: dict, request: Request) -> dict:
     # aanvaller kon de login voor iedereen blokkeren. De gebruikersnaam erbij beperkt
     # een vol budget tot die ene combinatie.
     limiter_key = _limiter_key(username, client_ip)
-    if not _login_limiter.is_allowed(limiter_key):
-        retry = _login_limiter.retry_after(limiter_key)
+    if (retry := await asyncio.to_thread(_login_limiter.probeer, limiter_key)) is not None:
         raise HTTPException(
             status_code=429,
             detail=f"Te veel inlogpogingen. Probeer het over {retry} seconden opnieuw.",

@@ -20,6 +20,7 @@ sleutel en per IP (429 met Retry-After), een bovengrens op gelijktijdige verzoek
 een tijdslimiet per toolaanroep en een begrensd resultaat.
 """
 
+import asyncio
 import contextlib
 import contextvars
 import hashlib
@@ -127,8 +128,10 @@ class McpEindpunt:
         self._sleutels = Sleutels(sleutels)
         self._grenzen = grenzen
         self._server = mcp_server.maak_server(self._voer_uit)
-        self._per_sleutel = RateLimiter(max_attempts=grenzen.rate_limit, window_seconds=grenzen.venster_s)
-        self._per_ip = RateLimiter(max_attempts=grenzen.rate_limit_ip, window_seconds=grenzen.venster_s)
+        self._per_sleutel = RateLimiter(
+            max_attempts=grenzen.rate_limit, window_seconds=grenzen.venster_s, naam="mcp_sleutel"
+        )
+        self._per_ip = RateLimiter(max_attempts=grenzen.rate_limit_ip, window_seconds=grenzen.venster_s, naam="mcp_ip")
         self._manager: StreamableHTTPSessionManager | None = None
         # Plaatsen voor verzoeken, en threads voor toolaanroepen: een aanroep die over zijn tijd gaat, loopt in zijn
         # thread door (een thread is niet te stoppen) en houdt dan zijn thread vast, niet die van de rest van de app.
@@ -199,9 +202,9 @@ class McpEindpunt:
             await _weiger(scope, receive, send, 404, NIET_GEVONDEN)
             return
         ip = (scope.get("client") or ("onbekend",))[0]
-        if not self._per_ip.is_allowed(ip):
+        if (wacht := await asyncio.to_thread(self._per_ip.probeer, ip)) is not None:
             logger.warning("MCP 429: rate limit per IP")
-            await self._te_veel(scope, receive, send, self._per_ip, ip)
+            await self._te_veel(scope, receive, send, wacht)
             return
         sleutel_id = self._sleutels.herken(Headers(scope=scope).get("authorization"))
         if sleutel_id is None:
@@ -214,9 +217,9 @@ class McpEindpunt:
             # DELETE te sluiten. 405 zegt de client dat de server geen stroom aanbiedt (MCP-spec, streamable HTTP).
             await _weiger(scope, receive, send, 405, ALLEEN_POST, {"Allow": "POST"})
             return
-        if not self._per_sleutel.is_allowed(sleutel_id):
+        if (wacht := await asyncio.to_thread(self._per_sleutel.probeer, sleutel_id)) is not None:
             logger.warning("MCP 429: rate limit per sleutel %s", sleutel_id)
-            await self._te_veel(scope, receive, send, self._per_sleutel, sleutel_id)
+            await self._te_veel(scope, receive, send, wacht)
             return
         _sleutel_id.set(sleutel_id)
         try:
@@ -226,6 +229,5 @@ class McpEindpunt:
             logger.warning("MCP 503: %d verzoeken tegelijk", self._grenzen.max_gelijktijdig)
             await _weiger(scope, receive, send, 503, DRUK, {"Retry-After": str(RETRY_DRUK_S)})
 
-    async def _te_veel(self, scope: Scope, receive: Receive, send: Send, limiter: RateLimiter, sleutel: str) -> None:
-        wacht = limiter.retry_after(sleutel) or self._grenzen.venster_s
+    async def _te_veel(self, scope: Scope, receive: Receive, send: Send, wacht: int) -> None:
         await _weiger(scope, receive, send, 429, TE_VEEL.format(wacht=wacht), {"Retry-After": str(wacht)})
