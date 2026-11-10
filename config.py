@@ -48,9 +48,9 @@ class Config:
     SERVER_REDIRECT: str = os.getenv("SERVER_REDIRECT", "/api/auth/oidc/callback")
 
     # Waar de app draait (#676): manifests/<omgeving>/values.yaml zet de naam van de omgeving, lokaal staat hij leeg.
-    # Buiten lokaal JSON-logs voor de logaggregatie van SDP; op playground en productie geen API-documentatie.
+    # Buiten lokaal JSON-logs voor de logaggregatie van SDP; buiten local, development en test geen API-documentatie.
     APP_ENV: str = os.getenv("APP_ENV", "local").strip().lower()
-    OMGEVINGEN = ("local", "development", "test", "playground", "production")
+    OMGEVINGEN = ("local", "development", "test", "playground", "production", "staging-otc", "production-otc")
 
     # Een bewust openbare demo buiten lokaal, zonder login (#787). Zonder deze vlag start de app daar niet zonder login.
     ALLOW_ANONYMOUS: bool = os.getenv("ALLOW_ANONYMOUS", "").strip().lower() == "true"
