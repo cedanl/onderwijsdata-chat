@@ -41,6 +41,7 @@ import ChatPage from '../pages/ChatPage'
 import { EXTERNE_AI_MELDING } from '../components/ChatNavActies'
 import { NavSlotContext } from '../navSlot'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
+import { zetBronnenLijst } from '../bronnenLijst'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -59,6 +60,7 @@ afterEach(async () => {
   root = null
   smal.aan = false
   chat.messages = []
+  zetBronnenLijst({})
 })
 
 async function render(element) {
@@ -96,6 +98,18 @@ describe('menu in de navbar (vervangt de tabbalk)', () => {
     expect(items).toContain('Gebaseerd op open onderwijsdata')
     expect(items).toContain('Privacy-informatie')
     expect(items).toContain('Uitloggen')
+  })
+
+  // #1010: met de gelicentieerde Studiekeuzedatabase aan is niet alles open data.
+  it('zegt "open" in de bronnenlink alleen zonder gelicentieerde bron', async () => {
+    await render(nav())
+    await klik(knop('Menu'))
+    const items = () => [...container.querySelectorAll('#navbar-menu button')].map(e => e.textContent)
+    await act(async () => { zetBronnenLijst({ studiekeuze: true }) })
+    expect(items()).toContain('Gebaseerd op onderwijsdata')
+    expect(items().join(' ')).not.toMatch(/\bopen\b/i)
+    await act(async () => { zetBronnenLijst({}) })
+    expect(items()).toContain('Gebaseerd op open onderwijsdata')
   })
 
   it('laat Dashboard weg als de pagina uit staat, ook in de balk op desktop', async () => {
@@ -258,6 +272,16 @@ describe('de chat op een telefoon', () => {
     expect(container.querySelector('.chat-disclaimer').textContent).toContain(PERSOONSGEGEVENS_WAARSCHUWING)
     expect(container.querySelector('.chat-actions')).not.toBeNull()
     expect(container.querySelector('textarea.chat-input').placeholder).toBe('Stel een vervolgvraag...')
+  })
+
+  // #1010: de disclaimer zei "gebruikt open onderwijsdata", ook met de gelicentieerde Studiekeuzedatabase aan.
+  it('zegt in de disclaimer alleen "open onderwijsdata" zonder gelicentieerde bron', async () => {
+    await render(createElement(Pagina))
+    const disclaimer = () => container.querySelector('.chat-disclaimer').textContent
+    expect(disclaimer()).toMatch(/^openEDUdata\+ gebruikt open onderwijsdata\. Controleer/)
+    await act(async () => { zetBronnenLijst({ studiekeuze: true }) })
+    expect(disclaimer()).toMatch(/^openEDUdata\+ gebruikt onderwijsdata\. Controleer/)
+    expect(disclaimer()).not.toMatch(/\bopen\b/i)
   })
 })
 

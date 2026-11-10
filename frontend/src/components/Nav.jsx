@@ -7,6 +7,7 @@ import { useEscape } from '../hooks/useEscape'
 import { sneltoetsHint } from '../hooks/useZoekSneltoets'
 import { useInstallatieAanbod, vraagInstallatie } from '../installeerApp'
 import { useBewaakteNavigatie } from '../runBewaking'
+import { onderwijsdata, useBronnenLijst } from '../bronnenLijst'
 
 const BESTEMMINGEN = [
   {
@@ -123,6 +124,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [bronnen, setBronnen] = useState(false)
+  const bronnenLijst = useBronnenLijst()
   const [installeerUitleg, setInstalleerUitleg] = useState(false)
   const installeerAanbod = useInstallatieAanbod()
   const knopRef = useRef(null)
@@ -170,7 +172,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
               </button>
             )}
             <button type="button" className="navbar-menu-item" onClick={kies(() => setBronnen(true))}>
-              Gebaseerd op open onderwijsdata
+              {`Gebaseerd op ${onderwijsdata(bronnenLijst)}`}
             </button>
             {installeerAanbod && (
               <button

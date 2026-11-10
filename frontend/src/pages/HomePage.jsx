@@ -8,7 +8,7 @@ import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
 import { HOME_TEKST, doelgroepVan } from '../homeTekst'
-import { useBronnenLijst } from '../bronnenLijst'
+import { aantalBronnen, heeftGelicentieerd, onderwijsdata, useBronnenLijst } from '../bronnenLijst'
 
 const VOORDEEL_ICONEN = {
   tijd: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
@@ -25,16 +25,19 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
   useEffect(() => {
     fetchCatalogCounts().then(setCounts).catch(() => {})
   }, [])
-  const { bronnen, datasets } = heroStats(counts)
+  const { datasets } = heroStats(counts)
   const tekst = HOME_TEKST[doelgroepVan(functie)]
   const bronnenLijst = useBronnenLijst()
+  // Met een gelicentieerde bron in de lijst is niet alles open data (#1010).
+  const gelicentieerd = heeftGelicentieerd(bronnenLijst)
+  const [kopBegin, kopNadruk] = tekst.kop(bronnenLijst)
   return (
     <div>
       {/* Hero */}
       <section className="hero">
         <div className="container">
           <div className="hero-content">
-            <h1>{tekst.kop[0]}<em>{tekst.kop[1]}</em></h1>
+            <h1>{kopBegin}<em>{kopNadruk}</em></h1>
             <p>{tekst.intro(bronnenLijst)}</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
@@ -46,9 +49,9 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
               )}
             </div>
             <div className="hero-stats">
-              <div><div className="hero-stat-value">{bronnen}</div><div className="hero-stat-label">Open bronnen gekoppeld</div></div>
+              <div><div className="hero-stat-value">{aantalBronnen(bronnenLijst)}</div><div className="hero-stat-label">{gelicentieerd ? 'Bronnen gekoppeld' : 'Open bronnen gekoppeld'}</div></div>
               <div><div className="hero-stat-value">{datasets}</div><div className="hero-stat-label">Datasets doorzoekbaar</div></div>
-              <div><div className="hero-stat-value">100%</div><div className="hero-stat-label">Open onderwijsdata</div></div>
+              <div><div className="hero-stat-value">100%</div><div className="hero-stat-label">{gelicentieerd ? 'Met bronvermelding' : 'Open onderwijsdata'}</div></div>
             </div>
           </div>
         </div>
@@ -103,7 +106,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
             <h2 className="section-title">{tekst.voordelenTitel}</h2>
           </div>
           <div className="grid grid-2 gap-4">
-            {tekst.voordelen.map(({ icon, title, desc }) => (
+            {tekst.voordelen(bronnenLijst).map(({ icon, title, desc }) => (
               <div key={title} className="benefit-card">
                 <div className="benefit-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{VOORDEEL_ICONEN[icon]}</svg>
@@ -119,7 +122,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
       <section className="cta-section">
         <div className="container">
           <h2>Klaar om te beginnen?</h2>
-          <p>{tekst.cta}</p>
+          <p>{tekst.cta(bronnenLijst)}</p>
           <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Start de chat →</button>
         </div>
       </section>
@@ -138,7 +141,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
             </div>
             <span style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16 }}>
               <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
-                Gebaseerd op open onderwijsdata
+                {`Gebaseerd op ${onderwijsdata(bronnenLijst)}`}
               </button>
               <PrivacyLink className="sources-link">Privacy</PrivacyLink>
               {feedbackEnabled && <FeedbackLink className="sources-link" />}
