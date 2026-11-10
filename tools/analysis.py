@@ -1,10 +1,9 @@
 """run_analysis: modelgeschreven Python op opgehaalde data, in benoemde stappen (#420).
 
-De tool controleert het script (`scriptcontrole`), draait het in een eigen proces
-(`sandbox`), stelt vast welke keys het las (#201), toetst of de uitkomst van de data
-afhangt (`afhankelijkheid`, CH-27), bewaart rijen als nieuwe key en bouwt de tekst voor
-het model. Elke stap die de analyse kan stoppen, zegt dat met `_Afgebroken`; de melding
-is de tekst voor het model.
+De tool controleert het script (`scriptcontrole`) en weigert een merge, join of concat van twee keys (#1014: dat is
+koppel_data), draait het in een eigen proces (`sandbox`), stelt vast welke keys het las (#201), toetst of de uitkomst
+van de data afhangt (`afhankelijkheid`, CH-27), bewaart rijen als nieuwe key en bouwt de tekst voor het model. Elke
+stap die de analyse kan stoppen, zegt dat met `_Afgebroken`; de melding is de tekst voor het model.
 """
 
 import hashlib
@@ -19,7 +18,7 @@ import plotly.graph_objects as go
 
 from core.config import DUO_ROW_LIMIT
 
-from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, plot, sandbox, scriptcontrole, store
+from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, plot, relaties, sandbox, scriptcontrole, store
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +52,66 @@ def _analysekey(bronnen: list[str], df: pd.DataFrame) -> str:
     return f"analysis:{hashlib.sha256(inhoud.encode()).hexdigest()[:12]}"
 
 
-def _gecontroleerd(code: str) -> scriptcontrole.Script:
-    """De AST-controle vooraf; een weigering of een syntaxfout is de melding voor het model."""
+def _gecontroleerd(code: str, data_key: str | None) -> scriptcontrole.Script:
+    """De AST-controle vooraf; een weigering of een syntaxfout is de melding voor het model.
+
+    Daarna de koppelwacht (#1014): de eerdere weigeringen gaan voor, zoals ze waren.
+    """
     try:
-        return scriptcontrole.ontleed(code)
+        script = scriptcontrole.ontleed(code, data_key)
     except scriptcontrole.Geweigerd as weigering:
         raise _Afgebroken(str(weigering)) from weigering
     except SyntaxError as fout:
         raise _Afgebroken(f"Fout in script:\n{traceback.format_exc(limit=0)}") from fout
+    if melding := _koppelweigering(script, data_key):
+        raise _Afgebroken(melding)
+    return script
+
+
+def _koppelweigering(script: scriptcontrole.Script, data_key: str | None) -> str | None:
+    """De melding als een merge, join of concat tabellen van twee of meer keys samenvoegt (#1014), anders None.
+
+    Reaudit C02/N07: het model koppelde de Studiekeuzedatabase en DUO in één script en verloor instellingen zonder
+    match; een promptregel hield dat niet tegen (#962, #988). Keys tellen na store.canoniek: een alias van dezelfde
+    key is één key.
+    """
+    volgorde = [*([data_key] if data_key else []), *script.keys]  # df eerst, dan store_get in volgorde
+    for koppeling in script.koppelingen:
+        keys = list(dict.fromkeys(store.canoniek(k) for k in volgorde if k in koppeling.keys))
+        if len(keys) >= 2:
+            return _koppelmelding(koppeling.aanroep, keys)
+    return None
+
+
+def _koppelmelding(aanroep: str, keys: list[str]) -> str:
+    """Wat er niet mag, waarom, en de route die wel werkt: relatie, per bron aggregeren, dan koppel_data."""
+    eerste, tweede = keys[0], keys[1]
+    tekst = (
+        f"Niet toegestaan in run_analysis: '{aanroep}' voegt tabellen van verschillende keys samen "
+        f"({', '.join(keys)}). Een eigen koppeling in een script verliest rijen zonder match; twee keys koppel je in "
+        f"code. Vraag eerst met relatie('{eerste}', '{tweede}') op welke sleutel ze koppelen en koppel dan met "
+        f"koppel_data(data_key='{eerste}', andere_key='{tweede}', sleutels=[...])."
+    )
+    if sleutels := _gedeelde_sleutels(eerste, tweede):
+        tekst += f" Beide tabellen hebben een kolom met sleutel {', '.join(sleutels)}."
+    if len(keys) > 2:
+        tekst += (
+            " Meer dan twee tabellen koppel je stap voor stap: koppel_data op de vorige koppeling en de volgende key."
+        )
+    return tekst + (
+        " Moet een bron eerst per instelling of opleiding opgeteld of gemiddeld worden, doe dat dan per bron in een "
+        "eigen run_analysis-stap: elke stap leest één key en geeft een eigen analysis:-key. Koppel daarna die "
+        "analysis:-keys met koppel_data."
+    )
+
+
+def _gedeelde_sleutels(links: str, rechts: str) -> list[str]:
+    """De sleutelnamen (relaties.sleutelkolommen) die beide tabellen dragen; leeg als er één niet in de store staat."""
+    tabellen = [store.get(k) for k in (links, rechts)]
+    if not all(isinstance(t, pd.DataFrame) for t in tabellen):
+        return []
+    links_namen, rechts_namen = ([s.sleutel.naam for s in relaties.sleutelkolommen(t)] for t in tabellen)
+    return [s for s in dict.fromkeys(links_namen) if s in rechts_namen]
 
 
 def _invoer(data_key: str | None) -> pd.DataFrame | None:
@@ -218,7 +269,7 @@ def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | 
 
 def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.Figure]:
     try:
-        run = _draai(code, _gecontroleerd(code), data_key)
+        run = _draai(code, _gecontroleerd(code, data_key), data_key)
     except _Afgebroken as melding:
         return str(melding)
     # Op afgekapte data is een los getal of een samenvatting (len(df) = 50) een

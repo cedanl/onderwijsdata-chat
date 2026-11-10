@@ -119,8 +119,10 @@ Past geen maat, of weigert `get_maat` (bijvoorbeeld een onbekende instelling), d
 2. `relatie(data_key, andere_key)` — welke kolommen dezelfde sleutel dragen, hoe de waarden vertalen
    (GM0344 ↔ 344, 2021SJ00 ↔ 2021) en hoe groot de overlap is.
 3. Alleen met een gedeelde sleutel: `koppel_data(data_key, andere_key, sleutels)` koppelt in code (#988). Zonder gedeelde
-   sleutel koppelt het model niet en antwoordt het per bron apart. Een eigen `merge` in `run_analysis` is niet de weg:
-   die verloor rijen zonder match.
+   sleutel koppelt het model niet en antwoordt het per bron apart. Een eigen `merge`, `join` of `concat` van twee keys
+   in `run_analysis` wordt vooraf geweigerd (#1014): die verloor rijen zonder match. Moet een bron eerst per instelling
+   opgeteld worden, dan doet elke bron dat in een eigen `run_analysis`-stap (één key, een eigen `analysis:`-key) en
+   koppelt `koppel_data` daarna die keys.
 4. `create_plot` op de `data_key` van het resultaat; één y-as, `color_by` voor groepen.
 
 Arbeidsmarkt-context (`get_uwv_vacatures`, `get_roa_benchmark`) komt als tekst bij een onderwijsantwoord, niet als
@@ -912,7 +914,10 @@ Voert pandas/numpy-code uit op eerder opgehaalde data, in een apart, afgeschermd
 | `code` | string | Python-code (pandas, numpy, plotly express beschikbaar) |
 | `data_key` | string | Optionele data_key — het bijbehorende DataFrame is beschikbaar als `df` |
 
-Een AST-controle weigert vooraf onder meer imports, namen met `__` en `exec`, `eval` en `open`. Het script draait daarna in een eigen proces zonder geheimen, netwerk of schrijfrechten, met limieten op CPU-tijd en geheugen en een time-out van 10 seconden. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`. De afscherming is geen beveiligingsgrens: het model kan willekeurige Python laten uitvoeren binnen de sandbox. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox), #62 en #443.
+Een AST-controle weigert vooraf onder meer imports, namen met `__` en `exec`, `eval` en `open`, en een `merge`, `join`
+of `concat` die tabellen van twee of meer keys samenvoegt (`df` plus `store_get`, of twee keer `store_get`, ook via
+tussenliggende namen; #1014). Die melding noemt de keys, `relatie` en `koppel_data`. Het is een patroonwacht: `map`,
+`isin` of een opzoeking in een dict over twee keys ziet ze niet. Het script draait daarna in een eigen proces zonder geheimen, netwerk of schrijfrechten, met limieten op CPU-tijd en geheugen en een time-out van 10 seconden. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`. De afscherming is geen beveiligingsgrens: het model kan willekeurige Python laten uitvoeren binnen de sandbox. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox), #62 en #443.
 
 ---
 
