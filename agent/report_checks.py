@@ -9,7 +9,8 @@ grafieken, is met code te controleren, voor elk model gelijk:
 - opleidingsvorm en dataset-ID in de tekst kloppen met de bron (#196);
 - een getal staat bij het jaar en de instelling van zijn eigen rij (#197);
 - een oorzaak rust op een eigen bron of staat er als niet vast te stellen (#225);
-- de modeltekst spreekt de lezer aan met je, niet met u (#536).
+- de modeltekst spreekt de lezer aan met je, niet met u (#536);
+- de tekst wijst niet naar het gesprek en noemt geen grafieksoort die het rapport niet heeft (#994).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from agent.aanspreekcontrole import overgebleven_u_vorm
 from agent.beweringen import ongedekte_oorzaak
 from agent.binding import verkeerd_gebonden
 from agent.dimensielabels import verkeerde_dimensielabels
+from agent.figuurverwijzing import gesprek_als_vindplaats, verkeerde_figuurverwijzing
 from agent.grounding import unsourced_numbers, unsourced_percentages
 from agent.kenmerken import verkeerde_kenmerken
 from agent.kpi_periode import verkeerde_kpi_periodes
@@ -65,6 +67,11 @@ def _modeltekst(spec: ReportSpec) -> str:
     """Wat het model schreef: reikwijdte, grafiektitels, toelichting en conclusie."""
     titels = (v.get("titel", "") for v in spec.visualisaties)
     return "\n".join([*spec.beantwoordt_niet, *titels, *_claims(spec)])
+
+
+def _beschrijving(spec: ReportSpec) -> str:
+    """Wat het model over de figuren en de bevindingen schreef; beantwoordt_niet mag een ontbrekende kaart noemen."""
+    return "\n".join([*(v.get("titel", "") for v in spec.visualisaties), *_claims(spec)])
 
 
 def _all_text(spec: ReportSpec) -> str:
@@ -156,6 +163,9 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     # Alleen wat het model schreef: de definities citeren de bron (#422), daar rekent het model niets.
     problems += hard(veilig(ongedekte_percentages, _modeltekst(spec), sources))
     problems += hard(veilig(afwezigheid_naast_grafiek, spec, figures_json))
+    # Een rapport staat op zichzelf (#994): geen gesprek als vindplaats, geen figuur die er niet in staat.
+    problems += hard(veilig(gesprek_als_vindplaats, _modeltekst(spec)))
+    problems += hard(veilig(verkeerde_figuurverwijzing, _beschrijving(spec), figures_json))
     problems += veilig(resource_verwijzing, text)
     problems += veilig(verkeerde_opleidingsvormen, text, sources)
     problems += veilig(verkeerde_dimensielabels, text, sources)

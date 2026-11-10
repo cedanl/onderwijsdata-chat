@@ -54,6 +54,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 - Schrijf geen definities: het definitieblok komt uit de bron. Zeg ook in de toelichting en conclusie niets over hoe een dataset telt of wat wel of niet meetelt, en omschrijf voltijd, deeltijd en duaal niet zelf.
 - Verwijs nooit naar "resource 3" of een ander bestandsnummer; noem een bestand bij zijn titel.
+- Het rapport staat op zichzelf: de lezer ziet het gesprek niet. Verwijs niet naar "het gesprek" of "de chat", en noem alleen grafieksoorten (staafdiagram, lijngrafiek, kaart, sankey-diagram enz.) die als figuur in dit rapport staan.
 
 ## Bronvermeldingen
 
