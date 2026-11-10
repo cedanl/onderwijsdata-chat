@@ -41,10 +41,10 @@ opschonen:
   enabled: true
 
 env:
-  # Omgevingsnaam (#676): production-otc draait als productie: JSON-logs, geen API-documentatie, de licentie-poort van de
-  # Studiekeuzedatabase dicht (tools/beschikbaarheid.py) en geen sleutel daarvoor in het secret.
+  # Omgevingsnaam (#676): elke omgeving noemt zichzelf (tests/test_app_env.py). Zoals productie: JSON-logs, geen
+  # API-documentatie en geen sleutel voor de Studiekeuzedatabase in het secret (alleen test en playground).
   - name: APP_ENV
-    value: "production"
+    value: "production-otc"
   # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to
   # set now; OIDC_CLIENT_ID/OIDC_CLIENT_SECRET (in secret_orig.yaml) are still
   # placeholders pending a real SRAM application registration. This means the
