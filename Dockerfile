@@ -57,6 +57,7 @@ COPY config.py ./
 COPY health.py ./
 COPY frontend_static.py ./
 COPY logging_config.py ./
+COPY mcp_server.py ./
 COPY routes/ ./routes/
 COPY persistence/ ./persistence/
 COPY data/ ./data/
