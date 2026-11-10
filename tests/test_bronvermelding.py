@@ -312,6 +312,23 @@ def test_dataantwoord_krijgt_de_bronnen_en_verliest_de_eigen_sectie(monkeypatch)
     assert einde["content"].startswith(_niet_meegeteld("p01hoinges") + _ANTWOORD)
 
 
+def test_een_periodecode_in_het_antwoord_kost_geen_controle_of_citatie(monkeypatch):
+    """#989: de code wordt het label na de grondingscontrole; citaties lezen de eindtekst en vinden hetzelfde getal."""
+
+    def slot(jaar: str) -> dict:
+        antwoord = f"Het hoger onderwijs had 26.370 ingeschrevenen in {jaar} (DUO, p01hoinges, Perioden: {jaar})."
+        stappen = [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=antwoord, tool_calls=[])]
+        return _slot(monkeypatch, stappen)
+
+    met_code, met_label = slot("2023SJ00"), slot("2023/24")
+
+    assert met_code["content"] == met_label["content"]
+    assert "2023SJ00" not in met_code["content"]
+    assert "controle" not in met_code
+    assert met_code["citaties"] == met_label["citaties"]
+    assert [c["getal"] for c in met_code["citaties"]] == ["26.370"]
+
+
 def test_valt_de_bronnenlijst_uit_dan_blijft_de_eigen_sectie(monkeypatch):
     """Net als de citaties faalt de lijst zacht: geen bronnen uit code, dan blijven die van het model staan."""
 

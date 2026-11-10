@@ -38,6 +38,7 @@ from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import zonder_toolnamen
 from .models import build_system
 from .niet_meegeteld import met_niet_meegeteld
+from .periodetekst import periodecode_als_label
 from .po_vraag import po_vraag
 from .probleem import INGEHOUDEN, controlenamen, harde, meldingen
 from .publicatie import ANTWOORD, FIGUUR, log_publicatie
@@ -390,10 +391,12 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling, de voetnoot onder een
     tabel met onderdrukte cellen (#811) en de regel over de bronkeuze van een vaste maat (#667).
 
-    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536);
-    de taal komt van `geschreven_taal`, net als in de controle. Een eigen Bronnen-sectie die blijft, citeert
-    brontitels: daar blijft een u-vorm staan."""
+    Elk antwoord krijgt een CBS-periodecode als jaar (2023SJ00 wordt 2023/24, #989). Alleen een antwoord dat niet
+    Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536); de taal komt van `geschreven_taal`,
+    net als in de controle. Een eigen Bronnen-sectie die blijft, citeert brontitels: daar blijven een u-vorm en een
+    periodecode staan, net als in de Telling die de app eronder zet."""
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
+    tekst = buiten_bronnensectie(tekst, periodecode_als_label)
     if geschreven_taal(antwoord) != "en":
         tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier), in_je_vorm)
     tekst = met_tabelnoot(met_telling(tekst, result.tool_results), result.tool_results)
