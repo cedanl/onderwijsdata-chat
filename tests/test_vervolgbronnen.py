@@ -63,7 +63,8 @@ def _dispatch(name, args):
         return studiekeuze.get_studiekeuze(**args), None
     if name == TOOL_RUN_ANALYSIS:
         # Zoals run_analysis een koppeling teruggeeft: haar key en elke tabel die het script las.
-        gelezen = list(store.meta(_KOPPEL_KEY).gelezen or ())
+        koppeling = store.meta(_KOPPEL_KEY)
+        gelezen = list(koppeling.gelezen or ()) if koppeling else []
         rijen = store.get(_KOPPEL_KEY).to_dict("records")
         return json.dumps({"data_key": _KOPPEL_KEY, "gelezen": gelezen, "resultaat": rijen}), None
     assert name == TOOL_GET_DUO_DATA
