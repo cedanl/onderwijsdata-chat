@@ -59,6 +59,41 @@ def dimensiesleutel(col_defs: dict, naam: str) -> str | None:
     )
 
 
+def sleutelnamen(col_defs: dict, dimensies: dict) -> dict | str:
+    """De dimensies onder hun API-sleutel: de titel of een andere spelling uit dataset_details wordt de sleutel (#1012).
+
+    Een naam die bij geen dimensie hoort, blijft staan: de poort noemt hem dan als onbekend. Twee spellingen van één
+    dimensie geven een weigering, niet een stille overschrijving van de ene code door de andere.
+    """
+    uit: dict = {}
+    spellingen: dict[str, list[str]] = {}
+    for naam, waarde in dimensies.items():
+        sleutel = dimensiesleutel(col_defs, str(naam)) or naam
+        spellingen.setdefault(sleutel, []).append(str(naam))
+        uit[sleutel] = waarde
+    if dubbel := [f"{sleutel} ({', '.join(namen)})" for sleutel, namen in spellingen.items() if len(namen) > 1]:
+        return f"Dimensie(s) meer dan eens in de selectie: {'; '.join(dubbel)}. Geef elke dimensie één keer."
+    return uit
+
+
+def met_sleutels(selectie: dict, col_defs: dict | None) -> dict | str:
+    """De selectie met elke dimensie onder haar API-sleutel (zie `sleutelnamen`), of de weigering als tekst.
+
+    Zonder DataProperties of zonder dimensie-object blijft de selectie zoals ze is: compileer weigert dat laatste zelf.
+    """
+    dimensies = selectie.get("dimensies")
+    if not col_defs or not isinstance(dimensies, dict):
+        return selectie
+    met_sleutel = sleutelnamen(col_defs, dimensies)
+    return met_sleutel if isinstance(met_sleutel, str) else {**selectie, "dimensies": met_sleutel}
+
+
+def _met_titel(col_defs: dict, kolom: str) -> str:
+    """`sleutel (titel)` als de titel iets anders zegt dan de sleutel, anders de sleutel."""
+    titel = str(col_defs.get(kolom, {}).get("title", "")).strip()
+    return f"{kolom} ({titel})" if titel and titel != kolom else kolom
+
+
 def _code(waarde) -> str:
     """Een dimensiecode als OData-literal: aanhalingstekens verdubbeld."""
     return str(waarde).strip().replace("'", "''")
@@ -123,7 +158,7 @@ def _poort(dataset_id: str, dimensies: dict, heeft_periode: bool, col_defs: dict
     if onbekend:
         return (
             f"Onbekende dimensie(s) in de selectie voor {dataset_id}: {', '.join(sorted(onbekend))}. "
-            f"Deze tabel heeft de dimensies: {', '.join(sorted(dims))}."
+            f"Deze tabel heeft de dimensies: {', '.join(_met_titel(col_defs, naam) for naam in sorted(dims))}."
         )
     if tijd and tijd in dimensies:
         return f"De tijddimensie {tijd} kies je via 'periode', niet onder 'dimensies'. {_UITLEG}"
@@ -160,6 +195,9 @@ def compileer(dataset_id: str, selectie, col_defs: dict | None) -> dict | str:
 
     tijd = TIJDDIMENSIE_FALLBACK
     if col_defs:
+        dimensies = sleutelnamen(col_defs, dimensies)
+        if isinstance(dimensies, str):
+            return dimensies
         if fout := _poort(dataset_id, dimensies, heeft_periode, col_defs):
             return fout
         _, tijd = dimensienamen(col_defs)

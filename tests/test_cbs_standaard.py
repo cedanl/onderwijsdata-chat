@@ -182,7 +182,7 @@ def test_het_recept_en_de_snippet_tonen_de_telling_die_geladen_is():
     assert known is not None and known.laad is not None
     assert f"trim(Leerweg) eq '{INCL}'" in known.laad[1]["filters"]["$filter"]
 
-    with cbs_standaard.gesprek([_VRAAG]):
+    with cbs_standaard.gesprek([_VRAAG]), patch("tools.cbs.definitions", return_value=_DEFS):
         snippet = generate("get_cbs_data", {"dataset_id": "85569NED", "selectie": _selectie(EXCL)})
     assert snippet is not None and INCL in snippet and EXCL not in snippet
 

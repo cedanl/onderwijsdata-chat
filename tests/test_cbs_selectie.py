@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from tools import store
 from tools.cbs import get_cbs_data
-from tools.cbs_selectie import compileer
+from tools.cbs_selectie import compileer, sleutelnamen
 
 _COL_DEFS = {
     "Geslacht": {"type": "Dimension", "title": "Geslacht"},
@@ -98,6 +98,35 @@ def test_onbekende_dimensie_noemt_de_beschikbare():
     fout = compileer("85423NED", _selectie(dimensies={"Geslcht": "x", "Opleidingsfase": "*", "RegioS": "*"}), _COL_DEFS)
     assert isinstance(fout, str)
     assert "Geslcht" in fout and "Geslacht" in fout
+    # Sleutel en titel per dimensie (#1012); een titel die de sleutel herhaalt, staat er niet nog eens.
+    assert "Deze tabel heeft de dimensies: Geslacht, Opleidingsfase, RegioS (Regio's)." in fout
+
+
+def test_dimensies_onder_titel_of_andere_hoofdletters_compileren_naar_de_sleutel():
+    """#1012: dataset_details toont de titel ("Regio's"), de bron vraagt de sleutel (RegioS)."""
+    selectie = _selectie(dimensies={" geslacht ": "T001038", "Opleidingsfase": "*", "Regio's": "PV20"})
+    params = _params(compileer("85423NED", selectie, _COL_DEFS))
+    assert params == {
+        "$filter": "trim(Geslacht) eq 'T001038' and trim(RegioS) eq 'PV20' and trim(Perioden) eq '2024SJ00'"
+    }
+
+
+def test_sleutelnamen_laat_een_onbekende_naam_staan_voor_de_poort():
+    assert sleutelnamen(_COL_DEFS, {"Regio's": "*", "Geslcht": "x"}) == {"RegioS": "*", "Geslcht": "x"}
+
+
+def test_twee_spellingen_van_een_dimensie_worden_geweigerd():
+    selectie = _selectie(dimensies={"Geslacht": "T001038", "geslacht": "3000", "Opleidingsfase": "*", "RegioS": "*"})
+    fout = compileer("85423NED", selectie, _COL_DEFS)
+    assert isinstance(fout, str)
+    assert "meer dan eens" in fout and "Geslacht (Geslacht, geslacht)" in fout
+
+
+def test_tijddimensie_in_andere_hoofdletters_hoort_ook_in_periode():
+    selectie = _selectie(dimensies={"Geslacht": "*", "Opleidingsfase": "*", "RegioS": "*", "perioden": "2024SJ00"})
+    fout = compileer("85423NED", selectie, _COL_DEFS)
+    assert isinstance(fout, str)
+    assert "kies je via 'periode'" in fout
 
 
 def test_tijddimensie_hoort_in_periode():

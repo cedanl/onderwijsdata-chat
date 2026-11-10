@@ -35,6 +35,7 @@ from . import (
     studiekeuze,
     wo_personeel,
 )
+from .bron_ids import cbs_tabel_id
 from .canoniek import parse_filter_key
 from .duo import cijferresource, is_prognose
 from .herlaad import Receptbron
@@ -154,6 +155,10 @@ def _cbs_filters(args: dict) -> dict:
         return dict(filters)
     if (selectie := args.get("selectie")) is None:
         return {}
+    if isinstance(selectie, dict):
+        # De filter vraagt de API-sleutel, ook als het model de titel gaf (#1012); valt de bron uit, dan zoals gegeven.
+        met_sleutels = cbs_selectie.met_sleutels(selectie, cbs._load_definitions(cbs_tabel_id(args["dataset_id"])))
+        selectie = met_sleutels if isinstance(met_sleutels, dict) else selectie
     selectie, _ = cbs_standaard.toegepast(args["dataset_id"], selectie)
     compilaat = cbs_selectie.compileer(args["dataset_id"], selectie, None)
     return compilaat if isinstance(compilaat, dict) else {}

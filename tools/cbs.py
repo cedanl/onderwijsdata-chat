@@ -518,9 +518,15 @@ def laad_cbs_data(
     if selectie is not None:
         # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
         # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
+        # Eerst elke dimensie onder haar API-sleutel (#1012): de standaard, de poort en het contract kennen alleen die.
+        col_defs_vooraf = _load_definitions(dataset_id)
+        if isinstance(selectie, dict):
+            met_sleutels = cbs_selectie.met_sleutels(selectie, col_defs_vooraf)
+            if isinstance(met_sleutels, str):
+                return met_sleutels
+            selectie = met_sleutels
         # Waar de tabel een vaste standaard heeft, kiest de code die, niet het model (#653).
         selectie, standaard = cbs_standaard.toegepast(dataset_id, selectie)
-        col_defs_vooraf = _load_definitions(dataset_id)
         uitkomst = cbs_selectie.compileer(dataset_id, selectie, col_defs_vooraf)
         if isinstance(uitkomst, str):
             return uitkomst
