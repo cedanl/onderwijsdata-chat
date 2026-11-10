@@ -9,3 +9,7 @@
   ophaalt (get_studiekeuze, get_cbs_data, ...) in plaats van een vaste lijst van drie (#999).
 - "Ik heb de oorzaak niet gecontroleerd", "de oorzaak is niet onderzocht" en "ik weet de oorzaak niet" gelden nu als
   voorbehoud en niet meer als een gegeven oorzaak; "De oorzaak is de coronapandemie." blijft een probleem (#1000).
+- Een uitgeschreven rekensom in een chatantwoord wordt nagerekend: "3 × 3 × 3 × 4 × 15 = 540 combinaties" geeft een
+  herkansing met "3 × 3 × 3 × 4 × 15 is 1.620, niet 540", en blijft de som fout, dan wordt het antwoord ingehouden.
+  Afronden op de decimalen van de uitkomst mag ("571 / 8.060 × 100 = 7,1"); een schooljaar als 2024/25 is geen deling
+  en een som met "ongeveer", "circa" of "≈" wordt niet nagerekend (#1001).

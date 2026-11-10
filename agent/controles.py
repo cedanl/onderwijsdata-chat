@@ -25,6 +25,7 @@ from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleiding
 from .metatekst import metatekst, zonder_toolnamen
 from .ongekozen import ongekozen_studies
 from .probleem import Probleem, hard, uitkomsten, veilig
+from .rekensom import onjuiste_rekensommen
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .tabelbinding import verkeerde_tabeljaren
 from .tekens import zonder_citaatkop
@@ -141,6 +142,8 @@ def antwoordcontrole(
             (ongebruikte_bronnen, (text, tool_results), False),
             (verkeerd_gebonden, (text, tool_results), False),
             (verkeerde_tabeljaren, (zichtbaar, tool_results), False),
+            # Op de getallen zoals de gebruiker ze leest: een som die in elke lezing fout is (#1001).
+            (onjuiste_rekensommen, tuple(zichtbaar), True),
             (onvervangen_tabelcorrectie, (text,), False),
             (verkeerde_kenmerken, (text, tool_results), True),
             (verkeerde_kpi_periodes, (text, tool_results), True),
