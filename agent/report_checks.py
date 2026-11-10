@@ -82,7 +82,8 @@ def _all_text(spec: ReportSpec) -> str:
 
 def _has_values(figure_json: str) -> bool:
     traces = json.loads(figure_json).get("data", [])
-    return any(len(t.get("y") or t.get("values") or []) > 0 for t in traces)
+    # Een sankey heeft zijn aantallen in link.value (#995).
+    return any(len(t.get("y") or t.get("values") or (t.get("link") or {}).get("value") or []) > 0 for t in traces)
 
 
 def ontbrekende_onderdelen(spec: ReportSpec) -> list[str]:

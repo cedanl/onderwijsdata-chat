@@ -657,11 +657,33 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "chart_type": {
                         "type": "string",
-                        "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"],
-                        "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen. Eén datapunt wordt alleen getekend met 'bar', en dat kies je alleen als de gebruiker om een grafiek vraagt.",
+                        "enum": ["auto", "bar", "line", "scatter", "pie", "histogram", "sankey"],
+                        "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram', 'scatter' en 'sankey' volgen nooit uit 'auto' en moet je zelf kiezen. Kies 'sankey' bij een vraag naar stromen of doorstroom (van een herkomst naar een bestemming, bijv. mbo-opleiding naar hbo-opleiding), met source, target en value in plaats van x en y; hooguit 40 herkomsten en bestemmingen samen. Eén datapunt wordt alleen getekend met 'bar', en dat kies je alleen als de gebruiker om een grafiek vraagt.",
                     },
-                    "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
-                    "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
+                    "x": {
+                        "type": "string",
+                        "description": "Veldnaam voor de x-as (of labels bij pie). Verplicht, behalve bij sankey.",
+                    },
+                    "y": {
+                        "type": "string",
+                        "description": "Veldnaam voor de y-as (of waarden bij pie). Verplicht, behalve bij sankey.",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "Alleen bij sankey: de kolom met de herkomst van een stroom (bijv. de mbo-opleiding).",
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Alleen bij sankey: de kolom met de bestemming van een stroom (bijv. de hbo-opleiding).",
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Alleen bij sankey: de kolom met het aantal per stroom (bijv. doorstromers). Een rij met 0 of leeg tekent geen stroom.",
+                    },
+                    "color": {
+                        "type": "string",
+                        "description": "Alleen bij sankey, optioneel: de kolom waarnaar de stromen gekleurd worden (bijv. graad). Laat weg zonder reden.",
+                    },
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {
                         "type": "string",
@@ -680,7 +702,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "description": "Laat weg: de app kiest de asbasis uit de eenheid (een lijn met aantallen begint op 0; bij een percentage of index niet, en dan staat dat op de as). Alleen als de gebruiker erom vraagt: true laat de waardeas op 0 beginnen, false laat hem vrij. Houd die keuze aan bij een aangepaste versie van dezelfde grafiek. Staven beginnen al op 0.",
                     },
                 },
-                "required": ["data_key", "chart_type", "x", "y", "title"],
+                "required": ["data_key", "chart_type", "title"],
             },
         },
     },

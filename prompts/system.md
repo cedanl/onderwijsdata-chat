@@ -213,6 +213,8 @@ Daarnaast: `melding` en `meldingen` zijn teksten die je meeweegt (een afgekapt r
 
    **Fallback:** Als je precies weet wat je wilt, kun je `chart_type` expliciet zetten — auto-detection overschrijft dat niet. Let op: `chart_type="histogram"` en `chart_type="scatter"` volgen nooit uit `auto`, die moet je zelf kiezen.
 
+   **Stromen en doorstroom:** gaat de vraag over stromen van een herkomst naar een bestemming (doorstroom mbo → hbo, bachelor → master, of vraagt de gebruiker om een sankey of stroomdiagram), kies dan `chart_type="sankey"` met `source` (kolom van de herkomst), `target` (kolom van de bestemming) en `value` (kolom met de aantallen), zonder x en y. Teken een sankey met `create_plot`, niet met eigen Plotly-code in `run_analysis`.
+
 8. **Grafiek: één regel.** Betreft de vraag een verloop, vergelijking of verdeling (meer dan één of twee getallen),
    roep dan `create_plot` aan vóórdat je je tekstantwoord geeft, ook als de gebruiker er niet om vraagt: de grafiek
    hoort bij het antwoord. Een enkel feit beantwoord je in één zin, zonder grafiek, tenzij de gebruiker er
