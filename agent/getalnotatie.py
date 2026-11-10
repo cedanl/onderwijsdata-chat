@@ -10,7 +10,13 @@ Een Nederlands antwoord schrijft decimalen met een komma (besluit #326): 6.4 wor
 Een punt is een decimale punt als er één of twee, of vier of meer cijfers na staan, of als
 er 0 voor staat (0.123). Drie cijfers na de punt zijn een duizendtal (3.303, 12.345) en
 blijven staan, net als een punt in een datum, versie of code (12.03.2024, 3.14.8, v2.5,
-T0.1) en na een verwijzing als "artikel 7.13".
+T0.1) en na een verwijzing als "artikel 7.13" of "editie 26.6".
+
+Een versienummer dat de app van de beurt zelf kent, blijft ook staan (#1004): elk punt-getal uit
+de bronregels van de beurt, zoals "Studiekeuzedatabase 26.6" uit de SKDB-regel of "versie 26.6" uit
+de store-meta. LCSK verplicht het juiste versienummer bij elke uiting. Zonder bronregels geldt dat
+niet. Keerzijde: een meetwaarde die letterlijk gelijk is aan een versie van de beurt (26.6 procent
+bij versie 26.6) houdt ook haar punt.
 
 Wat geen hoeveelheid is, blijft zoals het staat: jaartallen (dezelfde grens als de
 grondingscontrole), codes (85423NED, een voorloopnul, een getal na "CROHO" of "code",
@@ -68,7 +74,7 @@ _VENSTER = 80
 _DECIMALE_PUNT = re.compile(r"(?<![\w.,/#])(?<![^\W\d_]-)(?<!\w:)(?P<geheel>\d+)\.(?P<decimalen>\d+)(?!\w)(?![.,]\d)")
 # Een punt na zo'n woord nummert iets: artikel 7.13, paragraaf 2.1, versie 1.5.
 _NA_VERWIJZING = re.compile(
-    r"\b(?:artikel|art|hoofdstuk|paragraaf|par|sectie|bijlage|figuur|lid|stap|fase|versie|version)\.?\s*$",
+    r"\b(?:artikel|art|hoofdstuk|paragraaf|par|sectie|bijlage|figuur|lid|stap|fase|versie|version|editie|edition)\.?\s*$",
     re.IGNORECASE,
 )
 # Een Engels getal: 12,345 of 1,234,567 met een eventuele decimale punt, of een getal met een decimale punt.
@@ -110,20 +116,31 @@ def _decimaal(geheel: str, decimalen: str) -> bool:
     return len(decimalen) != 3 or geheel == "0"
 
 
-def _decimale_komma(m: re.Match) -> str:
+def versienummers(bronnen: Iterable[str]) -> frozenset[str]:
+    """De punt-getallen in de bronregels van de beurt ("Studiekeuzedatabase 26.6", "versie 26.6"): die blijven staan.
+
+    Hetzelfde patroon als de decimale punt, dus een datum, een hash of 3.14.8 levert niets op; links en code in de
+    regel tellen niet mee."""
+    return frozenset(m.group(0) for regel in bronnen for m in _DECIMALE_PUNT.finditer(BESCHERMD.sub(" ", regel)))
+
+
+def _decimale_komma(m: re.Match, versies: frozenset[str]) -> str:
     geheel, decimalen = m.group("geheel"), m.group("decimalen")
     ervoor = m.string[max(0, m.start() - _VENSTER) : m.start()]
-    if not _decimaal(geheel, decimalen) or _NA_VERWIJZING.search(ervoor) or _NA_CODEWOORD.search(ervoor):
+    if not _decimaal(geheel, decimalen) or m.group(0) in versies:
+        return m.group(0)
+    if _NA_VERWIJZING.search(ervoor) or _NA_CODEWOORD.search(ervoor):
         return m.group(0)
     return f"{geheel},{decimalen}"
 
 
-def _in_tekst(tekst: str, codes: frozenset[str]) -> str:
+def _in_tekst(tekst: str, codes: frozenset[str], versies: frozenset[str]) -> str:
     """De notatie in een stuk lopende tekst, buiten code, links en HTML."""
 
     def omzetten(stuk: str) -> str:
         # Eerst de komma: 1234.5 wordt 1234,5 en daarna 1.234,5.
-        return _GETAL.sub(lambda m: _hoeveelheid(m, codes), _DECIMALE_PUNT.sub(_decimale_komma, stuk))
+        komma = _DECIMALE_PUNT.sub(lambda m: _decimale_komma(m, versies), stuk)
+        return _GETAL.sub(lambda m: _hoeveelheid(m, codes), komma)
 
     stukken, vorige = [], 0
     for m in BESCHERMD.finditer(tekst):
@@ -136,8 +153,9 @@ def _codekolommen(kop: str) -> set[int]:
     return {i for i, cel in enumerate(kop.split("|")) if _CODEKOP.search(cel)}
 
 
-def _tabelrij(regel: str, codekolommen: set[int], codes: frozenset[str]) -> str:
-    return "|".join(cel if i in codekolommen else _in_tekst(cel, codes) for i, cel in enumerate(regel.split("|")))
+def _tabelrij(regel: str, codekolommen: set[int], codes: frozenset[str], versies: frozenset[str]) -> str:
+    cellen = regel.split("|")
+    return "|".join(cel if i in codekolommen else _in_tekst(cel, codes, versies) for i, cel in enumerate(cellen))
 
 
 def _ongepunt(eerder: Iterable[str]) -> set[str]:
@@ -161,11 +179,17 @@ def _codes(stappen: Iterable[tuple[str, str]], eerder: Iterable[str]) -> frozens
     return frozenset(codes - gemeten)
 
 
-def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iterable[str] = ()) -> str:
+def nl_notatie(
+    tekst: str,
+    stappen: Iterable[tuple[str, str]] = (),
+    eerder: Iterable[str] = (),
+    versies: frozenset[str] = frozenset(),
+) -> str:
     """`tekst` met elk geheel getal van vier of meer cijfers, geen jaar of code, als 3.303, en decimalen als 6,4.
 
     `stappen`: (tool, resultaat) van de beurt; een getal dat daar alleen als code staat, blijft staan.
-    `eerder`: de eerdere antwoorden; een getal dat daar zonder punt staat, blijft ook staan."""
+    `eerder`: de eerdere antwoorden; een getal dat daar zonder punt staat, blijft ook staan.
+    `versies`: de versienummers uit de bronregels van de beurt (`versienummers`); die houden hun punt."""
     codes = _codes(stappen, eerder)
     regels = tekst.split("\n")
     uit: list[str] = []
@@ -178,7 +202,10 @@ def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iter
             codekolommen = None
         elif i + 1 < len(regels) and tabelscheiding(regels[i + 1]):
             codekolommen = _codekolommen(regel)
-        uit.append(_tabelrij(regel, codekolommen, codes) if codekolommen is not None else _in_tekst(regel, codes))
+        if codekolommen is not None:
+            uit.append(_tabelrij(regel, codekolommen, codes, versies))
+        else:
+            uit.append(_in_tekst(regel, codes, versies))
     return "\n".join(uit)
 
 
