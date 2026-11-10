@@ -45,7 +45,7 @@ router = APIRouter(tags=["chat"])
 
 # Per gebruiker, niet per IP: achter de ingress delen alle bezoekers één adres (zie routes/feedback.py).
 # Zonder login heet iedereen "gast": dan per verbinding, zodat een zaal vol gasten elkaar niet blokkeert.
-_berichtlimiter = RateLimiter(max_attempts=CHAT_RATE_LIMIT, window_seconds=CHAT_RATE_WINDOW_S)
+_berichtlimiter = RateLimiter(max_attempts=CHAT_RATE_LIMIT, window_seconds=CHAT_RATE_WINDOW_S, naam="bericht")
 _LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} seconden opnieuw."
 
 # Wat er tegelijk mag (#688): open verbindingen per gebruiker en in totaal, en runs die het model aanroepen.
@@ -407,9 +407,9 @@ def _limietsleutel(session: dict) -> str:
 async def _binnen_limiet(session: dict, emit) -> bool:
     """Telt een verzoek dat het model kost mee; boven de limiet een melding met de wachttijd (#444, S5)."""
     sleutel = _limietsleutel(session)
-    if _berichtlimiter.is_allowed(sleutel):
+    wacht = await asyncio.to_thread(_berichtlimiter.probeer, sleutel)
+    if wacht is None:
         return True
-    wacht = _berichtlimiter.retry_after(sleutel) or CHAT_RATE_WINDOW_S
     # Geen gebruikersnaam in het log; de verbinding is aan de regels van die verbinding te koppelen.
     logger.warning("BERICHTLIMIET bereikt  limiet=%d/%ds  wacht=%ds", CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S, wacht)
     await emit({"type": "error", "message": _LIMIET_MELDING.format(wacht=wacht), "modelafhankelijk": False})

@@ -21,11 +21,11 @@ router = APIRouter(tags=["feedback"])
 # Per gebruiker per rapport, niet per IP: zonder login heet iedereen "gast" en
 # achter de ingress delen alle bezoekers één IP. Zo kan een zaal vol gasten
 # tegelijk feedback geven, maar niet één rapport blijven bestoken.
-_limiter = RateLimiter(max_attempts=3, window_seconds=600)
+_limiter = RateLimiter(max_attempts=3, window_seconds=600, naam="feedback")
 
 # Algemene feedback per gebruiker, ruimer dan per rapport: in een gedeeld account (iedereen "gast") delen
 # alle bezoekers deze grens, dus een zaal vol testers moet er samen een paar kwijt kunnen.
-_algemeen_limiter = RateLimiter(max_attempts=10, window_seconds=600)
+_algemeen_limiter = RateLimiter(max_attempts=10, window_seconds=600, naam="feedback_algemeen")
 
 _Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
 
@@ -78,8 +78,7 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
     if not persistence_db.workbook_belongs_to(username, body.workbook_id):
         raise HTTPException(status_code=404, detail=f"{_object(body.report_type).capitalize()} niet gevonden")
     key = f"{username}|{body.workbook_id}"
-    if not _limiter.is_allowed(key):
-        retry = _limiter.retry_after(key)
+    if (retry := _limiter.probeer(key)) is not None:
         raise HTTPException(
             status_code=429,
             detail=(
@@ -102,8 +101,7 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
 @router.post("/api/feedback/algemeen", dependencies=[Depends(_require_enabled)])
 def post_algemene_feedback(body: AlgemeneFeedbackIn, username: str = Depends(get_current_user)) -> dict:
     """Een idee, probleem of compliment los van een antwoord of rapport (#600)."""
-    if not _algemeen_limiter.is_allowed(username):
-        retry = _algemeen_limiter.retry_after(username)
+    if (retry := _algemeen_limiter.probeer(username)) is not None:
         raise HTTPException(
             status_code=429,
             detail=f"Je hebt net al een paar keer feedback gegeven. Probeer het over {retry} seconden opnieuw.",

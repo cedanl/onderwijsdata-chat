@@ -41,7 +41,9 @@ replica. Wat dat betekent:
   gestart is en de startupProbe haalt; op test duurde dat op 29-10 8 minuten (harde 503). Bij RollingUpdate
   (productie, als het quotum een tweede pod toelaat) blijft de app bereikbaar, maar open chats verliezen hun lopende
   antwoord en verbinden opnieuw.
-- **Limieten tellen per proces.** Na een herstart begint iedereen weer op nul (login- en berichtlimiet).
+- **De tellers van de gelijktijdigheid tellen per proces** (open verbindingen, lopende runs, sandboxplaatsen). Na een
+  herstart beginnen ze op nul. De tijdslimieten (login, berichten, feedback, `/mcp`) staan sinds #984 in Postgres
+  (`rate_limit_hits`) en overleven een herstart; is de database even weg, dan tellen ze tijdelijk per pod.
 - **Een node-drain of OOM is een storing voor iedereen**, tot Kubernetes de pod elders opnieuw heeft gestart.
 
 Opschalen naar twee pods is de vervolgepic #984.

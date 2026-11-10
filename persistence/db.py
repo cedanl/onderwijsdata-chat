@@ -494,6 +494,19 @@ _REVOKED_USERS_TABLE = """
 """
 
 
+# Tellers van de limieten (core/rate_limit.py), gedeeld door alle pods (#984). Eén rij per meegetelde poging; `verloopt`
+# (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als sha256: de
+# gebruikersnaam of het adres uit de limiet staat zo nergens leesbaar, en "verwijder al mijn gegevens" hoeft er niets mee.
+_RATE_LIMIT_TABLE = """
+    CREATE TABLE IF NOT EXISTS rate_limit_hits (
+        bucket   TEXT   NOT NULL,
+        sleutel  TEXT   NOT NULL,
+        verloopt BIGINT NOT NULL
+    )
+"""
+_RATE_LIMIT_INDEX = "CREATE INDEX IF NOT EXISTS idx_rate_limit ON rate_limit_hits(bucket, sleutel, verloopt)"
+
+
 _CONVERSATIONS_TABLE = """
     CREATE TABLE IF NOT EXISTS conversations (
         id        TEXT    NOT NULL,
@@ -540,6 +553,8 @@ _SCHEMA = (
     _REVOKED_TOKENS_TABLE,
     _REVOKED_TOKENS_INDEX,
     _REVOKED_USERS_TABLE,
+    _RATE_LIMIT_TABLE,
+    _RATE_LIMIT_INDEX,
     _SCHEMA_MIGRATIONS_TABLE,
 )
 
@@ -566,6 +581,7 @@ def purge_expired_revocations(conn: Any) -> None:
     nu = int(time.time())
     _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
     _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
+    _execute(conn, "DELETE FROM rate_limit_hits WHERE verloopt <= ?", (nu * 1000,))
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
@@ -607,6 +623,54 @@ def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
             (token_hash, user_hash, start),
         ).fetchone()
     return row is not None
+
+
+def deelt_staat() -> bool:
+    """Waar de database de staat van meerdere pods deelt: Postgres. SQLite is één proces, daar telt het geheugen (#984)."""
+    return _USE_POSTGRES
+
+
+def rate_limit_poging(bucket: str, sleutel: str, max_aantal: int, venster_ms: int, *, tel: bool = True) -> int | None:
+    """Telt een poging mee als er ruimte is en geeft dan None; anders na hoeveel ms er weer ruimte is (#984).
+
+    `sleutel` is al gehasht (core/rate_limit.py). Met `tel=False` kijkt het alleen. Het opruimen van verlopen pogingen,
+    tellen en bijschrijven gaat in één transactie. Op Postgres houdt een advisory lock per bucket+sleutel twee pods die
+    tegelijk dezelfde sleutel tellen uit elkaar; op SQLite neemt de DELETE de schrijfvergrendeling.
+    """
+    nu = int(time.time() * 1000)
+    with _connection() as conn:
+        if _USE_POSTGRES:
+            _execute(conn, "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", (f"{bucket}:{sleutel}",)).fetchone()
+        _execute(
+            conn,
+            "DELETE FROM rate_limit_hits WHERE bucket = ? AND sleutel = ? AND verloopt <= ?",
+            (bucket, sleutel, nu),
+        )
+        rij = _execute(
+            conn,
+            "SELECT COUNT(*) AS n, MIN(verloopt) AS eerste FROM rate_limit_hits WHERE bucket = ? AND sleutel = ?",
+            (bucket, sleutel),
+        ).fetchone()
+        if rij["n"] >= max_aantal:
+            conn.commit()
+            return max(1, rij["eerste"] - nu)
+        if tel:
+            _execute(
+                conn,
+                "INSERT INTO rate_limit_hits (bucket, sleutel, verloopt) VALUES (?, ?, ?)",
+                (bucket, sleutel, nu + venster_ms),
+            )
+        conn.commit()
+    return None
+
+
+def rate_limit_opruimen(bucket: str) -> None:
+    """Alle verlopen pogingen van deze bucket weg, ook van sleutels die niet meer terugkomen (#984)."""
+    with _connection() as conn:
+        _execute(
+            conn, "DELETE FROM rate_limit_hits WHERE bucket = ? AND verloopt <= ?", (bucket, int(time.time() * 1000))
+        )
+        conn.commit()
 
 
 def list_conversations(
