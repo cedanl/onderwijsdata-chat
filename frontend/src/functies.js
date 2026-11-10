@@ -1,4 +1,4 @@
-import { VASTE_BRONNEN, bronnamen } from './bronnenLijst'
+import { VASTE_BRONNEN, bronnamen, onderwijsdata } from './bronnenLijst'
 
 // De functies om uit te kiezen in de instellingen (#591). De gekozen functie gaat ook als context mee naar
 // de server (chatSettings in ChatPage). "Anders" is een keuze, geen functienaam: die komt niet in een zin.
@@ -17,9 +17,10 @@ export const isFunctie = functie => FUNCTIES.includes(functie)
 const inZin = functie => (functie.startsWith('IR-') ? functie : functie.toLowerCase())
 
 // De tweede regel van het welkomstscherm. Een functietitel staat midden in de zin met een kleine letter; een
-// onbekende waarde (een oudere opgeslagen instelling) of "Anders" geeft de zin zonder functie, met de bronnen.
+// onbekende waarde (een oudere opgeslagen instelling) of "Anders" geeft de zin zonder functie, met de bronnen. Met een
+// gelicentieerde bron in de lijst zegt de zin niet "open" (#1010).
 export function welkomstSub(functie, bronnen = VASTE_BRONNEN) {
   if (!ROLLEN.has(functie)) return zonderRol(bronnen)
   return `Als ${inZin(functie)} krijg je onderbouwde antwoorden over instroom, voortgang, arbeidsmarkt en ` +
-    'diplomering — direct uit open onderwijsdata.'
+    `diplomering — direct uit ${onderwijsdata(bronnen)}.`
 }

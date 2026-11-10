@@ -6,7 +6,9 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { bronnenLijst, bronnamen, opsomming, zetBronnenLijst, useBronnenLijst } from '../bronnenLijst'
+import {
+  aantalBronnen, bronnenLijst, bronnamen, heeftGelicentieerd, onderwijsdata, opsomming, zetBronnenLijst, useBronnenLijst,
+} from '../bronnenLijst'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -56,6 +58,29 @@ describe('bronnenLijst (#1006)', () => {
     expect(lijst.filter(b => b.opvraag === false).map(b => b.naam)).toEqual(['wetten.nl (collegegeld)'])
     expect(lijst.filter(b => b.gelicentieerd).map(b => b.naam)).toEqual(['de Studiekeuzedatabase (LCSK)'])
   })
+})
+
+// #1010: de teksten die "open" zeggen en de bronnenteller op de homepage volgen dezelfde lijst.
+describe('helpers voor open data en de teller (#1010)', () => {
+  it.each([
+    [{}, 6],
+    [{ studiekeuze: true }, 7],
+    [{ wo_personeel: true }, 7],
+    [{ studiekeuze: true, wo_personeel: true }, 8],
+  ])('telt bij %j %i bronnen die de app bevraagt, zonder wetten.nl', (bronnen, aantal) => {
+    expect(aantalBronnen(bronnenLijst(bronnen))).toBe(aantal)
+  })
+
+  it.each([[{}], [{ wo_personeel: true }], [{ studiekeuze: false }]])('noemt bij %j alles open onderwijsdata', bronnen => {
+    expect(heeftGelicentieerd(bronnenLijst(bronnen))).toBe(false)
+    expect(onderwijsdata(bronnenLijst(bronnen))).toBe('open onderwijsdata')
+  })
+
+  it.each([[{ studiekeuze: true }], [{ studiekeuze: true, wo_personeel: true }]])(
+    'zegt bij %j niet "open": de Studiekeuzedatabase is gelicentieerd', bronnen => {
+      expect(heeftGelicentieerd(bronnenLijst(bronnen))).toBe(true)
+      expect(onderwijsdata(bronnenLijst(bronnen))).toBe('onderwijsdata')
+    })
 })
 
 describe('de lijst staat één keer in de bron', () => {

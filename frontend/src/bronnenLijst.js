@@ -37,6 +37,16 @@ export const opsomming = namen => (namen.length < 2 ? (namen[0] ?? '') : `${name
 
 export const bronnamen = lijst => opsomming(lijst.map(b => b.naam))
 
+// Staat er een gelicentieerde bron in de lijst, dan is niet alle data open (#1010): de teksten die "open" zeggen,
+// volgen deze vlag.
+export const heeftGelicentieerd = lijst => lijst.some(b => b.gelicentieerd === true)
+
+// "open onderwijsdata", of zonder "open" als er een gelicentieerde bron bij staat (#1010).
+export const onderwijsdata = lijst => (heeftGelicentieerd(lijst) ? 'onderwijsdata' : 'open onderwijsdata')
+
+// Het aantal bronnen dat de app bevraagt, voor de teller op de homepage (#1010); wetten.nl telt niet mee.
+export const aantalBronnen = lijst => lijst.filter(b => b.opvraag !== false).length
+
 // Tot /api/config antwoordt, alleen de vaste bronnen. App zet de lijst uit dat antwoord, zodat ook /privacy vóór het
 // inloggen en de popup haar zonder props lezen (zoals termijnen.js).
 export const VASTE_BRONNEN = bronnenLijst({})

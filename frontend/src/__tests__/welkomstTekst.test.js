@@ -75,6 +75,18 @@ describe('welkomstSub (#591)', () => {
   it('noemt de bronnen niet "open data" als de Studiekeuzedatabase erbij staat (#1006)', () => {
     expect(welkomstSub('', bronnenLijst({ studiekeuze: true }))).not.toMatch(/open data/)
   })
+
+  // #1010: ook de zin met een functie zei "direct uit open onderwijsdata", met de gelicentieerde Studiekeuzedatabase aan.
+  it.each(ROLLEN)('zegt bij %s met de Studiekeuzedatabase aan niet "open"', rol => {
+    const zin = welkomstSub(rol, bronnenLijst({ studiekeuze: true }))
+    expect(zin).not.toMatch(/open onderwijsdata|open data/)
+    expect(zin).toMatch(/— direct uit onderwijsdata\.$/)
+  })
+
+  it.each(ROLLEN)('houdt bij %s zonder gelicentieerde bron "open onderwijsdata"', rol => {
+    expect(welkomstSub(rol, bronnenLijst({}))).toBe(welkomstSub(rol))
+    expect(welkomstSub(rol, bronnenLijst({ wo_personeel: true }))).toMatch(/— direct uit open onderwijsdata\.$/)
+  })
 })
 
 let root

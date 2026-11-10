@@ -47,7 +47,7 @@ import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../
 import { SEARCH_LIMIT, useConversationSearch } from '../hooks/useConversationSearch'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
-import { useBronnenLijst } from '../bronnenLijst'
+import { onderwijsdata, useBronnenLijst } from '../bronnenLijst'
 import { neemVoorgevuldeVraag, useVraagUitLink } from '../voorgevuldeVraag'
 import { Message } from '../components/Message'
 import { useBewaak, useLopendeRun } from '../runBewaking'
@@ -96,6 +96,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
   const [showSources, setShowSources] = useState(false)
+  const bronnenLijst = useBronnenLijst()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   useEscape(sidebarOpen, () => setSidebarOpen(false))
   // Below the breakpoint the sidebar is a drawer: closed, it is out of reach (inert), and the
@@ -934,7 +935,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
               refusal={refusal}
               clearRefusal={clearRefusal}
             />
-            {!narrowScreen && <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <PrivacyLink className="disclaimer-link" />{feedbackEnabled && <> · <FeedbackLink className="disclaimer-link" /></>}</p>}
+            {!narrowScreen && <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>{onderwijsdata(bronnenLijst)}</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <PrivacyLink className="disclaimer-link" />{feedbackEnabled && <> · <FeedbackLink className="disclaimer-link" /></>}</p>}
           </div>
         </div>
       </div>
