@@ -64,7 +64,8 @@ def _gesprek(
 
 def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: float) -> None:
     """Bewijsrijen van een gesprek (ADR-009), met de tijd van hun antwoord `dagen_geleden`."""
-    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": _iso(dagen_geleden)}
+    bronnen = {"k": [{"bron": "duo", "dataset": "p01hoinges", "regel": f"DUO · {user}-{conv}"}]}  # #987
+    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "bronnen": bronnen, "created_at": _iso(dagen_geleden)}
     db.save_beurtbewijs(user, conv, dict.fromkeys(hashes, rij))
 
 
@@ -176,6 +177,8 @@ def test_bewijsrijen_gaan_met_hun_verlopen_gesprek_mee_ook_als_ze_jonger_zijn(pa
 
     assert _ids(pad, "SELECT username, tekst_hash FROM beurtbewijs") == {("anna", "h3"), ("bert", "h4")}
     assert aantallen["beurtbewijs"] == 2
+    # De bronregels staan in de rij zelf (#987): die van het verlopen gesprek zijn mee weg.
+    assert not any("anna-oud" in bronnen for bronnen in _ids(pad, "SELECT bronnen FROM beurtbewijs"))
 
 
 def test_wees_bewijsrijen_gaan_pas_na_de_termijn(pad):

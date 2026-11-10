@@ -11,17 +11,19 @@ from tools import fouten, herlaad, store
 from tools.schemas import TOOL_COMPUTE_KPI, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
 from . import recepten
+from .bronvermelding import vastgelegde_bronnen
 
 # Rekentools waarvan de uitkomst in de chat al uit de data kwam: bewijs voor het rapport (#397).
 # query_data alleen met aggregatie: een rijenselectie staat al in de datasetcontext.
 _REKENTOOLS = frozenset({TOOL_COMPUTE_KPI, TOOL_RUN_ANALYSIS})
 _MAX_REKENBEWIJS = 30
 
-# Wat lineage en rekenbewijs sinds de vorige afgeronde beurt kregen: de inhoud van haar rij in `beurtbewijs`
-# (agent/beurtbewijs.py). Een gestopte, afgebroken of mislukte beurt en een verduidelijkingskaart maken geen rij, dus
-# wat zij opleverden blijft hier staan tot de volgende afgeronde beurt.
+# Wat lineage, rekenbewijs en bronregels sinds de vorige afgeronde beurt kregen: de inhoud van haar rij in
+# `beurtbewijs` (agent/beurtbewijs.py). Een gestopte, afgebroken of mislukte beurt en een verduidelijkingskaart maken
+# geen rij, dus wat zij opleverden blijft hier staan tot de volgende afgeronde beurt.
 _NIEUWE_LINEAGE = "_nieuwe_lineage"
 _NIEUW_REKENBEWIJS = "_nieuw_rekenbewijs"
+_NIEUWE_BRONNEN = "_nieuwe_bronnen"
 
 
 def _rekent(call: dict) -> bool:
@@ -49,6 +51,7 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
         # Bij welke vraag van de gebruiker de key ontstond, zodat het rapport een latere bijsturing ziet (#733).
         if nummer := len(gebruikersvragen(session)):
             session.setdefault("data_vraag", {}).setdefault(key, nummer)
+        _leg_bronnen_vast(session, key)
         if call is not None:
             # Keys are deterministic per selection: the first producer is the real one.
             provenance = session.setdefault("data_provenance", {})
@@ -61,6 +64,17 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
             # Buiten het geheugen bewaard bij het opslaan van het gesprek: zo overleeft de key een herstart (#472).
             if session.get("username") and (recept := herlaad.recept(key, call)) is not None:
                 recepten.onthoud(session["username"], key, recept)
+
+
+def _leg_bronnen_vast(session: dict, key: str) -> None:
+    """De bronregels van de tabellen achter een nieuwe key, zoals nu geladen: een vervolgantwoord dat de data noemt,
+    krijgt ze ook als de store haar kwijt is, of na heropenen in een nieuw proces (#987). De eerste vastlegging wint,
+    zoals de eerste maker in `data_provenance`; ook zonder aanroep en zonder gebruikersnaam (geen rij, wel live)."""
+    vastgelegd = session.setdefault("data_bronnen", {})
+    if key in vastgelegd or not (bronnen := vastgelegde_bronnen(key)):
+        return
+    vastgelegd[key] = bronnen
+    session.setdefault(_NIEUWE_BRONNEN, {})[key] = bronnen
 
 
 def is_vraag(bericht: dict) -> bool:
@@ -196,11 +210,13 @@ def begrens_rekenbewijs(items: list[dict]) -> list[dict]:
     return items[-_MAX_REKENBEWIJS:]
 
 
-def neem_beurtbewijs(session: dict) -> tuple[dict[str, dict], list[dict]]:
-    """Lineage en rekenbewijs die bijkwamen sinds de vorige afgeronde beurt; daarna begint de telling opnieuw."""
+def neem_beurtbewijs(session: dict) -> tuple[dict[str, dict], list[dict], dict[str, list[dict]]]:
+    """Lineage, rekenbewijs en bronregels per key die bijkwamen sinds de vorige afgeronde beurt; daarna begint de
+    telling opnieuw."""
     lineage = session.pop(_NIEUWE_LINEAGE, None) or {}
     rekenbewijs = session.pop(_NIEUW_REKENBEWIJS, None) or []
-    return lineage, rekenbewijs
+    bronnen = session.pop(_NIEUWE_BRONNEN, None) or {}
+    return lineage, rekenbewijs, bronnen
 
 
 def rekenbewijs(session: dict) -> list[dict]:

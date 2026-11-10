@@ -9,7 +9,8 @@ Elke regel linkt naar de bronpagina van zijn dataset (#621), met de documentatie
 catalogus: dezelfde link als onder een rapportgrafiek (agent/figuurbron.py, #569).
 
 Een vervolgantwoord zonder toolaanroep heeft geen stappen; noemt het data van de vorige databeurt, dan komen de
-bronregels van die data uit de store (`vervolgbronnen`, #975).
+bronregels van die data uit wat de sessie bij het laden vastlegde (`vastgelegde_bronnen`), ook na heropenen in een nieuw
+proces (#987), en anders uit de store (`vervolgbronnen`, #975).
 """
 
 import json
@@ -232,10 +233,10 @@ _LEVERANCIERS = {
 }
 
 
-def _namen(known: KeyMeta) -> list[str]:
+def _namen(bron: str, dataset: str) -> list[str]:
     """Waaraan een antwoord een geladen dataset herkent: bronlabel, dataset-ID, catalogustitel en leverancier."""
-    namen = [known.bron, str(known.dataset).rsplit(":", 1)[-1], *_LEVERANCIERS.get(known.bron, ())]
-    if (titel := bron_titel(str(known.dataset))) != known.dataset:
+    namen = [bron, dataset.rsplit(":", 1)[-1], *_LEVERANCIERS.get(bron, ())]
+    if (titel := bron_titel(dataset)) != dataset:
         namen.append(titel)
     return namen
 
@@ -250,22 +251,43 @@ def koppeling(key: str) -> list[KeyMeta]:
     return [known for _, known in store.bronnen(key)]
 
 
-def _genoemd(tekst: str, key: str, groep: list[KeyMeta]) -> bool:
-    """Noemt het antwoord de key of een van de tabellen waar hij uit bestaat?"""
-    metas = [known for known in (store.meta(key), *groep) if known]
-    return any(_noemt(tekst, naam) for known in metas for naam in _namen(known))
+def vastgelegde_bronnen(key: str) -> list[dict[str, str]]:
+    """De geladen tabellen achter `key` (`koppeling`) als bronregels om te bewaren: per tabel haar bronlabel, dataset
+    en de afgemaakte regel, met versie of peilmoment (de verplichte zin van LCSK) en "opgehaald op" (#987).
+
+    Alleen labels en de tekst die al onder een antwoord staat: geen rijen, geen tekst van de gebruiker. De link volgt
+    bij het lezen uit de dataset (`documentatie_url`). Leeg als de store de key niet kent."""
+    return [_vastlegging(known) for known in koppeling(key)]
 
 
-def _eerdere_bronregels(tekst: str, keys: list[str]) -> dict[str, str | None]:
+def _vastlegging(known: KeyMeta) -> dict[str, str]:
+    regel, dataset = _metabron(known)
+    return {"bron": known.bron, "dataset": str(dataset), "regel": regel}
+
+
+def _groep(key: str, vastgelegd: dict[str, list[dict]]) -> list[dict]:
+    """De bronregels achter `key`: wat de sessie vastlegde, en zonder vastlegging (een rij van vóór #987) de store."""
+    return vastgelegd.get(key) or vastgelegde_bronnen(key)
+
+
+def _genoemd(tekst: str, groep: list[dict]) -> bool:
+    """Noemt het antwoord een van de tabellen waar de key uit bestaat? Een afgeleide key draagt bron en dataset van
+    de tabel waar hij van afstamt, dus de tabellen noemen ook hem."""
+    return any(_noemt(tekst, naam) for bron in groep for naam in _namen(bron["bron"], bron["dataset"]))
+
+
+def _eerdere_bronregels(tekst: str, keys: list[str], vastgelegd: dict[str, list[dict]]) -> dict[str, str | None]:
     regels: dict[str, str | None] = {}
     for key in keys:
-        if _genoemd(tekst, key, groep := koppeling(key)):
-            for known in groep:
-                regels.setdefault(*_metabron(known))
+        if _genoemd(tekst, groep := _groep(key, vastgelegd)):
+            for bron in groep:
+                regels.setdefault(bron["regel"], bron["dataset"])
     return regels
 
 
-def vervolgbronnen(tekst: str, keys: list[str]) -> tuple[list[str], dict[str, str]]:
+def vervolgbronnen(
+    tekst: str, keys: list[str], vastgelegd: dict[str, list[dict]] | None = None
+) -> tuple[list[str], dict[str, str]]:
     """De bronregels en hun links voor een antwoord zonder eigen datastap: van de eerder geladen datasets die het noemt.
 
     Review 08-C2: na een koppeling van de Studiekeuzedatabase aan DUO vroeg de gebruiker welke sleutels de koppeling
@@ -275,10 +297,14 @@ def vervolgbronnen(tekst: str, keys: list[str]) -> tuple[list[str], dict[str, st
     catalogustitel, leverancier of een term die alleen die bron heeft ("NSE", "numerus fixus"). Dat vraagt de prompt bij
     elke claim met data. Een losse vraag die geen bron noemt, krijgt geen bronregel. Een koppeling telt als geheel (#986):
     noemt het antwoord een van haar tabellen, dan krijgt het de regels van alle, want "NSE-oordeel, BRIN en DUO" rust ook
-    op de Studiekeuzedatabase. De regel komt uit de meta in de store, ook van een tabel die de store intussen kwijt is,
-    dus met de versie en de verplichte zin van LCSK (studiekeuze._bewaar).
+    op de Studiekeuzedatabase.
+
+    De regels komen uit `vastgelegd` (key -> `vastgelegde_bronnen`, session["data_bronnen"]): bij het laden vastgelegd
+    en bij heropenen uit de rij van het antwoord terug, dus ook als de store de data kwijt is, na een herstart, de
+    bovengrens of de actualiteitstermijn (#987). Zonder vastlegging komen ze uit de meta in de store, ook van een tabel
+    die de store intussen kwijt is, dus met de versie en de verplichte zin van LCSK (studiekeuze._bewaar).
     """
-    regels = _eerdere_bronregels(tekst, keys)
+    regels = _eerdere_bronregels(tekst, keys, vastgelegd or {})
     links = {regel: url for regel, dataset in regels.items() if dataset and (url := documentatie_url(dataset))}
     return list(regels), links
 

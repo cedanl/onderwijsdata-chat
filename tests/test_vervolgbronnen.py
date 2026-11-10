@@ -22,10 +22,13 @@ import pytest
 from onderwijsbronnen import skdb
 from onderwijsbronnen.skdb import proefbestand
 
+from agent import beurtbewijs
 from agent.bronvermelding import vervolgbronnen
 from agent.session_data import vorige_databeurt
 from agent.stream import StreamResult
 from data import instellingen
+from routes import chat
+from routes import persistence as put_route
 from tools import mbo_indicatoren, store, studiekeuze, wo_personeel
 from tools.buiten_de_bron import ALLEEN_AANBIEDEN
 from tools.schemas import TOOL_GET_DUO_DATA, TOOL_GET_STUDIEKEUZE, TOOL_RUN_ANALYSIS
@@ -381,3 +384,119 @@ def test_de_zin_zegt_aanbieden_en_pas_na_instemming_ophalen():
 def test_de_systeemprompt_maakt_de_uitzondering_op_eigen_suggesties():
     regel = next(r for r in SYSTEM.splitlines() if "niet in haar bron" in r)
     assert "geen vervangende cijfers" in regel and "pas op als de gebruiker" in regel
+
+
+# --- #987: na heropenen komt de bronregel uit de rij, niet uit de store -------------------------------------------------
+
+
+@pytest.fixture
+def db(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    beurtbewijs.wis()
+    yield db
+    beurtbewijs.wis()
+
+
+async def _niets(event: dict) -> None:
+    return None
+
+
+def _chatbeurt(monkeypatch, session: dict, vraag: str, stappen: list[StreamResult]) -> dict:
+    """Eén beurt door de chatroute (`_process_message`): die zet de rij van het antwoord klaar (beurtbewijs.zet_klaar).
+    Geeft het message_end-event."""
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    async def fake_completion(*args, **kwargs):
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return stappen.pop(0)
+
+    with monkeypatch.context() as m:
+        m.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+        m.setattr(loop_module, "accumulate_stream", fake_accumulate)
+        m.setattr(loop_module, "dispatch", _dispatch)
+        asyncio.run(chat._process_message(vraag, session, emit, "openai/gpt-4o"))
+    return next(e for e in reversed(events) if e["type"] == "message_end")
+
+
+def _bewaard_koppelgesprek(monkeypatch) -> list[dict]:
+    """Een databeurt met een koppeling van de Studiekeuzedatabase aan DUO, door de chatroute, en het gesprek opgeslagen
+    zoals de client het PUT. Geeft het gesprek zoals de client het als `history`-frame terugstuurt."""
+    session = chat._new_session(username="alice")
+    skdb_key = json.loads(studiekeuze.get_studiekeuze(**json.loads(_HU_ICT)))["data_key"]
+    koppeling = pd.DataFrame({"brin": ["25DW"], "croho": [30020], "STUDIEJAAR": [2023], "AANTAL": [120]})
+    store.derive(_DUO_KEY, _KOPPEL_KEY, koppeling, gelezen=(_DUO_KEY, skdb_key), stap="koppeling op BRIN")
+    vraag = "Koppel ICT bij de HU aan de DUO-inschrijvingen."
+    analyse = json.dumps({"code": "resultaat = koppeling"})
+    einde = _chatbeurt(
+        monkeypatch,
+        session,
+        vraag,
+        [
+            StreamResult(text="", tool_calls=[{"id": "a1", "name": TOOL_RUN_ANALYSIS, "arguments": analyse}]),
+            StreamResult(
+                text="ICT (CROHO 30020) bij de Hogeschool Utrecht, gekoppeld aan de inschrijvingen.", tool_calls=[]
+            ),
+        ],
+    )
+    berichten = [
+        {"id": 1, "role": "user", "content": vraag, "done": True},
+        {"id": 2, "role": "assistant", "content": einde["content"], "done": True},
+    ]
+    put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
+    return berichten
+
+
+def _heropend_koppelantwoord(monkeypatch, berichten: list[dict], antwoord: str, *, herstart: bool) -> dict:
+    """Heropen het gesprek in een nieuwe sessie (`_handle_history`: rijen_voor en _open_conversation) en stel de
+    vervolgvraag zonder toolaanroep. Bij `herstart` zijn de store en de klaarstaande rijen leeg: een nieuw proces."""
+    if herstart:
+        store.clear()
+        beurtbewijs.wis()
+    session = chat._new_session(username="alice")
+    asyncio.run(chat._handle_history({"messages": berichten, "conv_id": "c1"}, session, _niets, None))
+    return _chatbeurt(monkeypatch, session, _KOPPELVRAAG, [StreamResult(text=antwoord, tool_calls=[])])
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_na_heropenen_met_een_lege_store_houdt_het_vervolgantwoord_de_bronregels(db, monkeypatch):
+    """#987: na heropenen in een nieuw proces was `bronnen` leeg; de regels komen nu uit de rij van de databeurt."""
+    berichten = _bewaard_koppelgesprek(monkeypatch)
+
+    einde = _heropend_koppelantwoord(monkeypatch, berichten, _KOPPELSLEUTELS, herstart=True)
+
+    assert store.meta(_DUO_KEY) is None and store.meta(_KOPPEL_KEY) is None
+    regel = _lcsk_regel(einde["bronnen"])
+    assert f"versie {proefbestand.standaard()[1].versie}" in regel
+    assert skdb.DOCUMENTATIE in regel or skdb.DOCUMENTATIE in einde.get("bronlinks", {}).values()
+    assert any("p01hoinges" in regel for regel in einde["bronnen"])
+    assert len(einde["bronnen"]) == 2
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_na_heropenen_met_de_keys_nog_in_de_store_zijn_de_bronregels_gelijk(db, monkeypatch):
+    berichten = _bewaard_koppelgesprek(monkeypatch)
+    met_store = _heropend_koppelantwoord(monkeypatch, berichten, _KOPPELSLEUTELS, herstart=False)
+
+    zonder_store = _heropend_koppelantwoord(monkeypatch, berichten, _KOPPELSLEUTELS, herstart=True)
+
+    assert met_store["bronnen"] and met_store["bronnen"] == zonder_store["bronnen"]
+    assert met_store.get("bronlinks") == zonder_store.get("bronlinks")
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_na_heropenen_krijgt_een_vervolgantwoord_zonder_bron_geen_bronregel(db, monkeypatch):
+    berichten = _bewaard_koppelgesprek(monkeypatch)
+
+    einde = _heropend_koppelantwoord(monkeypatch, berichten, "Graag gedaan.", herstart=True)
+
+    assert einde["bronnen"] == []
+    assert "bronlinks" not in einde

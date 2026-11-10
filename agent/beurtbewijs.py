@@ -1,5 +1,5 @@
-"""Het bewijs per afgerond antwoord: lineage, rekenbewijs en kaarten, zodat een heropend gesprek hetzelfde rapport geeft
-als het levende (ADR-009, #875).
+"""Het bewijs per afgerond antwoord: lineage, rekenbewijs, kaarten en bronregels, zodat een heropend gesprek hetzelfde
+rapport en dezelfde bronvermelding geeft als het levende (ADR-009, #875, #987).
 
 De client blijft de bron van de gesprekstekst: zij PUT het gesprek en stuurt het als `history`-frame terug. De server
 bewaart per afgerond antwoord wat zij zelf vastlegde, gesleuteld op de sha256 van de tekst die `message_end` als
@@ -13,8 +13,12 @@ heropenen en herverbinden leest `rijen_voor` de rijen van het gesprek plus de kl
 verse sessie. Opzoeken gaat altijd per gebruiker.
 
 Een beurt is wat `_process_message` aan `turns` toevoegt. Een gestopt, afgebroken of mislukt antwoord en een
-verduidelijkingskaart krijgen geen rij; wat die aan lineage of rekenbewijs opleverden, gaat mee in de rij van de volgende
-afgeronde beurt (`session_data.neem_beurtbewijs`).
+verduidelijkingskaart krijgen geen rij; wat die aan lineage, rekenbewijs of bronregels opleverden, gaat mee in de rij van
+de volgende afgeronde beurt (`session_data.neem_beurtbewijs`).
+
+De bronregels (`bronnen`, #987) zijn per key de regels van de geladen tabellen erachter, zoals ze bij het laden waren
+(`bronvermelding.vastgelegde_bronnen`): een vervolgantwoord zonder toolaanroep na heropenen krijgt ze ook als de store
+de data niet meer heeft. Een rij van vóór #987 heeft er geen; dan blijft de store de terugval.
 """
 
 import hashlib
@@ -53,11 +57,12 @@ def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
     username = session.get("username")
     if not username:
         return
-    lineage, rekenbewijs = neem_beurtbewijs(session)
+    lineage, rekenbewijs, bronnen = neem_beurtbewijs(session)
     rij = {
         "lineage": lineage,
         "rekenbewijs": rekenbewijs,
         "kaarten": kaarten_van_beurt(turn),
+        "bronnen": bronnen,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     sleutel = (username, tekst_hash(tekst))
@@ -66,27 +71,34 @@ def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
     while len(_klaar) > _MAX_KLAAR:
         _klaar.popitem(last=False)
     logger.info(
-        "BEURTBEWIJS klaar  lineage=%d  rekenbewijs=%d  kaarten=%d",
+        "BEURTBEWIJS klaar  lineage=%d  rekenbewijs=%d  kaarten=%d  bronnen=%d",
         len(rij["lineage"]),
         len(rij["rekenbewijs"]),
         len(rij["kaarten"]),
+        len(rij["bronnen"]),
     )
 
 
 def voeg_samen(oud: dict, nieuw: dict) -> dict:
     """Twee rijen met dezelfde tekst als één, en zo vaak als je wilt: opnieuw samenvoegen verandert niets.
 
-    Voor de lineage wint de eerste maker, zoals in `data_provenance`; een kaart die later kwam vervangt de oudere
-    van dezelfde key, zoals in het levende gesprek; het rekenbewijs krijgt de items die er nog niet in staan, tot de
-    grens van de sessie; het antwoord behoudt zijn eerste tijd.
+    Voor de lineage en de bronregels wint de eerste maker, zoals in `data_provenance`; een kaart die later kwam
+    vervangt de oudere van dezelfde key, zoals in het levende gesprek; het rekenbewijs krijgt de items die er nog niet
+    in staan, tot de grens van de sessie; het antwoord behoudt zijn eerste tijd. Een rij zonder bronregels (van vóór
+    #987) telt als een rij met lege.
     """
     rekenbewijs = oud["rekenbewijs"] + [r for r in nieuw["rekenbewijs"] if r not in oud["rekenbewijs"]]
     return {
         "lineage": {**nieuw["lineage"], **oud["lineage"]},
         "rekenbewijs": begrens_rekenbewijs(rekenbewijs),
         "kaarten": {**oud["kaarten"], **nieuw["kaarten"]},
+        "bronnen": {**_bronnen(nieuw), **_bronnen(oud)},
         "created_at": oud["created_at"],
     }
+
+
+def _bronnen(rij: dict) -> dict[str, list[dict]]:
+    return rij.get("bronnen") or {}
 
 
 def antwoord_hashes(messages: object) -> list[str]:
@@ -141,10 +153,11 @@ def rijen_voor(username: str, conv_id: object, messages: object) -> dict[str, di
 def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
     """Vul een verse, net geopende sessie met het bewijs van haar antwoorden, in de volgorde van het gesprek.
 
-    `session["messages"]` is al de (ingekorte) modelgeschiedenis. Lineage, rekenbewijs en kaarten komen van elk
-    antwoord uit `rijen`, ook van beurten die buiten die geschiedenis vielen. Het vraagnummer per key (`data_vraag`,
+    `session["messages"]` is al de (ingekorte) modelgeschiedenis. Lineage, rekenbewijs, kaarten en bronregels komen van
+    elk antwoord uit `rijen`, ook van beurten die buiten die geschiedenis vielen. Het vraagnummer per key (`data_vraag`,
     #733) volgt uit de plaats van het antwoord in de geschiedenis, zoals `gebruikersvragen`: een antwoord dat de
-    geschiedenis niet meer haalt, heeft geen nummer.
+    geschiedenis niet meer haalt, heeft geen nummer. Ook een key met alleen bronregels (zonder aanroep) krijgt er een:
+    die beurt las data, dus een vervolgantwoord vindt haar (`session_data.vorige_databeurt`, #987).
 
     Een antwoord in die geschiedenis zonder rij is niet van de server: het telt niet als bewijs (`eerdere_antwoorden`,
     #876).
@@ -154,13 +167,15 @@ def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
             session.setdefault("data_provenance", {}).setdefault(key, call)
         voeg_rekenbewijs_toe(session, rij["rekenbewijs"])
         session.setdefault("kaarten", {}).update(rij["kaarten"])
+        for key, bronnen in _bronnen(rij).items():
+            session.setdefault("data_bronnen", {}).setdefault(key, bronnen)
     vragen = 0
     zonder_rij: set[str] = set()
     for m in session.get("messages") or []:
         if m["role"] == "user":
             vragen += 1
         elif rij := rijen.get(h := tekst_hash(m["content"])):
-            for key in rij["lineage"]:
+            for key in dict.fromkeys([*rij["lineage"], *_bronnen(rij)]):
                 session.setdefault("data_vraag", {}).setdefault(key, vragen)
         else:
             zonder_rij.add(h)

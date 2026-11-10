@@ -1,4 +1,6 @@
-"""De tabel beurtbewijs: per gebruiker, per gesprek en per tekst-hash, en weg met het gesprek (ADR-009, #875)."""
+"""De tabel beurtbewijs: per gebruiker, per gesprek en per tekst-hash, en weg met het gesprek (ADR-009, #875).
+
+Sinds #987 draagt een rij ook de bronregels per key (`bronnen`), voor een vervolgantwoord na heropenen."""
 
 import importlib
 import sqlite3
@@ -11,6 +13,15 @@ import pytest
 _LINEAGE = {"cbs:85423NED": {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED"}}}
 _REKEN = [{"tool": "compute_kpi", "argumenten": {"data_key": "cbs:85423NED"}, "resultaat": '{"waarde": 12.5}'}]
 _KAARTEN = {"cbs:85423NED": {"data_key": "cbs:85423NED", "location_col": "PROVINCIE", "value_col": "AANTAL"}}
+_BRONNEN = {
+    "cbs:85423NED": [
+        {
+            "bron": "cbs",
+            "dataset": "85423NED",
+            "regel": "CBS · Leerlingen en studenten (85423NED), opgehaald op 03-11-2026",
+        }
+    ]
+}
 _NU = "2026-11-03T10:00:00+00:00"
 
 
@@ -19,6 +30,7 @@ def _rij(**anders):
         "lineage": _LINEAGE,
         "rekenbewijs": _REKEN,
         "kaarten": _KAARTEN,
+        "bronnen": _BRONNEN,
         "created_at": _NU,
         **anders,
     }
@@ -52,10 +64,20 @@ def test_rijen_zijn_van_een_gebruiker_en_een_gesprek(db):
 
 
 def test_opnieuw_bewaren_werkt_de_inhoud_bij_en_houdt_de_tijd_van_het_antwoord(db):
-    db.save_beurtbewijs("alice", "c1", {"h1": _rij()})
+    db.save_beurtbewijs("alice", "c1", {"h1": _rij(bronnen={})})
     db.save_beurtbewijs("alice", "c1", {"h1": _rij(rekenbewijs=[], created_at="2030-01-01T00:00:00+00:00")})
 
     assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(rekenbewijs=[])}
+
+
+def test_een_rij_zonder_bronnen_bewaart_lege(db):
+    """Een rij in het geheugen van vóór #987 (of een testrij) zonder `bronnen`: de kolom krijgt een leeg object."""
+    rij = _rij()
+    del rij["bronnen"]
+
+    db.save_beurtbewijs("alice", "c1", {"h1": rij})
+
+    assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(bronnen={})}
 
 
 def test_zonder_rijen_schrijft_niets(db):
@@ -64,10 +86,11 @@ def test_zonder_rijen_schrijft_niets(db):
     assert db.beurtbewijs_voor("alice", "c1") == {}
 
 
-def test_een_onleesbare_rij_wordt_overgeslagen(db):
+@pytest.mark.parametrize("kolom", ["lineage", "bronnen"])
+def test_een_onleesbare_rij_wordt_overgeslagen(db, kolom):
     db.save_beurtbewijs("alice", "c1", {"goed": _rij(), "stuk": _rij()})
     conn = db._connect()
-    conn.execute("UPDATE beurtbewijs SET lineage = 'geen json' WHERE tekst_hash = 'stuk'")
+    conn.execute(f"UPDATE beurtbewijs SET {kolom} = 'geen json' WHERE tekst_hash = 'stuk'")
     conn.commit()
     conn.close()
 
@@ -83,6 +106,9 @@ def test_een_gesprek_verwijderen_verwijdert_zijn_rijen(db):
     db.delete_conversation("alice", "c1")
 
     assert db.beurtbewijs_voor("alice", "c1") == {}
+    with db._connection() as conn:
+        over = db._execute(conn, "SELECT conv_id, username FROM beurtbewijs WHERE bronnen LIKE '%85423NED%'").fetchall()
+    assert sorted(tuple(r) for r in over) == [("c1", "bob"), ("c2", "alice")]  # de bronregels gingen met de rij mee
     assert set(db.beurtbewijs_voor("alice", "c2")) == {"h2"}
     assert set(db.beurtbewijs_voor("bob", "c1")) == {"h3"}
 
@@ -155,8 +181,39 @@ def test_een_bestaande_tabel_met_controle_verliest_de_kolom_en_houdt_de_rij(tmp_
         kolommen = {r[1] for r in conn.execute("PRAGMA table_info(beurtbewijs)")}
     assert "controle" not in kolommen
     assert db.beurtbewijs_voor("alice", "c1") == {
-        "h1": {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "2026-11-03T10:00:00+00:00"}
+        "h1": {
+            "lineage": {},
+            "rekenbewijs": [],
+            "kaarten": {},
+            "bronnen": {},
+            "created_at": "2026-11-03T10:00:00+00:00",
+        }
     }
+
+
+def test_een_bestaande_tabel_zonder_bronnen_krijgt_de_kolom_en_houdt_de_rij(tmp_path, monkeypatch):
+    """#987: een rij van vóór de kolom leest terug met lege bronregels; daarna kan ze ze krijgen. Idempotent."""
+    pad = tmp_path / "oud.db"
+    oud = sqlite3.connect(pad)
+    oud.executescript("""
+        CREATE TABLE beurtbewijs (
+            username TEXT NOT NULL, conv_id TEXT NOT NULL, tekst_hash TEXT NOT NULL, lineage TEXT NOT NULL,
+            rekenbewijs TEXT NOT NULL, kaarten TEXT NOT NULL, created_at TEXT NOT NULL,
+            PRIMARY KEY (username, conv_id, tekst_hash)
+        );
+        INSERT INTO beurtbewijs VALUES ('alice', 'c1', 'h1', '{}', '[]', '{}', '2026-11-03T10:00:00+00:00');
+    """)
+    oud.close()
+    monkeypatch.setenv("DATABASE_PATH", str(pad))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    db.init_db()
+
+    assert db.beurtbewijs_voor("alice", "c1")["h1"]["bronnen"] == {}
+    db.save_beurtbewijs("alice", "c1", {"h1": _rij()})
+    assert db.beurtbewijs_voor("alice", "c1")["h1"] == _rij()
 
 
 class _Cursor:
@@ -230,6 +287,17 @@ def test_postgres_haalt_de_kolom_controle_weg(postgres):
     assert "controle" not in db._BEURTBEWIJS_TABLE
 
 
+def test_postgres_voegt_de_kolom_bronnen_toe(postgres):
+    """De kolom van #987; `IF NOT EXISTS` met een standaardwaarde, dus veilig bij elke start en met twee replica's."""
+    import persistence.db as db
+
+    db.init_db()
+
+    statements = [" ".join(sql.split()) for sql, _ in postgres.log]
+    assert "ALTER TABLE beurtbewijs ADD COLUMN IF NOT EXISTS bronnen TEXT NOT NULL DEFAULT '{}'" in statements
+    assert "bronnen TEXT NOT NULL DEFAULT '{}'" in " ".join(db._BEURTBEWIJS_TABLE.split())
+
+
 def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
     """De upsert gebruikt ON CONFLICT, dat SQLite en PostgreSQL allebei kennen, en %s-parameters op PostgreSQL."""
     import persistence.db as db
@@ -244,5 +312,6 @@ def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
 
     sql, params = postgres.log[0]
     assert sql.startswith("INSERT INTO beurtbewijs") and "ON CONFLICT (username, conv_id, tekst_hash)" in sql
-    assert "?" not in sql and sql.count("%s") == 7
+    assert "?" not in sql and sql.count("%s") == 8
+    assert "bronnen=excluded.bronnen" in sql
     assert params[:3] == ("alice", "c1", "h1")
