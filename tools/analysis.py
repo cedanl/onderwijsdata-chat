@@ -149,8 +149,10 @@ def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:
     return result_key
 
 
-def _rijen(rijen: list, result_key: str, complete: bool) -> dict:
+def modelrijen(rijen: list, result_key: str, complete: bool) -> dict:
     """De rijen voor het model, begrensd zoals bij query_data; de volledige tabel staat onder `result_key` (#629).
+
+    Ook voor koppel_data (#988): elke tool die een tabel als nieuwe key bewaart, toont haar op dezelfde manier.
 
     Een uitkomst als `result = df` kan duizenden rijen hebben. Die gaan niet allemaal de tekst in: het model
     ziet er een deel van en leest de rest met query_data, en de antwoordcontroles lopen niet over megabytes.
@@ -184,7 +186,7 @@ def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | 
     """Het toolresultaat voor het model: de uitkomst, waar hij op rust en wat er niet als bewijs telt."""
     text_obj = _netjes(run.result) if run.result is not None else {}
     if result_key:
-        text_obj = _rijen(run.result, result_key, run.complete)
+        text_obj = modelrijen(run.result, result_key, run.complete)
     if not run.bronnen:
         # Een uitkomst die geen data las is geen bewijs: de getalcontrole telt haar niet mee (#201).
         text_obj = {"bron": None, "resultaat": text_obj}

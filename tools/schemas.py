@@ -13,6 +13,7 @@ TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_DATASET_PROFIEL = "dataset_profiel"
 TOOL_RELATIE = "relatie"
+TOOL_KOPPEL_DATA = "koppel_data"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -249,8 +250,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "search_catalog en dataset_details) wat eraan hangt en hoeveel "
                 "waarden het register of de gebiedsindeling kent. Met andere_key: de kolommen die beide tabellen "
                 "als dezelfde sleutel dragen, hoe hun waarden vertalen (GM0344 is gemeente 344, 2021SJ00 is "
-                "schooljaar 2021), de kardinaliteit en de overlap. Koppelt zelf niets: gebruik de uitkomst in "
-                "query_data of run_analysis. Vraag dit vóór je twee bronnen combineert."
+                "schooljaar 2021), de kardinaliteit en de overlap. Koppelt zelf niets: vraag dit vóór je twee bronnen "
+                f'combineert en koppel daarna met {TOOL_KOPPEL_DATA}, niet met een eigen merge of how="left" in '
+                "run_analysis."
             ),
             "parameters": {
                 "type": "object",
@@ -259,6 +261,47 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "andere_key": {"type": "string", "description": "data_key van de tabel om mee te koppelen"},
                 },
                 "required": ["data_key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_KOPPEL_DATA,
+            "description": (
+                "Koppel twee geladen tabellen in code, na relatie(data_key, andere_key): een outer join op de "
+                "sleutels, met de waarden in één vorm (30020.0 is 30020, 2021SJ00 is 2021). Elke rij van beide tabellen "
+                "blijft; een rij zonder match houdt lege cellen voor de andere kant (nooit 0). De kolom koppelstatus zegt "
+                "per rij 'beide' of 'alleen <bron>', met toelichting per status: noem rijen zonder match en waarom. "
+                "Geeft een nieuwe data_key (query_data, run_analysis, create_plot werken erop), de telling per status "
+                "en de korrel: bij many staat een waarde van de andere kant per rij herhaald, tel die niet zonder meer "
+                "op. Schrijf geen eigen merge in run_analysis en filter vóór de koppeling niet op een lege waarde."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data_key": {"type": "string", "description": "data_key van de eerste tabel"},
+                    "andere_key": {"type": "string", "description": "data_key van de tweede tabel"},
+                    "sleutels": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": 'Sleutelnamen uit relatie die beide tabellen dragen, bijv. ["brin", "croho"]',
+                    },
+                    "kolommen_links": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                        "description": (
+                            "Alleen als een sleutel in de eerste tabel in meer kolommen staat: sleutel -> kolom, "
+                            'bijv. {"brin": "INSTELLINGSCODE_ACTUEEL"}'
+                        ),
+                    },
+                    "kolommen_rechts": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                        "description": "Hetzelfde voor de tweede tabel",
+                    },
+                },
+                "required": ["data_key", "andere_key", "sleutels"],
             },
         },
     },

@@ -11,6 +11,7 @@ from .duo import get_duo_data
 from .financien import get_bestuursfinancien
 from .inspectie import get_inspectieoordeel
 from .inspectie_vo import get_inspectieoordeel_vo
+from .koppel import koppel_data
 from .kpi import compute_kpi
 from .maten import get_maat
 from .mbo_indicatoren import get_mbo_indicatoren
@@ -45,6 +46,7 @@ from .schemas import (
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
+    TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
     TOOL_RELATIE,
     TOOL_RUN_ANALYSIS,
@@ -68,6 +70,7 @@ LABELS = {
     TOOL_GET_MAAT: "Vaste maat opgehaald",
     TOOL_QUERY_DATA: "Data gefilterd",
     TOOL_RELATIE: "Relaties opgezocht",
+    TOOL_KOPPEL_DATA: "Tabellen gekoppeld",
     TOOL_RUN_ANALYSIS: "Analyse uitgevoerd",
     TOOL_COMPUTE_KPI: "KPI berekend",
     TOOL_CREATE_PLOT: "Grafiek aangemaakt",
@@ -97,6 +100,7 @@ _HANDLERS = {
     TOOL_GET_MAAT: get_maat,
     TOOL_QUERY_DATA: query_data,
     TOOL_RELATIE: relatie,
+    TOOL_KOPPEL_DATA: koppel_data,
     TOOL_RUN_ANALYSIS: run_analysis,
     TOOL_COMPUTE_KPI: compute_kpi,
     TOOL_CREATE_PLOT: create_plot,

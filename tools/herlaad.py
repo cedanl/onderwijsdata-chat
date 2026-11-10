@@ -6,7 +6,7 @@ get_bestuursfinancien, get_wo_personeel, get_studiekeuze), de vaste maat (get_ma
 een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste keer: scopegrens,
 sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug. Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
 geëvalueerd. Een eigen berekening (run_analysis) wordt niet opnieuw uitgevoerd: van die
-stap wordt geen script bewaard.
+stap wordt geen script bewaard. Een koppeling (koppel_data) ook niet: ze rust op twee tabellen.
 """
 
 import json
@@ -25,6 +25,7 @@ from .catalog import catalogus_laatste_update
 from .cbs import laad_cbs_data
 from .duo import get_duo_data
 from .financien import get_bestuursfinancien
+from .koppel import STAP as STAP_KOPPELING
 from .maten import get_maat
 from .query import query_data
 from .rio import laad_rio_data
@@ -38,6 +39,7 @@ from .schemas import (
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
     TOOL_GET_WO_PERSONEEL,
+    TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
@@ -93,6 +95,13 @@ def recept(key: str, call: dict) -> dict | None:
     if naam == TOOL_RUN_ANALYSIS:
         # Zonder script: modelcode wordt in deze stap niet bewaard (#472).
         return {"afgeleid_van": known.afgeleid_van if known else None, "stap": STAP_ANALYSE, "herlaadbaar": False}
+    if naam == TOOL_KOPPEL_DATA:
+        # Een koppeling rust op twee tabellen (#988): ze komt niet vanzelf terug, haar stap zegt welke het was.
+        return {
+            "afgeleid_van": known.afgeleid_van if known else None,
+            "stap": (known.stap if known else None) or STAP_KOPPELING,
+            "herlaadbaar": False,
+        }
     if known is None or (naam not in _LADERS and naam not in (TOOL_QUERY_DATA, TOOL_GET_MAAT)):
         return None
     if known.laad:

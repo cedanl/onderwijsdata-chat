@@ -15,6 +15,7 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
 )
 
@@ -56,7 +57,15 @@ def _query_data(result: str) -> dict:
     return uit
 
 
-_READERS = {TOOL_QUERY_DATA: _query_data}
+def _koppel_data(result: str) -> dict:
+    """koppel_data geeft bij succes JSON met rijen (#988); een melding (onbekende sleutel, dubbelzinnige kolom) niet."""
+    parsed = _json_dict(result)
+    if parsed is None or "rijen" not in parsed:
+        return {"status": "error", "status_label": "Koppeling mislukt"}
+    return {}
+
+
+_READERS = {TOOL_QUERY_DATA: _query_data, TOOL_KOPPEL_DATA: _koppel_data}
 
 
 def outcome(name: str, result: str) -> dict:
