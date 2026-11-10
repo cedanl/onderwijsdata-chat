@@ -23,10 +23,14 @@ from .meetwaarden import Meetwaarde
 T = TypeVar("T")
 
 
+def selectiecellen(waarde: Meetwaarde) -> frozenset[str]:
+    """De waarden van de andere cellen van haar rij: "Bachelor" uit "Diplomasoort: Bachelor"."""
+    return frozenset(c for cel in waarde.selectie if (c := cel.split(": ", 1)[-1].strip()))
+
+
 def kenmerken(waarde: Meetwaarde) -> frozenset[str]:
     """Wat een zin over deze meetwaarde kan noemen: de waarden van haar rij en haar maat."""
-    cellen = {cel.split(": ", 1)[-1].strip() for cel in waarde.selectie}
-    return frozenset(c for c in (*cellen, kolomlabel(waarde.maat)) if c)
+    return selectiecellen(waarde) | ({maat} if (maat := kolomlabel(waarde.maat)) else set())
 
 
 def betekenis(waarde: Meetwaarde) -> Hashable:
@@ -35,6 +39,24 @@ def betekenis(waarde: Meetwaarde) -> Hashable:
 
 def _noemt(zin: str, kenmerk: str) -> bool:
     return re.search(rf"(?<!\w){re.escape(kenmerk)}(?!\w)", zin, re.IGNORECASE) is not None
+
+
+def posities(tekst: str, kenmerk: str) -> list[int]:
+    """Waar de tekst het kenmerk als los woord noemt; een typografische apostrof (U+2019) telt als een rechte."""
+    patroon = rf"(?<!\w){re.escape(kenmerk)}(?!\w)"
+    return [m.start() for m in re.finditer(patroon, tekst.replace("\u2019", "'"), re.IGNORECASE)]
+
+
+def laatst_genoemde_maat(kandidaten: list[T], maat: Callable[[T], str], ervoor: str) -> list[T]:
+    """Van kandidaten met verschillende maten die van de maat die de tekst ervoor het laatst noemt; anders allemaal.
+
+    Zo kiest de tekst vóór een tabel ("Het diplomaresultaat ... was") de maat van haar cellen (#982, #1002)."""
+    maten = {maat(k) for k in kandidaten}
+    laatst = {m: treffers[-1] for m in maten if (treffers := posities(ervoor, m))}
+    if len(maten) == 1 or not laatst:
+        return kandidaten
+    gekozen = max(laatst, key=lambda m: laatst[m])
+    return [k for k in kandidaten if maat(k) == gekozen]
 
 
 def noemt_selectie(zin: str, waarde: Meetwaarde) -> bool:

@@ -29,14 +29,13 @@ Heroverwegen: als agent/binding.py ook decimalen en bronnen buiten de store bind
 lang niet afgaat (logregel CONTROLES).
 """
 
-import re
 from collections.abc import Iterable
 
 from tools import periode
 
-from .claimbinding import kenmerken
+from .claimbinding import kenmerken, laatst_genoemde_maat, posities
 from .grounding import decimalen_met_positie
-from .mdtabel import Tabel, tabellen
+from .mdtabel import Cel, tabelcellen
 from .meetwaarden import Meetwaarde, meetwaarden, schrijft
 from .probleem import Probleem
 
@@ -53,31 +52,16 @@ def _kenmerken(waarde: Meetwaarde) -> frozenset[str]:
     return frozenset(k for k in kenmerken(waarde) if not periode.gevraagde_schooljaren(k))
 
 
-def _posities(tekst: str, kenmerk: str) -> list[int]:
-    """Waar de tekst het kenmerk als los woord noemt; een typografische apostrof (U+2019) telt als een rechte."""
-    patroon = rf"(?<!\w){re.escape(kenmerk)}(?!\w)"
-    return [m.start() for m in re.finditer(patroon, tekst.replace("\u2019", "'"), re.IGNORECASE)]
-
-
-def _laatst_genoemde_maat(kandidaten: list[Meetwaarde], ervoor: str) -> list[Meetwaarde]:
-    """Van kandidaten met verschillende maten die van de maat die de tekst ervoor het laatst noemt; anders allemaal."""
-    maten = {w.maat for w in kandidaten}
-    posities = {maat: treffers[-1] for maat in maten if (treffers := _posities(ervoor, maat))}
-    if len(maten) == 1 or not posities:
-        return kandidaten
-    laatste = max(posities, key=lambda maat: posities[maat])
-    return [w for w in kandidaten if w.maat == laatste]
-
-
 def _passend(kandidaten: list[Meetwaarde], context: str, bekend: frozenset[str], ervoor: str) -> list[Meetwaarde]:
     """De kandidaten die de kop en labels van de cel aanwijzen; leeg als die een kenmerk noemen dat geen kandidaat
     heeft (70,6% van de instelling in de kolom "Alle roc's")."""
-    genoemd = {k for k in bekend if _posities(context, k)}
+    genoemd = {k for k in bekend if posities(context, k)}
     scores = [len(_kenmerken(w) & genoemd) for w in kandidaten]
     beste = max(scores)
     if genoemd and not beste:
         return []
-    return _laatst_genoemde_maat([w for w, score in zip(kandidaten, scores, strict=True) if score == beste], ervoor)
+    passend = [w for w, score in zip(kandidaten, scores, strict=True) if score == beste]
+    return laatst_genoemde_maat(passend, lambda w: w.maat, ervoor)
 
 
 def _beschrijving(waarde: Meetwaarde) -> str:
@@ -103,22 +87,17 @@ def _probleem(geschreven: str, jaren: set[int], kop: str, rij: tuple[str, ...], 
     )
 
 
-def _in_tabel(tabel: Tabel, ervoor: str, waarden: list[Meetwaarde], bekend: frozenset[str]) -> list[Probleem]:
+def _in_cel(cel: Cel, waarden: list[Meetwaarde], bekend: frozenset[str]) -> list[Probleem]:
+    if not (jaren := _cel_jaren(cel.tekst, cel.kop, cel.labels)):
+        return []
     problemen = []
-    maattekst = f"{ervoor}\n{' | '.join(tabel.kop)}"
-    for rij in tabel.rijen:
-        labels = [cel for cel in rij if not decimalen_met_positie(cel)]
-        for k, cel in enumerate(rij):
-            kop = tabel.kop[k] if k < len(tabel.kop) else ""
-            if not (jaren := _cel_jaren(cel, kop, labels)):
-                continue
-            for geschreven, waarde, _ in decimalen_met_positie(cel):
-                # Zonder kandidaat komt het getal niet uit deze bronnen: daarover beslist de getalcontrole.
-                if not (kandidaten := [w for w in waarden if schrijft(w, waarde)]):
-                    continue
-                passend = _passend(kandidaten, " ".join([kop, *labels]), bekend, maattekst)
-                if not any(jaren & _jaren(w) for w in passend):
-                    problemen.append(_probleem(geschreven, jaren, kop, rij, passend or kandidaten))
+    for geschreven, waarde, _ in decimalen_met_positie(cel.tekst):
+        # Zonder kandidaat komt het getal niet uit deze bronnen: daarover beslist de getalcontrole.
+        if not (kandidaten := [w for w in waarden if schrijft(w, waarde)]):
+            continue
+        passend = _passend(kandidaten, cel.context, bekend, cel.ervoor)
+        if not any(jaren & _jaren(w) for w in passend):
+            problemen.append(_probleem(geschreven, jaren, cel.kop, cel.rij, passend or kandidaten))
     return problemen
 
 
@@ -132,7 +111,6 @@ def verkeerde_tabeljaren(lezingen: Iterable[str], tool_results: list[str]) -> li
     bekend = frozenset().union(*(_kenmerken(w) for w in waarden))
     problemen: list[Probleem] = []
     for tekst in lezingen:
-        regels = tekst.split("\n")
-        for tabel in tabellen(regels):
-            problemen += _in_tabel(tabel, "\n".join(regels[: tabel.begin]), waarden, bekend)
+        for cel in tabelcellen(tekst):
+            problemen += _in_cel(cel, waarden, bekend)
     return list(dict.fromkeys(problemen))

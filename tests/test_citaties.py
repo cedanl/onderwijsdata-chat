@@ -7,7 +7,7 @@ import pytest
 
 from agent.citaties import citaties
 from agent.meetwaarden import meetwaarden
-from tools import store
+from tools import periode, store
 from tools.store import KeyMeta
 
 _CBS = json.dumps({"data_key": "cbs:1", "rijen": [{"Onderwijssoort_label": "Hbo", "Totaal": 378490}]})
@@ -291,3 +291,256 @@ def test_twee_claims_met_hetzelfde_getal_krijgen_elk_hun_eigen_selectie(volgorde
     b, a = citaties("Hogeschool B had 10.000 studenten. Hogeschool A had 10.000 studenten.", steps)
 
     assert (b["data_key"], a["data_key"]) == ("duo:b", "duo:a")
+
+
+# --- #1002: een getal in een tabelcel wordt geduid door de kolomkop, niet door de rij alleen ---
+
+# M01 (reaudit 10-11): CBS 85424NED, wo-gediplomeerden per diplomasoort en studiejaar, zoals de stappen het gaven.
+_M01_LAAD = "cbs:85424NED:82c4b5c7"
+_M01_QUERY = f"{_M01_LAAD}:4ade59ab"
+_M01_ANALYSE = "analysis:29859de89bc3"
+_M01_JAREN = ("2020/'21", "2021/'22", "2022/'23", "2023/'24", "2024/'25")
+_M01_SOORTEN = {
+    "Hbo-associate degree": (None,) * 5,
+    "Bachelor": (43070, 41670, 45590, 50110, 52250),
+    "Wo-doctoraal": (0,) * 5,
+    "Wo-master": (47810, 47900, 49730, 50690, 53570),
+    "Vervolgopleidingen": (4040, 3730, 3750, 3790, 3740),
+}
+_M01_TABELKOLOMMEN = ("Bachelor", "Wo-master", "Vervolgopleidingen")
+_M01_ANTWOORD = """**Uitgangspunt:** Wetenschappelijk onderwijs · 2020/21 t/m 2024/25
+
+Het aantal wo-gediplomeerden steeg van 94.920 in 2020/21 naar 109.560 in 2024/25 (voorlopig), met een dip in 2021/22.
+
+| Studiejaar | Bachelor | Wo-master | Vervolgopleidingen | Totaal wo |
+|---|---|---|---|---|
+| 2020/21 | 43.070 | 47.810 | 4.040 | 94.920 |
+| 2021/22 | 41.670 | 47.900 | 3.730 | 93.300 |
+| 2022/23 | 45.590 | 49.730 | 3.750 | 99.070 |
+| 2023/24 | 50.110 | 50.690 | 3.790 | 104.590 |
+| 2024/25 (voorlopig) | 52.250 | 53.570 | 3.740 | 109.560 |
+
+*(CBS, 85424NED, "Ho; gediplomeerden, soort diploma, opleidingsvorm", studiejaren 2020/21 t/m 2024/25.)*
+
+### Wat valt op
+- Het aantal bachelordiploma's steeg van 41.670 in 2021/22 naar 52.250 in 2024/25. Het aantal masterdiploma's steeg \
+in dezelfde periode van 47.900 naar 53.570."""
+
+
+def _m01_rij(soort: str, j: int, waarde: int | None) -> dict:
+    status = "Voorlopig" if j == 4 else "Definitief"
+    return {"Diplomasoort_label": soort, "Perioden_label": _M01_JAREN[j], "Gediplomeerden_1": waarde} | {
+        "Periodestatus": status
+    }
+
+
+def _m01_rijen() -> list[dict]:
+    return [_m01_rij(soort, j, w) for soort, reeks in _M01_SOORTEN.items() for j, w in enumerate(reeks)]
+
+
+def _m01_laadrij(rij: dict, id_: int) -> dict:
+    """Een rij van get_cbs_data: codes, labels en de periodestatus."""
+    vast = {"ID": id_, "Geslacht": "T001038", "Onderwijssoort": "A025297", "Opleidingsvorm": "T001228"}
+    labels = {"Geslacht_label": "Totaal mannen en vrouwen", "Onderwijssoort_label": "Wetenschappelijk onderwijs"}
+    return vast | {"Gediplomeerden_1": rij["Gediplomeerden_1"]} | labels | rij
+
+
+def _m01_pivot() -> list[dict]:
+    """De draaitabel van run_analysis: per studiejaar een kolom per diplomasoort en het totaal."""
+    rijen = []
+    for j, jaar in enumerate(_M01_JAREN):
+        soorten = {s: reeks[j] for s, reeks in _M01_SOORTEN.items() if s != "Hbo-associate degree"}
+        status = "Voorlopig" if j == 4 else "Definitief"
+        rijen.append(
+            {
+                "Perioden_label": jaar,
+                "Periodestatus": status,
+                **soorten,
+                "Totaal": sum(w or 0 for w in soorten.values()),
+            }
+        )
+    return rijen
+
+
+def _m01_stappen(preview: list[dict]) -> list[tuple[str, str]]:
+    kolommen = [{"kolom": "Gediplomeerden_1", "eenheid": "aantal"}]
+    laad = {"data_key": _M01_LAAD, "totaal_rijen": 25, "kolommen": kolommen, "preview": preview}
+    query = {"data_key": _M01_QUERY, "totaal_rijen": 25, "rijen": _m01_rijen()}
+    analyse = {"data_key": _M01_ANALYSE, "rijen": _m01_pivot()}
+    return [
+        ("get_cbs_data", json.dumps(laad)),
+        ("query_data", json.dumps(query)),
+        ("run_analysis", json.dumps(analyse)),
+    ]
+
+
+@pytest.fixture
+def m01_zusjes():
+    """Zoals in M01: query_data en run_analysis lezen allebei de lading; de preview toont alleen de lege Ad-rijen."""
+    store.clear()
+    store.put(_M01_LAAD, pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="85424NED"))
+    store.derive(_M01_LAAD, _M01_QUERY, pd.DataFrame({"x": [1]}))
+    store.derive(_M01_LAAD, _M01_ANALYSE, pd.DataFrame({"x": [1]}), gelezen=(_M01_LAAD,))
+    yield _m01_stappen([_m01_laadrij(rij, 219 + i) for i, rij in enumerate(_m01_rijen()[:5])])
+    store.clear()
+
+
+@pytest.fixture
+def m01_keten():
+    """Eén afleidingsketen: lading met alle rijen, query_data daarop en run_analysis op de query."""
+    store.clear()
+    store.put(_M01_LAAD, pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="85424NED"))
+    store.derive(_M01_LAAD, _M01_QUERY, pd.DataFrame({"x": [1]}))
+    store.derive(_M01_QUERY, _M01_ANALYSE, pd.DataFrame({"x": [1]}), gelezen=(_M01_QUERY,))
+    yield _m01_stappen([_m01_laadrij(rij, 219 + i) for i, rij in enumerate(_m01_rijen())])
+    store.clear()
+
+
+def _m01_tabelcitaties(stappen: list[tuple[str, str]]) -> list[list[dict]]:
+    """De citaties van de twintig tabelcellen, per rij; de eerste zin heeft er twee, de tabel volgt."""
+    gevonden = citaties(_M01_ANTWOORD, stappen)
+    assert len(gevonden) == 26  # het aantal citaties verandert niet: de frontend telt ze per getal
+    return [gevonden[2 + 4 * j : 6 + 4 * j] for j in range(5)]
+
+
+def _assert_m01_tabel(stappen: list[tuple[str, str]], cel_key: str) -> None:
+    for j, rij in enumerate(_m01_tabelcitaties(stappen)):
+        assert all(c["vastgesteld"] for c in rij), rij
+        for soort, citatie in zip(_M01_TABELKOLOMMEN, rij, strict=False):
+            assert citatie["getal"] == f"{_M01_SOORTEN[soort][j]:,}".replace(",", ".")
+            assert f"Diplomasoort: {soort}" in citatie["selectie"]
+            assert citatie["data_key"] == cel_key
+        totaal = rij[3]
+        assert (totaal["maat"], totaal["tool"], totaal["data_key"]) == ("Totaal", "run_analysis", _M01_ANALYSE)
+        assert all(periode.gevraagde_schooljaren(c["selectie"]) == {2020 + j} for c in rij)
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_m01_elke_tabelcel_krijgt_haar_diplomasoort_en_studiejaar(m01_zusjes, volgorde):
+    """M01: 19 van de 26 citaties waren 'meerdere'; de rij noemde de kolomkop niet, en de draaitabel van run_analysis
+    is een zusje van de query, geen afleiding ervan. Nu wijst de kop de diplomasoort aan en wint de rij van de
+    selectie van de draaitabel."""
+    _assert_m01_tabel(m01_zusjes[::volgorde], _M01_QUERY)
+
+
+def test_m01_in_een_afleidingsketen_wint_de_lading(m01_keten):
+    """Dezelfde cel in de lading, de query en de draaitabel: de stap het dichtst bij de bron (CH-38)."""
+    _assert_m01_tabel(m01_keten, _M01_LAAD)
+    lading = _m01_tabelcitaties(m01_keten)[0][0]
+    assert (lading["stap"], lading["tool"], lading["eenheid"]) == (1, "get_cbs_data", "aantal")
+
+
+def test_m01_de_zinnen_onder_de_tabel_krijgen_ook_hun_bron(m01_zusjes):
+    """'Het aantal bachelordiploma's steeg van 41.670' noemt geen kolomkop: de rij wint van haar draaitabel."""
+    staart = citaties(_M01_ANTWOORD, m01_zusjes)[-4:]
+    assert [c["getal"] for c in staart] == ["41.670", "52.250", "47.900", "53.570"]
+    assert all(c["vastgesteld"] and c["data_key"] == _M01_QUERY for c in staart)
+
+
+def _per_jaar(key: str, maat: str, waarde: int) -> tuple[str, str]:
+    return ("query_data", json.dumps({"data_key": key, "rijen": [{"Perioden_label": "2020/'21", maat: waarde}]}))
+
+
+_TWEE_MATEN = [_per_jaar("cbs:in", "Ingeschrevenen", 47810), _per_jaar("cbs:gd", "Gediplomeerden", 47810)]
+_TABEL_AANTAL = "| Studiejaar | Aantal |\n|---|---|\n| 2020/21 | 47.810 |"
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_een_cel_met_twee_betekenissen_blijft_twijfel(volgorde):
+    """Twee maten met dezelfde waarde in hetzelfde jaar, in losse ladingen: kop en rij kiezen niet, de bron ook niet."""
+    [citatie] = citaties(f"Per studiejaar:\n\n{_TABEL_AANTAL}", _TWEE_MATEN[::volgorde])
+    assert citatie == {"getal": "47.810", "vastgesteld": False, "reden": "meerdere"}
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_de_tekst_voor_de_tabel_noemt_de_maat(volgorde):
+    """Zoals de tabelcontrole (#982): kiezen kop en rij niet, dan de maat die de tekst vóór de tabel het laatst noemt."""
+    tekst = f"Ingeschrevenen telden we ook. Het aantal gediplomeerden per studiejaar:\n\n{_TABEL_AANTAL}"
+    [citatie] = citaties(tekst, _TWEE_MATEN[::volgorde])
+    assert (citatie["vastgesteld"], citatie["maat"]) == (True, "Gediplomeerden")
+
+
+def _soort(key: str, soort: str) -> tuple[str, str]:
+    rij = {"SOORT": soort, "JAAR_LABEL": "2020", "AANTAL": 12345}
+    return ("query_data", json.dumps({"data_key": key, "rijen": [rij]}))
+
+
+# Hetzelfde getal in hetzelfde jaar, in losse selecties: alleen de soort onderscheidt ze.
+_SOORTEN = [_soort("duo:ba", "Bachelor"), _soort("duo:ma", "Master")]
+
+
+def test_hetzelfde_getal_in_twee_tabellen_volgt_elk_zijn_eigen_kop():
+    """De cel van een positie: 12.345 staat in twee tabellen, elk onder een andere kop."""
+    tekst = (
+        "| Jaar | Bachelor |\n|---|---:|\n| 2020 | 12.345 |\n\n"
+        "Daarnaast de masters.\n\n| Jaar | Master |\n|---|---:|\n| 2020 | **12.345** |"
+    )
+    ba, ma = citaties(tekst, _SOORTEN)
+    assert (ba["data_key"], ma["data_key"]) == ("duo:ba", "duo:ma")
+
+
+def test_zin_en_tabel_door_elkaar():
+    """De zin bindt aan wat zij noemt, de cel aan haar kop: de zin vóór de tabel stuurt de cel niet."""
+    tekst = "In 2020 haalden 12.345 studenten een Master.\n\n| Jaar | Bachelor |\n|---|---|\n| 2020 | 12.345 |"
+    zin, cel = citaties(tekst, _SOORTEN)
+    assert (zin["data_key"], cel["data_key"]) == ("duo:ma", "duo:ba")
+
+
+def test_een_tabel_in_een_codeblok_is_geen_tabel():
+    """In een codeblok telt alleen de rij, zoals vroeger: die noemt geen soort."""
+    tekst = "```\n| Jaar | Bachelor |\n|---|---|\n| 2020 | 12.345 |\n```"
+    [citatie] = citaties(tekst, _SOORTEN)
+    assert citatie == {"getal": "12.345", "vastgesteld": False, "reden": "meerdere"}
+
+
+@pytest.fixture
+def rij_en_totaal():
+    """Twee selecties op dezelfde lading: een rij per instelling en een totaal met toevallig dezelfde waarde."""
+    store.clear()
+    store.put("cbs:L", pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="X"))
+    store.derive("cbs:L", "cbs:L:q1", pd.DataFrame({"x": [1]}))
+    store.derive("cbs:L", "cbs:L:q2", pd.DataFrame({"x": [1]}))
+    rij = {"Instelling": "Hogeschool A", "Jaar": "2020", "Aantal": 12345}
+    totaal = {"Jaar": "2020", "Aantal": 12345}
+    yield [
+        ("query_data", json.dumps({"data_key": "cbs:L:q1", "rijen": [rij]})),
+        ("query_data", json.dumps({"data_key": "cbs:L:q2", "rijen": [totaal]})),
+    ]
+    store.clear()
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_een_totaal_naast_een_rij_uit_dezelfde_lading_blijft_twijfel(rij_en_totaal, volgorde):
+    """Alleen een draaitabelcel (kolom Bachelor uit de selectiecel Diplomasoort: Bachelor) is de rij, afgeleid. Een
+    totaal met toevallig dezelfde waarde is een andere betekenis, ook als de rij alles noemt wat het totaal noemt."""
+    zin = "In 2020 waren er in totaal 12.345 studenten."
+    tabel = "Per jaar:\n\n| Jaar | Aantal |\n|---|---|\n| 2020 | 12.345 |"
+    for tekst in (zin, tabel):
+        [citatie] = citaties(tekst, rij_en_totaal[::volgorde])
+        assert citatie == {"getal": "12.345", "vastgesteld": False, "reden": "meerdere"}, tekst
+
+
+@pytest.fixture
+def m01_twee_kolommen_gelijk():
+    """Bachelor en wo-master met dezelfde waarde in 2020/'21, als query_data en als draaitabel op de lading."""
+    store.clear()
+    store.put(_M01_LAAD, pd.DataFrame({"x": [1]}), KeyMeta(bron="cbs", dataset="85424NED"))
+    store.derive(_M01_LAAD, _M01_QUERY, pd.DataFrame({"x": [1]}))
+    store.derive(_M01_LAAD, _M01_ANALYSE, pd.DataFrame({"x": [1]}), gelezen=(_M01_LAAD,))
+    rijen = [_m01_rij("Bachelor", 0, 47810), _m01_rij("Wo-master", 0, 47810)]
+    pivot = {"Perioden_label": _M01_JAREN[0], "Periodestatus": "Definitief", "Bachelor": 47810, "Wo-master": 47810}
+    yield [
+        ("query_data", json.dumps({"data_key": _M01_QUERY, "rijen": rijen})),
+        ("run_analysis", json.dumps({"data_key": _M01_ANALYSE, "rijen": [pivot]})),
+    ]
+    store.clear()
+
+
+def test_m01_de_kop_kiest_tussen_twee_kolommen_met_dezelfde_waarde(m01_twee_kolommen_gelijk):
+    """De draaitabel valt weg en beide rijen staan onder dezelfde key: alleen de kolomkop zegt welke cel welke
+    diplomasoort is."""
+    tekst = "| Studiejaar | Bachelor | Wo-master |\n|---|---|---|\n| 2020/21 | 47.810 | 47.810 |"
+    bachelor, master = citaties(tekst, m01_twee_kolommen_gelijk)
+    assert "Diplomasoort: Bachelor" in bachelor["selectie"]
+    assert "Diplomasoort: Wo-master" in master["selectie"]
+    assert bachelor["data_key"] == master["data_key"] == _M01_QUERY
