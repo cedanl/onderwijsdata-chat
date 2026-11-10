@@ -11,7 +11,6 @@ import pytest
 _LINEAGE = {"cbs:85423NED": {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED"}}}
 _REKEN = [{"tool": "compute_kpi", "argumenten": {"data_key": "cbs:85423NED"}, "resultaat": '{"waarde": 12.5}'}]
 _KAARTEN = {"cbs:85423NED": {"data_key": "cbs:85423NED", "location_col": "PROVINCIE", "value_col": "AANTAL"}}
-_CONTROLE = ["2025 staat niet in de opgehaalde data."]
 _NU = "2026-11-03T10:00:00+00:00"
 
 
@@ -20,7 +19,6 @@ def _rij(**anders):
         "lineage": _LINEAGE,
         "rekenbewijs": _REKEN,
         "kaarten": _KAARTEN,
-        "controle": _CONTROLE,
         "created_at": _NU,
         **anders,
     }
@@ -55,11 +53,9 @@ def test_rijen_zijn_van_een_gebruiker_en_een_gesprek(db):
 
 def test_opnieuw_bewaren_werkt_de_inhoud_bij_en_houdt_de_tijd_van_het_antwoord(db):
     db.save_beurtbewijs("alice", "c1", {"h1": _rij()})
-    db.save_beurtbewijs(
-        "alice", "c1", {"h1": _rij(rekenbewijs=[], controle=[], created_at="2030-01-01T00:00:00+00:00")}
-    )
+    db.save_beurtbewijs("alice", "c1", {"h1": _rij(rekenbewijs=[], created_at="2030-01-01T00:00:00+00:00")})
 
-    assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(rekenbewijs=[], controle=[])}
+    assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(rekenbewijs=[])}
 
 
 def test_zonder_rijen_schrijft_niets(db):
@@ -134,17 +130,17 @@ def test_een_bestaande_database_zonder_de_tabel_krijgt_hem(tmp_path, monkeypatch
     assert set(db.beurtbewijs_voor("alice", "c1")) == {"h1"}
 
 
-def test_een_bestaande_tabel_zonder_controle_krijgt_de_kolom(tmp_path, monkeypatch):
-    """Rijen van vóór #876 hebben geen controle-uitkomst: ze krijgen een lege lijst, de rest blijft."""
+def test_een_bestaande_tabel_met_controle_verliest_de_kolom_en_houdt_de_rij(tmp_path, monkeypatch):
+    """De kolom `controle` (#876) is weg (#983, besluit 09-11): de rij met haar hash blijft, voor de getalcontrole."""
     pad = tmp_path / "oud.db"
     oud = sqlite3.connect(pad)
     oud.executescript("""
         CREATE TABLE beurtbewijs (
             username TEXT NOT NULL, conv_id TEXT NOT NULL, tekst_hash TEXT NOT NULL, lineage TEXT NOT NULL,
-            rekenbewijs TEXT NOT NULL, kaarten TEXT NOT NULL, created_at TEXT NOT NULL,
-            PRIMARY KEY (username, conv_id, tekst_hash)
+            rekenbewijs TEXT NOT NULL, kaarten TEXT NOT NULL, controle TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL, PRIMARY KEY (username, conv_id, tekst_hash)
         );
-        INSERT INTO beurtbewijs VALUES ('alice', 'c1', 'h1', '{}', '[]', '{}', '2026-11-03T10:00:00+00:00');
+        INSERT INTO beurtbewijs VALUES ('alice', 'c1', 'h1', '{}', '[]', '{}', '["melding"]', '2026-11-03T10:00:00+00:00');
     """)
     oud.close()
     monkeypatch.setenv("DATABASE_PATH", str(pad))
@@ -152,9 +148,15 @@ def test_een_bestaande_tabel_zonder_controle_krijgt_de_kolom(tmp_path, monkeypat
 
     importlib.reload(db)
     db.init_db()
+    # Idempotent: een tweede start vindt de kolom niet meer en faalt niet.
     db.init_db()
 
-    assert db.beurtbewijs_voor("alice", "c1")["h1"]["controle"] == []
+    with sqlite3.connect(pad) as conn:
+        kolommen = {r[1] for r in conn.execute("PRAGMA table_info(beurtbewijs)")}
+    assert "controle" not in kolommen
+    assert db.beurtbewijs_voor("alice", "c1") == {
+        "h1": {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "2026-11-03T10:00:00+00:00"}
+    }
 
 
 class _Cursor:
@@ -217,15 +219,15 @@ def test_postgres_maakt_de_tabel_met_dezelfde_ddl_aan(postgres):
     assert "PRIMARY KEY (username, conv_id, tekst_hash)" in " ".join(db._BEURTBEWIJS_TABLE.split())
 
 
-def test_postgres_voegt_de_kolom_controle_toe(postgres):
-    """Een bestaande tabel van vóór #876 krijgt de kolom; idempotent, dus veilig bij elke start."""
+def test_postgres_haalt_de_kolom_controle_weg(postgres):
+    """De kolom van #876 gaat weg (#983); `IF EXISTS`, dus veilig bij elke start."""
     import persistence.db as db
 
     db.init_db()
 
     statements = [" ".join(sql.split()) for sql, _ in postgres.log]
-    assert "ALTER TABLE beurtbewijs ADD COLUMN IF NOT EXISTS controle TEXT NOT NULL DEFAULT '[]'" in statements
-    assert "controle TEXT NOT NULL DEFAULT '[]'" in " ".join(db._BEURTBEWIJS_TABLE.split())
+    assert "ALTER TABLE beurtbewijs DROP COLUMN IF EXISTS controle" in statements
+    assert "controle" not in db._BEURTBEWIJS_TABLE
 
 
 def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
@@ -242,5 +244,5 @@ def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
 
     sql, params = postgres.log[0]
     assert sql.startswith("INSERT INTO beurtbewijs") and "ON CONFLICT (username, conv_id, tekst_hash)" in sql
-    assert "?" not in sql and sql.count("%s") == 8
+    assert "?" not in sql and sql.count("%s") == 7
     assert params[:3] == ("alice", "c1", "h1")

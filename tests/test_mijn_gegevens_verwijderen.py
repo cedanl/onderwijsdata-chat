@@ -99,7 +99,6 @@ def _vul_anna() -> None:
                 "lineage": {},
                 "rekenbewijs": [],
                 "kaarten": {},
-                "controle": [],
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
         },

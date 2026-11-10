@@ -6,4 +6,4 @@
   `answer_feedback` meer, "Verwijder al mijn gegevens" en het log noemen haar niet meer, en een verwijderd gesprek
   koppelt geen feedback meer los (#476).
 - De privacytekst (app en `docs/privacy.md`), de verwijderdialoog en `SECURITY.md` zeggen dat een oordeel op een
-  antwoord niet meer wordt bewaard. Het bewijs per antwoord (`beurtbewijs`, met de kolom `controle`) blijft.
+  antwoord niet meer wordt bewaard. Het bewijs per antwoord (`beurtbewijs`) blijft.

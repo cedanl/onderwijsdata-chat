@@ -44,12 +44,11 @@ def tekst_hash(tekst: str) -> str:
     return hashlib.sha256(tekst.encode("utf-8", errors="replace")).hexdigest()
 
 
-def zet_klaar(session: dict, turn: dict, tekst: str, controle: list[str] | None = None) -> None:
+def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
     """Zet de rij van een net afgeronde beurt klaar tot het gesprek wordt opgeslagen.
 
-    `tekst` is de `content` van haar `message_end`, `controle` de meldingen die dat event droeg (#876), zoals de server
-    ze vastlegde en niet zoals de client ze in het gesprek schreef. Dezelfde tekst twee keer geeft één rij: de tweede
-    beurt voegt haar items toe (`voeg_samen`).
+    `tekst` is de `content` van haar `message_end`. Dezelfde tekst twee keer geeft één rij: de tweede beurt voegt haar
+    items toe (`voeg_samen`).
     """
     username = session.get("username")
     if not username:
@@ -59,7 +58,6 @@ def zet_klaar(session: dict, turn: dict, tekst: str, controle: list[str] | None 
         "lineage": lineage,
         "rekenbewijs": rekenbewijs,
         "kaarten": kaarten_van_beurt(turn),
-        "controle": list(controle or []),
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     sleutel = (username, tekst_hash(tekst))
@@ -80,14 +78,13 @@ def voeg_samen(oud: dict, nieuw: dict) -> dict:
 
     Voor de lineage wint de eerste maker, zoals in `data_provenance`; een kaart die later kwam vervangt de oudere
     van dezelfde key, zoals in het levende gesprek; het rekenbewijs krijgt de items die er nog niet in staan, tot de
-    grens van de sessie; de controle krijgt de meldingen van beide, elk één keer; het antwoord behoudt zijn eerste tijd.
+    grens van de sessie; het antwoord behoudt zijn eerste tijd.
     """
     rekenbewijs = oud["rekenbewijs"] + [r for r in nieuw["rekenbewijs"] if r not in oud["rekenbewijs"]]
     return {
         "lineage": {**nieuw["lineage"], **oud["lineage"]},
         "rekenbewijs": begrens_rekenbewijs(rekenbewijs),
         "kaarten": {**oud["kaarten"], **nieuw["kaarten"]},
-        "controle": list(dict.fromkeys([*oud["controle"], *nieuw["controle"]])),
         "created_at": oud["created_at"],
     }
 

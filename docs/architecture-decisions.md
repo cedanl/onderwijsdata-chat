@@ -297,7 +297,7 @@ databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41)
 **Date:** 2026-11-03 (besluit 2026-10-30); bijgewerkt 2026-11-09 (besluiten op open vragen 1 en 2; feedback verwijderd)  
 **Status:** Decided; stap 1 gebouwd (#875: tabel, schrijven, herstellen, levenscyclus), stap 2 gebouwd (#876: alleen
 eigen beurten als bewijs na heropenen, de controle in de rij en `server_beurt` in de feedbacktrace); feedback per
-antwoord verwijderd 09-11 (#983), de feedbacktrace is daarmee weg  
+antwoord verwijderd 09-11 (#983), de feedbacktrace en de kolom `controle` zijn daarmee weg  
 **Issue:** #784 (raakt #472, #677, #760, #785)
 
 ### Problem
@@ -357,7 +357,9 @@ Nieuwe tabel `beurtbewijs`, in `_SCHEMA` van `persistence/db.py` (dezelfde DDL v
 | `rekenbewijs` | TEXT NOT NULL | JSON-lijst van `{tool, argumenten, resultaat}`: wat `record_rekenbewijs` sinds de vorige beurt toevoegde |
 | `kaarten` | TEXT NOT NULL | JSON `{data_key: {...}}`: de kaarten die deze beurt tekende, alleen met de velden van `_KAARTREGEL_ARGUMENTEN` (geen titel en geen rijen, #211) |
 | `created_at` | TEXT NOT NULL | ISO-tijd van `message_end` |
-| `controle` | TEXT NOT NULL DEFAULT `'[]'` | JSON-lijst met de meldingen die `message_end` als `controle` droeg (#876, besluit 2). Toegevoegd met `_voeg_kolom_toe` in `_migrate`; een rij van daarvóór heeft een lege lijst |
+
+Van #876 tot #983 had de tabel ook een kolom `controle` (de meldingen van `message_end`, besluit 2); `_migrate` haalt
+haar weg (`_verwijder_kolom`).
 
 Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvragen: per gesprek, en per gesprek en hash.
 
@@ -417,7 +419,7 @@ app.
 - **"Verwijder al mijn gegevens"** (`persistence/verwijderen.py`): één `DELETE ... WHERE username = ?` in `DELETES`, en
   de klaarstaande rijen van de gebruiker gaan uit het geheugen, zoals bij `recepten.vergeet_gebruiker`.
 - **Export** (`persistence/export.py`): een soort `beurtbewijs` met `conv_id`, `tekst_hash`, `lineage`, `rekenbewijs`,
-  `kaarten`, `controle` (sinds #876) en `created_at`, in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
+  `kaarten` en `created_at` (van #876 tot #983 ook `controle`), in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
 - **Log:** op INFO alleen aantallen en kenmerken, nooit lineage, argumenten of resultaten (#475).
 
 ### Migratie
@@ -463,9 +465,11 @@ app.
 ### Feedback verwijderd (2026-11-09, #983)
 De duimpjes onder een antwoord zijn uit de app (besluit gebruiker 09-11), en daarmee `POST`/`GET /api/answer-feedback`,
 de trace (`core/answer_feedback.py`, `antwoord_trace`, `als_markdown`, `scripts/antwoordfeedback.py`) en
-`beurtbewijs_controles`. Gevolg 2 hierboven bestaat dus niet meer, en besluit 2 geldt alleen nog voor de rij: de
-kolom `controle` blijft geschreven en gaat mee in de export van "Mijn gegevens", maar geen code leest haar nog. De rij
-zelf en besluit 1 (alleen eigen beurten als bewijs) blijven ongewijzigd. In een tweede stap (besluit 09-11) is ook de
+`beurtbewijs_controles`. Gevolg 2 hierboven bestaat dus niet meer, en besluit 2 ook niet: de kolom `controle` las
+daarna geen code meer, en ze is weg (besluit 09-11). `init_db` haalt haar weg (`_verwijder_kolom`: `DROP COLUMN IF
+EXISTS` op PostgreSQL, op SQLite `DROP COLUMN` als de kolom er nog is), en `zet_klaar`, de chatroute en de export
+geven haar niet meer door. De rij met de tekst-hash en besluit 1 (alleen eigen beurten als bewijs) blijven
+ongewijzigd. In een tweede stap (besluit 09-11) is ook de
 opgeslagen feedback weg: `init_db` haalt de tabel `answer_feedback` weg met `DROP TABLE IF EXISTS` (bij elke start,
 op SQLite en PostgreSQL), en export, verwijderen, opschonen en het loskoppelen bij het verwijderen van een gesprek
 (#476) raken haar niet meer.

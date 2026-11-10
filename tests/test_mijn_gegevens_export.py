@@ -80,7 +80,6 @@ def _vul(gebruiker: str, uniek: str) -> None:
                 "lineage": {f"key-{uniek}": {"name": "query_data", "arguments": {"id": uniek}}},
                 "rekenbewijs": [{"tool": "compute_kpi", "argumenten": {"id": uniek}, "resultaat": f"res-{uniek}"}],
                 "kaarten": {f"key-{uniek}": {"data_key": f"key-{uniek}", "location_col": "L", "value_col": "V"}},
-                "controle": [f"controle-{uniek}"],
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
         },
@@ -168,7 +167,7 @@ def test_json_kolommen_zijn_ontleed(client):
     assert bewijs["lineage"] == {"key-ANNA-UNIEK": {"name": "query_data", "arguments": {"id": "ANNA-UNIEK"}}}
     assert bewijs["rekenbewijs"][0]["resultaat"] == "res-ANNA-UNIEK"
     assert bewijs["kaarten"]["key-ANNA-UNIEK"]["value_col"] == "V"
-    assert bewijs["controle"] == ["controle-ANNA-UNIEK"]
+    assert "controle" not in bewijs
     assert bewijs["created_at"] == "2026-11-03T10:00:00+00:00"
 
 

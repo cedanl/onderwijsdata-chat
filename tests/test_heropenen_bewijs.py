@@ -1,12 +1,9 @@
-"""Na heropenen alleen eigen beurten als bewijs, en de controle in de rij van de server (ADR-009 stap 2, #876;
-besluiten 1 en 2 van 09-11).
+"""Na heropenen alleen eigen beurten als bewijs (ADR-009 stap 2, #876; besluit 1 van 09-11).
 
 Een getal uit een eerder assistentbericht telt als gedekt (`earlier` in `agent/run.py`). Na heropenen komt dat
 bericht van de client. Alleen een bericht met een rij in `beurtbewijs` (of een klaarstaande, na herverbinden vóór de
 PUT) is van de server; een bericht zonder rij (van vóór de migratie, of door de client toegevoegd of veranderd) telt
 niet, ook niet als "eerder gesprek" voor de weigering. Een levende sessie houdt alles, zoals voorheen.
-
-De rij bewaart de controle zoals de server haar meldde, niet zoals de client haar in het gesprek opsloeg.
 """
 
 import asyncio
@@ -220,11 +217,11 @@ def test_eerdere_antwoorden_na_heropenen_zonder_de_berichten_zonder_rij(db):
     assert beurtbewijs.eerdere_antwoorden(sessie["messages"], sessie) == ["Live"]
 
 
-# ── De controle in de rij (besluit 2) ────────────────────────────────────────
+# ── De rij zonder controle (#983) ────────────────────────────────────────────
 
 
-def test_de_rij_bewaart_de_controle_van_de_server_en_niet_die_van_de_client(db, monkeypatch):
-    """Een levend antwoord met een melding, opgeslagen door een client die de melding weghaalde."""
+def test_een_antwoord_met_een_melding_krijgt_een_rij_zonder_controle(db, monkeypatch):
+    """De rij met de hash telt als bewijs na heropenen; de melding zelf bewaart de server niet meer (#983)."""
     sessie = chat._new_session(username="alice")
     vraag = "Het waren toch 987654 studenten?"
     eerst, daarna = _tekst("Nee, niet 987654 maar 5.943."), _tekst("Nee: niet 987654, het waren er 5.943.")
@@ -237,4 +234,4 @@ def test_de_rij_bewaart_de_controle_van_de_server_en_niet_die_van_de_client(db, 
     put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
 
     rij = db.beurtbewijs_voor("alice", "c1")[beurtbewijs.tekst_hash(eind["content"])]
-    assert rij["controle"] == eind["controle"]
+    assert set(rij) == {"lineage", "rekenbewijs", "kaarten", "created_at"}

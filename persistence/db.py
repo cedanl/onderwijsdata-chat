@@ -353,7 +353,7 @@ def _migrate(conn: Any) -> None:
             conn.commit()
 
     _voeg_kolom_toe(conn, "feedback", "instelling", "TEXT NOT NULL DEFAULT ''")
-    _voeg_kolom_toe(conn, "beurtbewijs", "controle", _BEURTBEWIJS_CONTROLE)
+    _verwijder_kolom(conn, "beurtbewijs", "controle")
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _verwijder_tabel(conn, "answer_feedback")
@@ -362,7 +362,7 @@ def _migrate(conn: Any) -> None:
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
     """Een kolom die later bij een bestaande tabel kwam; bestaande rijen krijgen de standaardwaarde uit `definitie`.
 
-    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `controle` bij beurtbewijs (#876).
+    Idempotent, dus veilig bij elke start: `instelling` bij feedback.
     """
     if _USE_POSTGRES:
         cursor = conn.cursor()
@@ -371,6 +371,22 @@ def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
         cursor.close()
     elif kolom not in {row[1] for row in conn.execute(f"PRAGMA table_info({tabel})")}:
         conn.execute(f"ALTER TABLE {tabel} ADD COLUMN {kolom} {definitie}")
+        conn.commit()
+
+
+def _verwijder_kolom(conn: Any, tabel: str, kolom: str) -> None:
+    """Een kolom die niet meer bestaat, met haar waarden: `controle` bij beurtbewijs (#876, weg sinds #983, besluit 09-11).
+
+    Idempotent, dus veilig bij elke start. PostgreSQL kent `DROP COLUMN IF EXISTS`; SQLite (vanaf 3.35) alleen
+    `DROP COLUMN`, dus daar eerst kijken of de kolom er nog is.
+    """
+    if _USE_POSTGRES:
+        cursor = conn.cursor()
+        cursor.execute(f"ALTER TABLE {tabel} DROP COLUMN IF EXISTS {kolom}")
+        conn.commit()
+        cursor.close()
+    elif kolom in {row[1] for row in conn.execute(f"PRAGMA table_info({tabel})")}:
+        conn.execute(f"ALTER TABLE {tabel} DROP COLUMN {kolom}")
         conn.commit()
 
 
@@ -440,10 +456,8 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 # Wat de server zelf vastlegde bij een afgerond antwoord, zodat een heropend gesprek hetzelfde rapport geeft als het
 # levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
 # client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en kaarten zijn JSON; de
-# kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211). controle is de JSON-lijst met de
-# meldingen die message_end droeg, zoals de server ze vastlegde (#876); een rij van daarvóór heeft een lege lijst.
-_BEURTBEWIJS_CONTROLE = "TEXT NOT NULL DEFAULT '[]'"
-_BEURTBEWIJS_TABLE = f"""
+# kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211).
+_BEURTBEWIJS_TABLE = """
     CREATE TABLE IF NOT EXISTS beurtbewijs (
         username    TEXT NOT NULL,
         conv_id     TEXT NOT NULL,
@@ -452,7 +466,6 @@ _BEURTBEWIJS_TABLE = f"""
         rekenbewijs TEXT NOT NULL,
         kaarten     TEXT NOT NULL,
         created_at  TEXT NOT NULL,
-        controle    {_BEURTBEWIJS_CONTROLE},
         PRIMARY KEY (username, conv_id, tekst_hash)
     )
 """
@@ -794,7 +807,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, controle, created_at FROM beurtbewijs "
+            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, created_at FROM beurtbewijs "
             "WHERE username = ? AND conv_id = ?",
             (username, conv_id),
         ).fetchall()
@@ -805,7 +818,6 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
                 "lineage": json.loads(r["lineage"]),
                 "rekenbewijs": json.loads(r["rekenbewijs"]),
                 "kaarten": json.loads(r["kaarten"]),
-                "controle": json.loads(r["controle"]),
                 "created_at": r["created_at"],
             }
         except ValueError:
@@ -833,10 +845,9 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
             _execute(
                 conn,
                 "INSERT INTO beurtbewijs "
-                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, controle, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
-                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten, "
-                "controle=excluded.controle",
+                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
+                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten",
                 (
                     username,
                     conv_id,
@@ -844,7 +855,6 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
                     json.dumps(rij["lineage"], ensure_ascii=False, default=str),
                     json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
                     json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
-                    json.dumps(rij["controle"], ensure_ascii=False),
                     rij["created_at"],
                 ),
             )

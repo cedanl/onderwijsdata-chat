@@ -127,16 +127,8 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     session["turn_figures"] = []
 
     session["_clarified"] = False
-    # De meldingen die het antwoord droeg, voor de rij in beurtbewijs (#876).
-    eind: dict = {}
-
-    async def emit_beurt(event: dict) -> None:
-        if event.get("type") == "message_end":
-            eind["controle"] = event.get("controle") or []
-        await emit(event)
-
     try:
-        response_text = await agent_run(messages, session, emit_beurt, stop_event, model=model)
+        response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
         await emit(error_event(e))
         # De vraag blijft staan, met een afbreekmarkering als antwoord: het gesprek blijft in beurten,
@@ -165,7 +157,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         )
         session["turns"] = turns
         # Het bewijs van dit antwoord wacht tot de client het gesprek opslaat (ADR-009, #875).
-        beurtbewijs.zet_klaar(session, turns[-1], response_text, eind.get("controle"))
+        beurtbewijs.zet_klaar(session, turns[-1], response_text)
     session["messages"] = messages
 
 
