@@ -791,6 +791,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
             onToggleSidebar={() => setSidebarOpen(o => !o)}
             exportMessages={hasMessages ? displayMessages : null}
             feedback={feedbackEnabled}
+            aanbieder={models.find(m => m.id === selectedModel)?.provider}
           />
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
