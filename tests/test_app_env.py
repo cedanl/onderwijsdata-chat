@@ -25,7 +25,7 @@ def test_elke_omgeving_noemt_zichzelf(omgeving):
     assert _app_env(omgeving) == omgeving.name
 
 
-@pytest.mark.parametrize("omgeving", ["playground", "production"])
+@pytest.mark.parametrize("omgeving", ["playground", "production", "staging-otc", "production-otc"])
 def test_playground_en_productie_tonen_geen_api_documentatie(monkeypatch, omgeving):
     monkeypatch.setattr(Config, "APP_ENV", _app_env(_ROOT / "manifests" / omgeving))
     assert not Config.api_docs()

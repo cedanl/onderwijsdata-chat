@@ -60,7 +60,7 @@ changelog-item wat er anders is.
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie (`routes/config.py`): `dashboards_enabled`, `feedback_enabled`, `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk), `max_chat_turns` (maximum vragen per gesprek), `max_history` (maximum berichten die het model ziet), `bewaartermijn_gesprekken_dagen` en `bewaartermijn_rapporten_dagen` (de termijnen van de opschoning, `null` als die een termijn weigert), `sessie_uren` en `sessie_max_uren`, en `bronnen`: per bron met een omgevingsregel of hij hier antwoord geeft (`tools/beschikbaarheid.py`, #956), voor de suggestievragen en het databronnenvenster |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron dat de chat hier kan opvragen (`catalogus_aantallen` in `tools/catalog.py`): met een datatool (CBS, DUO, RIO), plus de bronnen met een eigen tool die hier antwoord geeft (zoals UWV, ROA, UNL of LCSK). Welke bronnen erin staan, verschilt dus per omgeving |
-| `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen lokaal, op development en op test; met `APP_ENV` `playground` of `production` bestaan ze niet (`SECURITY.md`, S23) |
+| `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen lokaal, op development en op test; met `APP_ENV` `playground`, `production`, `staging-otc` of `production-otc` bestaan ze niet (`SECURITY.md`, S23) |
 
 ---
 

@@ -44,9 +44,9 @@ def test_een_pod_zolang_de_staat_in_het_geheugen_leeft(omgeving):
 
 # ── Opschoning na de bewaartermijn (#485): CronJob in de chart, per omgeving aan of uit ──
 
-# Demofase: de opschoning draait op test en playground. Productie en development doen niet mee (geen ladder, en
-# productie heeft geen echte gebruikers); aanzetten daar is een eigen besluit.
-_OPSCHONEN_AAN = {"test", "playground"}
+# De opschoning draait op test, playground en de OTC-omgevingen (#674): de bewaartermijn van docs/privacy.md geldt
+# daar ook. Development en de vervallen map production doen niet mee.
+_OPSCHONEN_AAN = {"test", "playground", "staging-otc", "production-otc"}
 _QUOTUM_CPU_MILLI = 1000  # ResourceQuota limits.cpu van de namespace op test en playground
 
 
@@ -60,7 +60,7 @@ def test_de_chart_schoont_standaard_niet_op():
 
 
 @pytest.mark.parametrize("omgeving", _OMGEVINGEN, ids=lambda p: p.name)
-def test_opschonen_alleen_op_test_en_playground(omgeving):
+def test_opschonen_alleen_op_de_omgevingen_met_een_bewaartermijn(omgeving):
     aan = (_values(omgeving).get("opschonen") or {}).get("enabled", _CHART["opschonen"]["enabled"])
     assert aan is (omgeving.name in _OPSCHONEN_AAN)
 

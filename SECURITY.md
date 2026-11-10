@@ -124,7 +124,7 @@ Een bevestigde bevinding komt daarna in dit log.
 - `config.py`: `CORS_ORIGINS` heeft als standaard `""`, dus zonder instelling staat geen enkele cross-origin toe.
 - `Config.validate()` gooit een `ConfigError` als een origin in `CORS_ORIGINS` ergens een `*` bevat, dus ook bij `*` zelf en bij een patroon als `https://*.nl` of `*.example.nl`; de melding noemt die origins en de server start niet (#506). Een patroon zou nooit werken: de `CORSMiddleware` krijgt alleen `allow_origins` en vergelijkt een origin letterlijk, dus zo'n instelling faalde eerder stil. Wildcard-matching ondersteunen we bewust niet, omdat `allow_credentials` aan staat.
 - `server.py` geeft `Config.get_parsed_cors_origins()` aan de `CORSMiddleware`.
-- `manifests/{development,test,playground,production}/values.yaml` noemen elk één expliciete `https://`-origin voor de eigen omgeving.
+- `manifests/{development,test,playground,production,staging-otc,production-otc}/values.yaml` noemen elk één expliciete `https://`-origin voor de eigen omgeving.
 
 Test: `tests/test_config_cors.py`.
 
@@ -346,7 +346,7 @@ Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `w
 - Geen `Permissions-Policy`-header.
 
 **Nu (#636):**
-- De API-documentatie bestaat alleen waar ontwikkeld wordt: `Config.api_docs()` is waar voor `APP_ENV` `local`, `development` en `test` (#676; eerst hing het aan `POSTGRES_URI` én een `SESSION_SECRET` die geen omgeving zette). Op playground en productie geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
+- De API-documentatie bestaat alleen waar ontwikkeld wordt: `Config.api_docs()` is waar voor `APP_ENV` `local`, `development` en `test` (#676; eerst hing het aan `POSTGRES_URI` én een `SESSION_SECRET` die geen omgeving zette). Op playground, productie en de OTC-omgevingen geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
 - De dashboard-eindpunten (`DASHBOARD_EINDPUNTEN` in `routes/instellingen.py`; `/instroom` is weg sinds #930) vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` een 403 (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen. Het oude pad `/api/dashboard/instroom` geeft 410 en elk ander pad onder `/api/dashboard/` of `/api/dashboards` 404, beide met de bestaande eindpunten in `error`; ze laden niets en vragen geen token (#954).
 - `Permissions-Policy` op elk antwoord, zie S3.
 - Al gedekt, geen wijziging: het printbericht van een rapport telt alleen als het van de app komt (`event.source === parent`, `PRINT_JS` in `frontend/src/reportHtml.js`; #634, zie S22).
