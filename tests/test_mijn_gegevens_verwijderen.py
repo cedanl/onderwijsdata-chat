@@ -152,6 +152,19 @@ def test_alles_van_de_gebruiker_weg_met_de_aantallen_per_soort(client):
     assert _aantallen("bert") == _BERT
 
 
+def test_van_de_bronregels_in_de_bewijsrijen_blijft_niets_over(client):
+    """#987: de bronregels staan in de rij zelf, dus ze gaan met de rij mee."""
+    _vul_anna()
+    _vul("bert", "BERT-UNIEK")
+
+    _verwijder(client, _token("anna"))
+
+    with db._connection() as conn:
+        bronnen = [r["bronnen"] for r in db._execute(conn, "SELECT bronnen FROM beurtbewijs")]
+    assert bronnen and not any("ANNA-UNIEK" in b for b in bronnen)
+    assert any("BERT-UNIEK" in b for b in bronnen)
+
+
 # ── 2. Bevestiging en sessie ─────────────────────────────────────────────────
 
 

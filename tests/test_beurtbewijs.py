@@ -17,14 +17,23 @@ import pytest
 from fastapi import HTTPException
 
 from agent import beurtbewijs, report
+from agent.bronvermelding import vastgelegde_bronnen
 from agent.datasetcontext import build_dataset_context
 from agent.kaarten import kaarten_in_gesprek
 from agent.loop import LoopResult
-from agent.session_data import data_lineage, gebruikersvragen, record_data_key, record_rekenbewijs, rekenbewijs
+from agent.session_data import (
+    data_lineage,
+    gebruikersvragen,
+    neem_beurtbewijs,
+    record_data_key,
+    record_rekenbewijs,
+    rekenbewijs,
+)
 from routes import chat
 from routes import persistence as put_route
 from tests.test_report_kaart import _ANTWOORD, _GEOJSON, _KAART, _KEY, _kaartbeurt, _stil
 from tools import store
+from tools.store import KeyMeta
 
 _LAAD = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": None}}
 _REKEN = {"name": "compute_kpi", "arguments": {"data_key": _KEY, "kpi": "som"}}
@@ -224,6 +233,7 @@ def test_een_rij_draagt_geen_controle_ook_als_message_end_er_een_had(monkeypatch
             "lineage",
             "rekenbewijs",
             "kaarten",
+            "bronnen",
             "created_at",
         }
 
@@ -292,12 +302,14 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "lineage": {"k": 1},
         "rekenbewijs": [{"r": 1}],
         "kaarten": {"k": {"v": 1}},
+        "bronnen": {"k": [{"regel": "eerst"}]},
         "created_at": "eerst",
     }
     b = {
         "lineage": {"k": 2, "l": 3},
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},
+        "bronnen": {"k": [{"regel": "laat"}], "l": [{"regel": "l"}]},
         "created_at": "laat",
     }
 
@@ -307,9 +319,101 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "lineage": {"k": 1, "l": 3},  # de eerste maker wint
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},  # de latere kaart wint
+        "bronnen": {"k": [{"regel": "eerst"}], "l": [{"regel": "l"}]},  # de eerste maker wint, als bij de lineage
         "created_at": "eerst",
     }
     assert beurtbewijs.voeg_samen(samen, b) == samen
+
+
+def test_samenvoegen_met_een_rij_zonder_bronnen_van_voor_987():
+    oud = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "eerst"}
+    nieuw = {**oud, "bronnen": {"k": [{"regel": "r"}]}, "created_at": "laat"}
+
+    assert beurtbewijs.voeg_samen(oud, nieuw)["bronnen"] == {"k": [{"regel": "r"}]}
+    assert beurtbewijs.voeg_samen(nieuw, oud)["bronnen"] == {"k": [{"regel": "r"}]}
+    assert beurtbewijs.voeg_samen(oud, oud)["bronnen"] == {}
+
+
+# ── De bronregels in de rij (#987) ───────────────────────────────────────────
+
+_BRONKEY = "cbs:85423NED:bron987"
+
+
+@pytest.fixture
+def _bronkey():
+    store.put(_BRONKEY, pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="cbs", dataset="85423NED"))
+    yield _BRONKEY
+    store._verwijder(_BRONKEY, "test")
+
+
+def test_een_rij_draagt_de_bronregels_van_haar_nieuwe_keys(monkeypatch, _bronkey):
+    sessie = _sessie()
+    _beurt(monkeypatch, sessie, "Hoeveel?", "Zoveel.", laad=_bronkey)
+    _beurt(monkeypatch, sessie, "En nu?", "Nog steeds.", laad=_bronkey)
+
+    eerste, tweede = (beurtbewijs._klaar["alice", beurtbewijs.tekst_hash(t)] for t in ("Zoveel.", "Nog steeds."))
+    [bron] = eerste["bronnen"][_bronkey]
+    assert bron["bron"] == "cbs" and bron["dataset"] == "85423NED" and "85423NED" in bron["regel"]
+    assert eerste["bronnen"] == {_bronkey: vastgelegde_bronnen(_bronkey)}
+    assert tweede["bronnen"] == {}  # de key bestond al: de eerste vastlegging wint
+    assert sessie["data_bronnen"] == eerste["bronnen"]
+
+
+def test_bronregels_ook_zonder_aanroep_en_neem_beurtbewijs_begint_opnieuw(_bronkey):
+    sessie = _sessie()
+    record_data_key(sessie, json.dumps({"data_key": _bronkey}))
+
+    lineage, reken, bronnen = neem_beurtbewijs(sessie)
+
+    assert lineage == {} and reken == [] and list(bronnen) == [_bronkey]
+    assert neem_beurtbewijs(sessie) == ({}, [], {})
+    assert list(sessie["data_bronnen"]) == [_bronkey]  # de sessie houdt ze, ook na het nemen
+
+
+def test_zonder_gebruikersnaam_houdt_de_levende_sessie_de_bronregels(_bronkey):
+    """Zonder gebruikersnaam schrijft `zet_klaar` geen rij; het vervolgantwoord leest dan de sessie zelf."""
+    sessie = {"username": "", "messages": [{"role": "user", "content": "Vraag?"}]}
+    record_data_key(sessie, json.dumps({"data_key": _bronkey}), _LAAD)
+
+    beurtbewijs.zet_klaar(sessie, {}, "tekst")
+
+    assert beurtbewijs._klaar == {}
+    assert list(sessie["data_bronnen"]) == [_bronkey]
+
+
+def test_een_key_zonder_meta_heeft_geen_bronregels():
+    sessie = _sessie()
+    record_data_key(sessie, json.dumps({"data_key": "cbs:onbekend987"}), _LAAD)
+
+    assert sessie["data_bronnen"] == {} and neem_beurtbewijs(sessie)[2] == {}
+
+
+def test_heropenen_zet_de_bronregels_terug_en_nummert_ook_een_key_zonder_aanroep():
+    bron = [{"bron": "duo", "dataset": "p01hoinges", "regel": "DUO · Ingeschrevenen (p01hoinges)"}]
+    rij = {
+        "lineage": {"cbs:a": _LAAD},
+        "rekenbewijs": [],
+        "kaarten": {},
+        "bronnen": {"cbs:a": bron, "duo:b": bron},
+        "created_at": "t",
+    }
+    sessie = _sessie()
+    sessie["messages"] = [{"role": "user", "content": "Vraag?"}, {"role": "assistant", "content": "Antwoord."}]
+
+    beurtbewijs.zet_terug(sessie, {beurtbewijs.tekst_hash("Antwoord."): rij})
+
+    assert sessie["data_bronnen"] == {"cbs:a": bron, "duo:b": bron}
+    assert sessie["data_vraag"] == {"cbs:a": 1, "duo:b": 1}
+
+
+def test_heropenen_met_een_rij_zonder_bronnen_van_voor_987():
+    rij = {"lineage": {"cbs:a": _LAAD}, "rekenbewijs": [], "kaarten": {}, "created_at": "t"}
+    sessie = _sessie()
+    sessie["messages"] = [{"role": "user", "content": "Vraag?"}, {"role": "assistant", "content": "Antwoord."}]
+
+    beurtbewijs.zet_terug(sessie, {beurtbewijs.tekst_hash("Antwoord."): rij})
+
+    assert sessie["data_vraag"] == {"cbs:a": 1} and sessie.get("data_bronnen") is None
 
 
 def test_het_geheugen_is_begrensd(monkeypatch):

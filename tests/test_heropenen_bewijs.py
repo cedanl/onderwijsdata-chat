@@ -234,4 +234,4 @@ def test_een_antwoord_met_een_melding_krijgt_een_rij_zonder_controle(db, monkeyp
     put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
 
     rij = db.beurtbewijs_voor("alice", "c1")[beurtbewijs.tekst_hash(eind["content"])]
-    assert set(rij) == {"lineage", "rekenbewijs", "kaarten", "created_at"}
+    assert set(rij) == {"lineage", "rekenbewijs", "kaarten", "bronnen", "created_at"}

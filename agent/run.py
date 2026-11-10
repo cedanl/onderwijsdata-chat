@@ -203,7 +203,7 @@ def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
 def _veilige_vervolgbronnen(tekst: str, session: dict) -> tuple[list[str], dict[str, str]]:
     """De bronregels van eerder geladen data die een antwoord zonder toolaanroep noemt (#975); faalt zacht, als hierboven."""
     try:
-        return vervolgbronnen(tekst, vorige_databeurt(session))
+        return vervolgbronnen(tekst, vorige_databeurt(session), session.get("data_bronnen"))
     except Exception as exc:
         log_interne_fout(exc, "vervolgbronnen")
         return [], {}
