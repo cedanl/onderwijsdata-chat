@@ -34,7 +34,7 @@ from tools.scopeprofiel import VO_CONTEXT_DEEL
 from tools.store import KeyMeta
 
 from .meetwaarden import meetwaarden
-from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
+from .selectie import SCHEIDING, laadkey, meta_in_woorden, stapkeys
 
 # Een bronregel en de dataset waar hij over gaat; None als de stap die niet noemt.
 Bronregel = tuple[str, str | None]
@@ -85,14 +85,18 @@ def _actualiteit(known: KeyMeta) -> str:
     return f", {bijgewerkt}opgehaald op {known.opgehaald_op.astimezone():%d-%m-%Y}"
 
 
-def _datasetbron(key: str) -> Bronregel | None:
-    """De geladen dataset achter een key in woorden, met zijn ID; None als hij onbekend is (CH-30)."""
-    geladen = laadkey(key)
-    if not (known := store.meta(geladen)) or not (tekst := selectie_in_woorden(geladen)):
-        return None
+def _metabron(known: KeyMeta) -> Bronregel:
+    """Een geladen dataset in woorden, met zijn ID, uit haar meta: ook als de store de tabel kwijt is (#986)."""
+    tekst = meta_in_woorden(known)
     # Zonder catalogustitel is de titel het ID al.
     tekst = tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"
     return tekst + _actualiteit(known), str(known.dataset)
+
+
+def _datasetbron(key: str) -> Bronregel | None:
+    """De geladen dataset achter een key in woorden, met zijn ID; None als hij onbekend is (CH-30)."""
+    known = store.meta(laadkey(key))
+    return _metabron(known) if known else None
 
 
 def _registerbron(tool: str, result: str) -> list[Bronregel]:
@@ -211,8 +215,21 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
 
 # --- een vervolgantwoord zonder eigen datastap (#975) ---
 
-# Hoe een antwoord een bron voluit noemt, naast haar label (DUO, CBS, SKDB) en dataset-ID.
-_LEVERANCIERS = {"skdb": (studiekeuze.BRONNAAM, "LCSK"), "unl": (wo_personeel.BRONNAAM, "WOPI")}
+# Hoe een antwoord een bron voluit noemt, naast haar label (DUO, CBS, SKDB) en dataset-ID: haar leverancier en de
+# termen die alleen zij heeft. Een antwoord over een koppeling met de Studiekeuzedatabase noemde "NSE-oordeel" en geen
+# van haar namen (#986).
+_LEVERANCIERS = {
+    "skdb": (
+        studiekeuze.BRONNAAM,
+        "LCSK",
+        "NSE",
+        "Nationale Studenten Enquête",
+        "Studentenenquête",
+        "numerus fixus",
+        "studiekeuze",
+    ),
+    "unl": (wo_personeel.BRONNAAM, "WOPI"),
+}
 
 
 def _namen(known: KeyMeta) -> list[str]:
@@ -227,12 +244,24 @@ def _noemt(tekst: str, naam: str) -> bool:
     return re.search(rf"(?<!\w){re.escape(naam)}(?!\w)", tekst, re.IGNORECASE) is not None
 
 
+def koppeling(key: str) -> list[KeyMeta]:
+    """De geladen tabellen waar `key` uit bestaat, met hun meta: bij een koppeling elke tabel die ze las, ook een die de
+    store intussen kwijt is (store.bronnen, #985); bij een geladen tabel die tabel zelf. Een koppeling is een geheel."""
+    return [known for _, known in store.bronnen(key)]
+
+
+def _genoemd(tekst: str, key: str, groep: list[KeyMeta]) -> bool:
+    """Noemt het antwoord de key of een van de tabellen waar hij uit bestaat?"""
+    metas = [known for known in (store.meta(key), *groep) if known]
+    return any(_noemt(tekst, naam) for known in metas for naam in _namen(known))
+
+
 def _eerdere_bronregels(tekst: str, keys: list[str]) -> dict[str, str | None]:
     regels: dict[str, str | None] = {}
     for key in keys:
-        known = store.meta(laadkey(key))
-        if known and any(_noemt(tekst, naam) for naam in _namen(known)) and (bron := _datasetbron(key)):
-            regels.setdefault(*bron)
+        if _genoemd(tekst, key, groep := koppeling(key)):
+            for known in groep:
+                regels.setdefault(*_metabron(known))
     return regels
 
 
@@ -243,8 +272,11 @@ def vervolgbronnen(tekst: str, keys: list[str]) -> tuple[list[str], dict[str, st
     gebruikte. Het antwoord besprak de analyse en noemde LCSK, maar de beurt las niets, dus de bronlijst bleef leeg: geen
     versie, geen verplichte zin van LCSK. `keys` zijn de keys van de vorige beurt die data laadde
     (session_data.vorige_databeurt); een dataset telt mee als het antwoord hem noemt, met zijn bronlabel, dataset-ID,
-    catalogustitel of leverancier. Dat vraagt de prompt bij elke claim met data. Een losse vraag die geen bron noemt,
-    krijgt geen bronregel. De regel komt uit de store, dus met de versie en de verplichte zin van LCSK (studiekeuze._bewaar).
+    catalogustitel, leverancier of een term die alleen die bron heeft ("NSE", "numerus fixus"). Dat vraagt de prompt bij
+    elke claim met data. Een losse vraag die geen bron noemt, krijgt geen bronregel. Een koppeling telt als geheel (#986):
+    noemt het antwoord een van haar tabellen, dan krijgt het de regels van alle, want "NSE-oordeel, BRIN en DUO" rust ook
+    op de Studiekeuzedatabase. De regel komt uit de meta in de store, ook van een tabel die de store intussen kwijt is,
+    dus met de versie en de verplichte zin van LCSK (studiekeuze._bewaar).
     """
     regels = _eerdere_bronregels(tekst, keys)
     links = {regel: url for regel, dataset in regels.items() if dataset and (url := documentatie_url(dataset))}

@@ -3,6 +3,9 @@
 - 08-C2 (R09): na een analyse op de Studiekeuzedatabase vroeg de gebruiker welke sleutels de koppeling gebruikte. Het
   antwoord besprak de analyse en noemde LCSK, maar de beurt riep geen tool aan: `bronnen` was leeg, zonder versie en
   zonder de verplichte zin van LCSK. Nu krijgt zo'n antwoord de bronregels van de eerder geladen data die het noemt.
+- N08 (reaudit 10-11, #986): na een koppeling van beide noemde het vervolgantwoord "NSE-oordeel, BRIN en DUO" en niet
+  de Studiekeuzedatabase zelf: de LCSK-regel viel weg. Een koppeling telt nu als geheel, ook als de store een van haar
+  tabellen intussen kwijt is.
 - 08-B7 (R11): na de melding dat de Studiekeuzedatabase geen mbo heeft, haalde het model ongevraagd DUO-indicatoren
   op. De melding zegt nu zelf: de beperking noemen, een andere maat hooguit aanbieden, pas ophalen na instemming.
 
@@ -25,7 +28,7 @@ from agent.stream import StreamResult
 from data import instellingen
 from tools import mbo_indicatoren, store, studiekeuze, wo_personeel
 from tools.buiten_de_bron import ALLEEN_AANBIEDEN
-from tools.schemas import TOOL_GET_DUO_DATA, TOOL_GET_STUDIEKEUZE
+from tools.schemas import TOOL_GET_DUO_DATA, TOOL_GET_STUDIEKEUZE, TOOL_RUN_ANALYSIS
 from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
@@ -34,6 +37,7 @@ loop_module = importlib.import_module("agent.loop")
 SYSTEM = (Path(__file__).resolve().parent.parent / "prompts" / "system.md").read_text(encoding="utf-8")
 
 _DUO_KEY = "duo:p01hoinges:0"
+_KOPPEL_KEY = "analyse:hu-ict-met-duo"
 _PROFIELEN = {
     "hogeschool utrecht": {"naam": "Hogeschool Utrecht", "sector": "hbo", "instellingscode": "25DW"},
     "roc van amsterdam": {"naam": "ROC van Amsterdam", "sector": "mbo", "instellingscode": "25LX"},
@@ -57,6 +61,11 @@ def proefexport(monkeypatch):
 def _dispatch(name, args):
     if name == TOOL_GET_STUDIEKEUZE:
         return studiekeuze.get_studiekeuze(**args), None
+    if name == TOOL_RUN_ANALYSIS:
+        # Zoals run_analysis een koppeling teruggeeft: haar key en elke tabel die het script las.
+        gelezen = list(store.meta(_KOPPEL_KEY).gelezen or ())
+        rijen = store.get(_KOPPEL_KEY).to_dict("records")
+        return json.dumps({"data_key": _KOPPEL_KEY, "gelezen": gelezen, "resultaat": rijen}), None
     assert name == TOOL_GET_DUO_DATA
     return json.dumps({"data_key": _DUO_KEY, "rijen": [{"STUDIEJAAR": 2023, "AANTAL": 120}]}), None
 
@@ -217,18 +226,114 @@ def test_vorige_databeurt_is_de_laatste_eerdere_vraag_met_data():
     ],
 )
 def test_elke_naam_van_de_bron_telt(tekst):
+    bronnen, _ = vervolgbronnen(tekst, [_skdb_proefkey()])
+    assert len(bronnen) == 1 and skdb.VERPLICHTE_ZIN in bronnen[0]
+
+
+def _skdb_proefkey() -> str:
+    key = "skdb:opleidingen:proef"
     store.put(
-        "skdb:opleidingen:proef",
+        key,
         pd.DataFrame({"brin": ["25DW"]}),
         KeyMeta(bron="skdb", dataset=studiekeuze.DATASET, peilmoment=f"versie 26.6; {skdb.VERPLICHTE_ZIN}"),
     )
-    bronnen, _ = vervolgbronnen(tekst, ["skdb:opleidingen:proef"])
-    assert len(bronnen) == 1 and skdb.VERPLICHTE_ZIN in bronnen[0]
+    return key
 
 
 def test_een_woord_dat_een_naam_bevat_telt_niet():
     """Alleen hele woorden: "duo" in "duozitting" noemt DUO niet."""
     assert vervolgbronnen("Een duozitting met de decaan.", [_DUO_KEY]) == ([], {})
+
+
+# --- N08 (#986): een koppeling is een geheel ---------------------------------------------------------------------------
+
+_KOPPELVRAAG = (
+    "Welke sleutels heb je gebruikt om die twee te koppelen? Antwoord kort op basis van je vorige antwoord, zonder nieuwe "
+    "gegevens op te halen."
+)
+_KOPPELSLEUTELS = "Ik koppelde het NSE-oordeel aan de DUO-inschrijvingen via de BRIN-code en de opleiding CROHO 30020."
+
+
+def _koppelbeurt(monkeypatch, session: dict) -> str:
+    """Een databeurt waarvan de enige key een koppeling is: afgeleid van de DUO-tabel, met ook de Studiekeuzedatabase
+    gelezen, zoals run_analysis haar afleidt. Geeft de key van de geladen SKDB-tabel."""
+    skdb_key = json.loads(studiekeuze.get_studiekeuze(**json.loads(_HU_ICT)))["data_key"]
+    koppeling = pd.DataFrame({"brin": ["25DW"], "croho": [30020], "STUDIEJAAR": [2023], "AANTAL": [120]})
+    store.derive(_DUO_KEY, _KOPPEL_KEY, koppeling, gelezen=(_DUO_KEY, skdb_key), stap="koppeling op BRIN")
+    analyse = json.dumps({"code": "resultaat = koppeling"})
+    stappen = [
+        StreamResult(text="", tool_calls=[{"id": "a1", "name": TOOL_RUN_ANALYSIS, "arguments": analyse}]),
+        StreamResult(
+            text="ICT (CROHO 30020) bij de Hogeschool Utrecht, gekoppeld aan de inschrijvingen.", tool_calls=[]
+        ),
+    ]
+    _beurt(monkeypatch, "Koppel ICT bij de HU aan de DUO-inschrijvingen.", stappen, session)
+    assert session["data_vraag"] == {_KOPPEL_KEY: 1}  # de koppeling is de enige key van die beurt
+    return skdb_key
+
+
+def _koppelantwoord(monkeypatch, session: dict, antwoord: str = _KOPPELSLEUTELS) -> dict:
+    einde, _ = _beurt(monkeypatch, _KOPPELVRAAG, [StreamResult(text=antwoord, tool_calls=[])], session)
+    return einde
+
+
+def test_een_vervolgantwoord_over_een_koppeling_krijgt_de_regels_van_alle_bronnen(monkeypatch):
+    """N08: het antwoord noemt NSE, BRIN, CROHO en DUO, niet de Studiekeuzedatabase; haar regel blijft."""
+    assert not any(naam.lower() in _KOPPELSLEUTELS.lower() for naam in ("SKDB", "LCSK", "Studiekeuzedatabase"))
+    session: dict = {}
+    _koppelbeurt(monkeypatch, session)
+
+    einde = _koppelantwoord(monkeypatch, session)
+
+    regel = _lcsk_regel(einde["bronnen"])
+    assert f"versie {proefbestand.standaard()[1].versie}" in regel
+    assert skdb.DOCUMENTATIE in regel or skdb.DOCUMENTATIE in einde.get("bronlinks", {}).values()
+    assert any("p01hoinges" in regel for regel in einde["bronnen"])
+    assert len(einde["bronnen"]) == 2  # elke bron één keer
+
+
+def test_de_regel_van_een_gekoppelde_bron_blijft_als_de_store_haar_kwijt_is(monkeypatch):
+    """De SKDB-tabel is uit de store (boven STORE_MAX_MB), de koppeling niet: haar meta staat in de keten (#985)."""
+    session: dict = {}
+    skdb_key = _koppelbeurt(monkeypatch, session)
+    store._verwijder(skdb_key, "test")
+    assert store.meta(skdb_key) is None
+
+    einde = _koppelantwoord(monkeypatch, session)
+
+    regel = _lcsk_regel(einde["bronnen"])
+    assert f"versie {proefbestand.standaard()[1].versie}" in regel
+    assert skdb.DOCUMENTATIE in regel
+
+
+def test_noemt_het_antwoord_alleen_de_studiekeuzedatabase_dan_komt_duo_van_de_koppeling_mee(monkeypatch):
+    session: dict = {}
+    _koppelbeurt(monkeypatch, session)
+
+    einde = _koppelantwoord(monkeypatch, session, "Ik gebruikte het NSE-oordeel van de opleiding.")
+
+    assert _lcsk_regel(einde["bronnen"])
+    assert any("p01hoinges" in regel for regel in einde["bronnen"])
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Het NSE-oordeel is hoog.",
+        "Volgens de Nationale Studenten Enquête is dat zo.",
+        "In de Nationale Studentenenquête scoort de opleiding goed.",
+        "Uit de studentenenquête blijkt dat.",
+        "De opleiding heeft een numerus fixus.",
+        "Dat hangt af van je studiekeuze.",
+    ],
+)
+def test_een_kenmerkende_term_noemt_de_studiekeuzedatabase(tekst):
+    assert vervolgbronnen(tekst, [_skdb_proefkey()])[0]
+
+
+def test_een_term_binnen_een_woord_telt_niet():
+    """Alleen hele woorden: "nse" in "dense" noemt de Nationale Studenten Enquête niet."""
+    assert vervolgbronnen("Een dense tabel met veel kolommen.", [_skdb_proefkey()]) == ([], {})
 
 
 # --- 08-B7 (R11): na "niet in deze bron" alleen aanbieden ------------------------------------------------------------

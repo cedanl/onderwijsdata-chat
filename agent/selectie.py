@@ -82,6 +82,11 @@ def selectie_in_woorden(data_key: str) -> str | None:
     niet in (CH-30)."""
     if not (known := store.meta(laadkey(data_key))):
         return None
+    return meta_in_woorden(known)
+
+
+def meta_in_woorden(known: KeyMeta) -> str:
+    """Als `selectie_in_woorden`, uit de meta zelf: ook voor een tabel die de store intussen kwijt is (#985, #986)."""
     tekst = bron_met_bestand(known)
     if jaren := periode_in_woorden(known):
         tekst += f", {jaren}"
