@@ -7,6 +7,10 @@ versie en de link ontbraken, terwijl de rijen NSE-waarden bevatten. Er staat gee
 
 De herkomst wordt bij het afleiden vastgelegd (#985): de store kan een bron weggooien (boven STORE_MAX_MB) terwijl de
 koppeling blijft, en dan mag haar kop die bron, de LCSK-zin en de hash niet kwijtraken.
+
+Sinds #1014 weigert run_analysis een merge van twee keys: de koppeling hier is koppel_data, met daarna een eigen
+berekening op de koppeling, zoals het model het nu moet doen. Een berekening die twee keys leest zonder ze samen te
+voegen, draagt nog steeds beide bronnen.
 """
 
 import json
@@ -24,6 +28,7 @@ from tools import store, studiekeuze
 from tools.analysis import run_analysis
 from tools.csv_export import naar_csv
 from tools.exportnoten import ONVOLLEDIG_EXPORT, herkomstregels
+from tools.koppel import koppel_data
 from tools.plot import create_plot
 from tools.query import query_data
 from tools.store import KeyMeta
@@ -73,18 +78,10 @@ def _analyse(code: str, data_key: str | None = None) -> str:
     return json.loads(uit)["data_key"]
 
 
-_KOPPELKOLOMMEN = {"skdb": "['brin', 'croho']", "duo": "['INSTELLINGSCODE', 'CROHO']"}
-
-
 def _koppeling(eerst: str, dan: str) -> str:
-    """De koppeling met `eerst` als df en `dan` via store_get, zoals het model haar schrijft."""
-    links, rechts = (_KOPPELKOLOMMEN[_meta(k).bron] for k in (eerst, dan))
-    code = (
-        f"ander = store_get('{dan}')\n"
-        f"m = df.merge(ander, left_on={links}, right_on={rechts})\n"
-        "result = m[['brin', 'croho', 'nse_oordeel', 'AANTAL']].to_dict(orient='records')"
-    )
-    return _analyse(code, eerst)
+    """De koppeling van `eerst` met `dan` via koppel_data, en daarop een eigen berekening, zoals het model het doet."""
+    gekoppeld = json.loads(koppel_data(eerst, dan, sleutels=["brin", "croho"]))["data_key"]
+    return _analyse("result = df[['brin', 'croho', 'nse_oordeel', 'AANTAL']].to_dict(orient='records')", gekoppeld)
 
 
 def _lcsk(regels: list[str]) -> list[str]:
@@ -116,12 +113,13 @@ def test_een_koppeling_draagt_de_herkomst_van_beide_bronnen(volgorde):
     assert any(r.startswith(f"inhoudshash van de brontabel ({studiekeuze.DATASET}): ") for r in regels)
 
 
-def test_een_koppeling_die_alles_via_store_get_leest():
+def test_een_berekening_die_twee_keys_via_store_get_leest():
+    """Twee getallen naast elkaar, zonder de tabellen samen te voegen: dat mag in run_analysis (#1014)."""
     skdb_key, duo_key = _skdb(), _duo()
     code = (
         f"duo = store_get('{duo_key}')\nnse = store_get('{skdb_key}')\n"
-        "m = duo.merge(nse, left_on=['INSTELLINGSCODE', 'CROHO'], right_on=['brin', 'croho'])\n"
-        "result = m[['brin', 'croho', 'nse_oordeel', 'AANTAL']].to_dict(orient='records')"
+        "result = [{'bron': 'DUO', 'AANTAL': int(duo['AANTAL'].sum())}, "
+        "{'bron': 'SKDB', 'nse_oordeel': float(nse['nse_oordeel'].mean())}]"
     )
 
     _draagt_beide_bronnen(herkomstregels(_analyse(code)), skdb_key)
@@ -156,7 +154,7 @@ def test_een_bestand_met_alleen_skdb_inhoud_en_een_duo_kop_noemt_lcsk():
     skdb_key, duo_key = _skdb(), _duo()
     code = (
         f"nse = store_get('{skdb_key}')\n"
-        "m = df.merge(nse, left_on=['INSTELLINGSCODE', 'CROHO'], right_on=['brin', 'croho'])\n"
+        "m = nse[nse['brin'].isin(df['INSTELLINGSCODE'])]\n"
         "result = m[['nse_oordeel', 'nse_oordeel_landelijk']].to_dict(orient='records')"
     )
     key = _analyse(code, duo_key)
@@ -206,7 +204,7 @@ def test_een_afgekapte_tweede_bron_maakt_de_koppeling_onvolledig():
     )
     code = (
         "rio = store_get('rio:x:0')\n"
-        "result = df.merge(rio, on='brin')[['brin', 'naam', 'nse_oordeel']].to_dict(orient='records')"
+        "result = df[df['brin'].isin(rio['brin'])][['brin', 'nse_oordeel']].to_dict(orient='records')"
     )
     key = _analyse(code, skdb_key)
 
