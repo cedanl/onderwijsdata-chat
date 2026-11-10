@@ -31,6 +31,9 @@ from .bron_ids import bron_id
 from .definitie import met_voorbeeldstatus
 from .schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
@@ -91,6 +94,8 @@ _EIGEN_TOOL = {
     "wopi": TOOL_GET_WO_PERSONEEL,  # WOPI van UNL (#936)
     "studiekeuzedatabase": TOOL_GET_STUDIEKEUZE,  # Studiekeuzedatabase van LCSK (#957)
 }
+# De datatool per chatbron, voor een dataset zonder eigen tool.
+_DATATOOL = {"CBS": TOOL_GET_CBS_DATA, "DUO": TOOL_GET_DUO_DATA, "RIO": TOOL_GET_RIO_DATA}
 # Hoe de tellingen een bron met een lange naam noemen.
 _KORTE_NAAM = {"Universiteiten van Nederland": "UNL", "Landelijk Centrum Studiekeuze": "LCSK"}
 
@@ -142,6 +147,14 @@ _ALLEEN_DOCUMENTATIE = {
 def eigen_tool(dataset_id: str) -> str | None:
     """De tool die deze dataset ophaalt als het geen datatool is (UWV, ROA, DUO-financiën, WOPI); None anders."""
     return _EIGEN_TOOL.get(dataset_id)
+
+
+def ophaaltool(dataset_id: str) -> str | None:
+    """De tool die de data van deze dataset ophaalt, in elke spelling van het ID (#999): haar eigen tool
+    (`skdb:studiekeuzedatabase` → get_studiekeuze), anders de datatool van haar bron (CBS, DUO, RIO → get_*_data);
+    None als de catalogus de dataset niet kent of er geen tool voor heeft."""
+    kaal = bron_id(dataset_id)
+    return eigen_tool(kaal) or _DATATOOL.get(leverancier(kaal) or "")
 
 
 def _eigen_tool_hier(entry: dict) -> bool | None:

@@ -104,3 +104,23 @@ def test_detailrecord_draagt_dezelfde_status():
     assert json.loads(dataset_details("p01hoinges"))["status"] == catalog.STATUS_OPVRAAGBAAR
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=_RIO_DUO):
         assert json.loads(dataset_details("ais2028"))["status"] == catalog.STATUS_ALLEEN_CATALOGUS
+
+
+# --- de tool die een dataset ophaalt (#999) ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("spelling", "tool"),
+    [
+        ("skdb:studiekeuzedatabase", "get_studiekeuze"),
+        ("Studiekeuzedatabase", "get_studiekeuze"),
+        ("unl:wopi", "get_wo_personeel"),
+        ("duo:financien", "get_bestuursfinancien"),
+        ("cbs:85423ned", "get_cbs_data"),
+        ("p01hoinges", "get_duo_data"),
+        ("aangeboden-opleidingen", "get_rio_data"),
+        ("bestaat-niet", None),
+    ],
+)
+def test_ophaaltool_volgt_de_bron_van_de_dataset(spelling, tool):
+    assert catalog.ophaaltool(spelling) == tool

@@ -2,11 +2,14 @@
 
 import json
 
+import pandas as pd
 import pytest
 
 from agent import beweringen
 from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from agent.probleem import meldingen
+from tools import store
+from tools.store import KeyMeta
 
 _DATA = [json.dumps({"data_key": "duo:p01hoinges:a", "rijen": []})]
 
@@ -148,3 +151,77 @@ def test_afwezigheidsformuleringen_worden_herkend(tekst):
 @pytest.mark.parametrize("tekst", ["Er zijn 36.201 inschrijvingen.", "Geen enkele instelling groeide sneller."])
 def test_gewone_zinnen_zijn_geen_afwezigheidsclaim(tekst):
     assert not beweringen._ONBESCHIKBAAR.search(tekst)
+
+
+# --- een geladen bron met een eigen tool (#999): de store-meta schrijft `bron:id`, de catalogus het kale ID ---
+
+_SKDB_VRAAG = "Wat zegt de Studiekeuzedatabase over het oordeel van studenten van HBO-ICT?"
+_SKDB_TEKST = "De opleiding heeft geen oordeel in de Studiekeuzedatabase; dat cijfer is niet beschikbaar."
+_SKDB_KEY = "skdb:opleidingen:a1b2"
+_ZONDER_DRIE = "get_duo_data, get_cbs_data of get_rio_data"
+
+
+@pytest.fixture
+def _store():
+    store.clear()
+    yield
+    store.clear()
+
+
+def _geladen(key: str, bron: str, dataset: str) -> list[str]:
+    store.put(key, pd.DataFrame({"aantal": [1]}), KeyMeta(bron=bron, dataset=dataset))
+    return [json.dumps({"data_key": key})]
+
+
+def test_een_geladen_studiekeuzedatabase_mag_een_afwezigheid_melden(monkeypatch, _store):
+    monkeypatch.setattr(beweringen, "genoemde_datasets", lambda vraag: ["studiekeuzedatabase"])
+    resultaten = _geladen(_SKDB_KEY, "skdb", "skdb:studiekeuzedatabase")
+
+    assert onbeschikbaar_zonder_zoekpad(_SKDB_VRAAG, _SKDB_TEKST, resultaten) == []
+
+
+def test_een_niet_geladen_studiekeuzedatabase_noemt_haar_eigen_tool(monkeypatch, _store):
+    monkeypatch.setattr(beweringen, "genoemde_datasets", lambda vraag: ["studiekeuzedatabase"])
+
+    [probleem] = onbeschikbaar_zonder_zoekpad(_SKDB_VRAAG, _SKDB_TEKST, _DATA)
+
+    assert "studiekeuzedatabase" in probleem and "get_studiekeuze" in probleem
+    assert _ZONDER_DRIE not in probleem
+
+
+@pytest.mark.parametrize(
+    ("genoemd", "tool"), [("85423NED", "get_cbs_data"), ("aangeboden-opleidingen", "get_rio_data")]
+)
+def test_een_niet_geladen_dataset_noemt_de_datatool_van_zijn_bron(monkeypatch, _store, genoemd, tool):
+    monkeypatch.setattr(beweringen, "genoemde_datasets", lambda vraag: [genoemd])
+
+    [probleem] = onbeschikbaar_zonder_zoekpad(f"Wat zegt {genoemd}?", "Dat is niet beschikbaar.", _DATA)
+
+    assert tool in probleem and _ZONDER_DRIE not in probleem
+
+
+@pytest.mark.parametrize(
+    ("genoemd", "bron", "dataset"),
+    [
+        ("studiekeuzedatabase", "skdb", "skdb:studiekeuzedatabase"),
+        ("wopi", "unl", "unl:wopi"),
+        ("financien", "duo", "duo:financien"),
+        ("85423NED", "cbs", "cbs:85423ned"),
+        ("85423NED", "cbs", "85423ned"),
+        ("p01hoinges", "duo", "P01HOINGES"),
+    ],
+)
+def test_genoemd_en_geladen_volgen_een_normalisatie(monkeypatch, _store, genoemd, bron, dataset):
+    monkeypatch.setattr(beweringen, "genoemde_datasets", lambda vraag: [genoemd])
+    resultaten = _geladen(f"{bron}:x:0", bron, dataset)
+
+    assert onbeschikbaar_zonder_zoekpad(f"Wat zegt {genoemd}?", "Dat is niet beschikbaar.", resultaten) == []
+
+
+def test_een_andere_geladen_dataset_dekt_de_genoemde_niet(monkeypatch, _store):
+    monkeypatch.setattr(beweringen, "genoemde_datasets", lambda vraag: ["p01hoinges"])
+    resultaten = _geladen(_SKDB_KEY, "skdb", "skdb:studiekeuzedatabase")
+
+    [probleem] = onbeschikbaar_zonder_zoekpad("Wat zegt p01hoinges?", "Dat is niet beschikbaar.", resultaten)
+
+    assert "p01hoinges" in probleem and "get_duo_data" in probleem

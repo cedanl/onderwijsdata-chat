@@ -11,7 +11,8 @@ import json
 import re
 
 from tools import instelling, store
-from tools.catalog import genoemde_datasets
+from tools.bron_ids import bron_id
+from tools.catalog import genoemde_datasets, ophaaltool
 
 from .probleem import Probleem
 from .selectie import data_keys
@@ -51,8 +52,26 @@ _VOORBEHOUD = re.compile(
 _ONDERZOEKSVRAAG = re.compile(r"^\W*onderzoeksvraag\b.*$", re.IGNORECASE | re.MULTILINE)
 
 
+def _catalogus_id(dataset_id: str) -> str:
+    """Eén normalisatie voor beide kanten van de vergelijking: het `bron:id`-contract, in kleine letters (#999).
+
+    De store-meta schrijft `skdb:studiekeuzedatabase`, `unl:wopi` of `duo:financien`, de catalogus `studiekeuzedatabase`,
+    `wopi` en `financien`; een CBS-ID staat in de ene spelling of de andere."""
+    return bron_id(dataset_id).lower()
+
+
 def geladen_datasets(tool_results: list[str]) -> set[str]:
-    return {known.dataset.lower() for key in data_keys(tool_results) if (known := store.meta(key))}
+    return {_catalogus_id(known.dataset) for key in data_keys(tool_results) if (known := store.meta(key))}
+
+
+def _ophaalopdracht(dataset_id: str) -> str:
+    """Welke tool de dataset ophaalt, uit de catalogus; zonder bekende tool de drie datatools."""
+    if tool := ophaaltool(dataset_id):
+        return f"Haal {dataset_id} op met {tool} en beantwoord daarmee de vraag."
+    return (
+        f"Haal {dataset_id} op (get_duo_data, get_cbs_data of get_rio_data, volgens de bron in dataset_details) "
+        "en beantwoord daarmee de vraag."
+    )
 
 
 def _resultaten(tool_results: list[str]) -> list[dict]:
@@ -85,13 +104,12 @@ def onbeschikbaar_zonder_zoekpad(vraag: str, tekst: str, tool_results: list[str]
     if any(r.get("opvraagbaar") is False for r in resultaten):
         return []
     geladen = geladen_datasets(tool_results)
-    if ontbrekend := [d for d in genoemde_datasets(vraag) if d.lower() not in geladen]:
+    if ontbrekend := [d for d in genoemde_datasets(vraag) if _catalogus_id(d) not in geladen]:
         return [
             Probleem(
                 f"Het antwoord zegt dat de gegevens er niet zijn, maar dataset {ontbrekend[0]} uit de vraag "
                 "staat in de catalogus en is niet opgehaald.",
-                f"Haal {ontbrekend[0]} op (get_duo_data, get_cbs_data of get_rio_data, volgens de bron in "
-                "dataset_details) en beantwoord daarmee de vraag.",
+                _ophaalopdracht(ontbrekend[0]),
             )
         ]
     if leeg := next((r for r in resultaten if r.get("rijen") == [] and "suggesties" in r), None):
