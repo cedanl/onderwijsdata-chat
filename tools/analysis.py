@@ -149,22 +149,30 @@ def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:
     return result_key
 
 
-def modelrijen(rijen: list, result_key: str, complete: bool) -> dict:
+def rijmaximum(n_kolommen: int) -> int:
+    """Hoeveel rijen van een tabel met `n_kolommen` kolommen het model ziet."""
+    return max(30, min(DUO_ROW_LIMIT, _MAX_WAARDEN // max(n_kolommen, 1)))
+
+
+def modelrijen(rijen: list, result_key: str, complete: bool, totaal: int | None = None) -> dict:
     """De rijen voor het model, begrensd zoals bij query_data; de volledige tabel staat onder `result_key` (#629).
 
-    Ook voor koppel_data (#988): elke tool die een tabel als nieuwe key bewaart, toont haar op dezelfde manier.
+    Ook voor koppel_data (#988): elke tool die een tabel als nieuwe key bewaart, toont haar op dezelfde manier. Die
+    geeft alleen de eerste `rijmaximum` rijen mee en het echte aantal in `totaal`: zo komt nooit de hele tabel als
+    lijst van dicts in het geheugen.
 
     Een uitkomst als `result = df` kan duizenden rijen hebben. Die gaan niet allemaal de tekst in: het model
     ziet er een deel van en leest de rest met query_data, en de antwoordcontroles lopen niet over megabytes.
     """
     n_kolommen = len(rijen[0]) if isinstance(rijen[0], dict) else 1
-    maximum = max(30, min(DUO_ROW_LIMIT, _MAX_WAARDEN // max(n_kolommen, 1)))
+    maximum = rijmaximum(n_kolommen)
+    n_rijen = len(rijen) if totaal is None else totaal
     uit: dict = {"data_key": result_key, "rijen": [_netjes(rij) for rij in rijen[:maximum]]}
     waarschuwingen = [] if complete else [store.ONVOLLEDIG]
-    if len(rijen) > maximum:
-        uit.update(store.rijtelling(len(rijen), complete))
+    if n_rijen > maximum:
+        uit.update(store.rijtelling(n_rijen, complete))
         waarschuwingen.append(
-            f"Eerste {maximum} van {len(rijen)} rijen teruggegeven ({n_kolommen} kolommen × {maximum} rijen). "
+            f"Eerste {maximum} van {n_rijen} rijen teruggegeven ({n_kolommen} kolommen × {maximum} rijen). "
             f"De volledige tabel staat onder data_key: lees verder met query_data."
         )
     if waarschuwingen:

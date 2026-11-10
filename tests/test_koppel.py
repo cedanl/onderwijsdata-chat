@@ -262,6 +262,69 @@ def test_veel_op_veel_geeft_een_waarschuwing_over_herhaalde_waarden():
     assert len(store.get(uit["data_key"])) == 4
 
 
+# --- Omvang: eerst tellen, dan koppelen (de join draait in het serverproces, niet in de sandbox) -------------------
+
+
+def _veel_op_veel(n: int) -> None:
+    """n rijen per kant, allemaal dezelfde brin: de outer join is een kruisproduct van n x n rijen."""
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW"] * n, "x": range(n)}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"] * n, "AANTAL": range(n)}), _DUO_META)
+
+
+def test_een_te_grote_koppeling_gaat_niet_door_en_laat_niets_achter():
+    _veel_op_veel(1500)
+    voor = store.list_keys()
+    uit = _koppel(sleutels=["brin"])
+    assert "data_key" not in uit and "rijen" not in uit
+    assert uit["verwachte_rijen"] == 2_250_000 and uit["korrel"] == "many_to_many"
+    assert str(koppel.MAX_RIJEN) in uit["melding"] and "query_data" in uit["melding"]
+    assert store.list_keys() == voor
+
+
+def _sleutelloos() -> None:
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW", None, "25DW"], "x": [1, 2, 3]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW", None, "21PD"], "AANTAL": [5, 7, 9]}), _DUO_META)
+
+
+@pytest.mark.parametrize(
+    ("vul", "sleutels"),
+    [(_hu, ["croho"]), (_ict, ["brin", "croho"]), (lambda: _veel_op_veel(4), ["brin"]), (_sleutelloos, ["brin"])],
+)
+def test_de_telling_vooraf_is_precies_het_aantal_rijen(monkeypatch, vul, sleutels):
+    """De grens telt wat de join zou geven: precies op de grens gaat hij door, één rij eronder niet."""
+    vul()
+    rijen = len(store.get(_koppel(sleutels=sleutels)["data_key"]))
+    monkeypatch.setattr(koppel, "MAX_RIJEN", rijen)
+    assert "data_key" in _koppel(sleutels=sleutels)
+    monkeypatch.setattr(koppel, "MAX_RIJEN", rijen - 1)
+    assert _koppel(sleutels=sleutels)["verwachte_rijen"] == rijen
+
+
+def test_een_koppeling_ketenen_kiest_de_genormaliseerde_sleutelkolom():
+    """Een koppeling heeft brin twee keer (de eigen kolom en vooraan de genormaliseerde): geen melding bij ketenen."""
+    _ict()
+    eerste = _koppel(sleutels=["brin", "croho"])["data_key"]
+    store.put(
+        "duo:derde:0",
+        pd.DataFrame({"INSTELLINGSCODE": ["25DW"], "PERSONEEL": [80]}),
+        KeyMeta(bron="duo", dataset="derde"),
+    )
+    uit = _koppel(eerste, "duo:derde:0", sleutels=["brin"])
+    assert "melding" not in uit
+    assert uit["kolommen"]["SKDB"] == {"brin": "brin"}
+    assert uit["telling"]["beide"] == 1
+    df = store.get(uit["data_key"])
+    assert df.columns.is_unique  # brin werd SKDB_brin, maar die was er al: SKDB_SKDB_brin
+    assert {"SKDB_brin", "SKDB_SKDB_brin", "SKDB_koppelstatus", "koppelstatus"} <= set(df.columns)
+
+
+def test_een_ruwe_tabel_met_een_kolom_brin_blijft_dubbelzinnig():
+    """De voorkeur geldt alleen voor een koppeling; in een gewone tabel kiest de code geen kolom zelf."""
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW"], "INSTELLINGSCODE": ["25DW"]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"], "AANTAL": [5]}), _DUO_META)
+    assert "kolommen_links" in _koppel(sleutels=["brin"])["melding"]
+
+
 def test_een_naamsleutel_neemt_de_naamwaarschuwing_over():
     store.put(_SKDB, pd.DataFrame({"INSTELLINGSNAAM": ["Hogeschool Utrecht"]}), _SKDB_META)
     store.put(_DUO, pd.DataFrame({"INSTELLINGSNAAM_ACTUEEL": ["hogeschool utrecht "], "AANTAL": [5]}), _DUO_META)
@@ -277,6 +340,14 @@ def test_de_key_is_deterministisch():
     _hu()
     assert _koppel()["data_key"] == _koppel()["data_key"]
     assert _koppel()["data_key"].startswith("koppel:")
+
+
+def test_andere_invoer_geeft_een_andere_key():
+    """De key hangt aan de inhoud van beide tabellen, niet alleen aan hun keys."""
+    _hu()
+    eerst = _koppel()["data_key"]
+    store.put(_DUO, store.get(_DUO).assign(AANTAL=1), _DUO_META)
+    assert _koppel()["data_key"] != eerst
 
 
 def test_de_key_is_een_afgeleide_van_beide_tabellen():

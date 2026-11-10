@@ -19,7 +19,7 @@ import pandas as pd
 from onderwijsbronnen import sleutels as kern
 
 from . import dekking, fouten, relaties, store
-from .analysis import modelrijen
+from .analysis import modelrijen, rijmaximum
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,11 @@ STAP = "koppeling (koppel_data)"  # het begin van KeyMeta.stap: zo noemt de herk
 BEIDE = "beide"
 _HERKOMST = "__koppel_herkomst"  # de indicatorkolom van pd.merge; komt nooit in het resultaat
 _EEN, _VEEL = "one", "many"
+# Zoveel rijen mag een koppeling hooguit geven. De koppeling draait in het serverproces, niet in de sandbox van
+# run_analysis (1 GiB, 10 s): veel-op-veel op een grove sleutel (alleen schooljaar of brin) is een kruisproduct per
+# waarde en groeit kwadratisch (2 x 1500 rijen op één waarde: 2,25 miljoen rijen, 1 GB). Daarom eerst tellen, dan
+# koppelen. Dezelfde orde als relaties._MAX_WAARDEN; een één-op-veel van twee gewone loads blijft er ver onder.
+MAX_RIJEN = 200_000
 
 
 class _Melding(Exception):
@@ -101,9 +106,20 @@ def _kandidaten(df: pd.DataFrame) -> dict[str, list[str]]:
     return uit
 
 
-def _kolommen(label: str, df: pd.DataFrame, sleutels: list[str], opgave: object, veld: str) -> tuple[dict, list[str]]:
-    """De kolom per sleutel in één tabel, en wat er niet klopt; een opgave kiest uit de kandidaten, nooit daarbuiten."""
+def _is_koppeling(key: str) -> bool:
+    known = store.meta(key)
+    return known is not None and (known.stap or "").startswith(STAP)
+
+
+def _kolommen(kant: tuple[str, str], df: pd.DataFrame, sleutels: list[str], opgave: object, veld: str):
+    """De kolom per sleutel in één tabel, en wat er niet klopt; een opgave kiest uit de kandidaten, nooit daarbuiten.
+
+    Een eerdere koppeling (ketenen) heeft de sleutel twee keer: de oorspronkelijke kolom en vooraan de genormaliseerde
+    onder de sleutelnaam. Die laatste is dan de keuze, zonder melding.
+    """
+    key, label = kant
     kandidaten = _kandidaten(df)
+    voorkeur = _is_koppeling(key)
     opgave = opgave if isinstance(opgave, dict) else {}
     kolommen: dict[str, str] = {}
     problemen: list[str] = []
@@ -116,13 +132,13 @@ def _kolommen(label: str, df: pd.DataFrame, sleutels: list[str], opgave: object,
             )
         elif gekozen is not None and gekozen not in opties:
             problemen.append(f"Kolom {gekozen!r} draagt in {label} geen sleutel {sleutel}; kandidaten: {opties}.")
-        elif gekozen is None and len(opties) > 1:
+        elif gekozen is None and len(opties) > 1 and not (voorkeur and sleutel in opties):
             problemen.append(
                 f"Sleutel {sleutel} staat in {label} in meer kolommen: {opties}. Kies er één met "
                 f'{veld}: {{"{sleutel}": "<kolom>"}}.'
             )
         else:
-            kolommen[sleutel] = gekozen or opties[0]
+            kolommen[sleutel] = gekozen or (sleutel if voorkeur and sleutel in opties else opties[0])
     return kolommen, problemen
 
 
@@ -134,8 +150,8 @@ def _kanten(data_key: str, andere_key: str, opgegeven: object, links_opgave, rec
         raise _Melding(_melding("Koppel twee verschillende tabellen: data_key en andere_key zijn dezelfde key."))
     sleutels = _sleutelnamen(opgegeven)
     links_label, rechts_label = _labels(data_key, andere_key)
-    links, p_links = _kolommen(links_label, links_df, sleutels, links_opgave, "kolommen_links")
-    rechts, p_rechts = _kolommen(rechts_label, rechts_df, sleutels, rechts_opgave, "kolommen_rechts")
+    links, p_links = _kolommen((data_key, links_label), links_df, sleutels, links_opgave, "kolommen_links")
+    rechts, p_rechts = _kolommen((andere_key, rechts_label), rechts_df, sleutels, rechts_opgave, "kolommen_rechts")
     if problemen := [*p_links, *p_rechts]:
         kandidaten = {links_label: _kandidaten(links_df), rechts_label: _kandidaten(rechts_df)}
         raise _Melding(_melding(" ".join(problemen), kandidaten=kandidaten))
@@ -144,8 +160,18 @@ def _kanten(data_key: str, andere_key: str, opgegeven: object, links_opgave, rec
 
 def _genormaliseerd(kant: _Kant, sleutels: list[str], bezet: set[str]) -> pd.DataFrame:
     """De tabel met vooraan een kolom per sleutel in de vorm van onderwijsbronnen.sleutels; een eigen kolom met een
-    naam die al bezet is (de sleutel, `koppelstatus`, een kolom van de andere tabel) krijgt het label ervoor."""
-    df = kant.df.rename(columns={k: f"{kant.label}_{k}" for k in kant.df.columns if k in bezet})
+    naam die al bezet is (de sleutel, `koppelstatus`, een kolom van de andere tabel) krijgt het label ervoor, zo vaak
+    als nodig: een eerdere koppeling heeft zelf al `SKDB_brin` naast `brin`."""
+    genomen = set(kant.df.columns) | bezet
+    nieuw: dict[str, str] = {}
+    for k in kant.df.columns:
+        if k in bezet:
+            naam = f"{kant.label}_{k}"
+            while naam in genomen:
+                naam = f"{kant.label}_{naam}"
+            nieuw[k] = naam
+            genomen.add(naam)
+    df = kant.df.rename(columns=nieuw)
     norm = {s: kant.df[kant.kolommen[s]].map(kern.SLEUTELS[s].normaliseer).astype(object) for s in sleutels}
     return pd.concat([pd.DataFrame(norm, index=df.index), df], axis=1)
 
@@ -155,12 +181,40 @@ def _korrel(df: pd.DataFrame, sleutels: list[str]) -> str:
     return _VEEL if df.duplicated(subset=sleutels).any() else _EEN
 
 
+def omvang(a_ok: pd.DataFrame, b_ok: pd.DataFrame, sleutels: list[str]) -> int:
+    """Hoeveel rijen de outer join geeft, zonder hem te maken: per gedeelde waarde links x rechts, anders het aantal
+    van de kant die haar heeft. Kost één telling per tabel."""
+    links, rechts = (t.groupby(sleutels, sort=False).size() for t in (a_ok, b_ok))
+    links, rechts = links.align(rechts, join="outer")
+    return int((links.fillna(1) * rechts.fillna(1)).sum())
+
+
+def _te_groot(links: _Kant, rechts: _Kant, sleutels: list[str], rijen: int, korrel: str) -> _Melding:
+    return _Melding(
+        _melding(
+            f"Deze koppeling op {', '.join(sleutels)} zou {rijen} rijen geven (korrel {korrel}), meer dan "
+            f"{MAX_RIJEN}: elke waarde van {links.label} staat dan bij elke rij van {rechts.label} met dezelfde "
+            f"sleutel. Er is niets gekoppeld. Koppel op meer sleutels (zie relatie, bijv. ook croho of schooljaar) "
+            "of maak een tabel eerst kleiner met query_data (filters, group_by) en koppel die data_key.",
+            verwachte_rijen=rijen,
+            korrel=korrel,
+        )
+    )
+
+
 def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
-    """De outer join; een rij met een lege of onleesbare sleutel kan niet matchen en blijft met haar eigen status."""
+    """De outer join; een rij met een lege of onleesbare sleutel kan niet matchen en blijft met haar eigen status.
+
+    Een join boven MAX_RIJEN gaat niet door (_Melding): eerst tellen, dan pas koppelen.
+    """
     bezet = {*sleutels, KOPPELSTATUS}
     a = _genormaliseerd(links, sleutels, bezet | set(rechts.df.columns))
     b = _genormaliseerd(rechts, sleutels, bezet | set(links.df.columns))
     a_ok, b_ok = (t[t[sleutels].notna().all(axis=1)] for t in (a, b))
+    korrel = {links.label: _korrel(a_ok, sleutels), rechts.label: _korrel(b_ok, sleutels)}
+    rijen = omvang(a_ok, b_ok, sleutels) + (len(a) - len(a_ok)) + (len(b) - len(b_ok))
+    if rijen > MAX_RIJEN:
+        raise _te_groot(links, rechts, sleutels, rijen, "_to_".join(korrel.values()))
     # pd.merge koppelt NaN aan NaN: rijen zonder sleutel gaan er daarom buitenom.
     gekoppeld = a_ok.merge(b_ok, on=sleutels, how="outer", indicator=_HERKOMST)
     status = {"both": BEIDE, "left_only": links.alleen, "right_only": rechts.alleen}
@@ -173,7 +227,7 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     df = pd.concat(delen, ignore_index=True)[kolommen] if len(delen) > 1 else delen[0].reset_index(drop=True)
     return _Uitkomst(
         df=df,
-        korrel={links.label: _korrel(a_ok, sleutels), rechts.label: _korrel(b_ok, sleutels)},
+        korrel=korrel,
         uniek={
             links.label: len(a_ok[sleutels].drop_duplicates()),
             rechts.label: len(b_ok[sleutels].drop_duplicates()),
@@ -185,10 +239,14 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     )
 
 
-def _koppelkey(links: _Kant, rechts: _Kant, df: pd.DataFrame) -> str:
-    """Deterministisch: dezelfde twee tabellen, sleutels en kolommen geven dezelfde key."""
+def _koppelkey(links: _Kant, rechts: _Kant) -> str:
+    """Deterministisch: dezelfde twee tabellen, sleutels en kolommen geven dezelfde key.
+
+    De hash gaat over de invoer, niet over het resultaat: dat kan veel groter zijn dan beide tabellen samen.
+    """
     plan = json.dumps([links.key, links.kolommen, rechts.key, rechts.kolommen])
-    inhoud = f"{plan}{df.to_json(orient='split', default_handler=str)}"
+    tabellen = "".join(k.df.to_json(orient="split", default_handler=str) for k in (links, rechts))
+    inhoud = f"{plan}{tabellen}"
     return f"koppel:{hashlib.sha256(inhoud.encode()).hexdigest()[:12]}"
 
 
@@ -259,9 +317,11 @@ def _telling(df: pd.DataFrame) -> dict[str, int]:
 def _tekst(key: str, links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst, volledig: bool) -> str:
     df = uitkomst.df
     telling = _telling(df)
-    rijen = df.astype(object).where(df.notna(), None).to_dict(orient="records")
+    # Alleen de rijen die het model ziet worden dicts; modelrijen krijgt het echte aantal apart.
+    deel = df.head(rijmaximum(df.shape[1]))
+    rijen = deel.astype(object).where(deel.notna(), None).to_dict(orient="records")
     uit: dict = {
-        **(modelrijen(rijen, key, volledig) if rijen else {"data_key": key, "rijen": []}),
+        **(modelrijen(rijen, key, volledig, totaal=len(df)) if rijen else {"data_key": key, "rijen": []}),
         "sleutels": sleutels,
         "kolommen": {links.label: links.kolommen, rechts.label: rechts.kolommen},
         "korrel": {**uitkomst.korrel, "koppeling": uitkomst.koppeling},
@@ -290,11 +350,11 @@ def koppel_data(
         links, rechts = _kanten(
             store.canoniek(data_key), store.canoniek(andere_key), sleutels, kolommen_links, kolommen_rechts
         )
+        namen = list(links.kolommen)  # de sleutels zoals _sleutelnamen ze las, in volgorde
+        uitkomst = _koppel(links, rechts, namen)
     except _Melding as melding:
         return str(melding)
-    namen = list(links.kolommen)  # de sleutels zoals _sleutelnamen ze las, in volgorde
-    uitkomst = _koppel(links, rechts, namen)
-    key = _koppelkey(links, rechts, uitkomst.df)
+    key = _koppelkey(links, rechts)
     volledig = _bewaar(key, uitkomst.df, links, rechts, _stap(links, rechts, namen, uitkomst.koppeling))
     # Wat er gekoppeld is, zonder waarden (#475): de sleutels, de korrel en de telling per status.
     telling = _telling(uitkomst.df)
