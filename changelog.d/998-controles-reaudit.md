@@ -7,3 +7,5 @@
   onterecht terug met "niet opgehaald": de controle vergelijkt het ID uit de vraag en dat van de lading nu op één
   manier (`bron:id`). Is een genoemde dataset echt niet opgehaald, dan noemt de opdracht aan het model de tool die hem
   ophaalt (get_studiekeuze, get_cbs_data, ...) in plaats van een vaste lijst van drie (#999).
+- "Ik heb de oorzaak niet gecontroleerd", "de oorzaak is niet onderzocht" en "ik weet de oorzaak niet" gelden nu als
+  voorbehoud en niet meer als een gegeven oorzaak; "De oorzaak is de coronapandemie." blijft een probleem (#1000).

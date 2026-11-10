@@ -225,3 +225,38 @@ def test_een_andere_geladen_dataset_dekt_de_genoemde_niet(monkeypatch, _store):
     [probleem] = onbeschikbaar_zonder_zoekpad("Wat zegt p01hoinges?", "Dat is niet beschikbaar.", resultaten)
 
     assert "p01hoinges" in probleem and "get_duo_data" in probleem
+
+
+# --- het model zegt zelf dat het de oorzaak niet naging (#1000); letterlijk uit de reaudit van 10-11 (M08) ---
+
+_M08 = (
+    "Dat is niet gelijk aan 1.620, dus de tabel heeft meer rijen dan dit rooster. Ik heb de oorzaak niet gecontroleerd."
+)
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        _M08,
+        "Het verschil is 571. Ik weet de oorzaak niet.",
+        "Het verschil is 571. Ik weet niet wat de oorzaak is.",
+        "Het verschil is 571. De oorzaak is niet onderzocht.",
+        "Het verschil is 571. De oorzaak is niet nagegaan.",
+        "Het verschil is 571. De oorzaak is door mij niet bekeken.",
+        "Het verschil is 571. De oorzaak is niet vastgesteld.",
+    ],
+)
+def test_een_niet_nagegane_oorzaak_is_geen_bewering(tekst):
+    assert ongedekte_oorzaak(tekst, _DATA) == []
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "De oorzaak is de coronapandemie.",
+        "De oorzaak is niet de instroom, maar de uitval.",
+        "Dit komt doordat studenten kiezen; ik weet niet hoeveel.",
+    ],
+)
+def test_een_oorzaak_zonder_dat_voorbehoud_blijft_ongedekt(tekst):
+    assert len(ongedekte_oorzaak(tekst, _DATA)) == 1

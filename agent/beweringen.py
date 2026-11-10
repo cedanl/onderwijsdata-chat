@@ -45,7 +45,12 @@ _VOORBEHOUD = re.compile(
     r"|\bniet\s+(?:met|uit)\s+deze\s+(?:data|gegevens)\b|\bmogelijk(?:e)?\b[^.\n]{0,40}\bniet\s+getoetst\b"
     # Het voorbehoud in andere woorden (#619): "de data laat de oorzaak niet zien", "vermoedens", "denkbaar".
     r"|\b(?:laat|laten|toont|tonen|geeft|geven)\b[^.\n]{0,40}\b(?:oorza(?:ak|ken)|reden(?:en)?)\b[^.\n]{0,20}\bniet\b"
-    r"|\bvermoeden(?:s)?\b|\bdenkbaar\b|\bzou(?:den)?\s+(?:\w+\s+)?kunnen\s+samenhangen\b",
+    r"|\bvermoeden(?:s)?\b|\bdenkbaar\b|\bzou(?:den)?\s+(?:\w+\s+)?kunnen\s+samenhangen\b"
+    # Het model zegt zelf dat het de oorzaak niet weet of niet naging (#1000): "Ik heb de oorzaak niet gecontroleerd",
+    # "de oorzaak is niet onderzocht", "ik weet de oorzaak niet". Geen bredere uitzondering: "de oorzaak is niet X
+    # maar Y" blijft een oorzaak.
+    r"|\bde\s+oorzaak(?:\s+\w+){0,3}?\s+niet\s+(?:gecontroleerd|onderzocht|nagegaan|bekeken|vastgesteld)\b"
+    r"|\bik\s+weet\s+(?:de\s+oorzaak\s+niet|niet\s+wat\s+de\s+oorzaak\s+is)\b",
     re.IGNORECASE,
 )
 # De onderzoeksvraag herhaalt wat de gebruiker vroeg ("te verklaren uit locatie?"): geen bewering van het model.
