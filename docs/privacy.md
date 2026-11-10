@@ -14,8 +14,14 @@ blijven.
   instelling die je SRAM-account opgeeft, als de app die kent; de kop toont welke het is (#777). Welke dienst en welk model dat is, staat onder het
   invoerveld; op de omgevingen van SURF is dat Microsoft Azure AI Foundry met een Claude-model (`MODEL` in
   `manifests/<omgeving>/values.yaml`).
-- De cijfers zelf komen van open bronnen (CBS, DUO en RIO). Daarheen gaat alleen de opvraag (welke tabel, welke
-  selectie), niets over de gebruiker.
+- De cijfers zelf komen van CBS, DUO, RIO, UWV, ROA en de Onderwijsinspectie, en waar die bron aan staat ook van
+  de Studiekeuzedatabase (LCSK), alleen waar de sleutel `STUDIEKEUZEDATABASE_API_KEY` staat, en UNL (WOPI), alleen
+  met de vlag `ENABLE_WO_PERSONEEL`. Daarheen, of naar de site waar een bron haar bestanden publiceert (zoals
+  data.overheid.nl of DataverseNL), gaat alleen de opvraag (welke tabel, welke selectie), niets over de gebruiker.
+  De Studiekeuzedatabase is gelicentieerde data van LCSK, geen open data; de app vraagt haar op met een eigen
+  sleutel. Het wettelijk collegegeld staat als vaste tabel in de app, overgenomen van wetten.nl; daarheen gaat geen
+  opvraag. De app noemt de bronnen die in die omgeving aan staan (`/api/config` `bronnen`,
+  `tools/beschikbaarheid.py`, `frontend/src/bronnenLijst.js`, #1006).
 - Voer geen persoonsgegevens in. De app herkent een BSN (elfproef), een e-mailadres en een Nederlands
   telefoonnummer en waarschuwt dan, maar blokkeert niet en maskeert niet; een naam herkent zij niet
   (`frontend/src/persoonsgegevens.js`, `core/persoonsgegevens.py`, #478). Verstuur je de vraag toch, dan gaat de

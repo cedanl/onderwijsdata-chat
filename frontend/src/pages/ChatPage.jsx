@@ -47,6 +47,7 @@ import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../
 import { SEARCH_LIMIT, useConversationSearch } from '../hooks/useConversationSearch'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
+import { useBronnenLijst } from '../bronnenLijst'
 import { neemVoorgevuldeVraag, useVraagUitLink } from '../voorgevuldeVraag'
 import { Message } from '../components/Message'
 import { useBewaak, useLopendeRun } from '../runBewaking'
@@ -952,6 +953,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
 }
 
 function WelcomeScreen({ instelling, functie, children }) {
+  const bronnenLijst = useBronnenLijst()
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
     : 'Stel je vraag aan openEDUdata+'
@@ -963,7 +965,7 @@ function WelcomeScreen({ instelling, functie, children }) {
         </svg>
       </div>
       <h2>{greeting}</h2>
-      <p>{welkomstSub(functie)}</p>
+      <p>{welkomstSub(functie, bronnenLijst)}</p>
       {children}
     </div>
   )

@@ -9,6 +9,7 @@ import PrivacyPage, { PRIVACY_KOPJES } from '../pages/PrivacyPage'
 import LoginPage from '../pages/LoginPage'
 import SettingsModal from '../components/SettingsModal'
 import App from '../App'
+import { zetBronnenLijst } from '../bronnenLijst'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
@@ -28,6 +29,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   vi.unstubAllGlobals()
+  zetBronnenLijst({})
 })
 
 // The privacy information opens as a popup from these places (#572); privacyModal.test.js covers the popup.
@@ -126,6 +128,49 @@ describe('PrivacyPage', () => {
   })
 })
 
+// #1006: the privacy text names every party a lookup can go to in this environment (bronnenLijst.js, from /api/config
+// `bronnen`), says only the lookup goes there, and that the Studiekeuzedatabase is licensed LCSK data, not open data.
+describe('the sources a lookup goes to (#1006)', () => {
+  const AI = 'Wat naar de AI-dienst gaat'
+  const VAST = ['CBS', 'DUO', 'RIO', 'UWV', 'ROA', 'de Onderwijsinspectie']
+
+  it('names the fixed sources, only the lookup, and nothing about the user', async () => {
+    await render(createElement(PrivacyPage))
+    const tekst = sectionText(AI)
+    expect(tekst).toContain(`De cijfers zelf komen van ${VAST.slice(0, -1).join(', ')} en ${VAST.at(-1)}.`)
+    expect(tekst).toContain('alleen de opvraag (welke tabel, welke selectie), niets over jou')
+    expect(tekst).toContain('wetten.nl; daarheen gaat geen opvraag')
+    expect(tekst).not.toMatch(/Studiekeuzedatabase|LCSK|UNL|WOPI/)
+    expect(tekst).not.toMatch(/open bronnen/)
+  })
+
+  it('adds the Studiekeuzedatabase as licensed LCSK data where it is on', async () => {
+    zetBronnenLijst({ studiekeuze: true })
+    await render(createElement(PrivacyPage))
+    const tekst = sectionText(AI)
+    expect(tekst).toContain('ROA, de Onderwijsinspectie en de Studiekeuzedatabase (LCSK).')
+    expect(tekst).toContain('De Studiekeuzedatabase is gelicentieerde data van LCSK, geen open data')
+    expect(tekst).not.toMatch(/UNL|WOPI/)
+  })
+
+  it('adds UNL (WOPI) where it is on, without the licence note of the Studiekeuzedatabase', async () => {
+    zetBronnenLijst({ wo_personeel: true })
+    await render(createElement(PrivacyPage))
+    const tekst = sectionText(AI)
+    expect(tekst).toContain('de Onderwijsinspectie en UNL (WOPI).')
+    expect(tekst).not.toMatch(/Studiekeuzedatabase|LCSK/)
+  })
+
+  it('docs/privacy.md names the same parties, with the environment rule and the licence', () => {
+    const docs = oneLine(docsSection(AI))
+    for (const naam of [...VAST, 'Studiekeuzedatabase', 'LCSK', 'UNL (WOPI)', 'wetten.nl']) expect(docs).toContain(naam)
+    expect(docs).toContain('gelicentieerde data van LCSK, geen open data')
+    expect(docs).toContain('alleen de opvraag (welke tabel, welke selectie), niets over de gebruiker')
+    expect(docs).toContain('daarheen gaat geen opvraag')
+    expect(docs).not.toMatch(/open bronnen/)
+  })
+})
+
 describe('buttons for the privacy information', () => {
   it('the login page offers it below the form', async () => {
     await render(createElement(LoginPage, { onLogin: vi.fn(), oidcEnabled: false }))
@@ -165,6 +210,28 @@ describe('before login', () => {
       await waitFor(() => container.querySelector('.privacy-page--standalone'))
       expect(container.querySelector('#login-username')).toBeNull()
       expect(container.querySelector('a[href="/"]').textContent).toBe('Naar het inloggen')
+    } finally {
+      delete window.matchMedia
+      window.history.replaceState({}, '', '/')
+    }
+  })
+
+  // #1006: App reads /api/config before it decides on login, so the page before login names this environment's list.
+  it('/privacy before login names the sources /api/config reports', { timeout: 20000 }, async () => {
+    localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/auth/status') return response(200, { required: true, oidc_enabled: false })
+      if (url === '/api/config') return response(200, { bronnen: { studiekeuze: true, wo_personeel: false } })
+      return response(200, {})
+    }))
+    window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
+    window.history.replaceState({}, '', '/privacy')
+    try {
+      await render(createElement(App))
+      await waitFor(() => container.querySelector('.privacy-page--standalone'))
+      const tekst = sectionText('Wat naar de AI-dienst gaat')
+      expect(tekst).toContain('de Studiekeuzedatabase (LCSK)')
+      expect(tekst).not.toContain('UNL')
     } finally {
       delete window.matchMedia
       window.history.replaceState({}, '', '/')

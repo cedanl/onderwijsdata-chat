@@ -7,6 +7,7 @@
 // deelnemende instelling.
 
 import { useTermijnen, getal } from '../termijnen'
+import { useBronnenLijst, bronnamen } from '../bronnenLijst'
 
 export const PRIVACY_KOPJES = [
   'Wat naar de AI-dienst gaat',
@@ -22,6 +23,10 @@ export default function PrivacyInhoud() {
   // De termijnen die de backend toepast (#835), in de standaardinstelling 90 en 365 dagen, 8 en 24 uur.
   const { gesprekkenDagen, rapportenDagen, sessieUren, sessieMaxUren } = useTermijnen()
   const [gesprek, rapport, sessie, sessieMax] = [gesprekkenDagen, rapportenDagen, sessieUren, sessieMaxUren].map(getal)
+  // De partijen waar een opvraag heen kan in deze omgeving (#1006); niet alle bronnen zijn open data.
+  const bronnen = useBronnenLijst()
+  const opvraagbaar = bronnamen(bronnen.filter(b => b.opvraag !== false))
+  const noten = bronnen.map(b => b.privacynoot).filter(Boolean)
   return (
     <div className="privacy-text">
       <h1>Privacy-informatie</h1>
@@ -39,8 +44,9 @@ export default function PrivacyInhoud() {
           onder het invoerveld; op de omgevingen van SURF is dat Microsoft Azure AI Foundry met een Claude-model.
         </li>
         <li>
-          De cijfers zelf komen van open bronnen (CBS, DUO en RIO). Daarheen gaat alleen de opvraag (welke tabel,
-          welke selectie), niets over jou.
+          De cijfers zelf komen van {opvraagbaar}. Daarheen, of naar de site waar een bron haar bestanden publiceert
+          (zoals data.overheid.nl of DataverseNL), gaat alleen de opvraag (welke tabel, welke selectie), niets over
+          jou. {noten.join(' ')}
         </li>
         <li>
           Voer geen persoonsgegevens in. De app herkent een BSN, een e-mailadres en een telefoonnummer en waarschuwt

@@ -8,6 +8,7 @@ import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
 import { HOME_TEKST, doelgroepVan } from '../homeTekst'
+import { useBronnenLijst } from '../bronnenLijst'
 
 const VOORDEEL_ICONEN = {
   tijd: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
@@ -26,6 +27,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
   }, [])
   const { bronnen, datasets } = heroStats(counts)
   const tekst = HOME_TEKST[doelgroepVan(functie)]
+  const bronnenLijst = useBronnenLijst()
   return (
     <div>
       {/* Hero */}
@@ -33,7 +35,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
         <div className="container">
           <div className="hero-content">
             <h1>{tekst.kop[0]}<em>{tekst.kop[1]}</em></h1>
-            <p>{tekst.intro}</p>
+            <p>{tekst.intro(bronnenLijst)}</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               {dashboardsEnabled && (
