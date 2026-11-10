@@ -236,3 +236,41 @@ describe('de jaarnoot bij de Eerstejaars-KPI (#920)', () => {
     expect(noten()[0].textContent).toContain('Eerstejaars HO per instelling')
   })
 })
+
+describe('een kerncijfer zonder gemiddelde als te weinig instellingen cijfers hebben (#1007)', () => {
+  const REDEN = 'te weinig vergelijkbare instellingen met cijfers'
+  // Het UU-geval: drie andere universiteiten, maar maar één met eerstejaarscijfers in het laatste jaar.
+  const UU = {
+    ...WO,
+    benchmark: {
+      ...WO.benchmark,
+      n_per_jaar: {
+        ingeschrevenen: { 2023: 3, 2024: 3, 2025: 3 },
+        eerstejaars: { 2023: 1, 2024: 1, 2025: 1 },
+        gediplomeerden: { 2022: 3, 2023: 3, 2024: 3 },
+      },
+      te_weinig_peers: { eerstejaars: REDEN },
+    },
+  }
+  const gemRegels = () => [...container.querySelectorAll('.kpi-trend')].map(e => e.textContent).filter(t => t.startsWith('Gem. '))
+
+  it('eerstejaars: de reden in plaats van het gemiddelde, met "1 instelling"', async () => {
+    await dashboard(UU)
+    expect(gemRegels()).toContain(`Gem. universiteiten in heel Nederland (1 instelling): ${REDEN}`)
+    expect(tekst()).not.toContain('984') // het "gemiddelde" van die ene universiteit
+  })
+
+  it('ingeschrevenen en gediplomeerden houden hun gemiddelde, met "3 instellingen"', async () => {
+    await dashboard(UU)
+    const regels = gemRegels()
+    expect(regels.filter(r => /\(3 instellingen\): [\d.]+$/.test(r))).toHaveLength(2)
+    expect(regels.filter(r => r.includes(REDEN))).toHaveLength(1)
+    expect(tekst()).not.toMatch(/\(1 instellingen\)|\(3 instelling\)/)
+  })
+
+  it('zonder reden van de server blijft het gemiddelde staan', async () => {
+    await dashboard(WO)
+    expect(tekst()).not.toContain(REDEN)
+    expect(gemRegels().filter(r => /\(16 instellingen\): [\d.]+$/.test(r))).toHaveLength(1)
+  })
+})
