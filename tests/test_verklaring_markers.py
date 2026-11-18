@@ -25,6 +25,8 @@ from tools.verklaring_markers import vraagt_verklaring
         "Wat is de reden van de daling?",
         "Om welke reden kiezen minder studenten voor de pabo?",
         "Wat is de reden achter de groei?",
+        "Why is the number of first-year students falling?",
+        "What causes the decline in teacher training enrolment?",
     ],
 )
 def test_een_verzoek_om_een_verklaring(vraag):
@@ -39,6 +41,7 @@ def test_een_verzoek_om_een_verklaring(vraag):
         "Wat is de verklaring van het begrip instroom?",
         "Hoeveel studenten volgen redenen om te studeren",
         "Hoeveel mbo-studenten hebben een verklaring omtrent gedrag nodig?",
+        "How many first-year students are there in hbo since 2020?",
         "",
     ],
 )

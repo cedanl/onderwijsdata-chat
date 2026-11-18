@@ -40,7 +40,7 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 | **Bronvermelding verplicht** | Elk getal verwijst naar een dataset-ID en periode (bijv. "CBS, 85423NED, Perioden: 2023JJ00"). |
 | **Eerlijk falen** | Na 2 mislukte pogingen om data op te halen, wordt eerlijk gezegd wat er wel beschikbaar is. |
 | **Professionele toon** | Geen complimenten ("goede vraag!"), geen opvulzinnen, direct antwoord. |
-| **Voorzichtig met causaliteit** | Causale claims worden geformuleerd als hypothese, niet als feit. |
+| **Verklaringen alleen op verzoek** | Een oorzaak of vermoeden komt alleen in het antwoord als de gebruiker erom vraagt (#1036); code beslist dat uit de vraag. Dan staat het in een apart blok "Niet uit de data": hooguit drie toetsbare vragen, elk met een bron uit de catalogus of "hiervoor is geen bron in deze app", nooit als feit. De controle na het antwoord toetst het. |
 
 ### Controle na het antwoord (#207)
 

@@ -18,6 +18,7 @@ from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS, cbs_standaard, ho_markers
 from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
+from tools.verklaring_markers import vraagt_verklaring
 
 from . import manifest, recepten, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
@@ -61,6 +62,7 @@ from .vaste_antwoorden import (
     sentinelvraag,
     weigering,
 )
+from .verklaringsverzoek import verklaringinstructie
 from .vo_school import vo_schoolvraag
 from .zelfcorrectie import zonder_zelfcorrectie
 
@@ -280,6 +282,16 @@ def _poortvraag(messages: list[dict], session: dict) -> str:
     return " ".join([vraag, *(k for k in keuzes if k not in uit_code)])
 
 
+def _verklaring_gevraagd(messages: list[dict], session: dict) -> bool:
+    """Vraagt de gebruiker in deze beurt om een verklaring (#1036)? Op de vraag met haar keuzes zoals de zoekpoort
+    hem leest (`_poortvraag`): een antwoord op een verduidelijkingskaart houdt het verzoek, een label uit code telt
+    niet. De vraag vóór deze beurt telt voor een elliptisch vervolg ("En voor wo?")."""
+    vragen = _vragen(messages)
+    beurt = session.get("clarify_rondes", 0) + 1
+    vorige = vragen[-beurt - 1] if len(vragen) > beurt else ""
+    return vraagt_verklaring(_poortvraag(messages, session), vorige)
+
+
 async def _vast_vooraf(vraag: str, messages: list[dict], session: dict) -> str | None:
     """Een vast antwoord uit code, vóór elke kaart en vóór het model; anders None.
 
@@ -311,13 +323,14 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
-def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
-    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334) en een
-    instellingswissel in dit gesprek (#543)."""
+def _beurtcontext(vraag: str, settings: dict, turns: list[dict], verklaring_gevraagd: bool) -> str:
+    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334), een
+    instellingswissel in dit gesprek (#543) en of de gebruiker om een verklaring vroeg (#1036)."""
     delen = (
         taalinstructie(vraag),
         genoemde_bronnen(vraag),
         wisselcontext(settings.get("instelling"), eerdere_instellingen(turns)),
+        verklaringinstructie(verklaring_gevraagd),
     )
     return "\n\n".join(tekst for tekst in delen if tekst)
 
@@ -599,8 +612,10 @@ async def run(
     earlier = eerdere_antwoorden(history, session)
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
+    # Of de gebruiker om een verklaring vroeg, beslist code één keer per beurt: voor het model en de controle (#1036).
+    verklaring = _verklaring_gevraagd(messages, session)
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
+    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [], verklaring)
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597). En
@@ -614,6 +629,7 @@ async def run(
         session.get("clarify_keuzes", []),
         session.setdefault("data_keys", []),
         getalcontrole,
+        verklaring_gevraagd=verklaring,
     )
     with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:

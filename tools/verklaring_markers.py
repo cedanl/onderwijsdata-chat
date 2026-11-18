@@ -11,6 +11,8 @@ woord is het ook een onderwerp ("redenen om te studeren"). "verklaring" telt nie
 Een vervolgvraag zonder eigen verzoek houdt het verzoek van de vorige vraag, maar alleen als ze elliptisch is: ze
 begint met "en" of "ook", of telt hooguit vier woorden ("En voor wo?"). Een volledige nieuwe vraag staat op zichzelf.
 
+Een Engelse vraag ("Why ...", "What causes ...") telt ook: het antwoord volgt haar taal (#326).
+
 Deze module kent alleen strings, zoals `ho_markers`: geen import uit de agent of de catalogus.
 """
 
@@ -26,10 +28,12 @@ _VERZOEK = re.compile(
     r"|\bwat\s+zit\s+(?:er\s*)?achter\b"
     r"|\bde\s+reden(?:en)?\s+(?:voor|van|achter)\b"
     r"|\bom\s+welke\s+reden(?:en)?\b"
-    r"|\bwat\s+(?:is|zijn|was|waren)\s+(?:de\s+)?reden(?:en)?\b",
+    r"|\bwat\s+(?:is|zijn|was|waren)\s+(?:de\s+)?reden(?:en)?\b"
+    # Een Engelse vraag krijgt een Engels antwoord (#326): dezelfde verzoeken in het Engels.
+    r"|\bwhy\b|\bhow\s+come\b|\bwhat\s+causes?\b|\bcauses?\s+of\b|\breasons?\s+(?:for|behind)\b",
     re.IGNORECASE,
 )
-_ELLIPTISCH_BEGIN = re.compile(r"^\W*(?:en|ook)\b", re.IGNORECASE)
+_ELLIPTISCH_BEGIN = re.compile(r"^\W*(?:en|ook|and|also)\b", re.IGNORECASE)
 _MAX_WOORDEN_ELLIPTISCH = 4
 
 
