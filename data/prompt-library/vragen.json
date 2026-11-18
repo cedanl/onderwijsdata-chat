@@ -1,5 +1,5 @@
 {
-  "_doc": "De verzameling 'Vragen aan onderwijsdata' voor de bulkimport van de Prompt Library (#1047, B). De vraag zelf staat hier niet: `eval` verwijst naar een geteste vraag in tests/e2e/evaluations.json, en scripts/prompt_library_export.py haalt de tekst daar op. Zo is elke vraag in de verzameling er een met bekende uitkomsten, en loopt de verzameling niet uiteen met de evaluatieset. Alles hieronder is de redactionele laag: titel, samenvatting, tips en labels.",
+  "_doc": "De verzameling 'Vragen aan onderwijsdata' voor de bulkimport van de Prompt Library (#1047, B). De vraag zelf staat hier niet: `eval` verwijst naar een geteste vraag in tests/e2e/evaluations.json, en scripts/prompt_library_export.py haalt de tekst daar op. Zo is elke vraag in de verzameling er een met bekende uitkomsten, en loopt de verzameling niet uiteen met de evaluatieset. Alles hieronder is de redactionele laag: titel, samenvatting, tips en labels. Bewust niet opgenomen: de vragen die twee bronnen koppelen (DUO en CBS, evaluatielabel koppel-duo-cbs-gemeente); die vragen draaien niet op elke omgeving, want de koppeling (#988) zit niet in alle versies.",
   "vragen": [
     {
       "eval": "ijk-mbo-studenten-landelijk",
@@ -63,14 +63,6 @@
       "samenvatting": "De code uit het onderwijsregister (RIO) en de plaatsen waar de instelling vestigingen heeft.",
       "tips": "Handig om een BRIN-code of de vestigingen van een instelling na te kijken. Vervang de instelling.",
       "waarom_dit_werkt": "Een opzoekvraag met één juist antwoord uit het register. Het antwoord laat zich dus meteen controleren.",
-      "labels": "sector:hbo"
-    },
-    {
-      "eval": "koppel-duo-cbs-gemeente",
-      "titel": "Hbo-studenten per gemeente: woonplaats tegenover vestiging",
-      "samenvatting": "Twee bronnen naast elkaar (DUO en CBS) op gemeente, en de vijf gemeenten met het grootste verschil.",
-      "tips": "Het verschil gaat over waar studenten wonen tegenover waar ze staan ingeschreven; het antwoord hoort dat te zeggen. Een zwaardere vraag: de uitkomst duurt langer dan een telling.",
-      "waarom_dit_werkt": "Je vraagt om een vergelijking met een duidelijke uitkomst (de top vijf), en noemt het jaar en beide kanten van het verschil.",
       "labels": "sector:hbo"
     },
     {
