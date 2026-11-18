@@ -526,6 +526,23 @@ def test_toolnaam_in_de_bronnen_kost_geen_herschrijving(monkeypatch):
     assert text == "In totaal 5.943 eerstejaars.\n\n**Bronnen**\n- DUO"
 
 
+def test_toolnaam_in_de_lopende_tekst_kost_geen_herschrijving(monkeypatch, caplog):
+    """#1028 (audit L-09): "berekend met `query_data`" gaf een herkansing, de gebruiker zag het antwoord verdwijnen."""
+    stappen = [
+        StreamResult(text="", tool_calls=[_QUERY]),
+        StreamResult(text="In totaal 5.943 eerstejaars, berekend met `query_data`.", tool_calls=[]),
+        StreamResult(text="In totaal 5.943 eerstejaars.", tool_calls=[]),  # een herkansing; mag niet nodig zijn
+    ]
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(monkeypatch, stappen)
+
+    assert len(stappen) == 1  # twee modelaanroepen: tool-aanroep en antwoord, geen derde
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert "HERKANSING" not in caplog.text and "metatekst=ok" in caplog.text
+    assert text == "In totaal 5.943 eerstejaars."
+    assert events[-1]["content"] == "In totaal 5.943 eerstejaars."
+
+
 _ENGELSE_VRAAG = [{"role": "user", "content": "How many first-year students were there in 2023?"}]
 
 

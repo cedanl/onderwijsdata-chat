@@ -64,6 +64,7 @@ from .vaste_antwoorden import (
 )
 from .verklaringsverzoek import verklaringinstructie
 from .vo_school import vo_schoolvraag
+from .vorige_werkwijze import werkwijze_vorige_databeurt
 from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
@@ -323,13 +324,25 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
-def _beurtcontext(vraag: str, settings: dict, turns: list[dict], verklaring_gevraagd: bool) -> str:
+def _veilige_werkwijze(session: dict) -> str:
+    """De werkwijze van de vorige databeurt (#992) is context, geen controle: lukt het niet, dan gaat de beurt zonder."""
+    try:
+        return werkwijze_vorige_databeurt(session)
+    except Exception as exc:
+        log_interne_fout(exc, "vorige werkwijze")
+        return ""
+
+
+def _beurtcontext(vraag: str, session: dict, verklaring_gevraagd: bool) -> str:
     """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334), een
-    instellingswissel in dit gesprek (#543) en of de gebruiker om een verklaring vroeg (#1036)."""
+    instellingswissel in dit gesprek (#543), de werkwijze van de vorige databeurt (#992) en of de gebruiker om een
+    verklaring vroeg (#1036)."""
+    settings: dict = session.get("chat_settings") or {}
     delen = (
         taalinstructie(vraag),
         genoemde_bronnen(vraag),
-        wisselcontext(settings.get("instelling"), eerdere_instellingen(turns)),
+        wisselcontext(settings.get("instelling"), eerdere_instellingen(session.get("turns") or [])),
+        _veilige_werkwijze(session),
         verklaringinstructie(verklaring_gevraagd),
     )
     return "\n\n".join(tekst for tekst in delen if tekst)
@@ -615,7 +628,7 @@ async def run(
     # Of de gebruiker om een verklaring vroeg, beslist code één keer per beurt: voor het model en de controle (#1036).
     verklaring = _verklaring_gevraagd(messages, session)
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [], verklaring)
+    beurt = _beurtcontext(last_user_msg, session, verklaring)
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597). En

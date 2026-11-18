@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import WorkbookDownload from './WorkbookDownload'
 import WorkbookMarkdown from './WorkbookMarkdown'
+import WorkbookWord from './WorkbookWord'
 import { NavSlot } from '../navSlot'
 import { useEscape } from '../hooks/useEscape'
 import { rapportWoord } from '../rapportWoord'
@@ -9,7 +10,8 @@ import { rapportWoord } from '../rapportWoord'
 // niet naast een titel van twee regels, dus staan ze — net als bij de chat (#596, ChatNavActies) — in een
 // ⋯-menu in de nav-slot. Desktop toont ze inline in de kopbalk (WorkbookViewer).
 // afdrukken: de knop "Opslaan als PDF" (#622), als menu-item; null voor een rapport dat het niet kan.
-export default function RapportNavActies({ workbook, save, feedbackEnabled, feedbackGiven, onFeedback, afdrukken = null }) {
+// grafiekDoc: het rapport voor de grafieken van "Download als Word" (#1038), of null (dan zonder grafieken).
+export default function RapportNavActies({ workbook, save, feedbackEnabled, feedbackGiven, onFeedback, afdrukken = null, grafiekDoc = null }) {
   const [open, setOpen] = useState(false)
   const knopRef = useRef(null)
   useEscape(open, () => { setOpen(false); knopRef.current?.focus() })
@@ -32,6 +34,7 @@ export default function RapportNavActies({ workbook, save, feedbackEnabled, feed
             <div className="navbar-meer-menu" id="navbar-meer-rapport">
               <WorkbookDownload workbook={workbook} save={save} />
               <WorkbookMarkdown workbook={workbook} save={save} />
+              <WorkbookWord workbook={workbook} save={save} grafiekDoc={grafiekDoc} />
               {afdrukken}
               {feedbackEnabled && (feedbackGiven ? (
                 <span className="navbar-menu-item" role="status">

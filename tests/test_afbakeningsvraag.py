@@ -76,6 +76,52 @@ def test_een_vraag_met_afbakening_of_zonder_telling_krijgt_geen_afbakeningskaart
     assert afbakeningsvraag(vraag) is None
 
 
+# Live-audit L-02 (#1021): wie zelf een dataset noemt, koos de data al; de kaart "Landelijk of per sector?" past niet.
+_DATASETVRAGEN = [
+    "Hoeveel studenten staan er in de dataset 'studentenwelzijn_2025'?",
+    "Zoek in de catalogus naar het aantal studenten in studentenwelzijn_2025",
+    "Hoeveel studenten staan er in dataset 85421NED?",
+    "Hoeveel studenten staan er in 80040ned?",  # een CBS-ID in kleine letters
+    "Hoeveel studenten staan er in p01hoinges?",  # een DUO-ID
+    "Hoeveel studenten staan er in cbs:85423NED?",  # met bronvoorvoegsel
+    "Hoeveel studenten staan er in wi-2021?",  # een ID uit de catalogus met een streepje
+    "Hoeveel studenten staan er in abc12345?",  # een onbekend ID
+    "Hoeveel studenten staan er in de Datasets?",
+]
+
+
+@pytest.mark.parametrize("vraag", _DATASETVRAGEN)
+def test_een_vraag_met_een_dataset_krijgt_geen_afbakeningskaart(vraag):
+    assert afbakeningsvraag(vraag) is None
+
+
+@pytest.mark.parametrize("vraag", _DATASETVRAGEN)
+def test_een_vraag_met_een_dataset_krijgt_geen_kaart_van_welk_slot_ook(vraag):
+    assert scopevraag(vraag) is None
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Hoeveel studenten zijn er in 2023?",  # een jaartal is geen ID
+        "Hoeveel studenten zijn er in 2023/24?",
+        "Hoeveel studenten zijn er?",
+        "Hoeveel 2e-jaars studenten zijn er?",  # letters en een cijfer, maar geen ID-vorm en niet in de catalogus
+    ],
+)
+def test_een_jaartal_of_telling_zonder_dataset_houdt_de_afbakeningskaart(vraag):
+    assert _slot(scopevraag(vraag)) == "afbakening"
+
+
+def test_een_gewoon_woord_dat_een_rio_id_is_houdt_de_kaart():
+    assert _slot(scopevraag("Hoeveel studenten hebben erkenningen?")) == "afbakening"
+
+
+def test_de_andere_slots_blijven_zonder_dataset():
+    assert _slot(scopevraag("Hoeveel studenten heeft Utrecht?")) == "scope"
+    assert _slot(scopevraag("Hoeveel studenten?")) == "afbakening"
+
+
 def test_het_profiel_bepaalt_de_afbakening():
     assert afbakeningsvraag("Hoeveel studenten?", {"instelling": "Hogeschool Utrecht"}) is None
     assert afbakeningsvraag("Hoeveel studenten?", {"domein": "mbo"}) is None

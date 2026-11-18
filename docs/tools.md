@@ -783,7 +783,16 @@ Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle datab
 | `columns` | array | Alleen deze kolommen teruggeven |
 | `max_rows` | integer | Maximaal aantal rijen (standaard: 500) |
 | `group_by` | array | Groeperen op deze kolommen |
-| `aggregate` | object | Aggregatiefuncties per kolom, bijv. `{"Aantal": "sum"}` |
+| `aggregate` | object | Aggregatiefuncties per kolom, bijv. `{"Aantal": "sum"}`: `sum`, `mean`, `weighted_mean`, `count`, `nunique`, `size`, `min`, `max` |
+| `weights` | object | Alleen bij `weighted_mean`: per kolom de gewichtskolom, bijv. `{"nse_algemeen": "nse_respondenten"}` |
+
+`weighted_mean` rekent per groep som(waarde × gewicht) / som(gewicht), over de rijen met een waarde én een gewicht
+(#1017). Een rij met een lege, onleesbare of onderdrukte waarde of gewicht telt in teller en noemer niet mee; de
+`databewerking` noemt per kolom hoeveel rijen. Een groep zonder zo'n rij, of met gewichtssom 0, krijgt null, nooit 0.
+Een gewicht moet een bestaande, numerieke kolom zonder negatieve waarden zijn en niet in `group_by` staan; zonder
+gewicht weigert de tool, en de app kiest nooit zelf een gewicht. Zo aggregeer je een bron eerst per instelling
+(`group_by` op de sleutel, `weighted_mean` voor scores en percentages, `sum` voor aantallen) en koppel je die uitkomst
+daarna met `koppel_data`.
 
 ---
 

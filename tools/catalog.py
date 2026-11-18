@@ -443,6 +443,25 @@ def _id_kenmerk(dataset_id: str) -> str:
     return tekst_kenmerk(str(dataset_id), "id_")
 
 
+@cache
+def _alle_ids() -> frozenset[str]:
+    """Elk ID uit de volledige CBS- en riodata-inventaris in kleine letters, ook buiten het profiel."""
+    return frozenset(i.lower() for e in [*_cbs_alles(), *_rio_duo_alles()] if (i := scopeprofiel.dataset_id(e)))
+
+
+def kent_dataset_id(tekst: str) -> bool:
+    """Of `tekst` een dataset-ID uit de volledige inventaris is, in elke spelling (#1021).
+
+    `80040ned`, `cbs:85423NED` en `P01HOINGES` tellen; hoofdletterongevoelig via `bron_id`, nooit `upper()`. Ook een
+    record buiten het profiel telt: de gebruiker noemde de dataset, de scopegrens beslist bij het laden. Een kaal ID
+    dat bij twee bronnen past, is ook een bekend ID.
+    """
+    try:
+        return bron_id(tekst).lower() in _alle_ids()
+    except onderwijsbronnen.AmbigueBronId:
+        return True
+
+
 def scope_blokkade(dataset_id: str) -> str | None:
     """Waarom een datatool `dataset_id` niet laadt; None als het binnen het profiel valt.
 

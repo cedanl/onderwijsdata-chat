@@ -7,6 +7,7 @@ import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
 import WorkbookMarkdown from './WorkbookMarkdown'
+import WorkbookWord from './WorkbookWord'
 import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
@@ -93,6 +94,8 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
   const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null, mode)
   // A print frame belongs to the report that was open (WorkbookPrint.jsx).
   useEffect(() => ruimPrintframeOp, [reportFrame.printDoc])
+  // "Download als Word" sends the charts only when the report shows in its frame (#1038).
+  const grafiekDoc = reportFrame.probleem ? null : reportFrame.grafiekDoc
 
   return (
     <div className="wb-viewer">
@@ -139,11 +142,13 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
             feedbackEnabled={feedbackEnabled} feedbackGiven={feedbackGiven}
             onFeedback={() => setShowFeedback(true)}
             afdrukken={<WorkbookPrint html={reportFrame.printDoc} className="navbar-menu-item" />}
+            grafiekDoc={grafiekDoc}
           />
         ) : (
           <div className="wb-viewer-actions">
             <WorkbookDownload workbook={workbook} save={save} />
             <WorkbookMarkdown workbook={workbook} save={save} />
+            <WorkbookWord workbook={workbook} save={save} grafiekDoc={grafiekDoc} />
             <WorkbookPrint html={reportFrame.printDoc} />
             {feedbackEnabled && (
               feedbackGiven ? (
