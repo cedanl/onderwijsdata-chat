@@ -22,18 +22,27 @@ eenduidig te vinden is, een M die bij geen rijtelling past, een jaar dat de tabe
 vraag, een benadering ("bijna 10 van de 12") of een andere formulering ("de meeste", "bijna alle") geeft geen
 melding. Een telwoord "een/één" telt niet: "een van de 12 hogescholen" betekent vaak "een van hen", niet "precies één".
 
+Werk per antwoord begrensd: elke zin wordt een vast aantal keren gescand, ook met duizenden tellingen erin, en een
+antwoord met meer dan `_MAX_BEWERINGEN` beweringen controleert de controle niet (zwijgt). De controle draait synchroon
+in de chatloop; een antwoord dat dezelfde zin duizenden keren herhaalt, mag de server niet stilzetten.
+
 Zacht, met herkansing: een herkenningsfout mag een goed antwoord niet intrekken. Alleen een telling tegen de tabel in
 het antwoord, waarvan M gelijk is aan het aantal rijen met een waarde zonder totaalrij, is hard: die blijft na de
 herkansing staan als bewering die de gebruiker zelf in de tabel kan natellen.
+
+Test: `tests/test_beweringtelling.py` faalt zonder de controle (een foute telling of vergelijking wordt gemeld, ook in
+de nepmodeltests met herkansing en `INGEHOUDEN`) en laat juiste tellingen, juiste vergelijkingen en twijfelgevallen
+stil; `tests/test_controles.py` toetst zacht/hard en de logregel CONTROLES.
 
 Eigenaar: `agent/`, naast de rekensomcontrole (`agent/rekensom.py`) en de tabelbinding (`agent/tabelbinding.py`).
 Heroverwegen als de controle een kwartaal lang niet afgaat in de logregel CONTROLES.
 """
 
+import itertools
 import math
 import numbers
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
@@ -86,7 +95,9 @@ _BENADERING = re.compile(
     r"meer\s+dan|minder\s+dan)|≈)\s*$",
     re.IGNORECASE,
 )
-_OF_ANDERS = re.compile(r"^\s*(?:,\s*)?(?:of|en/of)\b", re.IGNORECASE)
+# Hoeveel tekens vóór N (na de spaties ervoor) de controle naar een benadering kijkt: "ten  minste" past ruim.
+_BENADERING_REIKWIJDTE = 30
+_OF_ANDERS = re.compile(r"\s*(?:,\s*)?(?:of|en/of)\b", re.IGNORECASE)
 # Een vergelijking van groei is geen vergelijking van niveaus: "in 2024/25 groeiden meer bachelor- dan ...".
 _VERANDERING = re.compile(
     r"\b(?:gestegen|steeg|stegen|stijging\w*|gegroeid|groei\w*|gedaald|daal\w*|daling\w*|toegenomen|toename\w*|"
@@ -107,6 +118,8 @@ _GEEN_TERM = frozenset(
     {"in", "op", "bij", "van", "voor", "na", "de", "het", "een", "er", "dat", "die", "toen", "vorig", "vorige", "ooit"}
 )
 _MIN_VOORVOEGSEL = 3
+# Meer tellingen en vergelijkingen dan dit in één antwoord: geen gewoon antwoord meer, de controle zwijgt.
+_MAX_BEWERINGEN = 25
 
 
 @dataclass(frozen=True)
@@ -236,20 +249,27 @@ def _aantal(woord: str) -> int:
     return int(woord) if woord.isdigit() else _TELWOORDEN[woord.lower()]
 
 
-def _tellingen(zin: str) -> list[_Telling]:
+def _benaderd(zin: str, begin: int) -> bool:
+    """Staat er vlak voor positie `begin` een benadering ("bijna", "ruim", "meer dan")? Kijkt alleen in een vast venster
+    vóór de spaties, zodat een zin met duizenden tellingen niet elke keer helemaal wordt gescand."""
+    eind = begin
+    while eind > 0 and zin[eind - 1].isspace():
+        eind -= 1
+    return _BENADERING.search(zin, max(0, eind - _BENADERING_REIKWIJDTE), begin) is not None
+
+
+def _tellingen(zin: str) -> Iterator[_Telling]:
     if _ONTKENNING.search(zin):
-        return []
-    gevonden = []
+        return
+    jaren = frozenset(periode.gevraagde_schooljaren(zin))
     for m in _TELLING.finditer(zin):
-        if _BENADERING.search(zin[: m.start()]) or _OF_ANDERS.match(zin[m.end() :]):
+        if _benaderd(zin, m.start()) or _OF_ANDERS.match(zin, m.end()):
             continue
         n, totaal = _aantal(m["n"]), _aantal(m["m"])
         if n > totaal or totaal < 2:
             continue
         omlaag = re.sub(r"\s+", " ", m["werkwoord"].lower()) in _OMLAAG
-        jaren = frozenset(periode.gevraagde_schooljaren(zin))
-        gevonden.append(_Telling(m.group(0), n, totaal, omlaag, jaren))
-    return gevonden
+        yield _Telling(m.group(0), n, totaal, omlaag, jaren)
 
 
 def _waardebronnen(raster: _Raster) -> list[tuple[list[Decimal | None], frozenset[int]]]:
@@ -311,8 +331,14 @@ def _telprobleem(telling: _Telling, raster: _Raster, uitkomst: _Uitkomst) -> lis
     return [probleem]
 
 
+def _kandidaten(rasters: list[_Raster], sleutels: _Sleutels) -> Iterator[list[_Raster]]:
+    """Eerst de tabellen in het antwoord; de keys worden pas opgehaald als daar niets bij past."""
+    yield rasters
+    yield sleutels()
+
+
 def _telfout(telling: _Telling, rasters: list[_Raster], sleutels: _Sleutels) -> list[Probleem]:
-    for kandidaten in (rasters, sleutels()):
+    for kandidaten in _kandidaten(rasters, sleutels):
         passend = [(r, uitkomst) for r in kandidaten for past, uitkomst in [_telling_in(r, telling)] if past]
         if passend:
             if len(passend) > 1 or (uitkomst := passend[0][1]) is None:
@@ -441,7 +467,7 @@ def _vergelijking_in(raster: _Raster, v: _Vergelijking) -> _Aangewezen | None:
 
 
 def _vergelijkfout(v: _Vergelijking, rasters: list[_Raster], sleutels: _Sleutels) -> list[Probleem]:
-    for kandidaten in (rasters, sleutels()):
+    for kandidaten in _kandidaten(rasters, sleutels):
         passend = [(r, p) for r in kandidaten if (p := _vergelijking_in(r, v)) is not None]
         if not passend:
             continue
@@ -479,17 +505,26 @@ def _zinnen(regels: list[str], rasterregels: set[int]) -> list[str]:
     return [z.strip() for z in _ZIN.split("\n".join(lopend)) if z.strip()]
 
 
+def _beweringen(zinnen: list[str]) -> Iterator[_Telling | _Vergelijking]:
+    for zin in zinnen:
+        yield from _tellingen(zin)
+        yield from _vergelijkingen(zin)
+
+
 def _fouten(tekst: str, sleutels: _Sleutels) -> list[Probleem]:
     regels = tekst.split("\n")
     gevonden = tabellen(regels)
-    rasters = _uit_antwoord(gevonden)
     rasterregels = {i for t in gevonden for i in range(t.begin, t.einde + 1)}
+    beweringen = list(itertools.islice(_beweringen(_zinnen(regels, rasterregels)), _MAX_BEWERINGEN + 1))
+    if not beweringen or len(beweringen) > _MAX_BEWERINGEN:
+        return []
+    rasters = _uit_antwoord(gevonden)
     problemen: list[Probleem] = []
-    for zin in _zinnen(regels, rasterregels):
-        for telling in _tellingen(zin):
-            problemen += _telfout(telling, rasters, sleutels)
-        for vergelijking in _vergelijkingen(zin):
-            problemen += _vergelijkfout(vergelijking, rasters, sleutels)
+    for bewering in beweringen:
+        if isinstance(bewering, _Telling):
+            problemen += _telfout(bewering, rasters, sleutels)
+        else:
+            problemen += _vergelijkfout(bewering, rasters, sleutels)
     return problemen
 
 

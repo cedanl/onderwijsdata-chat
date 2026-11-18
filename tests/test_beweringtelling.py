@@ -3,10 +3,12 @@
 import asyncio
 import importlib
 import json
+import time
 
 import pandas as pd
 import pytest
 
+from agent import beweringtelling
 from agent.beweringtelling import onjuiste_tabelbeweringen
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
@@ -269,6 +271,64 @@ def test_een_bewering_die_in_een_lezing_klopt_is_niet_fout():
 
     assert onjuiste_tabelbeweringen([fout, f"9 van de 12 hogescholen is gedaald.\n\n{goed}"], []) == []
     assert len(onjuiste_tabelbeweringen([fout, fout], [])) == 1
+
+
+def test_een_benadering_met_extra_spaties_geeft_geen_melding():
+    assert _controle("Ten  minste\t 10 van de 12 hogescholen is gedaald.", _verschiltabel()) == []
+
+
+# --- Begrensd werk: de controle draait synchroon in de chatloop ----------------------------------------------------
+
+_HERHAALD = "10 van de 12 hogescholen daalden, "
+
+
+def test_een_zin_met_veel_tellingen_wordt_een_keer_op_jaren_gescand(monkeypatch):
+    aanroepen = []
+    echt = beweringtelling.periode.gevraagde_schooljaren
+    monkeypatch.setattr(
+        beweringtelling.periode, "gevraagde_schooljaren", lambda tekst: aanroepen.append(tekst) or echt(tekst)
+    )
+
+    assert onjuiste_tabelbeweringen([_HERHAALD * 20 + "einde."], []) == []
+    assert len(aanroepen) == 1
+
+
+def test_een_zin_met_duizenden_tellingen_kost_lineair_werk():
+    """Voor de fix: 4000 tellingen in één zin kostte ruim een minuut (elke telling scande de hele zin opnieuw)."""
+    zin = _HERHAALD * 4000
+
+    begin = time.perf_counter()
+    gevonden = list(beweringtelling._tellingen(zin))
+    duur = time.perf_counter() - begin
+
+    assert len(gevonden) == 4000
+    assert duur < 2
+
+
+def test_een_antwoord_met_duizenden_tellingen_is_snel_en_stil():
+    begin = time.perf_counter()
+    problemen = _controle(_HERHAALD * 4000 + "einde.", _verschiltabel())
+    duur = time.perf_counter() - begin
+
+    assert problemen == []
+    assert duur < 2
+
+
+def test_boven_het_maximum_aantal_beweringen_zwijgt_de_controle():
+    zinnen = "10 van de 12 hogescholen is gedaald. "
+
+    assert len(_controle(zinnen * beweringtelling._MAX_BEWERINGEN, _verschiltabel())) == 1
+    assert _controle(zinnen * (beweringtelling._MAX_BEWERINGEN + 1), _verschiltabel()) == []
+
+
+def test_de_keys_worden_niet_opgehaald_als_de_tabel_in_het_antwoord_past(monkeypatch):
+    def niet_ophalen(tool_results):
+        raise AssertionError("de keys zijn opgehaald")
+
+    monkeypatch.setattr(beweringtelling, "_uit_keys", niet_ophalen)
+
+    [probleem] = _controle("10 van de 12 hogescholen is gedaald.", _verschiltabel(), ["{}"])
+    assert "in de tabel zijn het er 9 van de 12" in probleem.melding
 
 
 # --- De afgeleide key als bron, alleen zonder bruikbare tabel -----------------------------------------------------
