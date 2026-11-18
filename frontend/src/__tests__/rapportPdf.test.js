@@ -5,7 +5,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { buildReportHtml, PRINT_BERICHT, PRINT_BREEDTE } from '../reportHtml'
+import { buildReportHtml, PRINT_BERICHT, PRINT_BREEDTE, PRINT_CSS } from '../reportHtml'
+import { NPULS } from '../npulsHuisstijl'
 import WorkbookPrint, { kanAfdrukken, ruimPrintframeOp, stuurAfdrukken } from '../components/WorkbookPrint'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -24,6 +25,22 @@ describe('het rapport kan zichzelf afdrukken', () => {
     expect(html).toContain('@page{size:A4;margin:14mm}')
     expect(html).toContain('background:#fff!important')
     expect(html).toMatch(/\.vis{break-inside:avoid/)
+  })
+
+  // #1037: de PDF in Npuls-huisstijl, naast de A4-regels van #622; die blijven zoals ze waren.
+  it('drukt af in Npuls-huisstijl, met de A4-indeling van #622 ongewijzigd', () => {
+    expect(PRINT_CSS).toContain('@page{size:A4;margin:14mm}')
+    expect(PRINT_CSS).toContain('.vis{break-inside:avoid;page-break-inside:avoid}')
+    expect(PRINT_CSS).toContain('.plot,.plot-auto{max-height:330px}')
+    expect(PRINT_BREEDTE).toBe(680)
+    expect(PRINT_CSS).toContain('.print-merk{display:flex')
+    expect(PRINT_CSS).toContain('font-family:"General Sans",Inter,Arial,sans-serif')
+    expect(PRINT_CSS).toContain(`.header h1{font-size:24px;font-weight:600;color:${NPULS.oranje}}`)
+    expect(PRINT_CSS).toContain(`a,strong,.prose strong{color:${NPULS.blauw}}`)
+    expect(PRINT_CSS).toMatch(new RegExp(`\\.meta-chip,[^{]*\\.vis-bron,\\.manifest\\{background:${NPULS.roze};color:#000000;`))
+    expect(PRINT_CSS).toContain(`.card{border:1px solid ${NPULS.roze}}`)
+    expect(PRINT_CSS).not.toContain('a{color:inherit}')
+    expect(html.indexOf(PRINT_CSS)).toBeGreaterThan(-1)
   })
 
   it('drukt af op het bericht van de app: eerst licht thema en grafieken op A4-breedte, daarna alles terug', () => {
