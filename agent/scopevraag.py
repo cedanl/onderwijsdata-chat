@@ -308,7 +308,7 @@ _DATASET_WOORD = re.compile(r"\b(datasets?|catalogus)\b", re.IGNORECASE)
 _ID_VORM = re.compile(r"(?:[a-z]+:)?(?=[a-z0-9_]*[a-z])(?=[a-z0-9_]*[\d_])[a-z0-9_]{5,}", re.IGNORECASE)
 _ID_RAND = "'’‘\"“”`(),.;:!?"
 # Een keuze op een kaart uit code is tekst van code, geen dataset die de gebruiker noemt (#968).
-_CODELABELS = tuple(optie["label"] for optie in (*_FASE_OPTIES, *_AFBAKENING_OPTIES))
+_CODELABELS = tuple(str(optie["label"]) for optie in (*_FASE_OPTIES, *_AFBAKENING_OPTIES))
 
 
 def _id_kandidaten(tekst: str) -> list[str]:
