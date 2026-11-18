@@ -225,9 +225,13 @@ def aanroep(name: str, args: dict) -> str:
     return f"{name}:{digest(name, args)}"
 
 
-def selectie_digest(filters, columns, group_by, aggregate) -> str:
-    """De digest van een query_data-selectie, voor de afgeleide data_key."""
-    return digest("query_data", {"filters": filters, "columns": columns, "group_by": group_by, "aggregate": aggregate})
+def selectie_digest(filters, columns, group_by, aggregate, weights=None) -> str:
+    """De digest van een query_data-selectie, voor de afgeleide data_key. Lege `weights` vallen weg in het plan: een
+    selectie zonder gewichten houdt de key van vóór #1017."""
+    return digest(
+        "query_data",
+        {"filters": filters, "columns": columns, "group_by": group_by, "aggregate": aggregate, "weights": weights},
+    )
 
 
 def cbs_digest(filters: dict | None, *, vo_context: bool = False) -> str | None:

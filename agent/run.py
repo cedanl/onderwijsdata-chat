@@ -62,6 +62,7 @@ from .vaste_antwoorden import (
     weigering,
 )
 from .vo_school import vo_schoolvraag
+from .vorige_werkwijze import werkwijze_vorige_databeurt
 from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
@@ -311,13 +312,24 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
-def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
-    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334) en een
-    instellingswissel in dit gesprek (#543)."""
+def _veilige_werkwijze(session: dict) -> str:
+    """De werkwijze van de vorige databeurt (#992) is context, geen controle: lukt het niet, dan gaat de beurt zonder."""
+    try:
+        return werkwijze_vorige_databeurt(session)
+    except Exception as exc:
+        log_interne_fout(exc, "vorige werkwijze")
+        return ""
+
+
+def _beurtcontext(vraag: str, session: dict) -> str:
+    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334), een
+    instellingswissel in dit gesprek (#543) en de werkwijze van de vorige databeurt (#992)."""
+    settings: dict = session.get("chat_settings") or {}
     delen = (
         taalinstructie(vraag),
         genoemde_bronnen(vraag),
-        wisselcontext(settings.get("instelling"), eerdere_instellingen(turns)),
+        wisselcontext(settings.get("instelling"), eerdere_instellingen(session.get("turns") or [])),
+        _veilige_werkwijze(session),
     )
     return "\n\n".join(tekst for tekst in delen if tekst)
 
@@ -600,7 +612,7 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
+    beurt = _beurtcontext(last_user_msg, session)
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597). En

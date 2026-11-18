@@ -1493,13 +1493,21 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 }
 
 /* ─── Feedback Modal ──────────────────────────────────────── */
-.wb-viewer-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.wb-viewer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 8px; flex-shrink: 0; }
+/* Een melding van een downloadknop op een eigen regel onder de knoppen (#1038): `contain: inline-size` telt haar
+   tekst niet mee in de breedte van de balk, zodat een lange melding de rapporttitel niet platdrukt. */
+.wb-viewer-actions > .wb-download-error, .wb-viewer-actions > .wb-download-notice {
+  order: 1; flex-basis: 100%; contain: inline-size; text-align: right;
+}
 .wb-download-btn {
   font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);
   color: var(--accent-text); background: none; border: 1.5px solid var(--gray-200); cursor: pointer;
 }
 .wb-download-btn:hover { border-color: var(--blue-300); }
 .wb-download-error { font-size: .8rem; color: var(--red-500); }
+/* Gelukt, maar met een kanttekening ("Download als Word" zonder elke grafiek, #1038): geen foutkleur. */
+.wb-download-notice { font-size: .8rem; color: var(--gray-600); }
+.wb-download-btn[aria-disabled="true"] { cursor: progress; opacity: .7; }
 .wb-feedback-btn, .wb-feedback-given {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);
@@ -1806,7 +1814,7 @@ html.dark .suggested-btn:hover {
     font-size: .95rem; color: var(--gray-800);
   }
   .navbar-meer-menu .wb-download-btn:hover { background: var(--gray-100); }
-  .navbar-meer-menu .wb-download-error { padding: 4px 12px; }
+  .navbar-meer-menu .wb-download-error, .navbar-meer-menu .wb-download-notice { padding: 4px 12px; }
 }
 
 @media (max-width: 600px) {

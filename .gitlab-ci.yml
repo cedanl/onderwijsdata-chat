@@ -603,14 +603,29 @@ sync:github:
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
+    # Push via SSH met een deploy key (#1043): alleen schrijfrecht op deze ene repo, hangt aan geen persoonlijk
+    # account en verloopt niet. De private sleutel staat base64 (één regel, dus masked) in de protected
+    # projectvariabele GITHUB_DEPLOY_KEY_B64; de publieke sleutel staat op GitHub als deploy key
+    # "GitLab sdp (project 1031) sync:github". Poort 443 (ssh.github.com), want uitgaand verkeer op 22 is op de
+    # runner niet zeker. De host key is die van GitHub zelf (`gh api meta`), vastgepind: geen ssh-keyscan.
+    GITHUB_SPIEGEL: ssh://git@ssh.github.com:443/cedanl/onderwijsdata-chat.git
+    GITHUB_HOST_KEY: "[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
   script:
+    - |
+      set -eu
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      printf '%s' "$GITHUB_DEPLOY_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
+      chmod 600 ~/.ssh/id_ed25519
+      printf '%s\n' "$GITHUB_HOST_KEY" > ~/.ssh/known_hosts
+    - export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
     # Een tag-pipeline pusht alleen de tag: HEAD is dan de getagde commit, vaak al ingehaald door main,
     # en die zette GitHub main terug tot de volgende merge (#769).
     - |
-      if [ -z "$CI_COMMIT_TAG" ]; then
-        git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
+      if [ -z "${CI_COMMIT_TAG:-}" ]; then
+        git push --force "$GITHUB_SPIEGEL" HEAD:main
       fi
     - |
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" "refs/tags/$CI_COMMIT_TAG"
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        git push --force "$GITHUB_SPIEGEL" "refs/tags/$CI_COMMIT_TAG"
       fi

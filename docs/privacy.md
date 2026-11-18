@@ -95,6 +95,10 @@ is een open punt.
   uit, dan gaan ook deze verwijderingen eerst nog met je login. Is je sessie bij je volgende bezoek verlopen, dan is het
   ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
+- Een rapport downloaden als HTML, Markdown of Word, of opslaan als PDF. Het Word-document
+  (`POST /api/workbooks/{id}/docx`, #1038) bevat niets meer dan het rapport: de server maakt het uit het bewaarde
+  rapport. Je browser stuurt alleen de grafieken als afbeelding mee; de server zet ze in het document en bewaart ze
+  niet.
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback,
   datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
