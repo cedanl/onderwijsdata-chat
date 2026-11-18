@@ -52,7 +52,7 @@ from .plot import (
     schone_titel,
     waardeas_vanaf_nul,
 )
-from .query import NUMERIEKE_AGG
+from .query import GEWOGEN, NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
@@ -547,16 +547,58 @@ def _filterregel(key: str, val) -> str:
     return f'df = df[pd.to_numeric(df[{col!r}], errors="coerce") {teken} {grens!r}]'
 
 
-def _aggregatiefuncties(aggregate: dict) -> str:
-    """Het agg-argument als code: een som zonder één waarde blijft leeg, zoals in query (#394)."""
-    delen = [
-        f"{kolom!r}: " + ("lambda s: s.sum(min_count=1)" if fn == "sum" else repr(fn))
-        for kolom, fn in aggregate.items()
-    ]
+_SOM_OF_LEEG = "lambda s: s.sum(min_count=1)"
+
+
+def _teller(kolom: str) -> str:
+    return f"_teller_{kolom}"
+
+
+def _noemer(kolom: str) -> str:
+    return f"_noemer_{kolom}"
+
+
+def _aggregatiefuncties(aggregate: dict, gewogen: dict[str, str]) -> str:
+    """Het agg-argument als code: een som zonder één waarde blijft leeg, zoals in query (#394); een gewogen
+    gemiddelde telt teller en noemer per groep op (#1017)."""
+    delen = []
+    for kolom, fn in aggregate.items():
+        if kolom in gewogen:
+            delen += [f"{_teller(kolom)!r}: {_SOM_OF_LEEG}", f"{_noemer(kolom)!r}: {_SOM_OF_LEEG}"]
+        else:
+            delen.append(f"{kolom!r}: " + (_SOM_OF_LEEG if fn == "sum" else repr(fn)))
     return "{" + ", ".join(delen) + "}"
 
 
-def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
+def _gewogen_voorregels(gewogen: dict[str, str]) -> list[str]:
+    """Teller (waarde * gewicht) en noemer (gewicht) per rij, alleen waar beide een getal zijn (#1017)."""
+    lines: list[str] = []
+    for kolom, gewicht in gewogen.items():
+        lines += [
+            f"# Gewogen gemiddelde van {kolom!r} naar {gewicht!r}: som(waarde × gewicht) / som(gewicht) per groep.",
+            "# Een rij zonder waarde of gewicht telt in teller en noemer niet mee.",
+            f'_gewicht = pd.to_numeric(df[{gewicht!r}], errors="coerce")',
+            f"_beide = df[{kolom!r}].notna() & _gewicht.notna()",
+            f"df[{_teller(kolom)!r}] = (df[{kolom!r}] * _gewicht).where(_beide)",
+            f"df[{_noemer(kolom)!r}] = _gewicht.where(_beide)",
+        ]
+    return lines
+
+
+def _gewogen_naregels(gewogen: dict[str, str]) -> list[str]:
+    """Teller door noemer per groep; zonder bruikbare rij of met gewichtssom 0 leeg, nooit 0 (#1017)."""
+    lines: list[str] = []
+    for kolom in gewogen:
+        lines += [
+            f"_noemer = df.pop({_noemer(kolom)!r})",
+            f"df[{_teller(kolom)!r}] = df[{_teller(kolom)!r}] / _noemer.where(_noemer != 0)",
+        ]
+    if namen := {_teller(kolom): kolom for kolom in gewogen}:
+        lines.append(f"df = df.rename(columns={namen!r})")
+    return lines
+
+
+def _aggregatieregels(group_by: list[str], aggregate: dict, weights: dict | None = None) -> list[str]:
     """Zoals query._apply_aggregation: rekenkolommen numeriek, lege groepen houden (#227, #411)."""
     lines = [f"group_by = {group_by!r}"]
     if "STUDIEJAAR" in group_by:
@@ -570,8 +612,12 @@ def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
             f"for kolom in {numeriek!r}:",
             '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
         ]
+    gewichten = weights if isinstance(weights, dict) else {}
+    gewogen = {k: gewichten[k] for k, fn in aggregate.items() if fn == GEWOGEN and isinstance(gewichten.get(k), str)}
     lines += [
-        f"df = df.groupby(group_by, dropna=False).agg({_aggregatiefuncties(aggregate)}).reset_index()",
+        *_gewogen_voorregels(gewogen),
+        f"df = df.groupby(group_by, dropna=False).agg({_aggregatiefuncties(aggregate, gewogen)}).reset_index()",
+        *_gewogen_naregels(gewogen),
     ]
     return lines
 
@@ -607,7 +653,7 @@ def _query_stappen(args: dict) -> list[str]:
     if columns := args.get("columns"):
         lines.append(f"df = df[{columns!r}]")
     if (group_by := args.get("group_by")) and (aggregate := args.get("aggregate")):
-        lines += _aggregatieregels(group_by, aggregate)
+        lines += _aggregatieregels(group_by, aggregate, args.get("weights"))
     return lines
 
 

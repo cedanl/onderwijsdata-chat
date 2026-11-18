@@ -329,7 +329,10 @@ def _waarschuwingen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: 
             uit.append(
                 f"In {kant.label} geeft {', '.join(sleutels)} meer rijen per waarde (many): elke waarde van "
                 f"{ander.label} staat dan per rij herhaald. Tel waarden van {ander.label} niet zonder meer op over "
-                "de gekoppelde tabel; bekijk de korrel met dataset_profiel."
+                "de gekoppelde tabel; bekijk de korrel met dataset_profiel. Hoort er één rij per "
+                f"{', '.join(sleutels)} bij, aggregeer {kant.label} dan eerst met query_data naar die korrel "
+                "(group_by op de sleutel, weighted_mean met een gewicht in weights voor scores en percentages, sum voor "
+                "aantallen) en koppel die data_key."
             )
     for kant, n in uitkomst.zonder_sleutel.items():
         uit.append(f"{n} rijen van {kant} hebben een lege of onleesbare sleutel: ze staan erin zonder match.")
