@@ -23,7 +23,10 @@ TITEL_ZONDER_PERSOONSGEGEVENS = "Rapport (persoonsgegevens weggelaten)"
 # Een ingekorte titel eindigt niet op een los lidwoord, voorzetsel of voegwoord: "... hbo-studenten in de…" leest als
 # een afgebroken titel (#1023). Alleen eenduidige functiewoorden; een inhoudswoord als "meer" of "aantal" blijft staan.
 _FUNCTIEWOORDEN = frozenset(
-    "de het een in van voor op met bij naar en of over per aan om te tot uit door na onder tussen als dan die dat".split()
+    {"de", "het", "een"}  # lidwoorden
+    | {"in", "van", "voor", "op", "met", "bij", "naar", "over", "per", "aan"}  # voorzetsels
+    | {"om", "te", "tot", "uit", "door", "na", "onder", "tussen"}
+    | {"en", "of", "als", "dan", "die", "dat"}  # voegwoorden en aanwijzende woorden
 )
 
 

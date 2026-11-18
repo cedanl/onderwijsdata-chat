@@ -50,7 +50,10 @@ _L05 = (
     "Ontwikkeling van het aantal eerstejaars hbo-studenten{} in de afgelopen vijf schooljaren per sector en provincie"
 )
 _FUNCTIEWOORDEN = set(
-    "de het een in van voor op met bij naar en of over per aan om te tot uit door na onder tussen als dan die dat".split()
+    {"de", "het", "een"}  # lidwoorden
+    | {"in", "van", "voor", "op", "met", "bij", "naar", "over", "per", "aan"}  # voorzetsels
+    | {"om", "te", "tot", "uit", "door", "na", "onder", "tussen"}
+    | {"en", "of", "als", "dan", "die", "dat"}  # voegwoorden en aanwijzende woorden
 )
 
 
