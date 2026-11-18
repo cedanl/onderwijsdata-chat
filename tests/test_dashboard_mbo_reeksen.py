@@ -224,7 +224,10 @@ def test_de_hoofdgroepen_zijn_van_hetzelfde_jaar_als_de_laatste_ingeschrevenen_e
 
 
 @pytest.mark.usefixtures("duo_fixtures")
-def test_een_peer_met_vijf_jaar_nul_telt_niet_mee_in_het_gemiddelde():
+def test_een_peer_met_vijf_jaar_nul_telt_niet_mee_in_het_gemiddelde(monkeypatch):
+    # Zonder de omvangsdrempel van #1008: die haalt BBO de Schalm (0 ingeschrevenen in 2025) al uit de peers. Hier gaat
+    # het om een peer die wel in de groep staat maar geen gegevens heeft.
+    monkeypatch.setattr(dashboard, "_omvang_per_code", lambda _onderwijs_type: {})
     regio = dashboard.load_dashboard_regio(_CURIO)
     bm = regio["benchmark"]
 
