@@ -2,9 +2,12 @@
 
 Produces a compact, professional report from the loaded session data:
 the research question front and centre, chosen definitions (what the
-report does and does not answer), 1-2 visualisations with an explanation,
-and a conclusion. The report stays focused on the user's question instead
-of exploring the full potential of the data.
+report does and does not answer), the figures the user chose from the
+conversation with an explanation, and a conclusion. The report stays focused
+on the user's question instead of exploring the full potential of the data.
+
+The report model draws no figures of its own (owner decision 18-11, #993): the figures are exactly the ones the user
+chose in the checklist, recreated on the server (`agent.report_figuren`). Without a choice the report has text only.
 """
 
 from __future__ import annotations
@@ -18,8 +21,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 
-import plotly.io as pio
-
 from agent import manifest, rapportselectie
 from agent.aanspreekvorm import in_je_vorm
 from agent.afkapping import afkappingsregels
@@ -27,7 +28,6 @@ from agent.antwoordtaal import taal
 from agent.datasetcontext import build_dataset_context, build_recipe, herstel_data, sources_from_recipe
 from agent.figuurbron import figuurbron, figuurperiode
 from agent.getalnotatie import nl_notatie
-from agent.kaarten import kaarten_in_gesprek, kaartregel_argumenten
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
@@ -36,7 +36,8 @@ from agent.report_afwijking import afwijkingen
 from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
-from agent.report_periode import bijgesneden, gevraagd_bereik, titelperiode
+from agent.report_figuren import maak_figuren
+from agent.report_periode import titelperiode
 from agent.report_titel import rapporttitel, rapportvraag
 from agent.report_vergelijken import vergelijken
 from agent.selectie import stapkeys
@@ -46,29 +47,19 @@ from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
 from tools import store
-from tools.schemas import (
-    TOOL_COMPUTE_KPI,
-    TOOL_CREATE_CHOROPLETH_MAP,
-    TOOL_CREATE_PLOT,
-    TOOL_QUERY_DATA,
-    TOOL_SCHEMAS,
-)
+from tools.schemas import TOOL_COMPUTE_KPI, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
-# Met de kaarttool: het rapport van een kaartvraag toont de kaart (#648). Met compute_kpi: een groeicijfer of
-# verschil komt uit code, niet uit het model; de rapportcontrole toetst elk percentage (#872).
-_REPORT_TOOLS = [
-    s
-    for s in TOOL_SCHEMAS
-    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_COMPUTE_KPI, TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP)
-]
+# Geen grafiek- of kaarttool: het rapport toont alleen de figuren uit het gesprek die de gebruiker koos (besluit 18-11,
+# #993). Met compute_kpi: een groeicijfer of verschil komt uit code, niet uit het model; de rapportcontrole toetst elk
+# percentage (#872).
+_REPORT_TOOLS = [s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_COMPUTE_KPI)]
 
 logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 15
 _MAX_TOOL_RESULT_CHARS = 8000
-_MAX_VISUALISATIES = 2
 
 _DUTCH_MONTHS = [
     "januari",
@@ -151,13 +142,6 @@ def _describe_herkomst(herkomst: list[dict]) -> str:
     return " → ".join(_describe_call(call) for call in herkomst)
 
 
-def _describe_kaart(kaart: dict | None) -> str:
-    if not kaart:
-        return ""
-    argumenten = kaartregel_argumenten(kaart)
-    return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': argumenten})}"
-
-
 # Per vraag in de prompt; een vraag is hoogstens MAX_MESSAGE_CHARS, de bijsturing staat vooraan (#733).
 _MAX_VRAAG_TEKENS = 600
 
@@ -186,22 +170,40 @@ In volgorde. Een latere vraag kan de afbakening bijsturen; zie de werkwijze.
 """
 
 
+def _vaste_figuren_sectie(beschrijvingen: list[str] | None) -> str:
+    """De figuren uit het gesprek die het rapport toont, beschreven uit code, in de volgorde van het rapport (#993).
+
+    None: de gebruiker koos geen figuren. Een lege lijst: wel gekozen, maar geen kwam terug."""
+    if beschrijvingen is None:
+        figuren = "Geen: de gebruiker koos geen figuren uit het gesprek. Het rapport heeft geen figuren."
+    elif not beschrijvingen:
+        figuren = "Geen: de gekozen figuren konden niet opnieuw gemaakt worden. Het rapport heeft geen figuren."
+    else:
+        figuren = "\n\n".join(f"### Figuur {i}\n{b}" for i, b in enumerate(beschrijvingen, 1))
+    return f"""
+
+## Vaste figuren
+
+{figuren}
+"""
+
+
 def _build_system_prompt(context: dict) -> str:
     """Build the system prompt with injected dataset context.
 
-    `context["kaarten"]` (per data_key), `context["vragen"]` and `context["vraag_per_key"]` are for the prompt only:
-    `generate` keeps them out of the evidence. What the user said is a claim to test, not a source (#211, #733).
+    `context["vaste_figuren"]`, `context["vragen"]` and `context["vraag_per_key"]` are for the prompt only:
+    `generate` keeps them out of the evidence. What the user said is a claim to test, not a source (#211, #733); the
+    titles of the fixed figures are model text from the conversation (#993).
     """
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
 
-    kaarten = context.get("kaarten") or {}
     vraag_per_key = context.get("vraag_per_key") or {}
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
         dataset_blocks.append(
             f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n{_describe_vraag(vraag_per_key.get(ds['data_key']))}"
-            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(kaarten.get(ds['data_key']))}\n"
+            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}\n"
             f"- Kolommen:\n{cols}"
         )
 
@@ -235,7 +237,7 @@ Deze uitkomsten kwamen uit de data; je mag ze in het rapport gebruiken, met deze
 ## Beschikbare datasets in deze sessie
 
 {datasets_section}
-{berekeningen_section}{_vragen_sectie(context.get("vragen") or [])}
+{berekeningen_section}{_vaste_figuren_sectie(context.get("vaste_figuren"))}{_vragen_sectie(context.get("vragen") or [])}
 
 ## Gebruikerscontext
 - Instelling: {instelling or "niet opgegeven"}
@@ -252,6 +254,7 @@ async def generate(
     author: str | None = None,
     onderzoeksvraag: str | None = None,
     beurten: frozenset[int] | None = None,
+    figuren: tuple[str, ...] = (),
 ) -> ReportSpec:
     """Generate a report from the loaded session data.
 
@@ -261,14 +264,15 @@ async def generate(
     the topic, the title and the research question, instead of the first question.
     `beurten` are the turns with data the user kept (`rapportselectie.kies`, #908); None is the whole conversation.
     The report then rests on a view of the conversation without the others, so nothing of them reaches it.
+    `figuren` are the ids of the figures from the conversation the user chose (#993): they are the report's figures.
     """
     if beurten is None:
-        return await _genereer(session, emit, model, stop_event, author, onderzoeksvraag)
+        return await _genereer(session, emit, model, stop_event, author, onderzoeksvraag, figuren)
     uitgave = rapportselectie.beperk(session, beurten)
     logger.info("RAPPORT selectie  beurten=%d  keys=%d", len(beurten), len(uitgave["data_keys"]))
     # Ook wat een tool over "beschikbare data" zegt (tools/fouten.py) gaat alleen over wat in het rapport mag.
     with store.gesprek(lambda: uitgave["data_keys"]):
-        return await _genereer(uitgave, emit, model, stop_event, author, onderzoeksvraag)
+        return await _genereer(uitgave, emit, model, stop_event, author, onderzoeksvraag, figuren)
 
 
 async def _genereer(
@@ -278,6 +282,7 @@ async def _genereer(
     stop_event: asyncio.Event | None,
     author: str | None,
     onderzoeksvraag: str | None,
+    figuren: tuple[str, ...] = (),
 ) -> ReportSpec:
     await herstel_data(session, emit)
     context = build_dataset_context(session)
@@ -291,11 +296,13 @@ async def _genereer(
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
     context["berekeningen"] = bewijs
-    # De kaarten uit het gesprek zijn modelaanroepen, geen data, en de vragen zijn wat de gebruiker zei: alleen in de
-    # prompt, niet in `context`, dat de controles als bewijs lezen (#211, #648, #733).
+    # De gekozen figuren uit het gesprek, opnieuw gemaakt op de herstelde data (#993).
+    vast = await maak_figuren(session, figuren)
+    # De beschrijving van de figuren noemt hun titels (modeltekst uit de chat) en de vragen zijn wat de gebruiker zei:
+    # alleen in de prompt, niet in `context`, dat de controles als bewijs lezen (#211, #733).
     prompt_context = {
         **context,
-        "kaarten": kaarten_in_gesprek(session),
+        "vaste_figuren": [f.beschrijving for f in vast.figuren] if figuren else None,
         "vragen": gebruikersvragen(session),
         "vraag_per_key": dict(session.get("data_vraag") or {}),
     }
@@ -303,33 +310,32 @@ async def _genereer(
         {"role": "system", "content": _build_system_prompt(prompt_context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
-    figures: list[str] = []
+    # De figuren van het rapport: precies de gekozen figuren uit het gesprek, het model tekent er geen (#993).
+    figures = [f.figure_json for f in vast.figuren]
     # Per figuur de bronregel eronder, uit de key die de grafiek tekende (#569).
-    figuurbronnen: list[dict | None] = []
+    figuurbronnen = [figuurbron(f.data_key) for f in vast.figuren]
     # Per figuur de periode van haar rijen (startjaren), voor de rapporttitel (#893).
-    figuurperioden: list[tuple[int, int] | None] = []
-    # De keys die de rapportrun las: haar bevragingen en de grafieken die in het rapport komen (#738).
-    gelezen: list = []
+    figuurperioden = [figuurperiode(f.data_key) for f in vast.figuren]
+    # De keys die de rapportrun las: haar bevragingen en de figuren die in het rapport komen (#738).
+    gelezen: list = [k for f in vast.figuren for k in f.keys]
+    # De waarden van de figuren uit code zijn bewijs, zoals een toolresultaat; hun titels niet (#211).
+    figuurbewijs = [f.bewijs for f in vast.figuren]
     # De vraag van de gebruiker is een bewering om te toetsen, geen bewijs (#211): een getal erin dekt geen getal
     # in het rapport, ook niet als de gebruiker haar als onderzoeksvraag bevestigde (#750).
     dataset_context = json.dumps({k: v for k, v in context.items() if k != "topic"}, default=str)
 
-    async def keep_figure(call: ToolCall, result: str, figure) -> None:
+    async def lees_stap(call: ToolCall, result: str, figure) -> None:
+        # Een figuur van het model telt niet: het heeft geen grafiektool, en noemt het er toch een, dan valt ze weg.
         _log_tool_call(call.name, call.args, result)
         gelezen.extend(stapkeys(result))
-        if figure is not None and len(figures) < _MAX_VISUALISATIES:
-            figures.append(pio.to_json(figure))
-            data_key = (call.args or {}).get("data_key")
-            figuurbronnen.append(figuurbron(data_key))
-            figuurperioden.append(figuurperiode(data_key))
-            gelezen.append(data_key)
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         # De controles oordelen over wat het model schreef, niet over het voorbehoud uit code (#578).
         spec = _parse_spec_from_response(
             text, figures, context, author, figuurbronnen, met_voorbehoud=False, periode=figuurperioden
         )
-        return report_problems(spec, figures, [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs)])
+        bronnen = [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs), *figuurbewijs]
+        return report_problems(spec, figures, bronnen)
 
     result = await tool_loop(
         messages,
@@ -339,7 +345,7 @@ async def _genereer(
         stop_event=stop_event,
         max_iterations=_MAX_TOOL_ITERATIONS,
         max_result_chars=_MAX_TOOL_RESULT_CHARS,
-        on_tool_result=keep_figure,
+        on_tool_result=lees_stap,
         check=check,
         correction=_correction,
         keep_partial=lambda: bool(figures),
@@ -376,7 +382,9 @@ async def _genereer(
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(problems)), "level": "warning"})
     # Bronnen, definities, voorbehoud en dataversie van wat het rapport gebruikte, niet van het hele gesprek (#738).
     gebruikt = {**context, "datasets": gebruikte_datasets(context["datasets"], gelezen, bewijs, result.text)}
-    spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen, periode=figuurperioden)
+    spec = _parse_spec_from_response(
+        result.text, figures, gebruikt, author, figuurbronnen, periode=figuurperioden, voorbehoud=vast.voorbehoud
+    )
     keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(
         model or MODEL, keys, model_versie=getattr(result, "model_versie", None), username=session.get("username")
@@ -469,6 +477,7 @@ def _parse_spec_from_response(
     *,
     met_voorbehoud: bool = True,
     periode: list[tuple[int, int] | None] | None = None,
+    voorbehoud: list[str] | None = None,
 ) -> ReportSpec:
     """Parse the LLM response into a ReportSpec.
 
@@ -476,6 +485,8 @@ def _parse_spec_from_response(
     `figures_json`; een figuur zonder regel krijgt `bron: None`. `met_voorbehoud` zet per
     afgekapte laadkey het voorbehoud uit code vooraan in `beantwoordt_niet` (#578); de controle
     in `generate` zet het uit. `periode` is per figuur de periode van haar rijen (startjaren): de titel noemt die (#893).
+    `voorbehoud` zijn regels uit code die erachter komen, zoals een figuur die niet terugkwam (#993). De figuren
+    blijven zoals ze in het gesprek waren: geen bijsnijden op een periode uit een titel (#385 gold voor eigen figuren).
     """
     spec_data: dict = {}
     with contextlib.suppress(json.JSONDecodeError, ValueError):
@@ -499,13 +510,11 @@ def _parse_spec_from_response(
     for idx, figure_json in enumerate(figures_json):
         meta = vis_meta[idx] if idx < len(vis_meta) else {}
         titel = in_je_vorm((meta.get("titel") or "").strip())
-        # De grafiek toont de periode die erboven staat, niet de volle dataset (#385).
-        bereik = gevraagd_bereik(titel, title, onderzoeksvraag)
         visualisaties.append(
             {
                 "titel": titel or f"Visualisatie {idx + 1}",
                 "toelichting": in_je_vorm((meta.get("toelichting") or "").strip()),
-                "figure_json": bijgesneden(figure_json, bereik) if bereik else figure_json,
+                "figure_json": figure_json,
                 "bron": figuurbronnen[idx] if figuurbronnen and idx < len(figuurbronnen) else None,
             }
         )
@@ -527,7 +536,8 @@ def _parse_spec_from_response(
     )
     # Na de rapporttekst: het voorbehoud is geen modeltekst en haalt geen definitie binnen.
     if met_voorbehoud:
-        beantwoordt_niet = _voorbehoud_vooraan(afkappingsregels(context.get("datasets", [])), beantwoordt_niet)
+        regels = [*afkappingsregels(context.get("datasets", [])), *(voorbehoud or [])]
+        beantwoordt_niet = _voorbehoud_vooraan(regels, beantwoordt_niet)
 
     return ReportSpec(
         title=title,

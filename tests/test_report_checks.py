@@ -18,6 +18,7 @@ from agent.probleem import Probleem, controlenamen, harde
 from agent.report import RapportGeweigerd, ReportSpec
 from agent.report_checks import report_problems
 from agent.stream import StreamResult
+from tests.rapportfiguren import vaste_figuren
 from tools import dispatch, store
 from tools.kpi import compute_kpi
 from tools.schemas import TOOL_COMPUTE_KPI
@@ -382,7 +383,7 @@ def test_u_in_de_vraag_de_titel_en_de_definities_is_geen_probleem():
 
 # ── Een modelfout halverwege of een uitgeput stappenbudget laat geen ongecontroleerd rapport door (#754) ──
 
-_PLOT = {"id": "p1", "name": "create_plot", "arguments": '{"data_key": "k"}'}
+_PLOT = {"id": "p1", "name": "query_data", "arguments": '{"data_key": "k"}'}
 _GEDEKT = json.dumps(
     {
         "onderzoeksvraag": "Hoeveel voltijdstudenten heeft de HU?",
@@ -395,9 +396,10 @@ _GEDEKT = json.dumps(
 def _rapportrun(monkeypatch, stappen: list, events: list | None = None, dispatch=None) -> ReportSpec:
     """Een rapportrun met een nepmodel; een Exception in `stappen` is een modelaanroep die faalt.
 
-    create_plot levert een figuur, zodat het rapport iets heeft om te bewaren (keep_partial).
+    Het rapport heeft een gekozen figuur uit het gesprek (#993), zodat het iets heeft om te bewaren (keep_partial).
     """
     stappen = list(stappen)
+    vaste_figuren(monkeypatch, (_HU_FIGURE, "k"))
 
     async def fake_completion(*args, **kwargs):
         if isinstance(stappen[0], Exception):
@@ -412,7 +414,7 @@ def _rapportrun(monkeypatch, stappen: list, events: list | None = None, dispatch
             events.append(event)
 
     def fake_dispatch(name, args):
-        return (_HU_RESULT, go.Figure(go.Scatter(x=[2021], y=[28355])) if name == "create_plot" else None)
+        return _HU_RESULT, None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
@@ -420,7 +422,7 @@ def _rapportrun(monkeypatch, stappen: list, events: list | None = None, dispatch
     monkeypatch.setattr(report, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
     monkeypatch.setattr(report, "_build_system_prompt", lambda context: "")
 
-    return asyncio.run(report.generate({}, emit, model="openai/gpt-4o", stop_event=asyncio.Event()))
+    return asyncio.run(report.generate({}, emit, model="openai/gpt-4o", stop_event=asyncio.Event(), figuren=("f1",)))
 
 
 def test_een_falende_herkansing_levert_het_afgekeurde_rapport_niet(monkeypatch):
@@ -508,7 +510,7 @@ def test_een_groeicijfer_uit_compute_kpi_komt_door_de_rapportcontrole(monkeypatc
     def met_echte_kpi(name, args):
         if name == TOOL_COMPUTE_KPI:
             return dispatch(name, args)
-        return (_HU_RESULT, go.Figure(go.Scatter(x=[2021], y=[28355])) if name == "create_plot" else None)
+        return _HU_RESULT, None
 
     stappen = [
         StreamResult(text="", tool_calls=[_PLOT, kpi]),

@@ -10,12 +10,14 @@ import json
 
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import pytest
 
 from agent import report
 from agent.loop import LoopResult, ToolCall
 from agent.report_bronnen import gebruikte_datasets
 from agent.report_vergelijken import BEGRIP
+from tests.rapportfiguren import vaste_figuren
 from tools import store
 from tools.schemas import TOOL_COMPUTE_KPI, TOOL_CREATE_PLOT, TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_QUERY_DATA
 from tools.store import KeyMeta
@@ -59,7 +61,11 @@ def sessie():
     }
 
 
+_FIGUUR = pio.to_json(go.Figure(go.Scatter(x=[2018, 2019], y=[41.0, 43.5])))
+
+
 def _plot(data_key: str) -> tuple[ToolCall, str, go.Figure]:
+    """Een grafiekaanroep van het rapportmodel zelf: die heeft het geen tool voor (#993), dus ze telt niet."""
     args = {"data_key": data_key, "x": "Startjaar", "y": "Rendement", "chart_type": "line"}
     call = ToolCall(id="p", name=TOOL_CREATE_PLOT, arguments=json.dumps(args), args=args)
     return call, "Lijngrafiek 'Bachelorrendement' aangemaakt (2 datapunten).", go.Figure(go.Scatter(x=[1, 2], y=[1, 2]))
@@ -71,7 +77,10 @@ def _query(data_key: str, resultaat: dict) -> tuple[ToolCall, str, None]:
     return call, json.dumps(resultaat), None
 
 
-def _rapport(sessie, monkeypatch, stappen, antwoord: str = _ANTWOORD):
+def _rapport(sessie, monkeypatch, stappen, antwoord: str = _ANTWOORD, figuren: tuple[str, ...] = ()):
+    """Het rapport met een nepmodel dat `stappen` zet, en per key in `figuren` een gekozen figuur uit het gesprek."""
+    vaste_figuren(monkeypatch, *((_FIGUUR, key) for key in figuren))
+
     async def loop(messages, *, on_tool_result, **_):
         for stap in stappen:
             await on_tool_result(*stap)
@@ -81,7 +90,7 @@ def _rapport(sessie, monkeypatch, stappen, antwoord: str = _ANTWOORD):
         pass
 
     monkeypatch.setattr(report, "tool_loop", loop)
-    return asyncio.run(report.generate(sessie, stil))
+    return asyncio.run(report.generate(sessie, stil, figuren=tuple(f"f{i}" for i in range(len(figuren)))))
 
 
 def _datasets_in(spec) -> set[str]:
@@ -89,7 +98,7 @@ def _datasets_in(spec) -> set[str]:
 
 
 def test_een_bron_die_het_gesprek_opvroeg_maar_het_rapport_niet_gebruikte_staat_er_niet_in(sessie, monkeypatch):
-    spec = _rapport(sessie, monkeypatch, [_plot(_GETOOND)])
+    spec = _rapport(sessie, monkeypatch, [], figuren=(_GETOOND,))
 
     assert len(spec.bronnen) == 1 and "83285NED" in spec.bronnen[0]
     assert not any("83282NED" in b or "p01hoinges" in b for b in spec.bronnen)
@@ -98,7 +107,7 @@ def test_een_bron_die_het_gesprek_opvroeg_maar_het_rapport_niet_gebruikte_staat_
 
 
 def test_de_definitie_en_dataversie_van_een_gebruikte_bron_blijven(sessie, monkeypatch):
-    spec = _rapport(sessie, monkeypatch, [_plot(_GETOOND), _query(_DUO, {"data_key": _DUO, "rijen": []})])
+    spec = _rapport(sessie, monkeypatch, [_query(_DUO, {"data_key": _DUO, "rijen": []})], figuren=(_GETOOND,))
 
     assert any("p01hoinges" in b for b in spec.bronnen)
     assert not any("83282NED" in b for b in spec.bronnen)
@@ -118,10 +127,10 @@ def test_een_selectie_uit_het_rapport_telt_voor_haar_laadkey(sessie, monkeypatch
 
 
 def test_een_grafiek_die_niet_in_het_rapport_komt_telt_niet(sessie, monkeypatch):
-    stappen = [_plot(_GETOOND), _plot(_GETOOND), _plot(_OPGEVRAAGD)]
-    spec = _rapport(sessie, monkeypatch, stappen)
+    """Alleen de gekozen figuren komen in het rapport (#993); een grafiek die het model toch aanroept, valt weg."""
+    spec = _rapport(sessie, monkeypatch, [_plot(_OPGEVRAAGD)], figuren=(_GETOOND,))
 
-    assert len(spec.visualisaties) == report._MAX_VISUALISATIES
+    assert len(spec.visualisaties) == 1
     assert _datasets_in(spec) == {"83285NED"}
 
 
@@ -130,8 +139,8 @@ def test_een_berekening_uit_het_gesprek_die_het_rapport_citeert_telt_mee(sessie,
     sessie["rekenbewijs"] = [{"tool": TOOL_COMPUTE_KPI, "argumenten": {"data_key": _DUO}, "resultaat": json.dumps(kpi)}]
     geciteerd = json.dumps({**json.loads(_ANTWOORD), "conclusie": "De UU telt 23.456 ingeschrevenen."})
 
-    assert _datasets_in(_rapport(sessie, monkeypatch, [_plot(_GETOOND)], geciteerd)) == {"83285NED", "p01hoinges"}
-    assert _datasets_in(_rapport(sessie, monkeypatch, [_plot(_GETOOND)])) == {"83285NED"}
+    assert _datasets_in(_rapport(sessie, monkeypatch, [], geciteerd, (_GETOOND,))) == {"83285NED", "p01hoinges"}
+    assert _datasets_in(_rapport(sessie, monkeypatch, [], figuren=(_GETOOND,))) == {"83285NED"}
 
 
 def test_zonder_herleidbare_key_blijven_de_datasets_van_het_gesprek():
