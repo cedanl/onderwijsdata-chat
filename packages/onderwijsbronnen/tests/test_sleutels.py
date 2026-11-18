@@ -195,6 +195,17 @@ def test_cbs_sleutels_zijn_dimensies_van_de_tabel():
     assert _per_kolom(_record("cbs", "_cbs_id", "71898ned")) == {"RegioS": ["gemeente", "provincie"]}
 
 
+@pytest.mark.parametrize("cbs_id", ["85353NED", "85356NED"])
+def test_cbs_mbo_regiokenmerken_zijn_ook_arbeidsmarktregio(cbs_id):
+    """Meting #1009 (#1035): Regio van de mbo-tabellen met regiokenmerken heeft vooral arbeidsmarktregio's (AM), naast
+    provincies, landsdelen en enkele gemeenten; geen COROP-gebieden."""
+    record = _record("cbs", "_cbs_id", cbs_id)
+    assert set(_per_kolom(record)["Regio"]) == {"gemeente", "provincie", "arbeidsmarktregio"}
+    assert {"arbeidsmarktregio", "provincie", "gemeente", "landelijk", "landsdeel"} == set(record["_geo_niveau"])
+    assert "arbeidsmarktregio" in record["tags"] and "corop" not in record["tags"]
+    assert "arbeidsmarktregio" in record["samenvatting"] and "arbeidsmarktregio" in record["doel"]
+
+
 def test_cbs_kalenderjaren_en_overgangen_zijn_geen_schooljaar():
     for r in _records("cbs"):
         if "SJ" not in (r.get("_perioden_formaat") or []):

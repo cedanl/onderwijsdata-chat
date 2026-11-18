@@ -3693,7 +3693,7 @@
     "onderwijstype": [
       "MBO"
     ],
-    "doel": "Aantal MBO-studenten uitgesplitst naar niveau (1-4), leerweg (BOL/BBL), studierichting en regio. Het meest complete MBO-inschrijvingsoverzicht voor regionale en sectorale analyses.",
+    "doel": "Aantal MBO-studenten uitgesplitst naar niveau (1-4), leerweg (BOL/BBL), studierichting en woonregio: arbeidsmarktregio, provincie, landsdeel en enkele gemeenten. Het meest complete MBO-inschrijvingsoverzicht voor regionale en sectorale analyses.",
     "frequentie": "Jaarlijks",
     "categorie": "Inschrijvingen en Studievoortgang",
     "sectie": "Studentgegevens & Onderwijs",
@@ -3717,7 +3717,7 @@
       "bbl",
       "studierichting",
       "regio",
-      "corop",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente"
     ],
@@ -3725,7 +3725,7 @@
     "_thema": "Mbo studenten",
     "_archief": false,
     "_laatste_update": "2026-04-09",
-    "samenvatting": "Aantal MBO-studenten uitgesplitst naar niveau (1-4), leerweg (BOL/BBL), studierichting en regio. Het meest complete MBO-inschrijvingsoverzicht voor regionale en sectorale analyses.",
+    "samenvatting": "Aantal MBO-studenten uitgesplitst naar niveau (1-4), leerweg (BOL/BBL), studierichting en woonregio: arbeidsmarktregio, provincie, landsdeel en enkele gemeenten. Het meest complete MBO-inschrijvingsoverzicht voor regionale en sectorale analyses.",
     "_dimensies": [
       "Geslacht",
       "Niveau",
@@ -3742,6 +3742,7 @@
     ],
     "_geo_niveau": [
       "landelijk",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente",
       "landsdeel"
@@ -3885,7 +3886,7 @@
     "onderwijstype": [
       "MBO"
     ],
-    "doel": "Aantal gediplomeerden in het MBO per niveau, leerweg, studierichting en regio. Kernset voor diplomarendementsanalyses en regionale arbeidsmarktaansluiting.",
+    "doel": "Aantal gediplomeerden in het MBO per niveau, leerweg, studierichting en woonregio: arbeidsmarktregio, provincie, landsdeel en enkele gemeenten. Kernset voor diplomarendementsanalyses en regionale arbeidsmarktaansluiting.",
     "frequentie": "Jaarlijks",
     "categorie": "Inschrijvingen en Studievoortgang",
     "sectie": "Studentgegevens & Onderwijs",
@@ -3908,6 +3909,7 @@
       "regio",
       "niveau",
       "leerweg",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente"
     ],
@@ -3915,7 +3917,7 @@
     "_thema": "Mbo gediplomeerden",
     "_archief": false,
     "_laatste_update": "2026-02-05",
-    "samenvatting": "Aantal gediplomeerden in het MBO per niveau, leerweg, studierichting en regio. Kernset voor diplomarendementsanalyses en regionale arbeidsmarktaansluiting.",
+    "samenvatting": "Aantal gediplomeerden in het MBO per niveau, leerweg, studierichting en woonregio: arbeidsmarktregio, provincie, landsdeel en enkele gemeenten. Kernset voor diplomarendementsanalyses en regionale arbeidsmarktaansluiting.",
     "_dimensies": [
       "Geslacht",
       "Niveau",
@@ -3929,6 +3931,7 @@
     ],
     "_geo_niveau": [
       "landelijk",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente",
       "landsdeel"

@@ -203,3 +203,27 @@ class TestToDataJsonEntry:
         assert entry["leverancier"] == "CBS"
         assert "_cbs_id" in entry
         assert "_archief" in entry
+
+
+class TestBepaalGeoNiveau:
+    """verrijk_metadata leidt `_geo_niveau` af uit de codes van de regiodimensie (#1035: ook AM)."""
+
+    @pytest.fixture
+    def vm(self, monkeypatch):
+        from tests.scripts import laad_script
+
+        module = laad_script("cbs", "verrijk_metadata")
+        monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+        return module
+
+    def test_arbeidsmarktregio_uit_am_codes(self, vm, monkeypatch):
+        codes = ["NL01", "LD01", "PV20", "GM0363", "AM01", "AM35"]
+        monkeypatch.setattr(vm.client, "dimension", lambda _id, _dim: {c: c for c in codes})
+        niveaus = vm.bepaal_geo_niveau("85353NED", [{"Key": "Regio", "Type": "Dimension"}])
+        assert niveaus == ["landelijk", "arbeidsmarktregio", "provincie", "gemeente", "landsdeel"]
+
+    def test_zonder_am_codes_geen_arbeidsmarktregio(self, vm, monkeypatch):
+        codes = ["NL01", "CR01", "PV20", "GM0363"]
+        monkeypatch.setattr(vm.client, "dimension", lambda _id, _dim: {c: c for c in codes})
+        niveaus = vm.bepaal_geo_niveau("85701NED", [{"Key": "Regiokenmerken", "Type": "Dimension"}])
+        assert niveaus == ["landelijk", "corop", "provincie", "gemeente"]

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from onderwijsbronnen import catalogus
 from onderwijsbronnen import sleutels as kern
 
 from tools import relaties as rel
@@ -148,6 +149,30 @@ def test_provincies_met_nederland_en_landsdelen_blijven_een_provinciesleutel():
     (sleutel,) = json.loads(relatie("cbs:pv"))["sleutels"]
     assert (sleutel["sleutel"], sleutel["uniek"]) == ("provincie", 12)
     assert sleutel["dekking"] == {"naslag": "CBS-provinciecodes", "bekend": 12, "van": 12}
+
+
+# Regio van CBS 85353NED (mbo-studenten, regiokenmerken), in de vorm van de catalogus: Nederland, landsdelen, de
+# provincies, enkele gemeenten en de arbeidsmarktregio's (#1035); de AM-codes zijn hier opgesomd, niet gemeten.
+_REGIO_85353 = [
+    "NL01",
+    *(f"LD0{n}" for n in range(1, 5)),
+    *(f"PV{n}" for n in range(20, 32)),
+    "GM0363",
+    "GM0518",
+    "GM0599",
+    "GM0344",
+    *(f"AM{n:02d}" for n in range(1, 36)),
+]
+
+
+def test_regiokolom_van_85353ned_is_in_relatie_en_catalogus_de_arbeidsmarktregio():
+    """#1035: de catalogus noemde voor Regio gemeente en provincie, relatie las de kolom als arbeidsmarktregio."""
+    (sleutel,) = rel.sleutels_van("Regio", pd.Series(_REGIO_85353))
+    assert sleutel.naam == "arbeidsmarktregio"
+    record = next(r for r in catalogus()["cbs"] if r["_cbs_id"] == "85353NED")
+    catalogussleutels = {p["sleutel"] for p in record["_sleutels"] if p["kolom"] == "Regio"}
+    assert catalogussleutels == {"gemeente", "provincie", "arbeidsmarktregio"}
+    assert sleutel.naam in catalogussleutels
 
 
 def test_een_codekolom_zonder_regiocodes_is_geen_regiosleutel():
