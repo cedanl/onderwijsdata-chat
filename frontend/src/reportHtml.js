@@ -6,6 +6,7 @@ import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
 import { veiligeBronUrl } from './bronLink'
 import { manifestRegels } from './manifestRegels'
+import { NPULS, NPULS_LETTER, NPULS_LOGO_SVG } from './npulsHuisstijl'
 
 export function escapeHtml(str) {
   return String(str)
@@ -126,21 +127,38 @@ var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.cont
 // Afdrukken als PDF (#622): de browser drukt af, het rapport zorgt dat het op A4 past. Licht thema (de
 // printhandler zet de klasse), geen schaduwen of achtergrond, elke kaart en grafiek op één pagina, grafieken
 // op de breedte van een A4-kolom (de handler hieronder tekent ze daarop over vóór het afdrukken).
+// In Npuls-huisstijl (#1037, npulsHuisstijl.js): logo en "EDUdata" in de kop, zwarte tekst in de Npuls-letter.
+// Oranje alleen op de titel (24 px, 18 pt: grote tekst, 3,06:1 op wit) en als lijn; blauw alleen op wit (4,78:1);
+// op roze alleen zwart, want blauw op roze haalt 3,6:1. Roze vlakken met print-color-adjust, anders laat de
+// browser ze weg. Het scherm verandert niet: daar staat het logoblok op display:none.
 export const PRINT_BREEDTE = 680
+const { oranje, zwart, roze, blauw } = NPULS
 export const PRINT_CSS = `@media print{
     @page{size:A4;margin:14mm}
     html,body{background:#fff!important;min-height:0}
-    body{font-size:12px}
-    .header{padding:0 0 16px;border-bottom:1px solid #E5E7EB;break-after:avoid}
+    body{font-size:12px;font-family:${NPULS_LETTER};font-weight:400;color:${zwart}}
+    .header{padding:0 0 16px;border-bottom:2px solid ${oranje};break-after:avoid}
+    .print-merk{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;color:${zwart}}
+    .print-merk svg{width:28px;height:28px;flex-shrink:0}
+    .header-label{color:${blauw}}
+    .header h1{font-size:24px;font-weight:600;color:${oranje}}
+    .meta-chip,.instelling-badge,.vis-bron,.manifest{background:${roze};color:${zwart};-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .meta-chip{padding:2px 8px;border-radius:4px}
+    .vis-bron{padding:6px 10px;border-radius:4px}
+    .manifest{padding:8px 12px;border-top:none;margin-top:16px}
+    .meta-chip b,.vis-bron a{color:${zwart}}
+    .section-label,.vraag .section-label,.afwijking .section-label{color:${zwart};font-weight:600;padding-bottom:4px;border-bottom:2px solid ${oranje}}
+    .vis-title,.scope-title,.def-term,.prose h1,.prose h2,.prose h3{font-weight:600}
+    .vraag .vraag-text,.def-term,.def-desc,.scope-col li,.vis-title,.vis-note,.prose,.prose h1,.prose h2,.prose h3,.bronnen li,.footer{color:${zwart}}
     .body{padding:16px 0 0;max-width:none}
     .card,.vraag,.header{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
     .vis{break-inside:avoid;page-break-inside:avoid}
     .vis .card{margin:0;padding:0}
-    .card{border:1px solid #E5E7EB}
+    .card{border:1px solid ${roze}}
     .plot,.plot-auto{max-height:330px}
     .scope-row{grid-template-columns:1fr 1fr}
     .manifest,.footer{break-inside:avoid}
-    a{color:inherit}
+    a,strong,.prose strong{color:${blauw}}
   }`
 // Het bericht van de app ('edudata:print', WorkbookPrint.jsx): het rapport staat in een sandbox-frame met een
 // opaque origin, dus de app kan print() niet zelf aanroepen. Alleen een bericht van de app zelf telt (#634). Vóór het afdrukken: licht thema en grafieken op
@@ -268,6 +286,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#111827;background:#F3F4F6;min-height:100vh}
   .header{background:#fff;border-bottom:1px solid #E5E7EB;padding:28px 32px}
   .header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .print-merk{display:none}
   .header-label{font-size:.7rem;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
   .header h1{font-size:1.35rem;font-weight:800;color:#111827;line-height:1.3}
   .meta{margin-top:8px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
@@ -324,6 +343,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
 </style>
 </head><body>
 <div class="header">
+  <div class="print-merk">${NPULS_LOGO_SVG}<span>EDUdata</span></div>
   <div class="header-top">
     <div>
       <div class="header-label">Rapport</div>
