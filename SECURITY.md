@@ -26,7 +26,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat per gebruiker of verbinding (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
-| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15) |
+| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15; het profiel alleen vaste waarden, #1020) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, #421; elke origin met een `*`, ook een patroon als `https://*.nl`, geweigerd bij het opstarten, #506) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
 | S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
@@ -114,6 +114,7 @@ Een bevestigde bevinding komt daarna in dit log.
 **Locatie:** `routes/chat.py` — de WebSocket-acties `message` en `clarification_choice`  
 **Probleem:** Een gebruiker kon een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
 **Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk krijgt het maximum via `/api/config` (#501), toont vanaf 80% een teller en verstuurt niets boven de grens; `maxLength` (twee keer het maximum) vangt alleen absurd grote plakacties af. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is. De historie zelf is sinds #500 begrensd op `HISTORY_MAX_CHARS` tekens in totaal (zie S15).
+**Profiel (#1020):** het profiel uit de actie `settings` gaat de systeemprompt in en was vrije tekst zonder grens, met een `context`-veld dat de frontend niet meer kent. Een getal daarin was voor de getalcontrole "hard" (niet door de gebruiker in een bericht genoemd, audit L-03), en een instructie erin ging zo naar het model. `core/profiel.py` (`normaliseer_profiel`, in `_handle_settings` en `build_persona_block`) laat nu alleen door: een functie uit de vaste lijst (gelijk aan `frontend/src/functies.js`, een test houdt ze gelijk), een sector `mbo`/`hbo`/`wo` en een instelling uit het register (naam, alias of instellingscode, opgeslagen als de registernaam; boven 200 tekens zonder opzoeking weg). `model` gaat ongewijzigd door naar `_model` (#755). De rest, ook `context`, valt weg; zonder geladen register valt de instelling ook weg. De instellingskiezer in de frontend (`InstellingPicker`) geeft ook getypte tekst door die niet in het register staat; de server laat die nu vallen, het profiel heeft dan geen instelling.
 
 ---
 

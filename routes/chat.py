@@ -33,6 +33,7 @@ from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
 from core.logging_util import gebruiker_kenmerk, tekst_kenmerk
+from core.profiel import normaliseer_profiel
 from core.rate_limit import RateLimiter
 from tools import store
 
@@ -337,7 +338,8 @@ async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio
         logger.warning("Websocket-instellingen genegeerd: %s in plaats van een object", type(instellingen).__name__)
         await _weiger_frame(emit)
         return current_task
-    session["chat_settings"] = instellingen
+    # Alleen vaste, bekende waarden gaan de prompt en de scopevraag in (#1020); de registeropzoeking kan laden.
+    session["chat_settings"] = await asyncio.to_thread(normaliseer_profiel, instellingen)
     return current_task
 
 
