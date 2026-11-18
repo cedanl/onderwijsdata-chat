@@ -14,9 +14,10 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
   telt wie voor het eerst in het ho staat, dus geen doorstroom naar een master; na doorvragen bleek dat de masters
   ontbraken. De kaart vraagt welke instroom, met wat elke optie wel en niet kan.
 
-- **afbakening**: een telling van personen zonder instelling, sector of gebied ("Hoeveel studenten?"). Het model
-  koos dan stilzwijgend een afbakening; de kaart vraagt landelijk of per sector. Een instelling of regio noemt de
-  gebruiker via "Anders formuleren".
+- **afbakening**: een telling van personen zonder instelling, sector, studierichting of gebied ("Hoeveel studenten?").
+  Het model koos dan stilzwijgend een afbakening; de kaart vraagt landelijk of per sector. Een instelling of regio
+  noemt de gebruiker via "Anders formuleren". Een studierichting ("eerstejaars techniek") of een waarom-vraag krijgt
+  de kaart niet: geen van haar opties bakent die vraag af (#1049).
 
 Een vraag die zelf een dataset noemt (het woord dataset of catalogus, of een ID als `85421NED` of
 `studentenwelzijn_2025`) krijgt geen kaart (#1021): de gebruiker koos de data al.
@@ -34,6 +35,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+from data.arbeidsmarkt import SECTOR_INDELING
 from data.instellingen import get_all
 from tools import catalog, instelling, scopeprofiel
 
@@ -288,6 +290,35 @@ _AFGEBAKEND = re.compile(
     r"per|buitenlandse|internationale|groep|basisschool\w*|basisonderwijs|primair\w*|speciaal|voortgezet\w*|middelbare)\b",
     re.IGNORECASE,
 )
+# Een studierichting is ook een afbakening (#1049). De namen komen uit `_indelingen` van de sectormapping (hbo/wo-
+# onderdelen als GEZONDHEIDSZORG, mbo-sectoren als "Zorg en welzijn"), aangevuld met de korte vormen die mensen typen.
+# Geen "informatica": een opleiding zonder hoofdletter houdt de kaart.
+_DOMEIN_KORT = (r"techniek", r"technisch\w*", r"zorg", r"ict", r"economie", r"onderwijs", r"groen")
+# Een deel van een sectornaam dat op zichzelf geen richting noemt ("Informatie en communicatietechnologie").
+_GEEN_DOMEIN = frozenset({"informatie"})
+
+
+def _domeindelen(naam: str) -> list[str]:
+    """'Transport, scheepvaart en logistiek' → transport, scheepvaart, logistiek; 'TAAL_EN_CULTUUR' → taal, cultuur."""
+    delen = re.split(r",|\ben\b", naam.replace("_", " ").lower())
+    kaal = (" ".join(deel.split()) for deel in delen)
+    return [deel for deel in kaal if len(deel) >= _MIN_LETTERS and deel not in _GEEN_DOMEIN]
+
+
+def _domeinpatroon(sectoren: Iterable[str]) -> re.Pattern[str]:
+    """Het patroon voor een studierichting in een vraag; zonder sectornamen (mapping weg) alleen de korte vormen."""
+    namen = sorted({deel for naam in sectoren for deel in _domeindelen(naam)}, key=len, reverse=True)
+    vormen = dict.fromkeys([r"\s+".join(map(re.escape, naam.split())) for naam in namen] + list(_DOMEIN_KORT))
+    return re.compile(rf"\b({'|'.join(vormen)})\b", re.IGNORECASE)
+
+
+_DOMEIN = _domeinpatroon(SECTOR_INDELING)
+# Een waarom-vraag zoekt een verklaring, geen aantal: landelijk of per sector bakent haar niet af (#1049).
+# TODO(#1036): vervang door tools.verklaring_markers.vraagt_verklaring zodra !938 op main staat.
+_VERKLARING = re.compile(
+    r"\b(waarom|hoe komt het|hoe kan het dat|oorza(?:ak|ken)|verklaring\w*)\b",
+    re.IGNORECASE,
+)
 _AFBAKENING_OPTIES = [
     {
         "label": "Landelijk: mbo, hbo en wo samen",
@@ -334,11 +365,14 @@ def _eigennaam(vraag: str) -> bool:
 
 
 def afbakeningsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
-    """De afbakeningskaart voor een telling van personen zonder instelling, sector of gebied; anders None."""
+    """De afbakeningskaart voor een telling van personen zonder instelling, sector, studierichting of gebied; None
+    ook bij een waarom-vraag."""
     settings = settings or {}
+    if _VERKLARING.search(vraag):
+        return None
     if not (_TELLING.search(vraag) and _PERSONEN.search(vraag)) or noemt_dataset(vraag):
         return None
-    if _AFGEBAKEND.search(vraag) or _eigennaam(vraag) or instelling.genoemde_namen(vraag):
+    if _AFGEBAKEND.search(vraag) or _DOMEIN.search(vraag) or _eigennaam(vraag) or instelling.genoemde_namen(vraag):
         return None
     if str(settings.get("instelling") or "").strip() or str(settings.get("domein") or "").strip().lower() in _SECTOREN:
         return None  # het profiel bepaalt de instelling of de sector
