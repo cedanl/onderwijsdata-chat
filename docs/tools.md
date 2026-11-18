@@ -856,7 +856,10 @@ een filter op een lege score vóór de koppeling, `how="left"` vanuit de verkeer
 
 De kolommen per sleutel komen uit dezelfde herkenning als bij `relatie` (`relaties.sleutelkolommen`). Heeft een tabel
 de sleutel niet, of staat hij in meer kolommen zonder opgave, dan is de uitkomst een `melding` met de `kandidaten` en
-komt er niets in de store. De koppeling is een outer join over de vereniging van de genormaliseerde sleutelwaarden
+komt er niets in de store. Eén uitzondering (#1032): staat de sleutel in een bronkolom en haar labelkolom
+(`STUDIEJAAR` en `STUDIEJAAR_LABEL` bij DUO-ho) en geven ze na normalisatie in elke rij dezelfde waarde (leeg is gelijk
+aan leeg, 2021 = 2021/2022), dan kiest de code zelf de bronkolom. Twee bronkolommen (`INSTELLINGSCODE` en
+`INSTELLINGSCODE_ACTUEEL`) blijven een keuze, ook als hun waarden nu gelijk zijn. De koppeling is een outer join over de vereniging van de genormaliseerde sleutelwaarden
 (`30020.0` = `30020`, `2021SJ00` = `2021`): elke rij van beide tabellen blijft, ook een rij met een lege of onleesbare
 sleutel (die kan niet matchen en telt in `zonder_sleutel`). Een rij zonder match houdt lege cellen voor de andere kant,
 nooit 0. Vooraan staan de sleutels in hun genormaliseerde vorm en `koppelstatus`: `beide`, `alleen <bron A>` of
@@ -865,11 +868,25 @@ botst (met een sleutel, met `koppelstatus` of met een kolom van de andere tabel)
 `SKDB_brin` (zo vaak als nodig om uniek te zijn). Ketenen kan: het resultaat is een gewone key, en daarin kiest
 `koppel_data` voor een sleutel vanzelf de genormaliseerde kolom vooraan.
 
-De koppeling draait in het serverproces, niet in de sandbox van `run_analysis`. Daarom telt de code eerst hoeveel rijen
-de join zou geven (per gedeelde sleutelwaarde links × rechts, plus de rijen zonder match of zonder sleutel). Boven
-`MAX_RIJEN` (200.000) gaat hij niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies
-op meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Dat
-gebeurt bij veel-op-veel op een grove sleutel (alleen `schooljaar` of `brin`): een kruisproduct per waarde. Ook een
+De koppeling draait in het serverproces, niet in de sandbox van `run_analysis`. Daarom telt de code eerst, per kant
+het aantal rijen per sleutelwaarde, en koppelt pas daarna.
+
+Veel-op-veel (n:m) gaat nooit door (#1031): heeft minstens één gedeelde sleutelwaarde aan beide kanten meer dan één
+rij, dan is de uitkomst een `melding` ("Er is niets gekoppeld") en komt er niets in de store, ook bij een kleine
+koppeling en vóór de grenzen hieronder. Meting #1009 gaf geen enkele zinnige n:m-koppeling: elke rij van de ene kant
+komt dan naast elke rij van de andere. Rijen met een lege sleutel tellen niet mee. De melding geeft
+`verwachte_rijen`, `nm_waarden` (zoveel gedeelde waarden zijn n:m) en per kant `korrel_kolommen`: de kolommen die
+samen met de sleutels elke rij van die kant uniek maken. De zoeker neemt eerst kolommen met een sleutel die beide
+tabellen dragen, dan de andere kolommen; een getal zonder sleutel (een aantal, een meetwaarde) pas als laatste. Hij is
+exact voor één en twee kolommen en daarna gulzig (hooguit 8 kolommen, achteraf gesnoeid), deterministisch en lineair
+in de rijen. Draagt een korrelkolom aan beide kanten dezelfde nog niet gebruikte sleutel, dan zegt de melding "Koppel
+ook op {sleutel}" (met de sleutels en de vraag met `relatie` te controleren dat de kolommen hetzelfde betekenen) en
+telt na of dat de n:m oplost. Anders, of als rijen volledig gelijk zijn, raadt ze aan eerst een kant naar de sleutel
+te aggregeren met `query_data` (`group_by`, som), en bij een CBS-tabel de andere dimensies op hun totaalcode te zetten.
+
+Boven `MAX_RIJEN` (200.000; per gedeelde sleutelwaarde links × rechts, plus de rijen zonder match of zonder sleutel)
+gaat een koppeling ook niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies op
+meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Ook een
 brede koppeling onder die grens kan te groot zijn, dus telt de code ook de cellen (rijen × kolommen van het resultaat:
 beide tabellen, de sleutels één keer, plus `koppelstatus`). Boven `MAX_CELLEN` (5.000.000, zo'n 335 MB aan tekstcellen,
 onder de storegrens van 512 MB) volgt dezelfde `melding`, met ook `verwachte_cellen` en het advies alleen de nodige
@@ -878,8 +895,9 @@ kolommen te houden (`columns` in `query_data`). Zijn beide grenzen overschreden,
 Het resultaat is een nieuwe key (`koppel:<hash>`, deterministisch: de hash gaat over beide tabellen en de gekozen
 kolommen) met `rijen` (begrensd zoals bij `run_analysis`),
 `telling` per status, `uniek` (unieke sleutelwaarden per kant en samen), `kolommen` (de gebruikte kolom per kant),
-`toelichting` per status (wat een rij zonder match betekent: andere bron of andere afbakening) en `korrel`: per kant
-`one` of `many` en de kardinaliteit van de koppeling (`one_to_many` …). Bij `many` staat er een `waarschuwing`: een
+`toelichting` per status (wat een rij zonder match betekent: andere bron of andere afbakening), `kardinaliteit`
+(`1:1`, `n:1` of `1:n`, links eerst, op de gedeelde sleutelwaarden: een per-instellingtabel tegen het register is
+`n:1`) en `korrel`: per kant `one` of `many` over alle rijen en de koppeling (`one_to_many` …). Bij `many` staat er een `waarschuwing`: een
 waarde van de andere kant staat dan per rij herhaald en telt niet zonder meer op (zie `dataset_profiel`). Een
 naamsleutel draagt de naamwaarschuwing van `relatie`.
 
