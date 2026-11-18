@@ -197,7 +197,7 @@ kubectl exec -it onderwijsdata-chat-rw-0 -n services-onderwijsdata-chat -- \
 
 ## References
 
-- [SDP Platform Documentation](https://git.ia.surf.nl/surf-internal/sdp/platform-documentation)
+- [SDP Platform Documentation](https://git.sdp.surf.nl/surf-internal/sdp/platform-documentation)
 - [Flux CD Documentation](https://fluxcd.io/docs/)
 - [CloudNativePG](https://cloudnative-pg.io/)
 - [Helm Documentation](https://helm.sh/docs/)

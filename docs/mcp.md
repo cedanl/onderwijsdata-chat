@@ -35,7 +35,7 @@ twee datatools hieronder het hele toolpad in één aanroep.
 
 ## Cijfers: aantallen en vergelijken
 
-Besluit 09-11 in [#708](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/708): twee
+Besluit 09-11 in [#708](https://git.sdp.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/708): twee
 sessieloze tools voor de kernvragen van SURF AI Chat. Elke aanroep haalt op en rekent, en geeft het resultaat met
 `bewijs` en `vervolg`. Er gaat geen `data_key` naar buiten en er is geen toestand per gebruiker. Code staat in
 `tools/kernvragen.py`.

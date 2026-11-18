@@ -205,6 +205,11 @@ De taken die in de oude pakketrepo's GitHub Actions waren, zijn GitLab-jobs met 
 
 ## Git commands
 
+GitLab staat sinds 16-11-2026 op `git.sdp.surf.nl` (`surf-internal/npuls/ceda/onderwijsdata-chat`, zelfde issue- en
+MR-nummers). Het oude project op `git.ia.surf.nl` is gearchiveerd en alleen-lezen: wijst een clone daar nog naar, zet
+dan `git remote set-url origin https://git.sdp.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat.git`. `glab` volgt
+de remote; anders `GITLAB_HOST=git.sdp.surf.nl`.
+
 ```bash
 # See what's on each remote
 git log origin/main          # GitLab
