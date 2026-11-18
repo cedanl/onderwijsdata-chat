@@ -107,7 +107,7 @@ describe('de checklist in de dialoog (#908)', () => {
     expect(container.querySelector('summary').textContent).toBe('Vragen in het rapport: 2 van 3')
     await klik(genereer())
 
-    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 3])
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 3], [])
   })
 
   it('alles aan stuurt alle beurten mee (de server leest dat als het hele gesprek)', async () => {
@@ -115,7 +115,7 @@ describe('de checklist in de dialoog (#908)', () => {
 
     await klik(genereer())
 
-    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2, 3])
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2, 3], [])
   })
 
   it('een beurt weer aanzetten kan', async () => {
@@ -144,7 +144,7 @@ describe('de checklist in de dialoog (#908)', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull()
     expect(genereer().hasAttribute('aria-disabled')).toBe(false)
     await klik(genereer())
-    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1])
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1], [])
   })
 
   it('Enter in het veld genereert met de gekozen beurten', async () => {
@@ -152,7 +152,7 @@ describe('de checklist in de dialoog (#908)', () => {
     await klik(vakjes()[2])
 
     await act(async () => { veld().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
-    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2])
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2], [])
   })
 
   it('het veld wordt niet herschreven door de keuze', async () => {
@@ -217,6 +217,84 @@ describe('zonder keuze te maken (#908)', () => {
   })
 })
 
+describe('figuren in de checklist (#993)', () => {
+  const MET_FIGUREN = {
+    status: 'klaar',
+    items: [
+      { ...ITEMS[0], figuren: [{ id: 'f1', titel: 'Instroom UU' }, { id: 'f2', titel: 'Instroom als staven' }] },
+      ITEMS[1],
+      { ...ITEMS[2], figuren: [{ id: 'f3', titel: 'Vrouwen per jaar' }] },
+    ],
+  }
+  const figuurvakjes = () => [...container.querySelectorAll('.rapport-keuze-figuren input[type="checkbox"]')]
+  const vraagvakjes = () => vakjes().filter(v => !v.closest('.rapport-keuze-figuren'))
+
+  it('toont de figuren onder hun vraag, met hun titel als naam, en alles aan', async () => {
+    await toon(MET_FIGUREN)
+
+    expect(figuurvakjes().map(v => v.labels[0].textContent)).toEqual([
+      'Figuur: Instroom UU', 'Figuur: Instroom als staven', 'Figuur: Vrouwen per jaar',
+    ])
+    expect(figuurvakjes().every(v => v.checked)).toBe(true)
+    expect(container.querySelector('summary').textContent).toBe('Vragen in het rapport: 3 van 3 · figuren: 3 van 3')
+  })
+
+  it('Genereer stuurt de figuren mee die aanstaan', async () => {
+    await toon(MET_FIGUREN)
+    await klik(figuurvakjes()[1])
+
+    await klik(genereer())
+
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2, 3], ['f1', 'f3'])
+  })
+
+  it('een vraag uit zet haar figuren uit', async () => {
+    await toon(MET_FIGUREN)
+    await klik(vraagvakjes()[0])
+
+    expect(figuurvakjes().map(v => v.checked)).toEqual([false, false, true])
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [2, 3], ['f3'])
+  })
+
+  it('een figuur aan zet haar vraag weer aan', async () => {
+    await toon(MET_FIGUREN)
+    await klik(vraagvakjes()[2])
+    expect(vraagvakjes()[2].checked).toBe(false)
+
+    await klik(figuurvakjes()[2])
+
+    expect(vraagvakjes()[2].checked).toBe(true)
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2, 3], ['f1', 'f2', 'f3'])
+  })
+
+  it('één vraag met een figuur is al een keuze', async () => {
+    await toon({ status: 'klaar', items: [MET_FIGUREN.items[2]] })
+
+    expect(set()).not.toBeNull()
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [3], ['f3'])
+  })
+
+  it('meer dan vier figuren kan niet worden verstuurd, en de melding zegt het', async () => {
+    const vijf = { ...ITEMS[0], figuren: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, titel: `Figuur ${id}` })) }
+    await toon({ status: 'klaar', items: [vijf] })
+
+    const melding = container.querySelector('[role="alert"]')
+    expect(melding.textContent).toBe('Kies hoogstens 4 figuren voor het rapport. Nu staan er 5 aan.')
+    expect(genereer().getAttribute('aria-disabled')).toBe('true')
+    expect(genereer().getAttribute('aria-describedby')).toBe(melding.id)
+    await klik(genereer())
+    expect(onGenereer).not.toHaveBeenCalled()
+
+    await klik(figuurvakjes()[4])
+    expect(container.querySelector('[role="alert"]')).toBeNull()
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1], ['a', 'b', 'c', 'd'])
+  })
+})
+
 describe('toegankelijkheid van de dialoog (#908)', () => {
   // jsdom rekent geen layout, dus axe meet hier geen contrast; wat het wel ziet (namen, rollen, labels, fieldset,
   // legend, beschrijvingen, aria) faalt op serious en critical, zoals in toegankelijkheidApp.test.js.
@@ -232,6 +310,7 @@ describe('toegankelijkheid van de dialoog (#908)', () => {
     ['met de checklist, open', () => KLAAR, false],
     ['met de checklist, ingeklapt op een telefoon', () => KLAAR, true],
     ['met alles uitgezet en de melding', () => KLAAR, false, true],
+    ['met figuren (#993)', () => ({ status: 'klaar', items: [{ ...ITEMS[0], figuren: [{ id: 'f1', titel: 'T' }] }, ITEMS[1]] }), false],
     ['tijdens het laden', () => ({ status: 'laden', items: [] }), false],
     ['bij een fout', () => ({ status: 'fout', items: [] }), false],
     ['zonder checklist', () => ({ status: 'klaar', items: [] }), false],

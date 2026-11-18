@@ -647,8 +647,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
 
   // Gaat het verzoek niet de deur uit (verbinding net weg), dan blijft het veld open met de tekst erin.
   // Zonder checklist (geen keuze te maken) gaat er geen beurtenlijst mee: het rapport rust dan op het hele gesprek.
-  const handleGenereer = useCallback((onderzoeksvraag, beurten) => {
-    if (generateReport(user, onderzoeksvraag, ...(beurten ? [beurten] : []))) setVraagVoorRapport(false)
+  // Met checklist gaan ook de gekozen figuren mee (#993); het rapport toont precies die.
+  const handleGenereer = useCallback((onderzoeksvraag, beurten, figuren) => {
+    if (generateReport(user, onderzoeksvraag, ...(beurten ? [beurten, figuren] : []))) setVraagVoorRapport(false)
   }, [generateReport, user])
 
   // Save the generated report as a workbook when the spec arrives

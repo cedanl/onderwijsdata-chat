@@ -660,7 +660,8 @@ export function useChat({ maxHistory } = {}) {
   // The report starts, or a toast says why it cannot start now. Returns whether the request went out.
   // onderzoeksvraag: the research question the user confirmed (#751); without it the server takes the first question.
   // beurten: the numbers of the turns with data the user kept (#908); without them the report rests on the whole conversation.
-  const generateReport = useCallback((author, onderzoeksvraag, beurten) => {
+  // figuren: the ids of the figures from the conversation the user kept (#993); the report shows exactly those.
+  const generateReport = useCallback((author, onderzoeksvraag, beurten, figuren) => {
     if (!checkReportStart()) return false
     reportingRef.current = true
     reportRequestedRef.current = true
@@ -669,7 +670,11 @@ export function useChat({ maxHistory } = {}) {
     setReportProgress(NO_REPORT_PROGRESS)
     const vraag = onderzoeksvraag?.trim()
     wsRef.current.send(JSON.stringify({
-      action: 'generate_report', author, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
+      action: 'generate_report',
+      author,
+      ...(vraag && { onderzoeksvraag: vraag }),
+      ...(Array.isArray(beurten) && { beurten }),
+      ...(Array.isArray(figuren) && { figuren }),
     }))
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = setTimeout(() => {
