@@ -4,18 +4,18 @@
     "naam": "catalogus/bouw_artefact.py",
     "package_versie": "0.11.2"
   },
-  "catalogusrevisie": "24ea05df61103205",
+  "catalogusrevisie": "9cb373f426545bfd",
   "bestanden": {
     "cbs_datasets.json": {
       "sha256": "c7fa719849c5ece7962d6fffa436f338862fcc12b190e2bfce0aa2564bb79dc5",
       "records": 268
     },
     "cbs_datasets_ai.json": {
-      "sha256": "554d866a03264bfcb036e89a87191308fd65db25a40cda7011f6798f5780966d",
+      "sha256": "f29395000ec490d825f4d6bcb2d39305addac66401e73d6a8b95ebd972a12826",
       "records": 268
     },
     "cbs_datasets_enriched.json": {
-      "sha256": "43cdfb319fe1d0a362c77e72b66fddce4fec7101010dd56570b5a5fc98fa3a83",
+      "sha256": "bf8ed053fb3c787bcd77654ba8c0c91fa743dac130d7ce595de9034d6b10eb38",
       "records": 268
     },
     "cbs_tableinfo.json": {
