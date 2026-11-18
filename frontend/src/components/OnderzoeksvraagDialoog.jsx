@@ -16,12 +16,16 @@ import {
 //
 // Under each turn, its figures from the conversation (#993), also on to begin with: the report shows exactly the
 // figures that are on, recreated on the server, and draws none of its own. A turn off switches its figures off; a figure
-// on switches its turn on. More than MAX_FIGUREN on cannot be sent, and the dialog says so.
+// on switches its turn on. More than MAX_FIGUREN on cannot be sent, and the dialog says so; on a phone the list then
+// opens, so the figures to switch off are in view.
 
 // On a phone the list starts collapsed, so the field is not pushed off the screen (keep in step with styles.css).
 const KLEIN_SCHERM = '(max-width: 600px)'
 const NIETS_GEKOZEN = 'Kies minstens één vraag met data voor het rapport. Zonder data kan er geen rapport komen.'
-const teVeelFiguren = n => `Kies hoogstens ${MAX_FIGUREN} figuren voor het rapport. Nu staan er ${n} aan.`
+const teVeelFiguren = n =>
+  `Kies hoogstens ${MAX_FIGUREN} figuren voor het rapport. Nu staan er ${n} aan: zet er figuren uit in de lijst.`
+const ALLEEN_AANGEVINKT = 'Het rapport toont alleen de aangevinkte figuren uit het gesprek en tekent er zelf geen.'
+const GEEN_LIJST = 'De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek, zonder figuren.'
 
 // The field grows with the question, so all of it shows; max-height in styles.css caps it on a small screen.
 function pasHoogteAan(veld) {
@@ -75,7 +79,7 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
       <form className="confirm-dialog onderzoeksvraag-dialoog" ref={dialogRef} role="dialog" aria-modal="true"
         aria-labelledby={labelId} tabIndex={-1} onSubmit={genereer}>
         {keuze && (
-          <details className="rapport-keuze" open={!klein}>
+          <details className="rapport-keuze" open={!klein || teVeel}>
             <summary className="rapport-keuze-samenvatting">
               Vragen in het rapport: {aan.length} van {items.length}
               {aantalFiguren > 0 && ` · figuren: ${figurenAan.length} van ${aantalFiguren}`}
@@ -117,12 +121,11 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
             </fieldset>
           </details>
         )}
+        {keuze && aantalFiguren > 0 && <p className="onderzoeksvraag-uitleg">{ALLEEN_AANGEVINKT}</p>}
         {fout && <p className="rapport-keuze-fout" id={foutId} role="alert">{fout}</p>}
         {wacht && <p className="onderzoeksvraag-uitleg" role="status">De vragen met data worden opgehaald…</p>}
         {checklist?.status === 'fout' && (
-          <p className="onderzoeksvraag-uitleg" role="status">
-            De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek.
-          </p>
+          <p className="onderzoeksvraag-uitleg" role="status">{GEEN_LIJST}</p>
         )}
         <label className="onderzoeksvraag-label" id={labelId} htmlFor={veldId}>Onderzoeksvraag van het rapport</label>
         <textarea

@@ -197,11 +197,11 @@ describe('zonder keuze te maken (#908)', () => {
     expect(onGenereer).not.toHaveBeenCalled()
   })
 
-  it('bij een fout zegt de dialoog dat het hele gesprek wordt gebruikt, en Genereer werkt', async () => {
+  it('bij een fout zegt de dialoog dat het hele gesprek wordt gebruikt, zonder figuren, en Genereer werkt', async () => {
     await toon({ status: 'fout', items: [] })
 
     expect(container.querySelector('[role="status"]').textContent)
-      .toBe('De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek.')
+      .toBe('De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek, zonder figuren.')
     await klik(genereer())
     expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, undefined)
   })
@@ -237,6 +237,15 @@ describe('figuren in de checklist (#993)', () => {
     ])
     expect(figuurvakjes().every(v => v.checked)).toBe(true)
     expect(container.querySelector('summary').textContent).toBe('Vragen in het rapport: 3 van 3 · figuren: 3 van 3')
+    // Het rapport tekent zelf niets meer (besluit 18-11): de dialoog zegt dat alleen de aangevinkte figuren meegaan.
+    expect(container.textContent)
+      .toContain('Het rapport toont alleen de aangevinkte figuren uit het gesprek en tekent er zelf geen.')
+  })
+
+  it('zonder figuren in het gesprek noemt de dialoog geen figuren', async () => {
+    await toon(KLAAR)
+
+    expect(container.textContent).not.toContain('figuren')
   })
 
   it('Genereer stuurt de figuren mee die aanstaan', async () => {
@@ -282,7 +291,8 @@ describe('figuren in de checklist (#993)', () => {
     await toon({ status: 'klaar', items: [vijf] })
 
     const melding = container.querySelector('[role="alert"]')
-    expect(melding.textContent).toBe('Kies hoogstens 4 figuren voor het rapport. Nu staan er 5 aan.')
+    expect(melding.textContent)
+      .toBe('Kies hoogstens 4 figuren voor het rapport. Nu staan er 5 aan: zet er figuren uit in de lijst.')
     expect(genereer().getAttribute('aria-disabled')).toBe('true')
     expect(genereer().getAttribute('aria-describedby')).toBe(melding.id)
     await klik(genereer())
@@ -292,6 +302,21 @@ describe('figuren in de checklist (#993)', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull()
     await klik(genereer())
     expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1], ['a', 'b', 'c', 'd'])
+  })
+
+  it('op een telefoon staat de lijst open zolang er te veel figuren aan staan', async () => {
+    zetSchermbreedte(true)
+    const vijf = { ...ITEMS[0], figuren: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, titel: `Figuur ${id}` })) }
+    await toon({ status: 'klaar', items: [vijf] })
+
+    expect(container.querySelector('details').open).toBe(true)
+  })
+
+  it('op een telefoon blijft de lijst dicht als er niets te verhelpen is', async () => {
+    zetSchermbreedte(true)
+    await toon(MET_FIGUREN)
+
+    expect(container.querySelector('details').open).toBe(false)
   })
 })
 
