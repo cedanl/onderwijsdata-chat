@@ -24,14 +24,14 @@ def vaste_figuren(monkeypatch, *figuren: tuple[str, str | None]) -> None:
                 figure_json=figure_json,
                 data_key=data_key or "",
                 keys=(data_key,) if data_key else (),
-                bewijs=beschrijf(pio.from_json(figure_json), met_titel=False),
+                bewijs=(beschrijf(pio.from_json(figure_json), met_titel=False),),
                 beschrijving=beschrijf(pio.from_json(figure_json)),
             )
             for figure_json, data_key in figuren
         )
     )
 
-    async def maak(session, ids):
+    async def maak(session, ids, stop_event=None):
         return vast
 
     monkeypatch.setattr(report, "maak_figuren", maak)

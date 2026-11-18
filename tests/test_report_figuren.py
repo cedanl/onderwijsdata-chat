@@ -232,6 +232,110 @@ def test_de_titel_van_een_figuur_uit_het_gesprek_is_geen_bewijs(sessie, monkeypa
     assert any("98.765" in str(p) for p in harde(gezien["problemen"]))
 
 
+# Een getal dat het script zelf typte en in de figuur zette, op twee manieren: letterlijk (en ook in `result`), of
+# alleen in de figuur en zo dat geen literal het verraadt. Alleen de herhaling op verstoorde invoer ziet het tweede.
+_GETYPT = {
+    "letterlijk": (
+        "a = 98765\n"
+        "result = {'totaal': a + int(df['AANTAL'].sum()) * 0}\n"
+        "figure = go.Figure(go.Bar(x=['Verpleegkunde'], y=[result['totaal']]))\n",
+        "98765",
+    ),
+    "alleen-in-de-figuur": (
+        "result = {'totaal': int(df['AANTAL'].sum())}\n"
+        "figure = go.Figure(go.Bar(x=['Verpleegkunde'], y=[int('9' * 5) + len(df) * 0]))\n",
+        "99999",
+    ),
+}
+
+
+@pytest.mark.parametrize("code, getal", _GETYPT.values(), ids=_GETYPT.keys())
+def test_een_getal_dat_het_script_typte_is_ook_in_zijn_figuur_geen_bewijs(sessie, monkeypatch, code, getal):
+    """#410, CH-27: een getal dat niet van de data afhangt, bewijst niets, ook niet als waarde van een vaste figuur."""
+    figuur_id = figuur_in_gesprek(sessie, TOOL_RUN_ANALYSIS, {"data_key": _KEY, "code": code})
+    antwoord = {**_ANTWOORD, "conclusie": f"In totaal stroomden {getal} mbo-verpleegkundigen door naar het hbo."}
+
+    fout, gezien = _rapport(sessie, monkeypatch, figuren=[figuur_id], antwoord=antwoord)
+
+    assert isinstance(fout, report.RapportGeweigerd)
+    assert any(f"{getal[:2]}.{getal[2:]}" in str(p) for p in harde(gezien["problemen"]))
+
+
+@pytest.mark.parametrize("constanten, geweigerd", [((), False), ((1120,), True)], ids=["uit-de-data", "getypt"])
+def test_een_grafiek_op_een_key_met_getypte_getallen_bewijst_die_niet(sessie, monkeypatch, constanten, geweigerd):
+    """Zoals query_data (CH-27, #456): wat een eerdere berekening zelf typte en met haar key meereist, is geen bewijs,
+    ook niet als waarde van een grafiek. De conclusie noemt 1120, dat alleen de grafiek toont."""
+    store.put(
+        _KEY,
+        store.get(_KEY),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=0, schooljaren=(2023,), scriptconstanten=constanten),
+    )
+    figuur_id = figuur_in_gesprek(sessie, TOOL_CREATE_PLOT, _STAAF)
+    antwoord = {**_ANTWOORD, "conclusie": "Naar Verloskunde stromen 1120 mbo-verpleegkundigen door."}
+
+    spec, gezien = _rapport(sessie, monkeypatch, figuren=[figuur_id], antwoord=antwoord)
+
+    assert isinstance(spec, report.RapportGeweigerd) is geweigerd
+    assert any("1.120" in str(p) for p in harde(gezien["problemen"])) is geweigerd
+
+
+def test_een_figuur_zonder_bron_bewijst_niets():
+    """#201: een script dat geen data las, of een grafiek op een key zonder bekende herkomst."""
+    figuur = go.Figure(go.Bar(x=["a"], y=[98765]))
+    script = {"tool": TOOL_RUN_ANALYSIS, "arguments": {"code": "x"}}
+    grafiek = {"tool": TOOL_CREATE_PLOT, "arguments": {"data_key": "analysis:zonderherkomst993"}}
+
+    assert report_figuren._bewijs(script, json.dumps({"bron": None, "resultaat": {"a": 98765}}), figuur) == ()
+    assert report_figuren._bewijs(grafiek, "Grafiek aangemaakt", figuur) == ()
+
+
+@pytest.mark.parametrize(
+    "stap",
+    [
+        {"id": "x", "tool": "get_duo_data", "arguments": {"dataset_id": "p01hoinges"}, "keys": [_KEY]},
+        {"id": "x", "tool": TOOL_CREATE_PLOT, "arguments": _STAAF, "keys": []},
+        {"id": "x", "tool": TOOL_CREATE_PLOT, "keys": [_KEY]},
+    ],
+    ids=["geen-figuurtool", "zonder-keys", "zonder-argumenten"],
+)
+def test_een_stap_die_niet_klopt_draait_niet_en_valt_weg(sessie, monkeypatch, stap):
+    """Alleen de server schrijft stappen; een rij die toch niet klopt, laat alleen die figuur weg."""
+    gedraaid: list = []
+    echte_dispatch = report_figuren.dispatch
+    monkeypatch.setattr(
+        report_figuren, "dispatch", lambda tool, args: gedraaid.append(tool) or echte_dispatch(tool, args)
+    )
+    sessie["figuurstappen"] = [stap]
+
+    vast = asyncio.run(maak_figuren(sessie, ("x",)))
+
+    assert vast.figuren == () and vast.mislukt == 1
+    assert "get_duo_data" not in gedraaid
+
+
+def test_na_een_stop_maakt_het_rapport_geen_figuren_meer(sessie, monkeypatch):
+    figuur_id = figuur_in_gesprek(sessie, TOOL_RUN_ANALYSIS, _SANKEY)
+    gedraaid: list = []
+    monkeypatch.setattr(report_figuren, "dispatch", lambda tool, args: gedraaid.append(tool))
+    stop = asyncio.Event()
+    stop.set()
+
+    with pytest.raises(report.RapportGeannuleerd):
+        asyncio.run(report.generate(sessie, _stil, stop_event=stop, figuren=(figuur_id,)))
+    assert gedraaid == []
+
+
+def test_de_beschrijving_begrenst_namen_en_knopen():
+    """Namen en labels zijn tekst uit de chat: de prompt krijgt ze kort, en de knopen van een sankey begrensd zoals haar stromen."""
+    lang = "x" * 500
+    staaf = go.Figure(go.Bar(x=[lang], y=[3], name=lang))
+    knopen = [f"k{i}" for i in range(100)]
+    sankey = go.Figure(go.Sankey(node={"label": knopen}, link={"source": [0], "target": [1], "value": [5]}))
+
+    assert lang not in beschrijf(staaf) and "x" * 79 + "…" in beschrijf(staaf)
+    assert "k58; k59 (en nog 40)" in beschrijf(sankey) and "k60" not in beschrijf(sankey)
+
+
 # ── Zonder keuze geen figuren; hoogstens vier ────────────────────────────────
 
 

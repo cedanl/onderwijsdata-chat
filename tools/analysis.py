@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -169,6 +170,30 @@ def _controle(run: _Run) -> afhankelijkheid.Toets | None:
         return None
     geerfd = tuple(dict.fromkeys(c for k in run.bronnen if (m := store.meta(k)) for c in m.scriptconstanten))
     return afhankelijkheid.toets(run.code, run.df, run.tabellen, run.result, geerfd)
+
+
+def figuurtoets(
+    code: str, data_key: str | None, figure: go.Figure, waarden: Callable[[Any], str]
+) -> afhankelijkheid.Toets:
+    """Welke getallen in de figuur van een script niet van de data afhangen (#993).
+
+    In de chat is een figuur geen bewijs; in het rapport zijn de waarden van een figuur uit het gesprek dat wel. Een
+    script kan een getal ook alleen in zijn figuur typen. Daarom dezelfde meting als `_controle` voor `result` doet:
+    het script nog twee keer op verstoorde invoer. `waarden` geeft de tekst waarvan de getallen bewijs worden, voor een
+    figuur of None. Het script draaide net via `run_analysis`; een controle die nu weigert, is een uitzondering.
+    """
+    data_key = store.canoniek(data_key) if data_key else None
+    script = _gecontroleerd(code, data_key)
+    df = _invoer(data_key)
+    tabellen = {k: v for k in script.keys if (v := store.readonly(k)) is not None}
+    bronnen = [*([data_key] if data_key else []), *script.keys]
+    geerfd = tuple(dict.fromkeys(c for k in bronnen if (m := store.meta(k)) for c in m.scriptconstanten))
+
+    def lees(uitkomst: sandbox.Uitkomst) -> str:
+        # Een herhaling zonder figuur heeft geen van haar getallen; een ongeldige figuur is een uitzondering.
+        return waarden(go.Figure(uitkomst.figure) if uitkomst.figure else None)
+
+    return afhankelijkheid.toets(code, df, tabellen, waarden(figure), geerfd, lees=lees)
 
 
 def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:

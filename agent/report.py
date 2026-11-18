@@ -297,7 +297,9 @@ async def _genereer(
     bewijs = rekenbewijs(session)
     context["berekeningen"] = bewijs
     # De gekozen figuren uit het gesprek, opnieuw gemaakt op de herstelde data (#993).
-    vast = await maak_figuren(session, figuren)
+    vast = await maak_figuren(session, figuren, stop_event)
+    if stop_event is not None and stop_event.is_set():
+        raise RapportGeannuleerd
     # De beschrijving van de figuren noemt hun titels (modeltekst uit de chat) en de vragen zijn wat de gebruiker zei:
     # alleen in de prompt, niet in `context`, dat de controles als bewijs lezen (#211, #733).
     prompt_context = {
@@ -319,7 +321,7 @@ async def _genereer(
     # De keys die de rapportrun las: haar bevragingen en de figuren die in het rapport komen (#738).
     gelezen: list = [k for f in vast.figuren for k in f.keys]
     # De waarden van de figuren uit code zijn bewijs, zoals een toolresultaat; hun titels niet (#211).
-    figuurbewijs = [f.bewijs for f in vast.figuren]
+    figuurbewijs = [b for f in vast.figuren for b in f.bewijs]
     # De vraag van de gebruiker is een bewering om te toetsen, geen bewijs (#211): een getal erin dekt geen getal
     # in het rapport, ook niet als de gebruiker haar als onderzoeksvraag bevestigde (#750).
     dataset_context = json.dumps({k: v for k, v in context.items() if k != "topic"}, default=str)

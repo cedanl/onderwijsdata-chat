@@ -4,13 +4,16 @@
 - De checklist bij "Genereer rapport" noemt nu per vraag ook de figuren die op haar data rusten, met hun titel en
   standaard aan. Een figuur die een latere vraag tekende zonder nieuwe data ("maak hem horizontaal") staat bij de vraag
   van haar data. Een vraag uitzetten zet haar figuren uit; een figuur aanzetten zet haar vraag aan. Meer dan vier
-  figuren kan niet; de dialoog zegt dat en houdt Genereer tegen.
+  figuren kan niet; de dialoog zegt dat, opent de lijst ook op een telefoon en houdt Genereer tegen. De dialoog zegt
+  ook dat alleen de aangevinkte figuren in het rapport komen.
 - Het rapport toont precies de gekozen figuren (besluit 18-11): het rapportmodel tekent zelf geen grafiek of kaart
   meer. Zonder gekozen figuren heeft het rapport alleen tekst. De server maakt elke gekozen figuur opnieuw uit de stap
   die haar in de chat maakte (de grafiek- of kaartaanroep, of het script van de analyse) op de herstelde data, met
   dezelfde sandbox en controles als in de chat. De figuur-JSON van het opgeslagen gesprek wordt nooit gelezen. Het model
   krijgt de figuren als vaste beschrijving en schrijft er titel, toelichting en conclusie bij; hun waarden tellen als
-  bewijs voor de controles, hun titels niet. De bronregel onder elke figuur en de periode in de titel blijven uit code.
+  bewijs voor de controles, hun titels niet. Een getal dat een script zelf typte, telt ook in zijn figuur niet als
+  bewijs: de server meet dat door het script nog twee keer op verstoorde data te draaien. De bronregel onder elke
+  figuur en de periode in de titel blijven uit code.
 - Lukt een figuur niet meer (data niet te herstellen, een fout in het script, een lege figuur), dan valt ze weg met de
   regel "Deze figuur uit het gesprek kon niet opnieuw gemaakt worden." en gaat het rapport door.
 - Een figuur wordt niet meer bijgesneden tot een periode in haar titel: ze blijft zoals de gebruiker haar zag.

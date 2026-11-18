@@ -168,8 +168,9 @@ def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
     `session["messages"]` is al de (ingekorte) modelgeschiedenis. Lineage, rekenbewijs, kaarten, bronregels en
     figuurstappen komen van elk antwoord uit `rijen`, ook van beurten die buiten die geschiedenis vielen. Het
     vraagnummer per key (`data_vraag`, #733) volgt uit de plaats van het antwoord in de geschiedenis, zoals
-    `gebruikersvragen`: een antwoord dat de geschiedenis niet meer haalt, heeft geen nummer. Ook een key met alleen bronregels (zonder aanroep) krijgt er een:
-    die beurt las data, dus een vervolgantwoord vindt haar (`session_data.vorige_databeurt`, #987).
+    `gebruikersvragen`: een antwoord dat de geschiedenis niet meer haalt, heeft geen nummer. Ook een key met alleen
+    bronregels (zonder aanroep) krijgt er een: die beurt las data, dus een vervolgantwoord vindt haar
+    (`session_data.vorige_databeurt`, #987).
 
     Een antwoord in die geschiedenis zonder rij is niet van de server: het telt niet als bewijs (`eerdere_antwoorden`,
     #876).
