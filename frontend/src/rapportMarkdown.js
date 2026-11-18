@@ -1,8 +1,9 @@
 // Het rapport als Markdown (#746): de tekst om in een eigen document aan te vullen, naast "Download als HTML" en
 // "Opslaan als PDF". Dezelfde volgorde als het rapport (reportHtml.js); een lege sectie valt weg. Een grafiek kan
-// niet mee (een .docx met grafieken als afbeelding komt pas als daar vraag naar blijft): per visualisatie staat
-// dat er een grafiek stond, met titel, noot, bron en toelichting. De invoer komt uit rapportUitHtml.js.
-export const GRAFIEK_REGEL = '_Hier staat in het rapport een grafiek. Die zit in de HTML-download en in "Opslaan als PDF"._'
+// niet mee (die zit in "Download als Word", #1038): per visualisatie staat dat er een grafiek stond, met titel,
+// noot, bron en toelichting. De invoer komt uit rapportUitHtml.js; de server leest het rapport voor Word met een
+// Python-tweeling daarvan (tools/rapport_docx/uit_html.py).
+export const GRAFIEK_REGEL = '_Hier staat in het rapport een grafiek. Die zit in de HTML-download, in "Download als Word" en in "Opslaan als PDF"._'
 
 const opsomming = items => items.map(item => `- ${item}`).join('\n')
 const sectie = (kop, ...blokken) => (blokken.some(Boolean) ? [`## ${kop}`, ...blokken.filter(Boolean)] : [])
