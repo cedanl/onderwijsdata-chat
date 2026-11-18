@@ -4,7 +4,8 @@ query_data en compute_kpi sommeerden elke numerieke kolom. Een som over een %-ko
 '%' naast 'aantal') of over een DUO-percentagekolom is een getal zonder betekenis, dat het model daarna
 met gezag noemt. Eén regel voor beide tools: de eenheid uit CBS (DataProperties.Unit), anders de
 kolomnaam; kolommen met een teken (MUTATIE, SALDO, ...) uit de sentinelregel in data/domeinregels.toml.
-Een gemiddelde blijft mogelijk; de foutmelding zegt wat dat is.
+Een gemiddelde blijft mogelijk; de foutmelding zegt wat dat is, en noemt het gewogen gemiddelde met de noemer als
+gewicht (`weighted_mean`, #1017).
 """
 
 from core.sentinels import SIGNED_HINTS
@@ -32,7 +33,9 @@ def somfout(data_key: str, kolom: str) -> str | None:
     if reden := _verhouding(data_key, kolom):
         return (
             f"Een som over '{kolom}' betekent niets: {reden}, en percentages of verhoudingen tel je niet op. "
-            "Tel de tellers en de noemers apart op en deel daarna (een gewogen gemiddelde), of gebruik 'mean' "
+            "Tel de tellers en de noemers apart op en deel daarna (een gewogen gemiddelde): heeft de tabel de noemer "
+            "als kolom, gebruik dan in query_data 'weighted_mean' met die noemer als gewicht, bijv. "
+            f"aggregate={{'{kolom}': 'weighted_mean'}} met weights={{'{kolom}': '<noemerkolom>'}}. Anders 'mean', "
             "en zeg erbij dat het een ongewogen gemiddelde van de percentages is."
         )
     if teken := next((hint for hint in SIGNED_HINTS if hint in kolom.upper()), None):

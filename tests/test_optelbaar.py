@@ -42,6 +42,14 @@ def test_een_som_over_een_procentkolom_van_cbs_wordt_geweigerd_met_uitleg(cbs_ke
     assert "eenheid is '%'" in fout and "gewogen gemiddelde" in fout and "'mean'" in fout
 
 
+def test_de_somfout_noemt_weighted_mean_met_de_noemer_als_gewicht():
+    """#1017: de melding wijst naar de route in query_data, niet naar eigen pandas."""
+    fout = somfout("test:x", "PERCENTAGE_GESLAAGD")
+    assert fout is not None
+    assert "'weighted_mean'" in fout and "noemer als gewicht" in fout
+    assert "weights={'PERCENTAGE_GESLAAGD': '<noemerkolom>'}" in fout
+
+
 def test_een_gemiddelde_over_een_procentkolom_en_een_som_over_aantallen_mogen(cbs_key):
     gemiddeld = json.loads(query_data(cbs_key, group_by=["Perioden"], aggregate={_PROCENT: "mean"}))
     som = json.loads(query_data(cbs_key, group_by=["Perioden"], aggregate={"Bevolking_1": "sum"}))

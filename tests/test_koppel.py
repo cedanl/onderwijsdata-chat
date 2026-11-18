@@ -259,6 +259,9 @@ def test_veel_op_veel_geeft_een_waarschuwing_over_herhaalde_waarden():
     uit = _koppel()
     assert uit["korrel"]["koppeling"] == "many_to_many"
     assert "herhaald" in uit["waarschuwing"] and "dataset_profiel" in uit["waarschuwing"]
+    # De route naar de koppelkorrel (#1017): eerst per sleutel aggregeren met query_data, dan koppelen.
+    assert "query_data" in uit["waarschuwing"] and "weighted_mean" in uit["waarschuwing"]
+    assert "sum voor aantallen" in uit["waarschuwing"]
     assert len(store.get(uit["data_key"])) == 4
 
 
