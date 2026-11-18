@@ -8,7 +8,6 @@ Audit 10 en 11: na een correctieronde opende het antwoord zelf met "ik schreef .
 """
 
 import re
-import time
 
 import pandas as pd
 import pytest
@@ -20,6 +19,7 @@ from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_ople
 from agent.metatekst import metatekst, zonder_toolnamen
 from agent.probleem import Probleem, meldingen
 from agent.selectie import ontbrekende_instellingen, ontbrekende_schooljaren
+from tests.lineair import assert_lineair
 from tools import store
 from tools.query import query_data
 from tools.schemas import TOOL_SCHEMAS
@@ -149,18 +149,21 @@ def test_volledig_antwoord_aan_het_begin_van_een_regel_wordt_gemeld(tekst):
 
 
 _VIJANDIG = {
-    "lege regels": "\n" * 50_000 + "x",
-    "spaties": " " * 50_000,
-    "spaties en lege regels": " \n" * 25_000 + "x",
+    "lege regels": lambda n: "\n" * n + "x",
+    "spaties": lambda n: " " * n,
+    "spaties en lege regels": lambda n: " \n" * (n // 2) + "x",
+    # Een regel spaties in de Bronnen-sectie: daar haalt _TOOL_LOS de toolnamen weg.
+    "spaties in de bronnen": lambda n: "**Bronnen**\n" + " " * n,
+    "spaties voor een haakje": lambda n: "a" + " " * n + "(",
+    "tabs": lambda n: "\t" * n,
 }
 
 
-@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
-def test_vijandige_invoer_houdt_metatekst_snel(tekst):
+@pytest.mark.parametrize("maak", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_kost_metatekst_lineaire_tijd(maak):
     """metatekst draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
-    start = time.perf_counter()
-    assert metatekst(tekst) == []
-    assert time.perf_counter() - start < 1
+    assert metatekst(maak(100)) == []
+    assert_lineair(metatekst, maak)
 
 
 @pytest.mark.parametrize(

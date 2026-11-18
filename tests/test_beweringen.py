@@ -1,7 +1,6 @@
 """Een "niet beschikbaar"- of oorzaakclaim zonder dekking wordt teruggestuurd (#323, #225)."""
 
 import json
-import time
 
 import pandas as pd
 import pytest
@@ -9,6 +8,7 @@ import pytest
 from agent import beweringen
 from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from agent.probleem import meldingen
+from tests.lineair import assert_lineair
 from tools import store
 from tools.store import KeyMeta
 
@@ -100,18 +100,16 @@ def test_de_onderzoeksvraag_valt_weg_op_elke_regel(regel):
 
 
 _VIJANDIG = {
-    "lege regels": "\n" * 50_000 + "x",
-    "spaties": " " * 50_000,
-    "spaties en lege regels": " \n" * 25_000 + "x",
+    "lege regels": lambda n: "\n" * n + "x",
+    "spaties": lambda n: " " * n,
+    "spaties en lege regels": lambda n: " \n" * (n // 2) + "x",
 }
 
 
-@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
-def test_vijandige_invoer_blijft_snel(tekst):
+@pytest.mark.parametrize("maak", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_kost_lineaire_tijd(maak):
     """ongedekte_oorzaak draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
-    start = time.perf_counter()
-    ongedekte_oorzaak(tekst, _DATA)
-    assert time.perf_counter() - start < 1
+    assert_lineair(lambda tekst: ongedekte_oorzaak(tekst, _DATA), maak)
 
 
 def test_zonder_data_zwijgt_de_oorzaakcontrole():
