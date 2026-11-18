@@ -295,7 +295,7 @@ def test_zonder_leesbare_indeling_blijven_de_korte_vormen(monkeypatch, tmp_path)
 
 
 def test_de_beurt_stuurt_een_waarom_vraag_zonder_kaart_naar_het_model():
-    session = {"chat_settings": {}, "clarify_rondes": 0}
+    session: dict = {"chat_settings": {}, "clarify_rondes": 0}
     events: list[dict] = []
     with pytest.raises(AssertionError, match="het model is aangeroepen"):
         _beurt([{"role": "user", "content": _WAAROM_TECHNIEK}], session, events)
