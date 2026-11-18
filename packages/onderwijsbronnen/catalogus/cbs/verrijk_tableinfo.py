@@ -32,7 +32,9 @@ PERIODEN_OK, GEEN_TIJDDIMENSIE, PERIODEN_VEROUDERD, PERIODEN_ONBEKEND = "ok", "g
 # Regelgebaseerde extractie: de passage komt uit de bron, de interpretatie is niet geverifieerd.
 EXTRACTIE = {"methode": "regex", "geverifieerd": False}
 
-_SECTIE = re.compile(r"^\s*(\d)\.\s+([A-ZÉËÏ][A-ZÉËÏ ,&/'-]+)\s*$", re.M)
+# Kopje op één regel. `[^\S\n]` is witruimte zonder regeleinde (ook \r en \xa0): met `\s` slokte elk regelbegin alle
+# volgende lege regels op, kwadratisch in het aantal lege regels (#1054).
+_SECTIE = re.compile(r"^[^\S\n]*(\d)\.[^\S\n]+([A-ZÉËÏ][A-ZÉËÏ ,&/'-]+)[^\S\n]*$", re.M)
 _LINK = re.compile(r"<a href='([^']+)'>(.*?)</a>")
 _DATASET_URL = re.compile(r"/dataset/([0-9A-Za-z]+)$")
 _GROOTTE = {"tien": 10, "honderd": 100, "duizend": 1000}
@@ -127,7 +129,9 @@ def _definities(sectie2: str) -> list[dict]:
 
 
 def _blok(sectie1: str, kop: str) -> str | None:
-    m = re.search(rf"{kop}[^\n]*\n(.*?)(?:\n\s*\n[A-Z][^\n]*:|\Z)", sectie1, re.S | re.I)
+    # `[^\S\n]` (witruimte zonder regeleinde): met `\s` liep elke positie de rest van een reeks lege regels af (#1054).
+    # Extra lege regels vallen nu in het blok en verdwijnen in `_schoon`.
+    m = re.search(rf"{kop}[^\n]*\n(.*?)(?:\n[^\S\n]*\n[A-Z][^\n]*:|\Z)", sectie1, re.S | re.I)
     return _schoon(m.group(1)) if m and _schoon(m.group(1)) else None
 
 
