@@ -21,7 +21,11 @@ def _duur(functie: Callable[[str], object], invoer: str) -> float:
 
 
 def assert_lineair(functie: Callable[[str], object], maak: Callable[[int], str], n: int = 10_000) -> None:
-    """`functie(maak(4n))` duurt minder dan 8 keer `functie(maak(n))` plus de marge; elke meting de snelste poging."""
+    """`functie(maak(4n))` duurt minder dan 8 keer `functie(maak(n))` plus de marge; elke meting de snelste poging.
+
+    Een meting ver boven de grens (meer dan 2 keer) is geen ruis: dan geen nieuwe poging, zodat een kwadratische
+    regressie snel faalt in plaats van minuten te rekenen.
+    """
     enkel = min(_duur(functie, maak(n)) for _ in range(_POGINGEN))
     grens = _GRENS * enkel + _MARGE
     groot = maak(_FACTOR * n)
@@ -30,6 +34,8 @@ def assert_lineair(functie: Callable[[str], object], maak: Callable[[int], str],
         metingen.append(_duur(functie, groot))
         if metingen[-1] < grens:
             return
+        if metingen[-1] > 2 * grens:
+            break
     raise AssertionError(
         f"niet lineair: {enkel:.4f} s bij n={n}, {min(metingen):.4f} s bij {_FACTOR}n (grens {grens:.4f} s)"
     )
