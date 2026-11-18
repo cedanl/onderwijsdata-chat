@@ -20,6 +20,11 @@ _SLOTTEKENS = "?!.: \t\n"
 # De titel staat in het werkboek, de export, de browsertab en de geschiedenis: nooit met een BSN,
 # e-mailadres of telefoonnummer uit de vraag erin (#478).
 TITEL_ZONDER_PERSOONSGEGEVENS = "Rapport (persoonsgegevens weggelaten)"
+# Een ingekorte titel eindigt niet op een los lidwoord, voorzetsel of voegwoord: "... hbo-studenten in de…" leest als
+# een afgebroken titel (#1023). Alleen eenduidige functiewoorden; een inhoudswoord als "meer" of "aantal" blijft staan.
+_FUNCTIEWOORDEN = frozenset(
+    "de het een in van voor op met bij naar en of over per aan om te tot uit door na onder tussen als dan die dat".split()
+)
 
 
 # De onderzoeksvraag die de gebruiker bevestigde (#750) staat voluit in het rapport, ook zonder persoonsgegevens.
@@ -97,8 +102,16 @@ def _ingekort(tekst: str, ruimte: int = _MAX_TEKENS) -> str:
         return tekst
     kort = tekst[: ruimte - len(_AFKAPPING) + 1]
     # Valt de grens midden in een woord, dan gaat dat woord eraf; een te lang woord wordt afgekapt.
-    kort = kort.rsplit(" ", 1)[0] if " " in kort else kort[:-1]
+    kort = _zonder_losse_functiewoorden(kort.rsplit(" ", 1)[0]) if " " in kort else kort[:-1]
     return kort.rstrip(_SLOTTEKENS + ",;") + _AFKAPPING
+
+
+def _zonder_losse_functiewoorden(tekst: str) -> str:
+    """De tekst zonder de functiewoorden waar ze op eindigt ("in de", "van het"); het eerste woord blijft altijd."""
+    woorden = tekst.split(" ")
+    while len(woorden) > 1 and woorden[-1].strip(_SLOTTEKENS + ",;").lower() in _FUNCTIEWOORDEN:
+        woorden.pop()
+    return " ".join(woorden)
 
 
 def rapporttitel(vraag: str, instelling: str | None, bereik: tuple[int, int] | None = None) -> str:
