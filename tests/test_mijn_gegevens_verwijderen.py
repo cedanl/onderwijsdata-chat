@@ -165,6 +165,19 @@ def test_van_de_bronregels_in_de_bewijsrijen_blijft_niets_over(client):
     assert any("BERT-UNIEK" in b for b in bronnen)
 
 
+def test_van_de_figuurstappen_in_de_bewijsrijen_blijft_niets_over(client):
+    """#993: de stappen achter de figuren staan in de rij zelf, dus ze gaan met de rij mee."""
+    _vul_anna()
+    _vul("bert", "BERT-UNIEK")
+
+    _verwijder(client, _token("anna"))
+
+    with db._connection() as conn:
+        figuren = [r["figuren"] for r in db._execute(conn, "SELECT figuren FROM beurtbewijs")]
+    assert figuren and not any("ANNA-UNIEK" in f for f in figuren)
+    assert any("BERT-UNIEK" in f for f in figuren)
+
+
 # ── 2. Bevestiging en sessie ─────────────────────────────────────────────────
 
 

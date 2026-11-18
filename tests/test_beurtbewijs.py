@@ -16,7 +16,7 @@ import pandas as pd
 import pytest
 from fastapi import HTTPException
 
-from agent import beurtbewijs, report
+from agent import beurtbewijs, figuurstappen, rapportselectie, report
 from agent.bronvermelding import vastgelegde_bronnen
 from agent.datasetcontext import build_dataset_context
 from agent.kaarten import kaarten_in_gesprek
@@ -33,6 +33,7 @@ from routes import chat
 from routes import persistence as put_route
 from tests.test_report_kaart import _ANTWOORD, _GEOJSON, _KAART, _KEY, _kaartbeurt, _stil
 from tools import store
+from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP
 from tools.store import KeyMeta
 
 _LAAD = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": None}}
@@ -98,6 +99,11 @@ def _beurt(
             beurt = _kaartbeurt(_KAART)
             session["_last_turn_tool_calls"] = beurt["tool_calls"]
             session["turn_figures"] = beurt["figures"]
+            # Zoals run._bewaar_stap: de stap achter de figuur, voor het rapport (#993).
+            argumenten = json.loads(beurt["tool_calls"][0]["arguments"])
+            figuurstappen.leg_vast(
+                session, TOOL_CREATE_CHOROPLETH_MAP, argumenten, "Kaart gemaakt.", beurt["figures"][0]
+            )
         if stop:
             stop_event.set()
         await emit({"type": "message_end", "content": tekst, "actions": [], "bronnen": []})
@@ -234,6 +240,7 @@ def test_een_rij_draagt_geen_controle_ook_als_message_end_er_een_had(monkeypatch
             "rekenbewijs",
             "kaarten",
             "bronnen",
+            "figuren",
             "created_at",
         }
 
@@ -303,6 +310,7 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "rekenbewijs": [{"r": 1}],
         "kaarten": {"k": {"v": 1}},
         "bronnen": {"k": [{"regel": "eerst"}]},
+        "figuren": [{"id": "f1", "titel": "eerst"}],
         "created_at": "eerst",
     }
     b = {
@@ -310,6 +318,7 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},
         "bronnen": {"k": [{"regel": "laat"}], "l": [{"regel": "l"}]},
+        "figuren": [{"id": "f1", "titel": "laat"}, {"id": "f2", "titel": "f2"}],
         "created_at": "laat",
     }
 
@@ -320,6 +329,7 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
         "rekenbewijs": [{"r": 1}, {"r": 2}],
         "kaarten": {"k": {"v": 2}},  # de latere kaart wint
         "bronnen": {"k": [{"regel": "eerst"}], "l": [{"regel": "l"}]},  # de eerste maker wint, als bij de lineage
+        "figuren": [{"id": "f1", "titel": "eerst"}, {"id": "f2", "titel": "f2"}],  # per id één, de eerste blijft
         "created_at": "eerst",
     }
     assert beurtbewijs.voeg_samen(samen, b) == samen
@@ -332,6 +342,15 @@ def test_samenvoegen_met_een_rij_zonder_bronnen_van_voor_987():
     assert beurtbewijs.voeg_samen(oud, nieuw)["bronnen"] == {"k": [{"regel": "r"}]}
     assert beurtbewijs.voeg_samen(nieuw, oud)["bronnen"] == {"k": [{"regel": "r"}]}
     assert beurtbewijs.voeg_samen(oud, oud)["bronnen"] == {}
+
+
+def test_samenvoegen_met_een_rij_zonder_figuren_van_voor_993():
+    oud = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "bronnen": {}, "created_at": "eerst"}
+    nieuw = {**oud, "figuren": [{"id": "f1"}], "created_at": "laat"}
+
+    assert beurtbewijs.voeg_samen(oud, nieuw)["figuren"] == [{"id": "f1"}]
+    assert beurtbewijs.voeg_samen(nieuw, oud)["figuren"] == [{"id": "f1"}]
+    assert beurtbewijs.voeg_samen(oud, oud)["figuren"] == []
 
 
 # ── De bronregels in de rij (#987) ───────────────────────────────────────────
@@ -539,9 +558,34 @@ def test_de_rapportprompt_van_een_heropend_gesprek_is_die_van_het_levende(db, mo
     prompt = _rapportprompt(heropend, monkeypatch)
 
     assert _ONBEKEND not in prompt
-    assert "Kaart in het gesprek: create_choropleth_map" in prompt
     assert "Eerder berekend in het gesprek" in prompt
     assert prompt == _rapportprompt(live, monkeypatch)
+
+
+def test_een_heropend_gesprek_toont_dezelfde_figuren_in_de_checklist(db, monkeypatch):
+    """#993: de stappen achter de figuren staan in de rij, dus de checklist van een heropend gesprek noemt dezelfde
+    figuren, met dezelfde id en titel, ook na een herstart."""
+    live, berichten = _live_gesprek(monkeypatch)
+    _put("alice", "c1", berichten)
+    beurtbewijs.wis()
+
+    heropend = _heropen("alice", berichten, "c1")
+    heropend["data_keys"] = [_KEY]
+
+    [item] = rapportselectie.beurten_met_data(live)
+    assert item["figuren"] == [{"id": figuurstappen.stappen(live)[0]["id"], "titel": _KAART["title"]}]
+    assert rapportselectie.beurten_met_data(heropend) == rapportselectie.beurten_met_data(live)
+    assert figuurstappen.stappen(heropend) == figuurstappen.stappen(live)
+
+
+def test_de_figuurstap_staat_in_de_rij_van_haar_beurt(db, monkeypatch):
+    _live_gesprek(monkeypatch)
+
+    eerste = beurtbewijs._klaar["alice", beurtbewijs.tekst_hash("Dit is de kaart.")]
+    tweede = beurtbewijs._klaar["alice", beurtbewijs.tekst_hash("Samen zijn het er 74.770.")]
+    [stap] = eerste["figuren"]
+    assert stap["tool"] == TOOL_CREATE_CHOROPLETH_MAP and stap["keys"] == [_KEY]
+    assert tweede["figuren"] == []
 
 
 def test_zonder_bewijs_staat_de_herkomst_als_onbekend_in_de_prompt(db, monkeypatch):
