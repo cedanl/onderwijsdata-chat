@@ -8,6 +8,7 @@ Audit 10 en 11: na een correctieronde opende het antwoord zelf met "ik schreef .
 """
 
 import re
+import time
 
 import pandas as pd
 import pytest
@@ -133,6 +134,33 @@ def test_de_volledige_tekst_houdt_de_instructie_voor_de_herkansing():
 )
 def test_metatekst_over_de_controle_of_de_tools_wordt_gemeld(tekst):
     assert metatekst(tekst)
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "**Volledig antwoord:** 900 studenten.",
+        "Hogeschool Utrecht had 900 studenten.\n\n- Volledig antwoord op basis van opgehaalde data.",
+    ],
+)
+def test_volledig_antwoord_aan_het_begin_van_een_regel_wordt_gemeld(tekst):
+    [probleem] = metatekst(tekst)
+    assert "volledig antwoord" in probleem
+
+
+_VIJANDIG = {
+    "lege regels": "\n" * 50_000 + "x",
+    "spaties": " " * 50_000,
+    "spaties en lege regels": " \n" * 25_000 + "x",
+}
+
+
+@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_houdt_metatekst_snel(tekst):
+    """metatekst draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
+    start = time.perf_counter()
+    assert metatekst(tekst) == []
+    assert time.perf_counter() - start < 1
 
 
 @pytest.mark.parametrize(

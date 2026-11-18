@@ -22,7 +22,8 @@ from .probleem import Probleem
 
 _TOOLS = sorted(t["function"]["name"] for t in TOOL_SCHEMAS)
 _META = re.compile(
-    r"\bik schreef\b|\beerdere versie\b|\bde correctie\b|\bde controle\b|^\W*volledig antwoord\b"
+    # Geen \n voor "volledig antwoord": met \W liep elke regelstart door alle volgende lege regels, kwadratisch (#1048).
+    r"\bik schreef\b|\beerdere versie\b|\bde correctie\b|\bde controle\b|^[^\w\n]*volledig antwoord\b"
     # LiteLLM's placeholder for an empty assistant message; leaked once after a clarification (#322).
     r"|\[system:"
     rf"|\b(?:{'|'.join(_TOOLS)})\b",

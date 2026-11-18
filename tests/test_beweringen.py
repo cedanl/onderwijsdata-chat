@@ -1,6 +1,7 @@
 """Een "niet beschikbaar"- of oorzaakclaim zonder dekking wordt teruggestuurd (#323, #225)."""
 
 import json
+import time
 
 import pandas as pd
 import pytest
@@ -82,6 +83,35 @@ def test_een_oorzaak_in_de_alinea_na_de_onderzoeksvraag_blijft_ongedekt():
         "Dit komt doordat studenten kiezen voor een andere stad."
     )
     assert len(ongedekte_oorzaak(tekst, _DATA)) == 1
+
+
+@pytest.mark.parametrize(
+    "regel",
+    [
+        "**Onderzoeksvraag:** Komt dit doordat studenten kiezen?",
+        "### Onderzoeksvraag",
+        "- onderzoeksvraag: komt dit doordat studenten kiezen?",
+        "> **Onderzoeksvraag** komt dit doordat studenten kiezen?",
+    ],
+)
+def test_de_onderzoeksvraag_valt_weg_op_elke_regel(regel):
+    tekst = f"Het verschil is 571.\n{regel}\nDe stijging is 3 procent."
+    assert beweringen._ONDERZOEKSVRAAG.sub("", tekst) == "Het verschil is 571.\n\nDe stijging is 3 procent."
+
+
+_VIJANDIG = {
+    "lege regels": "\n" * 50_000 + "x",
+    "spaties": " " * 50_000,
+    "spaties en lege regels": " \n" * 25_000 + "x",
+}
+
+
+@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_blijft_snel(tekst):
+    """ongedekte_oorzaak draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
+    start = time.perf_counter()
+    ongedekte_oorzaak(tekst, _DATA)
+    assert time.perf_counter() - start < 1
 
 
 def test_zonder_data_zwijgt_de_oorzaakcontrole():

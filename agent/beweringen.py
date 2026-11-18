@@ -54,7 +54,8 @@ _VOORBEHOUD = re.compile(
     re.IGNORECASE,
 )
 # De onderzoeksvraag herhaalt wat de gebruiker vroeg ("te verklaren uit locatie?"): geen bewering van het model.
-_ONDERZOEKSVRAAG = re.compile(r"^\W*onderzoeksvraag\b.*$", re.IGNORECASE | re.MULTILINE)
+# Geen \n in het voorvoegsel: met \W liep elke regelstart door alle volgende lege regels, kwadratisch (#1048).
+_ONDERZOEKSVRAAG = re.compile(r"^[^\w\n]*onderzoeksvraag\b.*$", re.IGNORECASE | re.MULTILINE)
 
 
 def _catalogus_id(dataset_id: str) -> str:
