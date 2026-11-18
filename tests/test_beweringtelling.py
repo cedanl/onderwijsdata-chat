@@ -1,4 +1,4 @@
-"""Een telling of vergelijking in de verhaallijn wordt nagerekend tegen de tabel eronder (#1013, reaudit C01, N07, M01)."""
+"""Een telling of vergelijking in de tekst wordt nagerekend tegen de tabel eronder (#1013, reaudit C01/N07/M01)."""
 
 import asyncio
 import importlib
@@ -254,6 +254,14 @@ def test_een_andere_formulering_geeft_geen_melding(zin):
 )
 def test_een_andere_vergelijking_geeft_geen_melding(zin):
     assert _controle(zin, _M01) == []
+
+
+def test_een_voorzetsel_wijst_geen_kolom_aan():
+    """'dan in 2023/24' is geen kolom 'Instroom': 'in' is te kort en geen soort."""
+    tabel = "| Studiejaar | Studenten | Instroom |\n|---|---:|---:|\n| 2023/24 | 300 | 900 |\n| 2024/25 | 310 | 950 |"
+
+    assert _controle("In 2024/25 waren er meer studenten dan in 2023/24.", tabel) == []
+    assert len(_controle("In 2024/25 waren er meer studenten dan instroom.", tabel)) == 1
 
 
 def test_een_bewering_die_in_een_lezing_klopt_is_niet_fout():

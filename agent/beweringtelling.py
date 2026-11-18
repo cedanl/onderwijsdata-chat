@@ -17,10 +17,10 @@ Deze controle leest precies twee zinsvormen en rekent ze na tegen één eenduidi
    Fout is de zin alleen als hij in elk genoemd jaar niet klopt.
 
 De tabel is een markdowntabel in hetzelfde antwoord, of, als geen enkele tabel past, de data van een afgeleide key van
-de beurt met dezelfde kolommen. Streng en stil: meer dan één passende tabel of key, een kolom of label dat niet eenduidig
-te vinden is, een M die bij geen rijtelling past, een jaar dat de tabel niet heeft, een ontkenning, een vraag, een
-benadering ("bijna 10 van de 12") of een andere formulering ("de meeste", "bijna alle") geeft geen melding. Een
-telwoord "een/één" telt niet: "een van de 12 hogescholen" betekent vaak "een van hen", niet "precies één".
+de beurt met dezelfde kolommen. Streng en stil: meer dan één passende tabel of key, een kolom of label dat niet
+eenduidig te vinden is, een M die bij geen rijtelling past, een jaar dat de tabel niet heeft, een ontkenning, een
+vraag, een benadering ("bijna 10 van de 12") of een andere formulering ("de meeste", "bijna alle") geeft geen
+melding. Een telwoord "een/één" telt niet: "een van de 12 hogescholen" betekent vaak "een van hen", niet "precies één".
 
 Zacht, met herkansing: een herkenningsfout mag een goed antwoord niet intrekken. Alleen een telling tegen de tabel in
 het antwoord, waarvan M gelijk is aan het aantal rijen met een waarde zonder totaalrij, is hard: die blijft na de
@@ -42,7 +42,7 @@ import pandas as pd
 from tools import periode, store
 
 from .beschermd import BESCHERMD, lopende_regels
-from .mdtabel import tabellen
+from .mdtabel import Tabel, tabellen
 from .probleem import Probleem, hard
 from .selectie import data_keys
 
@@ -100,8 +100,13 @@ _VERSCHILKOP = re.compile(
 )
 _TOTAALRIJ = re.compile(r"^(?:totaal|landelijk|gemiddeld|gemiddelde|nederland)\b", re.IGNORECASE)
 _GETAL = re.compile(r"^(?P<teken>[+\-−–]?)\s*(?P<geheel>\d{1,3}(?:\.\d{3})+|\d+)(?:,(?P<decimalen>\d+))?\s*(?:%|pp)?$")
-_OPMAAK = " \t*_`  "
+_OPMAAK = " \t*_`\u00a0\u202f"
 _MAX_RIJEN = 500
+# Woorden na "meer"/"minder" of "dan" die geen soort aanwijzen: "meer studenten dan in 2023/24", "dan vorig jaar".
+_GEEN_TERM = frozenset(
+    {"in", "op", "bij", "van", "voor", "na", "de", "het", "een", "er", "dat", "die", "toen", "vorig", "vorige", "ooit"}
+)
+_MIN_VOORVOEGSEL = 3
 
 
 @dataclass(frozen=True)
@@ -127,7 +132,8 @@ class _Uitkomst:
 
 
 def _getal(tekst: str) -> Decimal | None:
-    """Een getal in Nederlandse notatie, met teken en eventueel procent: -3,2% (ook met het minteken U+2212), +1.250; anders None."""
+    """Een getal in Nederlandse notatie, met teken en eventueel procent: -3,2% (ook met het minteken U+2212) of
+    +1.250; anders None."""
     if not (m := _GETAL.match(tekst.strip(_OPMAAK))):
         return None
     waarde = Decimal(m["geheel"].replace(".", "") + (f".{m['decimalen']}" if m["decimalen"] else ""))
@@ -141,14 +147,15 @@ def _nl(getal: Decimal) -> str:
 
 
 def _datacel(waarde) -> _Cel:
+    """Een cel van een DataFrame: een getal als Decimal, NaN als lege cel, tekst zoals in een markdowntabel."""
     if isinstance(waarde, numbers.Real) and not isinstance(waarde, bool):
-        if math.isnan(float(waarde)):
-            return _Cel("", None)
         try:
             getal = Decimal(str(waarde))
         except InvalidOperation:
             return _Cel(str(waarde), None)
-        return _Cel(_nl(getal) if getal.is_finite() else str(waarde), getal if getal.is_finite() else None)
+        if getal.is_nan():
+            return _Cel("", None)
+        return _Cel(_nl(getal), getal) if getal.is_finite() else _Cel(str(waarde), None)
     tekst = "" if waarde is None else str(waarde)
     return _Cel(tekst, _getal(tekst))
 
@@ -177,10 +184,10 @@ def _kopjaar(kop: str) -> int | None:
 # --- De tabellen ---------------------------------------------------------------------------------------------------
 
 
-def _uit_antwoord(regels: list[str]) -> list[_Raster]:
+def _uit_antwoord(gevonden: list[Tabel]) -> list[_Raster]:
     return [
         _Raster(tabel.kop, tuple(tuple(_Cel(c, _getal(c)) for c in rij) for rij in tabel.rijen), True)
-        for tabel in tabellen(regels)
+        for tabel in gevonden
     ]
 
 
@@ -343,10 +350,11 @@ def _norm(tekst: str) -> str:
 
 
 def _kies(term: str, labels: Sequence[str]) -> int | None:
-    """De index van het label dat de term eenduidig aanwijzt: gelijk, of het een begint met het ander
-    ("wo-masterdiploma's" en "Wo-master", "bachelor-" en "Bachelor"); bij gelijke stand geen."""
+    """De index van het label dat de term eenduidig aanwijst: gelijk, of het een begint met het ander, met een
+    voorvoegsel van minstens drie tekens ("wo-masterdiploma's" en "Wo-master", "bachelor-" en "Bachelor"); bij gelijke
+    stand geen."""
     t = _norm(term)
-    if len(t) < 2:
+    if len(t) < 2 or t in _GEEN_TERM:
         return None
     scores = {}
     for i, label in enumerate(labels):
@@ -354,7 +362,7 @@ def _kies(term: str, labels: Sequence[str]) -> int | None:
             continue
         if t == lab:
             scores[i] = math.inf
-        elif t.startswith(lab) or lab.startswith(t):
+        elif min(len(t), len(lab)) >= _MIN_VOORVOEGSEL and (t.startswith(lab) or lab.startswith(t)):
             scores[i] = min(len(t), len(lab))
     if not scores:
         return None
@@ -473,8 +481,9 @@ def _zinnen(regels: list[str], rasterregels: set[int]) -> list[str]:
 
 def _fouten(tekst: str, sleutels: _Sleutels) -> list[Probleem]:
     regels = tekst.split("\n")
-    rasters = _uit_antwoord(regels)
-    rasterregels = {i for t in tabellen(regels) for i in range(t.begin, t.einde + 1)}
+    gevonden = tabellen(regels)
+    rasters = _uit_antwoord(gevonden)
+    rasterregels = {i for t in gevonden for i in range(t.begin, t.einde + 1)}
     problemen: list[Probleem] = []
     for zin in _zinnen(regels, rasterregels):
         for telling in _tellingen(zin):
