@@ -8,6 +8,7 @@ import pytest
 from agent import beweringen
 from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from agent.probleem import meldingen
+from tests.lineair import assert_lineair
 from tools import store
 from tools.store import KeyMeta
 
@@ -82,6 +83,33 @@ def test_een_oorzaak_in_de_alinea_na_de_onderzoeksvraag_blijft_ongedekt():
         "Dit komt doordat studenten kiezen voor een andere stad."
     )
     assert len(ongedekte_oorzaak(tekst, _DATA)) == 1
+
+
+@pytest.mark.parametrize(
+    "regel",
+    [
+        "**Onderzoeksvraag:** Komt dit doordat studenten kiezen?",
+        "### Onderzoeksvraag",
+        "- onderzoeksvraag: komt dit doordat studenten kiezen?",
+        "> **Onderzoeksvraag** komt dit doordat studenten kiezen?",
+    ],
+)
+def test_de_onderzoeksvraag_valt_weg_op_elke_regel(regel):
+    tekst = f"Het verschil is 571.\n{regel}\nDe stijging is 3 procent."
+    assert beweringen._ONDERZOEKSVRAAG.sub("", tekst) == "Het verschil is 571.\n\nDe stijging is 3 procent."
+
+
+_VIJANDIG = {
+    "lege regels": lambda n: "\n" * n + "x",
+    "spaties": lambda n: " " * n,
+    "spaties en lege regels": lambda n: " \n" * (n // 2) + "x",
+}
+
+
+@pytest.mark.parametrize("maak", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_kost_lineaire_tijd(maak):
+    """ongedekte_oorzaak draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
+    assert_lineair(lambda tekst: ongedekte_oorzaak(tekst, _DATA), maak)
 
 
 def test_zonder_data_zwijgt_de_oorzaakcontrole():

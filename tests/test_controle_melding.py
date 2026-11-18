@@ -19,6 +19,7 @@ from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_ople
 from agent.metatekst import metatekst, zonder_toolnamen
 from agent.probleem import Probleem, meldingen
 from agent.selectie import ontbrekende_instellingen, ontbrekende_schooljaren
+from tests.lineair import assert_lineair
 from tools import store
 from tools.query import query_data
 from tools.schemas import TOOL_SCHEMAS
@@ -133,6 +134,36 @@ def test_de_volledige_tekst_houdt_de_instructie_voor_de_herkansing():
 )
 def test_metatekst_over_de_controle_of_de_tools_wordt_gemeld(tekst):
     assert metatekst(tekst)
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "**Volledig antwoord:** 900 studenten.",
+        "Hogeschool Utrecht had 900 studenten.\n\n- Volledig antwoord op basis van opgehaalde data.",
+    ],
+)
+def test_volledig_antwoord_aan_het_begin_van_een_regel_wordt_gemeld(tekst):
+    [probleem] = metatekst(tekst)
+    assert "volledig antwoord" in probleem
+
+
+_VIJANDIG = {
+    "lege regels": lambda n: "\n" * n + "x",
+    "spaties": lambda n: " " * n,
+    "spaties en lege regels": lambda n: " \n" * (n // 2) + "x",
+    # Een regel spaties in de Bronnen-sectie: daar haalt _TOOL_LOS de toolnamen weg.
+    "spaties in de bronnen": lambda n: "**Bronnen**\n" + " " * n,
+    "spaties voor een haakje": lambda n: "a" + " " * n + "(",
+    "tabs": lambda n: "\t" * n,
+}
+
+
+@pytest.mark.parametrize("maak", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_kost_metatekst_lineaire_tijd(maak):
+    """metatekst draait synchroon bij elk antwoord: traag zoeken bevriest elke sessie op de worker (#1048)."""
+    assert metatekst(maak(100)) == []
+    assert_lineair(metatekst, maak)
 
 
 @pytest.mark.parametrize(

@@ -28,7 +28,8 @@ from .probleem import Probleem
 
 _TOOLS = sorted(t["function"]["name"] for t in TOOL_SCHEMAS)
 _META = re.compile(
-    r"\bik schreef\b|\beerdere versie\b|\bde correctie\b|\bde controle\b|^\W*volledig antwoord\b"
+    # Geen \n voor "volledig antwoord": met \W liep elke regelstart door alle volgende lege regels, kwadratisch (#1048).
+    r"\bik schreef\b|\beerdere versie\b|\bde correctie\b|\bde controle\b|^[^\w\n]*volledig antwoord\b"
     # LiteLLM's placeholder for an empty assistant message; leaked once after a clarification (#322).
     r"|\[system:"
     rf"|\b(?:{'|'.join(_TOOLS)})\b",
@@ -39,17 +40,21 @@ _META = re.compile(
 _TOOLNAAM = rf"`?\b(?:{'|'.join(_TOOLS)})\b(?:\(\))?`?"
 _TOOLNAMEN = rf"{_TOOLNAAM}(?:\s*(?:,|en)\s*{_TOOLNAAM})*"
 _VIA = r"\b(?:via|met)\s+"
+# Wit vooraan alleen vanaf het begin van een reeks witruimte ((?<!\s)): anders liep elke positie in een lange reeks
+# spaties de rest van die reeks af, kwadratisch (#1048). De gevonden stukken blijven gelijk: de eerste positie van de
+# reeks wint toch.
+_WIT = r"(?<!\s)\s*"
 # "(via `get_rio_instelling`)" of "(`get_cbs_data`, `query_data`)": het hele haakje gaat weg.
-_TOOL_HAAKJE = re.compile(rf"\s*\((?:[\w ]*?{_VIA})?{_TOOLNAMEN}\s*\)", re.IGNORECASE)
+_TOOL_HAAKJE = re.compile(rf"{_WIT}\((?:[\w ]*?{_VIA})?{_TOOLNAMEN}\s*\)", re.IGNORECASE)
 # ", opgehaald via get_rio_instelling" of een losse toolnaam.
 _TOOL_LOS = re.compile(
-    rf"(?:\s*,)?(?:\s+(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend))?\s*(?:{_VIA})?{_TOOLNAMEN}",
+    rf"(?<!\s)(?:\s*,)?(?:\s+(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend))?\s*(?:{_VIA})?{_TOOLNAMEN}",
     re.IGNORECASE,
 )
 # Lopende tekst: ", berekend met `query_data`." of "opgehaald via get_cbs_data." Alleen een kleine via/met na een
 # woord of komma (geen zinsbegin) en vlak voor een leesteken of regeleinde; anders bleef er een kapotte zin over.
 _TOOL_BIJZIN = re.compile(
-    r"(?:\s*,\s*(?:(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend)\s+)?|(?<=[\w%*)`])\s+)"
+    rf"(?:{_WIT},\s*(?:(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend)\s+)?|(?<=[\w%*)`])\s+)"
     rf"(?:via|met)\s+{_TOOLNAMEN}(?=[.,;:!?)]|\s*$)"
 )
 _CODEBLOK = re.compile(r"^\s*(?:```|~~~)")
