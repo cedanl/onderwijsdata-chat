@@ -6,6 +6,7 @@ weigert de AST-controle zo'n script vóór de sandbox, en noemt de melding de ro
 een eigen stap, dan koppel_data op die analysis-keys.
 """
 
+import ast
 import asyncio
 import importlib
 import json
@@ -187,6 +188,11 @@ _TOEGESTAAN = {
         _SKDB,
         f"ander = store_get('{_SKDB}')\nresult = df.merge(ander, on=['brin', 'croho']).to_dict(orient='records')",
     ),
+    "string_join_via_variabele_over_twee_keys": (
+        _SKDB,
+        f"ander = store_get('{_DUO}')\nsep = ', '\n"
+        "result = {'codes': sep.join(sorted(set(df['brin']) | set(ander['INSTELLINGSCODE'])))}",
+    ),
 }
 
 
@@ -218,12 +224,76 @@ def test_een_alias_van_dezelfde_key_telt_als_een_key():
         ("result = len(df.merge(store_get('b')))", None, []),  # zonder data_key draagt df geen key
         ("lookup = {}\nlookup[df.k.iloc[0]] = store_get('b').v.sum()\nresult = len(df.merge(df))", "a", []),
         ("s = ';'\nresult = s.join(list(df.k) + list(store_get('b').k))", "a", []),
+        ("result = ', '.join(list(df.k) + list(store_get('b').k))", "a", []),
+        # `with ... as`: de naam krijgt de key van de context-expressie.
+        ("with store_get('b') as t:\n    n = 1\nresult = len(df.merge(t))", "a", [{"a", "b"}]),
+        # De vullers met keywords.
+        ("delen = [df]\ndelen.append(x=store_get('b'))\nresult = len(pd.concat(delen))", "a", [{"a", "b"}]),
+        ("delen = [df]\ndelen.extend(iterable=[store_get('b')])\nresult = len(pd.concat(delen))", "a", [{"a", "b"}]),
+        ("d = {}\nd.update(k=store_get('b'))\nresult = len(df.merge(d['k']))", "a", [{"a", "b"}]),
+        # Een cyclus termineert en draagt de key rond.
+        ("a = b\nb = a\na = store_get('x')\nresult = len(df.merge(b))", "y", [{"x", "y"}]),
     ],
 )
 def test_de_herkomst_volgt_de_namen(code, data_key, verwacht):
     script = scriptcontrole.ontleed(code, data_key)
 
     assert [set(k.keys) for k in script.koppelingen] == verwacht
+
+
+def test_een_cyclus_geeft_beide_namen_de_key():
+    herkomst = scriptcontrole._herkomst(ast.parse("a = b\nb = a\na = store_get('x')"), None)
+
+    assert herkomst == {"a": {"x"}, "b": {"x"}}
+
+
+# --- #1018: de controle kost lineair werk, ook voor een keten in omgekeerde volgorde -------------------------------
+
+
+def _omgekeerde_keten(n: int) -> str:
+    """`x0 = x1`, `x1 = x2`, ..., `x{n-1} = store_get('a')`: elke schakel leest een naam die pas later een key krijgt."""
+    regels = [f"x{i} = x{i + 1}" for i in range(n - 1)] + [f"x{n - 1} = store_get('a')"]
+    return "\n".join([*regels, "result = len(df.merge(x0))"])
+
+
+def _geneste_koppelingen(n: int) -> str:
+    return "result = len(df" + "".join(f".merge(store_get('k{i % 3}'))" for i in range(n)) + ")"
+
+
+def _werk(monkeypatch, functie: str, code: str) -> int:
+    """Hoe vaak `ontleed` de functie aanroept: een maat voor het werk, zonder klok."""
+    echt = getattr(scriptcontrole, functie)
+    aanroepen = 0
+
+    def tel(*args, **kwargs):
+        nonlocal aanroepen
+        aanroepen += 1
+        return echt(*args, **kwargs)
+
+    with monkeypatch.context() as m:
+        m.setattr(scriptcontrole, functie, tel)
+        scriptcontrole.ontleed(code, "b")
+    return aanroepen
+
+
+def test_een_omgekeerde_keten_vindt_de_koppeling_als_een_voorwaartse():
+    omgekeerd = _omgekeerde_keten(1000)
+    voorwaarts = "\n".join([*reversed(omgekeerd.splitlines()[:-1]), omgekeerd.splitlines()[-1]])
+
+    for code in (omgekeerd, voorwaarts):
+        assert [set(k.keys) for k in scriptcontrole.ontleed(code, "b").koppelingen] == [{"a", "b"}]
+
+
+def test_de_herkomst_van_een_omgekeerde_keten_kost_lineair_werk(monkeypatch):
+    enkel, dubbel = (_werk(monkeypatch, "_stroomkeys", _omgekeerde_keten(n)) for n in (200, 400))
+
+    assert dubbel < 3 * enkel, (enkel, dubbel)
+
+
+def test_geneste_koppelingen_kosten_lineair_werk(monkeypatch):
+    enkel, dubbel = (_werk(monkeypatch, "_store_get_key", _geneste_koppelingen(n)) for n in (200, 400))
+
+    assert dubbel < 3 * enkel, (enkel, dubbel)
 
 
 # --- Criterium 6: een syntaxfout en de bestaande weigeringen gaan voor --------------------------------------------
