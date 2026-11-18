@@ -2,7 +2,7 @@
 
 Besluit (vastgelegd in deze test): "reden" telt alleen in een verzoekvorm ("de reden voor/van/achter", "om welke
 reden", "wat is de reden"), niet als los onderwerpwoord. "verklaring" telt niet in "verklaring van de
-afkorting/term/begrip/woord" en niet in "verklaring omtrent gedrag".
+afkorting/term/begrip/woord" (ook meervoud) en niet in "verklaring omtrent gedrag".
 """
 
 import pytest
@@ -39,6 +39,8 @@ def test_een_verzoek_om_een_verklaring(vraag):
         "Hoeveel eerstejaars hbo zijn er per jaar sinds 2020?",
         "Wat is de verklaring van de afkorting HBO?",
         "Wat is de verklaring van het begrip instroom?",
+        "Geef de verklaringen van de afkortingen in deze tabel",
+        "Wat is de verklaring van termen als instroom en uitval?",
         "Hoeveel studenten volgen redenen om te studeren",
         "Hoeveel mbo-studenten hebben een verklaring omtrent gedrag nodig?",
         "How many first-year students are there in hbo since 2020?",

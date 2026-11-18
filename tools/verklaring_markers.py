@@ -6,7 +6,7 @@ uitkomst mee aan het model (beurtcontext) en aan de antwoordcontrole (`ongedekte
 
 "reden" telt alleen in een verzoekvorm ("de reden voor/van/achter", "om welke reden", "wat is de reden"): als los
 woord is het ook een onderwerp ("redenen om te studeren"). "verklaring" telt niet als het om een woordbetekenis gaat
-("de verklaring van de afkorting HBO") of om een verklaring omtrent gedrag (VOG).
+("de verklaring van de afkorting HBO", "de verklaringen van de termen") of om een verklaring omtrent gedrag (VOG).
 
 Een vervolgvraag zonder eigen verzoek houdt het verzoek van de vorige vraag, maar alleen als ze elliptisch is: ze
 begint met "en" of "ook", of telt hooguit vier woorden ("En voor wo?"). Een volledige nieuwe vraag staat op zichzelf.
@@ -23,7 +23,7 @@ _VERZOEK = re.compile(
     r"|\bhoe\s+komt\s+(?:het|dat|dit)\b"
     r"|\boorza(?:ak|ken)\b"
     r"|\bverkla(?:ar[dt]?|ren|ring(?:en)?)\b"
-    r"(?!\s+(?:van\s+(?:de|het|een)\s+(?:afkorting|term|begrip|woord)|omtrent\s+gedrag)\b)"
+    r"(?!\s+(?:van\s+(?:(?:de|het|een)\s+)?(?:afkorting(?:en)?|term(?:en)?|begrip(?:pen)?|woord(?:en)?)|omtrent\s+gedrag)\b)"
     r"|\bkomt\s+(?:dat|dit|het)\s+(?:door|doordat|omdat)\b"
     r"|\bwat\s+zit\s+(?:er\s*)?achter\b"
     r"|\bde\s+reden(?:en)?\s+(?:voor|van|achter)\b"
