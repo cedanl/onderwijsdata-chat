@@ -31,3 +31,10 @@ def test_elk_pakket_met_init_wordt_gekopieerd():
     pakketten = {p.parent.name for p in ROOT.glob("*/__init__.py")} - {"tests"}
     ontbreekt = sorted(pakketten - _gekopieerd())
     assert not ontbreekt, f"niet in het image (COPY in de Dockerfile ontbreekt): {ontbreekt}"
+
+
+def test_het_wordsjabloon_zit_in_het_image():
+    """Het rapport als Word-document (#1038) leest templates/rapport.docx bij elk verzoek."""
+    from tools.rapport_docx.render import SJABLOON
+
+    assert SJABLOON.relative_to(ROOT).parts[0] in _gekopieerd()
