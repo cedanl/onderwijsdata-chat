@@ -285,9 +285,9 @@ def ongedekte_oorzaak(tekst: str, tool_results: list[str], verklaring_gevraagd: 
         return []
     buiten, blok = verklaringsblok(_ONDERZOEKSVRAAG.sub("", tekst))
     alineas = _alineas(buiten)
-    problemen = _gestelde_oorzaak(alineas)
+    problemen: list[str] = [*_gestelde_oorzaak(alineas)]
     if not verklaring_gevraagd:
-        return problemen + _ongevraagde_verklaring(alineas, blok)
+        return [*problemen, *_ongevraagde_verklaring(alineas, blok)]
     if blok:
         problemen += _verklaring_buiten_blok(alineas) + _blokproblemen(blok)
     return problemen
