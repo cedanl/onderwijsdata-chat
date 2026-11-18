@@ -14,11 +14,14 @@ De controle werkt op de AST, niet op tekst:
 - geen overgetypte data, en het script leest data (`df` of `store_get`);
 - welke `merge`, `join` of `concat` tabellen van twee of meer keys samenvoegt (#1014): `analysis` weigert die en
   verwijst naar `koppel_data`, dat in code koppelt zonder rijen te verliezen. De herkomst van elke naam volgt de
-  toewijzingen (`a = store_get('x').groupby('k').sum()`, `for`, comprehensions, `lijst.append(...)`), over alle takken
-  samen: een naam die in één tak een andere key krijgt, draagt beide. Dit is een patroonwacht, geen sluitende
-  dataflow-analyse: `map`, `isin`, `reindex`, een opzoeking in een dict of een functie die een tabel als argument
-  krijgt, combineren twee keys zonder dat de controle het ziet. Ze dwingt de gewone koppeling naar de tool, niet elk
-  gebruik van twee keys samen.
+  toewijzingen (`a = store_get('x').groupby('k').sum()`, `for`, `with ... as`, comprehensions, `lijst.append(...)`,
+  ook met keywords), over alle takken samen: een naam die in één tak een andere key krijgt, draagt beide. Een `join`
+  telt op een tabel en op de klasse zelf (`pd.DataFrame.join(a, b)`, ook via `DF = pd.DataFrame`, #1019), niet op een
+  string (`", ".join(...)`). Het werk is lineair in de lengte van het script (#1018): een werklijst voor de herkomst en
+  één pass voor de keys per expressie. Dit is een patroonwacht, geen sluitende dataflow-analyse: `type(a).join(a, b)`,
+  `map`, `isin`, `reindex`, een opzoeking in een dict of een functie die een tabel als argument krijgt, combineren
+  twee keys zonder dat de controle het ziet. Ze dwingt de gewone koppeling naar de tool, niet elk gebruik van twee keys
+  samen.
 
 Welke getallen in de uitkomst niet van de data afhangen, meet `tools/afhankelijkheid.py`
 na de uitvoering (CH-27): een lijst van getypte constanten miste variabelen.
@@ -31,6 +34,7 @@ processen; `tests/test_sandbox_isolatie.py` legt dat restrisico vast.
 import ast
 import io
 import tokenize
+from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass
 
@@ -116,6 +120,8 @@ _HARDCODED_MIN = 6
 _KOPPELAANROEPEN = frozenset({"merge", "merge_asof", "merge_ordered", "join", "concat"})
 # Methoden die hun argumenten in het object zelf zetten: `delen.append(ander)` geeft `delen` de herkomst van `ander`.
 _VULLERS = frozenset({"append", "extend", "insert", "update", "setdefault", "add"})
+# Klassen waarvan `Klasse.join(a, b)` twee tabellen samenvoegt, net als `a.join(b)` (#1019).
+_TABELKLASSEN = frozenset({"DataFrame", "Series"})
 
 
 class Geweigerd(ValueError):
@@ -206,17 +212,6 @@ def _store_get_key(node: ast.AST) -> str | None:
     return None
 
 
-def _bronkeys(node: ast.AST, herkomst: dict[str, frozenset[str]]) -> frozenset[str]:
-    """De keys waar een expressie uit leest: de herkomst van elke naam erin plus elke store_get erin."""
-    keys: set[str] = set()
-    for n in ast.walk(node):
-        if isinstance(n, ast.Name):
-            keys |= herkomst.get(n.id, frozenset())
-        elif (key := _store_get_key(n)) is not None:
-            keys.add(key)
-    return frozenset(keys)
-
-
 def _namen(doel: ast.AST) -> tuple[str, ...]:
     """De namen die een toewijzing raakt: `a, b = ...` beide, `df['x'] = ...` en `t.loc[i, 'y'] = ...` de tabel zelf,
     niet de namen in de index."""
@@ -244,35 +239,125 @@ def _stromen(tree: ast.AST) -> Iterator[tuple[tuple[str, ...], ast.AST]]:
             yield _namen(node.func.value), ast.Tuple(elts=[*node.args, *(k.value for k in node.keywords)])
 
 
+@dataclass(frozen=True)
+class _Stroom:
+    """Een toewijzing, eenmalig gelezen: welke namen ze vult, welke namen ze leest en welke store_get-keys erin staan."""
+
+    namen: tuple[str, ...]
+    leest: frozenset[str]
+    keys: frozenset[str]
+
+
+def _stroom(namen: tuple[str, ...], bron: ast.AST) -> _Stroom:
+    leest = {n.id for n in ast.walk(bron) if isinstance(n, ast.Name)}
+    keys = {key for n in ast.walk(bron) if (key := _store_get_key(n)) is not None}
+    return _Stroom(namen, frozenset(leest), frozenset(keys))
+
+
+def _stroomkeys(stroom: _Stroom, herkomst: dict[str, frozenset[str]]) -> frozenset[str]:
+    """De keys die een toewijzing nu in haar namen zet: haar eigen store_get-keys plus de herkomst van wat ze leest."""
+    return stroom.keys.union(*(herkomst.get(naam, frozenset()) for naam in stroom.leest))
+
+
 def _herkomst(tree: ast.AST, data_key: str | None) -> dict[str, frozenset[str]]:
-    """Per naam de keys waar hij uit leest, over alle toewijzingen tot er niets meer bijkomt; `df` is `data_key`."""
+    """Per naam de keys waar hij uit leest, over alle toewijzingen tot er niets meer bijkomt; `df` is `data_key`.
+
+    Een werklijst (#1018): groeit de herkomst van een naam, dan komen alleen de toewijzingen die die naam lezen opnieuw
+    aan de beurt. Elke naam groeit hooguit zo vaak als het script keys heeft, dus een keten in omgekeerde volgorde
+    (`x0 = x1`, `x1 = x2`, ...) kost lineair werk in plaats van een ronde per schakel.
+    """
     herkomst: dict[str, frozenset[str]] = {"df": frozenset({data_key})} if data_key else {}
-    stromen = list(_stromen(tree))
-    veranderd = True
-    while veranderd:  # de verzamelingen groeien alleen, binnen de keys van het script: dit stopt
-        veranderd = False
-        for namen, bron in stromen:
-            keys = _bronkeys(bron, herkomst)
-            for naam in namen:
-                if not keys <= (oud := herkomst.get(naam, frozenset())):
-                    herkomst[naam] = oud | keys
-                    veranderd = True
+    stromen = [_stroom(namen, bron) for namen, bron in _stromen(tree)]
+    lezers: dict[str, list[int]] = {}
+    for i, stroom in enumerate(stromen):
+        for naam in stroom.leest:
+            lezers.setdefault(naam, []).append(i)
+    wachtrij = deque(range(len(stromen)))
+    in_wachtrij = set(wachtrij)
+    while wachtrij:
+        i = wachtrij.popleft()
+        in_wachtrij.discard(i)
+        keys = _stroomkeys(stromen[i], herkomst)
+        for naam in stromen[i].namen:
+            if keys <= (oud := herkomst.get(naam, frozenset())):
+                continue
+            herkomst[naam] = oud | keys
+            for j in lezers.get(naam, ()):
+                if j not in in_wachtrij:
+                    wachtrij.append(j)
+                    in_wachtrij.add(j)
     return herkomst
 
 
-def _koppelingen(tree: ast.AST, herkomst: dict[str, frozenset[str]]) -> tuple[Koppeling, ...]:
-    """Elke merge, join of concat waarvan de aanroep (object, argumenten, keywords) uit twee of meer keys leest.
+def _klassenamen(tree: ast.AST) -> frozenset[str]:
+    """Namen die een pandas-klasse dragen (`DF = pd.DataFrame`), zodat `DF.join(a, b)` als tabel-join telt (#1019)."""
+    return frozenset(
+        naam
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign) and _is_klasse(node.value, frozenset())
+        for doel in node.targets
+        for naam in _namen(doel)
+    )
 
-    Een `join` telt alleen als het object zelf uit een key leest: `", ".join(...)` of `sep.join(...)` is een string.
+
+def _is_klasse(node: ast.AST, klassenamen: frozenset[str]) -> bool:
+    """`pd.DataFrame`, `pd.Series` (of een attribuut met die naam), of een naam die zo'n klasse draagt."""
+    if isinstance(node, ast.Attribute):
+        return node.attr in _TABELKLASSEN
+    return isinstance(node, ast.Name) and node.id in klassenamen
+
+
+def _is_tabel_join(ontvanger: ast.AST, bronkeys: dict[ast.AST, frozenset[str]], klassenamen: frozenset[str]) -> bool:
+    """Een `join` op een tabel: het object leest uit een key, of is de klasse zelf (`pd.DataFrame.join(a, b)`).
+
+    `", ".join(...)` of `sep.join(...)` is een string en telt niet.
     """
+    return _is_klasse(ontvanger, klassenamen) or bool(bronkeys[ontvanger])
+
+
+def _van_onder_naar_boven(tree: ast.AST) -> Iterator[ast.AST]:
+    """Elke knoop na al zijn kinderen, zonder recursie: een keten `a.merge(b).merge(c)...` kan duizenden diep zijn."""
+    stapel: list[tuple[ast.AST, bool]] = [(tree, False)]
+    while stapel:
+        node, kinderen_gedaan = stapel.pop()
+        if kinderen_gedaan:
+            yield node
+            continue
+        stapel.append((node, True))
+        stapel.extend((kind, False) for kind in ast.iter_child_nodes(node))
+
+
+def _bronkeys(tree: ast.AST, herkomst: dict[str, frozenset[str]]) -> dict[ast.AST, frozenset[str]]:
+    """Per knoop de keys waar die expressie uit leest: de herkomst van elke naam erin plus elke store_get erin.
+
+    Eén pass van onder naar boven (#1018): een geneste keten van koppelingen kost zo lineair werk, niet een pass per
+    koppeling over alles eronder.
+    """
+    uit: dict[ast.AST, frozenset[str]] = {}
+    for node in _van_onder_naar_boven(tree):
+        keys = frozenset().union(*(uit[kind] for kind in ast.iter_child_nodes(node)))
+        if isinstance(node, ast.Name):
+            keys |= herkomst.get(node.id, frozenset())
+        elif (key := _store_get_key(node)) is not None:
+            keys |= {key}
+        uit[node] = keys
+    return uit
+
+
+def _koppelingen(tree: ast.AST, herkomst: dict[str, frozenset[str]]) -> tuple[Koppeling, ...]:
+    """Elke merge, join of concat waarvan de aanroep (object, argumenten, keywords) uit twee of meer keys leest."""
+    klassenamen = _klassenamen(tree)
+    bronkeys = _bronkeys(tree, herkomst)
     uit = []
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
         aanroep = node.func.attr
-        if aanroep not in _KOPPELAANROEPEN or (aanroep == "join" and not _bronkeys(node.func.value, herkomst)):
+        if aanroep not in _KOPPELAANROEPEN:
             continue
-        if len(keys := _bronkeys(node, herkomst)) >= 2:
+        if aanroep == "join" and not _is_tabel_join(node.func.value, bronkeys, klassenamen):
+            continue
+        if len(keys := bronkeys[node]) >= 2:
             uit.append(Koppeling(aanroep, keys))
     return tuple(uit)
 
