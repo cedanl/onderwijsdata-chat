@@ -652,6 +652,15 @@ _KAART = Kaart(slot="scope", vraag="Over welke instelling gaat het?", opties=[{"
             id="leeg",
         ),
         pytest.param(
+            [
+                StreamResult(text="", tool_calls=[_LAAD]),
+                StreamResult(text="", tool_calls=[], finish_reason="content_filter"),
+            ],
+            {},
+            lambda text, events: text == run_module.GEWEIGERD_ANTWOORD,
+            id="geweigerd",
+        ),
+        pytest.param(
             _antwoord(_LAAD),  # het antwoord komt uit de afrondronde
             {"max_iteraties": 1},
             lambda text, events: text.startswith(DEELANTWOORD) and _slot(events)["partial"],
@@ -697,10 +706,11 @@ def test_geen_vervolgvragen_na_een_beurt_zonder_gewoon_antwoord(monkeypatch, kie
         (LoopResult(), WEIGER_ANTWOORD),
         (LoopResult(), INGEHOUDEN),
         (LoopResult(), run_module.LEEG_ANTWOORD),
+        (LoopResult(finish_reason="content_filter"), run_module.GEWEIGERD_ANTWOORD),
         (LoopResult(wrapped_up=True), "Deelantwoord."),
         (LoopResult(finish_reason="length"), "Een afgekapt antw"),
     ],
-    ids=["weigering", "ingehouden", "leeg", "deelantwoord", "afgekapt"],
+    ids=["weigering", "ingehouden", "leeg", "geweigerd", "deelantwoord", "afgekapt"],
 )
 def test_geen_keuze_buiten_een_gewoon_antwoord(kies_aanroepen, result, tekst):
     assert asyncio.run(run_module._vervolgvragen(result, tekst, _VRAAG, {})) == []

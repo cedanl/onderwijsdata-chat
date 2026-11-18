@@ -558,7 +558,9 @@ def test_zonder_data_geen_regel(monkeypatch):
     assert KOP not in tekst and einde["bronnen"] == []
 
 
-@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, WEIGER_ANTWOORD, SCOPE_UITLEG])
+@pytest.mark.parametrize(
+    "vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, run_module.GEWEIGERD_ANTWOORD, WEIGER_ANTWOORD, SCOPE_UITLEG]
+)
 def test_een_vast_antwoord_krijgt_geen_regel(monkeypatch, vast):
     monkeypatch.setattr(run_module, "_eindtekst", lambda *args, **kwargs: vast)
     tekst, _ = _run(monkeypatch, _datastappen(), _G2_VRAAG)

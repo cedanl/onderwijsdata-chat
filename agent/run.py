@@ -66,11 +66,20 @@ from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
 
-# Een lege modelrespons zonder weigering of fout (CH-32): "stuur je vraag opnieuw" helpt dan niet.
+# Een lege modelrespons zonder reden van de provider (CH-32): "stuur je vraag opnieuw" helpt dan niet.
 LEEG_ANTWOORD = (
     "Het model gaf op deze vraag geen antwoord, ook geen weigering. Opnieuw sturen helpt meestal niet: "
     "formuleer de vraag anders, of stel een vraag over de open onderwijsdata."
 )
+# Een lege modelrespons die de provider als weigering of filtertreffer afsloot (#1022). Hetzelfde filter raakt
+# ook andere vragen dan een codeverzoek, dus de serverbestanden staan er als voorbeeld, niet als reden.
+GEWEIGERD_ANTWOORD = (
+    "De AI-dienst weigerde deze vraag. Dat gebeurt bijvoorbeeld bij een verzoek om code die de server, zijn "
+    "bestanden of zijn instellingen uitleest: zulke code voer ik niet uit. Stel een vraag over de open onderwijsdata."
+)
+# LiteLLM zet Anthropics "refusal" om naar "content_filter"; Azure OpenAI stuurt dat zelf. "refusal" staat erbij
+# voor het geval LiteLLM die waarde ooit doorgeeft.
+_WEIGERREDENEN = frozenset({"content_filter", "refusal"})
 
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
 _MAX_TOOL_RESULT_CHARS = TOOL_RESULT_MAX_CHARS
@@ -426,9 +435,9 @@ def _eindtekst(
     logger.info("FINALE ANTWOORD  %s", tekst_kenmerk(text_content))
     logger.debug("FINALE ANTWOORD TEKST  %r", text_content[:500])
     if not text_content.strip():
-        # Vaak een contentfilter van de provider: opnieuw sturen geeft weer niets (CH-32).
+        # Zonder tekst: een weigering van de provider of een lege respons; opnieuw sturen geeft weer niets (CH-32).
         logger.warning("LEEG ANTWOORD  model=%s  finish_reason=%s", model, result.finish_reason)
-        text_content = LEEG_ANTWOORD
+        text_content = _leeg_antwoord(result)
     if result.problems:
         logger.warning(
             "CONTROLE niet in orde of niet gecontroleerd  model=%s  controles=%s",
@@ -442,13 +451,18 @@ def _eindtekst(
     return text_content
 
 
+def _leeg_antwoord(result: LoopResult) -> str:
+    """De tekst voor een beurt zonder modeltekst: een weigering als de provider de beurt zo afsloot (#1022)."""
+    return GEWEIGERD_ANTWOORD if result.finish_reason in _WEIGERREDENEN else LEEG_ANTWOORD
+
+
 # Vaste antwoorden uit code: ze rusten niet op de data van de beurt, dus ook geen bronnen eronder.
 # Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
 _VASTE_ANTWOORDEN = frozenset({WEIGER_ANTWOORD, SCOPE_UITLEG})
-_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, *_VASTE_ANTWOORDEN})
+_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, GEWEIGERD_ANTWOORD, *_VASTE_ANTWOORDEN})
 # Teksten die helemaal uit code komen, zonder model als schrijver: de frontend noemt er geen model onder (#565).
 # Code beslist op de eindtekst: een modelantwoord waar zo'n zin in staat, is niet gelijk en houdt het label.
-_UIT_CODE = frozenset({SENTINEL_ANTWOORD, VO_ANTWOORD, *_VASTE_ANTWOORDEN})
+_UIT_CODE = frozenset({SENTINEL_ANTWOORD, VO_ANTWOORD, GEWEIGERD_ANTWOORD, *_VASTE_ANTWOORDEN})
 
 
 def _vast(text_content: str) -> dict:
