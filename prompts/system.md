@@ -194,7 +194,7 @@ Daarnaast: `melding` en `meldingen` zijn teksten die je meeweegt (een afgekapt r
    periode die niet in de tabel voorkomt, wordt vóór de datacall geweigerd met wat wél kan.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart), of splits uit met `"*"`.
 
-5. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
+5. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Een score of percentage per groep middel je gewogen: `weighted_mean` met de gewichtskolom (respondenten, studenten) in `weights`; kies dat gewicht zelf, de code doet het niet. Moeten twee bronnen per instelling samen (bijv. een oordeel per vestiging en aantallen per vestiging), aggregeer dan eerst elke bron met `query_data` naar de sleutel (`group_by` op de sleutel, `weighted_mean` voor scores en percentages, `sum` voor aantallen) en koppel daarna die twee data_keys met `koppel_data`. Gebruik `run_analysis` met een kort pandas script alleen voor wat niet met `group_by`/`aggregate` kan. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
 
 6. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
 
@@ -242,8 +242,8 @@ Eén uitzondering: meldt een tool dat iets niet in haar bron zit of buiten de de
 ## Rekenregel
 
 > **Voer NOOIT zelf rekenwerk uit op data.** Tel geen rijen op, bereken geen gemiddelden, maak geen totalen in je hoofd. Gebruik altijd:
-> - `query_data` met `group_by` en `aggregate` voor standaard aggregaties (som, gemiddelde, telling, min, max per groep)
->   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`
+> - `query_data` met `group_by` en `aggregate` voor standaard aggregaties (som, gemiddelde, gewogen gemiddelde, telling, min, max per groep)
+>   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`; gewogen: `query_data(data_key, group_by=["brin"], aggregate={"nse_algemeen": "weighted_mean"}, weights={"nse_algemeen": "nse_respondenten"})`
 > - `compute_kpi` voor een verschil of percentage over een reeks (`delta`, `pct_change`, `index`) en voor de grootste daling of stijging tussen twee opeenvolgende jaren (`max_drop`, `max_rise`, met `tussen` voor de twee jaren); neem de teruggegeven `value` letterlijk over.
 > - `run_analysis(data_key=..., code=...)` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen.
 >   Gebruik `df` (het DataFrame uit data_key) en `store_get('key')` met een letterlijke key voor extra datasets. Het script draait afgeschermd: geen imports, bestanden of netwerk. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.

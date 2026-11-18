@@ -758,6 +758,60 @@ def test_snippet_sluit_duo_minus_een_uit_net_als_de_app(duo_in_app_en_snippet):
     assert namespace["df"]["EX"].tolist() == [8918]
 
 
+# --- #1017: het gewogen gemiddelde staat zichtbaar in de snippet en geeft hetzelfde getal als de app ---
+
+# Per vestiging een score en het aantal respondenten; -1 is onderdrukt, een lege cel is leeg.
+_NSE_RUW = pd.DataFrame(
+    [
+        {"BRIN": "21PD", "SCORE": 3.5, "RESPONDENTEN": 100},
+        {"BRIN": "21PD", "SCORE": 4.0, "RESPONDENTEN": 300},
+        {"BRIN": "21PD", "SCORE": -1, "RESPONDENTEN": 50},  # onderdrukte score: telt niet mee
+        {"BRIN": "21PD", "SCORE": 2.0, "RESPONDENTEN": None},  # geen gewicht: telt niet mee
+        {"BRIN": "25DW", "SCORE": 3.0, "RESPONDENTEN": 50},
+        {"BRIN": "25DW", "SCORE": 3.6, "RESPONDENTEN": 0},  # gewicht 0: telt niet bij
+        {"BRIN": "30GB", "SCORE": -1, "RESPONDENTEN": 20},  # geen bruikbare rij: null
+        {"BRIN": "07GR", "SCORE": 4.2, "RESPONDENTEN": 0},  # gewichtssom 0: null, geen deling door nul
+    ]
+)
+_NSE_KEY = "duo:nse_proef:0"
+
+
+@pytest.fixture
+def nse_in_app_en_snippet(clean_packages, monkeypatch):
+    import onderwijsbronnen.duo
+
+    monkeypatch.setattr(onderwijsbronnen.duo, "load", lambda *a, **k: _NSE_RUW.copy())
+    store.put(
+        _NSE_KEY,
+        _NSE_RUW.copy(),
+        store.KeyMeta(
+            bron="duo", dataset="nse_proef", laad=("get_duo_data", {"dataset_id": "nse_proef", "resource": 0})
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "aggregate",
+    [{"SCORE": "weighted_mean"}, {"SCORE": "weighted_mean", "RESPONDENTEN": "sum"}],
+)
+def test_gewogen_gemiddelde_in_de_snippet_geeft_wat_de_app_geeft(nse_in_app_en_snippet, aggregate):
+    args: dict[str, Any] = {"group_by": ["BRIN"], "aggregate": aggregate, "weights": {"SCORE": "RESPONDENTEN"}}
+    app = json.loads(query_data(_NSE_KEY, **args))
+    snippet = generate("query_data", {"data_key": _NSE_KEY, **args})
+    assert snippet is not None
+    # Zichtbaar gerekend, zonder helper uit de app: teller en noemer per groep.
+    assert "df['SCORE'] * _gewicht" in snippet and "s.sum(min_count=1)" in snippet
+    assert "tools" not in snippet and "store" not in snippet
+    namespace = _run(snippet)
+    kolommen = list(store.get(app["data_key"]).columns)
+    assert list(namespace["df"].columns) == kolommen
+    assert _records(namespace["df"]) == _records(pd.DataFrame(app["rijen"])[kolommen])
+    per_brin = namespace["df"].set_index("BRIN")["SCORE"]
+    assert per_brin["21PD"] == pytest.approx(3.875)
+    assert per_brin["25DW"] == pytest.approx(3.0)
+    assert pd.isna(per_brin["30GB"]) and pd.isna(per_brin["07GR"])
+
+
 @pytest.mark.parametrize("metric", ["sum", "mean"])
 def test_kpi_snippet_laadt_zelf_en_rekent_hetzelfde(duo_in_app_en_snippet, metric):
     # Een KPI-snippet las een df uit een eerdere stap: niet zelfstandig (audit 10).

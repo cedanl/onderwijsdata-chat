@@ -32,20 +32,41 @@ class Tokens:
         )
 
 
+def _veld(bron: Any, naam: str) -> Any:
+    """Een veld uit een object of een dict; None als het er niet is."""
+    if isinstance(bron, dict):
+        return bron.get(naam)
+    return getattr(bron, naam, None)
+
+
+def _cache(usage: Any, bovenin: str, *in_details: str) -> int:
+    """Het eerste gemelde cachegetal: het veld bovenin, anders de details, anders 0.
+
+    Beide beschrijven dezelfde tokens, dus nooit optellen; een `is None`-keten zodat een echte 0 bovenin wint.
+    """
+    details = _veld(usage, "prompt_tokens_details")
+    for waarde in (_veld(usage, bovenin), *(_veld(details, naam) for naam in in_details)):
+        if waarde is not None:
+            return waarde
+    return 0
+
+
 def _tokens(chunk: Any) -> Tokens | None:
     """Het gebruik op een chunk, als die het draagt.
 
-    Met `stream_options.include_usage` staat het in `usage`; zonder (Anthropic en Azure AI kennen de optie
-    niet, drop_params laat hem vallen) zet LiteLLM het in `_hidden_params["usage"]` van de laatste chunk.
+    LiteLLM zet het in `usage` (met `stream_options.include_usage`) of in `_hidden_params["usage"]` van de
+    laatste chunk. De cache staat in `cache_read_input_tokens`/`cache_creation_input_tokens`; bij streaming
+    zijn die leeg en staat hij alleen in `prompt_tokens_details` (`cached_tokens`, `cache_write_tokens` of
+    `cache_creation_tokens`, #1027). `invoer` is het totaal, de cache inbegrepen.
     """
     usage = getattr(chunk, "usage", None) or (getattr(chunk, "_hidden_params", None) or {}).get("usage")
     if usage is None:
         return None
     return Tokens(
-        invoer=getattr(usage, "prompt_tokens", 0) or 0,
-        uitvoer=getattr(usage, "completion_tokens", 0) or 0,
-        cache_gelezen=getattr(usage, "cache_read_input_tokens", 0) or 0,
-        cache_geschreven=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+        invoer=_veld(usage, "prompt_tokens") or 0,
+        uitvoer=_veld(usage, "completion_tokens") or 0,
+        cache_gelezen=_cache(usage, "cache_read_input_tokens", "cached_tokens"),
+        cache_geschreven=_cache(usage, "cache_creation_input_tokens", "cache_write_tokens", "cache_creation_tokens"),
     )
 
 

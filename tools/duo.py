@@ -260,6 +260,7 @@ def json_waarde(v, afronden: bool = False):
 # `size` telt rijen, ook lege: daar valt geen cel weg.
 _MAAT_ZONDER_CELLEN = {
     "mean": "het gemiddelde",
+    "weighted_mean": "het gewogen gemiddelde",
     "min": "het minimum",
     "max": "het maximum",
     "count": "de telling",

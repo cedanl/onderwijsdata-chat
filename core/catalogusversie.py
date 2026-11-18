@@ -58,6 +58,20 @@ def catalogusversie(commit: str | None = None) -> list[dict]:
     return pakketten
 
 
+def catalogusdigest() -> str | None:
+    """De digest van de catalogus die dit proces geladen heeft, met zijn bronvlaggen: `catalogus` in het manifest (#1029).
+
+    `catalogusrevisie` zegt welk CBS-artefact is meegebouwd; dit zegt welke catalogus het manifest van een antwoord
+    noemt. None als de catalogus niet laadt: /version blijft dan werken.
+    """
+    try:
+        from tools import catalog  # hier en niet bovenaan: zie arbeidsmarktversie
+
+        return catalog.catalogus_digest()
+    except Exception:
+        return None
+
+
 def _arbeidsmarktbron(bron: str, dataset: str, records: list[dict], sleutel: str) -> dict:
     """De periode uit het catalogusrecord van `dataset`, letterlijk; None als het record ontbreekt."""
     periode = next((r.get("periode") for r in records if r.get(sleutel) == dataset), None)

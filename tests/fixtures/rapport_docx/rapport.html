@@ -1,0 +1,298 @@
+<!DOCTYPE html><html lang="nl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instroom hbo in Utrecht {{ 7*7 }}</title>
+<script src="/@plotly-rapport/plotly-rapport.min.js"></script><script>(function(){var P=window.Plotly;if(!P||P.__kaartAlsSvg)return;P.__kaartAlsSvg=true;
+var A=window.PlotlyGeoAssets=window.PlotlyGeoAssets||{},T=A.topojson=A.topojson||{},leeg={type:'GeometryCollection',geometries:[]};
+T.world_110m=T.world_110m||{type:'Topology',arcs:[],objects:{land:leeg,ocean:leeg,lakes:leeg,rivers:leeg,countries:leeg,coastlines:leeg,subunits:leeg}};
+function mee(r){var s=0;for(var i=0;i<r.length-1;i++)s+=(r[i+1][0]-r[i][0])*(r[i+1][1]+r[i][1]);return s>0}
+function vlak(v){return v.map(function(r,i){return (i===0)!==mee(r)?r.slice().reverse():r})}
+function d3vorm(gj){return Object.assign({},gj,{features:(gj&&gj.features||[]).map(function(f){var g=f&&f.geometry;if(!g)return f;
+var c=g.type==='Polygon'?vlak(g.coordinates):g.type==='MultiPolygon'?g.coordinates.map(vlak):g.coordinates;
+return Object.assign({},f,{geometry:Object.assign({},g,{coordinates:c})})})})}
+function geo(d,l){if(!Array.isArray(d)||!d.some(function(t){return t&&t.type==='choroplethmap'}))return;
+d.forEach(function(t){if(t&&t.type==='choroplethmap'){t.type='choropleth';t.geo='geo';t.geojson=d3vorm(t.geojson);delete t.subplot;delete t.below}});
+l.geo=Object.assign({fitbounds:'locations',visible:false,projection:{type:'mercator'},bgcolor:'rgba(0,0,0,0)'},l.geo,{scope:'world',resolution:110});delete l.map;return true}
+function tik(gd){if(!gd||typeof gd.on!=='function'||gd.__kaartTik)return;gd.__kaartTik=true;var q=null,t=0;
+gd.on('plotly_click',function(e){var v=e&&e.event;q=v?{x:v.clientX,y:v.clientY}:null;t=Date.now()});
+gd.on('plotly_unhover',function(){if(!q||Date.now()-t>500)return;var p=q;q=null;setTimeout(function(){
+var el=document.elementFromPoint(p.x,p.y);if(el)el.dispatchEvent(new MouseEvent('mousemove',{clientX:p.x,clientY:p.y,bubbles:true}))},0)})}
+['newPlot','react'].forEach(function(n){var f=P[n];if(typeof f!=='function')return;P[n]=function(gd,d,l,c){var k;
+try{if(d&&!Array.isArray(d)&&d.data){d.layout=d.layout||{};k=geo(d.data,d.layout)}else{l=l||{};k=geo(d,l)}}catch(e){}
+var r=f.call(this,gd,d,l,c);if(k&&r&&typeof r.then==='function')r.then(tik);return r}})})()</script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#111827;background:#F3F4F6;min-height:100vh}
+  .header{background:#fff;border-bottom:1px solid #E5E7EB;padding:28px 32px}
+  .header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .header-label{font-size:.7rem;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .header h1{font-size:1.35rem;font-weight:800;color:#111827;line-height:1.3}
+  .meta{margin-top:8px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .meta-chip{font-size:.74rem;color:#6B7280}
+  .meta-chip b{color:#374151;font-weight:600}
+  .instelling-badge{display:flex;align-items:center;gap:6px;background:#DCFCE7;color:#15803D;font-size:.75rem;font-weight:700;padding:5px 10px;border-radius:6px;width:fit-content;flex-shrink:0}
+  .body{padding:28px 32px;max-width:1100px;margin:0 auto}
+  .card{background:#fff;border-radius:10px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:20px}
+  .section-label{font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+  .afwijking{border-left:4px solid #D97706;background:#FFFBEB;border-radius:0 10px 10px 0;padding:16px 24px;margin-bottom:20px}
+  .afwijking ul{margin:0;padding-left:1.1em}
+  .afwijking li{color:#78350F;font-weight:600;line-height:1.5}
+  .vraag{border-left:4px solid #2563EB;background:#EFF6FF;border-radius:0 10px 10px 0;padding:20px 24px;margin-bottom:20px}
+  .vraag .section-label{color:#1D4ED8;margin-bottom:6px}
+  .vraag .vraag-text{font-size:1.05rem;font-weight:700;color:#1E3A8A;line-height:1.5}
+  .scope-row{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .scope-col ul{list-style:none}
+  .scope-col li{position:relative;padding:8px 0 8px 24px;border-bottom:1px solid #F3F4F6;font-size:.9rem;color:#4B5563}
+  .scope-col li:last-child{border-bottom:none}
+  .scope-col li::before{content:'';position:absolute;left:4px;top:14px;width:7px;height:7px;border-radius:50%}
+  .scope-title{font-size:.8rem;font-weight:700;margin-bottom:4px}
+  .scope-yes{color:#15803D}.scope-yes::before{content:'✓ '}
+  .scope-no{color:#B91C1C}.scope-no::before{content:'✗ '}
+  .scope-col.yes li::before{background:#22C55E}.scope-col.no li::before{background:#EF4444}
+  .def{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #F3F4F6}
+  .def:last-child{border-bottom:none}
+  .def-term{flex:0 0 34%;font-weight:700;color:#111827;font-size:.92rem}
+  .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
+  .def-lijst{margin:0;padding-left:1.1em}
+  .def-lijst li{margin:0 0 .25em}
+  .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
+  .plot-auto{height:360px}
+  .vis-noot{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.45}
+  .vis-bron{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.5}
+  .vis-bron a{color:#2563EB;text-decoration:underline}
+  .vis-note{margin-top:14px;color:#4B5563;line-height:1.6;font-size:.92rem;background:#F9FAFB;border-left:3px solid #DBEAFE;padding:12px 16px;border-radius:0 6px 6px 0}
+  .conf{background:#fff}
+  .prose{line-height:1.7;color:#374151}
+  .prose h1,.prose h2,.prose h3{font-weight:700;margin:1em 0 .4em;color:#111827}
+  .prose li{margin:.3em 0 .3em 1.4em}
+  .prose strong{color:#111827}
+  .prose p{margin:.5em 0}
+  .bronnen{margin-left:20px}
+  .bronnen li{color:#4B5563;font-size:.88rem;line-height:1.6;margin:.3em 0}
+  .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
+  .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
+  .header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-noot,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}
+  @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.header-top{flex-direction:column}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0;margin:0 -16px}.plot-auto{height:420px}.header-label,.section-label,.manifest,.footer{font-size:.75rem}}
+  @media print{
+    @page{size:A4;margin:14mm}
+    html,body{background:#fff!important;min-height:0}
+    body{font-size:12px}
+    .header{padding:0 0 16px;border-bottom:1px solid #E5E7EB;break-after:avoid}
+    .body{padding:16px 0 0;max-width:none}
+    .card,.vraag,.header{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+    .vis{break-inside:avoid;page-break-inside:avoid}
+    .vis .card{margin:0;padding:0}
+    .card{border:1px solid #E5E7EB}
+    .plot,.plot-auto{max-height:330px}
+    .scope-row{grid-template-columns:1fr 1fr}
+    .manifest,.footer{break-inside:avoid}
+    a{color:inherit}
+  }
+  html.dark body{color:#F9FAFB;background:#111827}
+    html.dark .header{background:#1F2937;border-bottom-color:#374151}
+    html.dark .header h1{color:#F9FAFB}
+    html.dark .meta-chip,html.dark .meta-chip b{color:#9CA3AF}
+    html.dark .card{background:#1F2937}
+    html.dark .vraag{background:#1E3A5F;border-left-color:#3B82F6}
+    html.dark .vraag .vraag-text{color:#DBEAFE}
+    html.dark .vraag .section-label{color:#93C5FD}
+    html.dark .afwijking{background:#3B2A0B;border-left-color:#F59E0B}
+    html.dark .afwijking li{color:#FDE68A}
+    html.dark .afwijking .section-label{color:#FCD34D}
+    html.dark .section-label{color:#9CA3AF}
+    html.dark .def-term,html.dark .vis-title,html.dark .prose h1,html.dark .prose h2,html.dark .prose h3,html.dark .prose strong{color:#F9FAFB}
+    html.dark .def-desc,html.dark .vis-note,html.dark .scope-col li,html.dark .prose,html.dark .bronnen li{color:#D1D5DB}
+    html.dark .vis-bron{color:#9CA3AF}
+    html.dark .vis-noot{color:#9CA3AF}
+    html.dark .vis-bron a{color:#60A5FA}
+    html.dark .scope-col li{border-bottom-color:#374151}
+    html.dark .def{border-bottom-color:#374151}
+    html.dark .vis-note{background:#111827;border-left-color:#1D4ED8}
+    html.dark .manifest,html.dark .footer{border-top-color:#374151}
+  @media(prefers-color-scheme:dark){
+    html:not(.light) body{color:#F9FAFB;background:#111827}
+    html:not(.light) .header{background:#1F2937;border-bottom-color:#374151}
+    html:not(.light) .header h1{color:#F9FAFB}
+    html:not(.light) .meta-chip,html:not(.light) .meta-chip b{color:#9CA3AF}
+    html:not(.light) .card{background:#1F2937}
+    html:not(.light) .vraag{background:#1E3A5F;border-left-color:#3B82F6}
+    html:not(.light) .vraag .vraag-text{color:#DBEAFE}
+    html:not(.light) .vraag .section-label{color:#93C5FD}
+    html:not(.light) .afwijking{background:#3B2A0B;border-left-color:#F59E0B}
+    html:not(.light) .afwijking li{color:#FDE68A}
+    html:not(.light) .afwijking .section-label{color:#FCD34D}
+    html:not(.light) .section-label{color:#9CA3AF}
+    html:not(.light) .def-term,html:not(.light) .vis-title,html:not(.light) .prose h1,html:not(.light) .prose h2,html:not(.light) .prose h3,html:not(.light) .prose strong{color:#F9FAFB}
+    html:not(.light) .def-desc,html:not(.light) .vis-note,html:not(.light) .scope-col li,html:not(.light) .prose,html:not(.light) .bronnen li{color:#D1D5DB}
+    html:not(.light) .vis-bron{color:#9CA3AF}
+    html:not(.light) .vis-noot{color:#9CA3AF}
+    html:not(.light) .vis-bron a{color:#60A5FA}
+    html:not(.light) .scope-col li{border-bottom-color:#374151}
+    html:not(.light) .def{border-bottom-color:#374151}
+    html:not(.light) .vis-note{background:#111827;border-left-color:#1D4ED8}
+    html:not(.light) .manifest,html:not(.light) .footer{border-top-color:#374151}
+  }
+</style>
+</head><body>
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-label">Rapport</div>
+      <h1>Instroom hbo in Utrecht {{ 7*7 }}</h1>
+      <div class="meta">
+        <span class="meta-chip">Gegenereerd op <b>30 oktober 2026</b></span>
+        <span class="meta-chip">Opgesteld door <b>jansen</b> met openEDUdata+ (AI-assistent)</span>
+      </div>
+    </div>
+    <div class="instelling-badge">Hogeschool Utrecht</div>
+  </div>
+</div>
+<div class="body">
+  <div class="afwijking" role="note"><h2 class="section-label">Afwijking van je vraag</h2><ul><li>Je vroeg naar 2025; de laatste cijfers zijn van 2024.</li></ul></div>
+  <div class="vraag">
+    <h2 class="section-label">Onderzoeksvraag</h2>
+    <div class="vraag-text">Hoeveel studenten stromen in? {% if true %}ja{% endif %} &lt;script&gt;alert(1)&lt;/script&gt; &amp; meer</div>
+  </div>
+  <div class="card">
+        <h2 class="section-label">Reikwijdte</h2>
+        <div class="scope-row"><div class="scope-col">
+        <h3 class="scope-title scope-yes">Wat dit rapport wel beantwoordt</h3>
+        <ul><li>De instroom per jaar</li></ul>
+      </div><div class="scope-col">
+        <h3 class="scope-title scope-no">Wat dit rapport niet beantwoordt</h3>
+        <ul><li>De reden van de keuze</li></ul>
+      </div></div>
+      </div>
+  <div class="card"><h2 class="section-label">Gekozen definities</h2><div class="def">
+       <span class="def-term">Instroom</span>
+       <div class="def-desc">Eerstejaars in het hoger onderwijs.</div>
+     </div><div class="def">
+       <span class="def-term">Peildatum</span>
+       <div class="def-desc"><ul class="def-lijst"><li>Telling op 1 oktober.</li><li>Voorlopige cijfers kunnen wijzigen.</li></ul></div>
+     </div></div>
+  <div class="card"><h2 class="section-label">Visualisaties</h2><div class="vis">
+       <h3 class="vis-title">Instroom per jaar</h3>
+       <div class="card"><div id="rp0" class="plot plot-auto"></div></div>
+    <script>(function(){function _o(v){return !!v&&typeof v==='object'&&!Array.isArray(v)}
+function _w(o,p){return Object.assign({},o,p)}
+function _c(v){return Array.isArray(v)?v.map(_c):typeof v==='string'&&/^(#000000|#000|black)$/i.test(v.trim())?'#F9FAFB':v}
+function _r(o,ks){o=_w(o);ks.forEach(function(k){if(k in o)o[k]=_c(o[k])});return o}
+function _dl(l){var t=l.title;if(_o(t))l.title=_w(t,{font:_w(t.font,{color:'#F9FAFB'})});
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_w(l[k],{gridcolor:'#374151',linecolor:'#4B5563'})});
+if(_o(l.legend))l.legend=_w(l.legend,{bgcolor:'rgba(31,41,55,0.8)',bordercolor:'#374151'});return l}
+function _dd(d){return Array.isArray(d)?d.map(function(t){if(!_o(t))return t;t=_w(t);if(_o(t.marker))t.marker=_r(t.marker,['color','colors']);if(_o(t.line))t.line=_r(t.line,['color']);return t}):d}
+function _wr(s,n){var r=[],c='';String(s).split(' ').forEach(function(x){if(c&&(c+' '+x).length>n){r.push(c);c=x}else c=c?c+' '+x:x});if(c)r.push(c);return r.join('<br>')}
+function _tf(a){return _w(a,{tickfont:_w(a.tickfont,{size:11})})}
+function _nl(l){l=_w(l);var t=l.title;if(_o(t)&&typeof t.text==='string'&&t.text.indexOf('<br>')<0){var s=_wr(t.text,42),n=s.split('<br>').length;l.title=_w(t,{text:s,font:_w(t.font,{size:14})});if(n>1){l.margin=_w(l.margin,{t:(l.margin&&l.margin.t||48)+17*(n-1)});if(t.yref==='container'&&t.yanchor==='top')l.title.pad=_w(t.pad,{t:10})}}
+if(_o(l.legend)){var lt=l.legend.title;l.legend=_w(l.legend,{font:_w(l.legend.font,{size:11})});if(_o(lt)&&lt.text||typeof lt==='string')l.legend.title=_w(_o(lt)?lt:{text:lt},{side:'top'})}
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_tf(l[k])});return l}
+function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,rij:0};
+d.forEach(function(t){if(_o(t)&&Array.isArray(t.y))t.y.forEach(function(v){if(typeof v==='string'&&c.indexOf(v)<0)c.push(v)})});
+var tt=c.map(function(v){return _wr(v,24)}),r=Math.max.apply(null,[1].concat(tt.map(function(v){return v.split('<br>').length})));if(r<2)return{layout:l,rij:0};
+return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),rij:c.length*(r*14+4)}}
+function _nx(l,d,w){var a=l.xaxis,c=[];if(!_o(a)||a.type!=='category'||a.tickvals||a.dtick||!Array.isArray(d))return l;
+d.forEach(function(t){if(_o(t)&&t.orientation!=='h'&&Array.isArray(t.x))t.x.forEach(function(v){v=String(v);if(c.indexOf(v)<0)c.push(v)})});
+if(c.length<3||!c.every(function(v){return /^\d{4}/.test(v)}))return l;
+var m=l.margin||{},p=Math.max(w-(m.l||60)-(m.r||24),1),n=Math.max.apply(null,c.map(function(v){return v.length})),k=Math.min(Math.ceil(c.length*(n*6.5+10)/p),c.length-1);
+return k>1?_w(l,{xaxis:_w(a,{tickmode:'linear',tick0:(c.length-1)%k,dtick:k})}):l}
+function _nd(d){return Array.isArray(d)?d.map(function(t){return _o(t)&&t.text!=null?_w(t,{textfont:_w(t.textfont,{size:11})}):t}):d}
+function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Math.max(220,rij)-s.h:0;if(tekort<1)return;var h=Math.round(e.getBoundingClientRect().height+tekort);e.style.height=h+'px';return Plotly.relayout(e,{height:h})}
+var f={"data":[{"type":"bar","x":["2022","2023"],"y":[470000,475460]}],"layout":{"meta":{"afrondingsnoot":"Afgerond op tientallen."}}},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=640,_e=document.getElementById('rp0'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:16,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>
+       <p class="vis-noot">Afgerond op tientallen.</p>
+       <p class="vis-bron">Bron: CBS, Hoger onderwijs (85353NED), 2023 · <a href="https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85353NED" target="_blank" rel="noopener noreferrer">Bekijk de bron bij CBS</a></p>
+       <p class="vis-note">De instroom steeg licht.</p>
+     </div><div class="vis">
+       <h3 class="vis-title">Instroom naar sector</h3>
+       <div class="card"><div id="rp1" class="plot plot-auto"></div></div>
+    <script>(function(){function _o(v){return !!v&&typeof v==='object'&&!Array.isArray(v)}
+function _w(o,p){return Object.assign({},o,p)}
+function _c(v){return Array.isArray(v)?v.map(_c):typeof v==='string'&&/^(#000000|#000|black)$/i.test(v.trim())?'#F9FAFB':v}
+function _r(o,ks){o=_w(o);ks.forEach(function(k){if(k in o)o[k]=_c(o[k])});return o}
+function _dl(l){var t=l.title;if(_o(t))l.title=_w(t,{font:_w(t.font,{color:'#F9FAFB'})});
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_w(l[k],{gridcolor:'#374151',linecolor:'#4B5563'})});
+if(_o(l.legend))l.legend=_w(l.legend,{bgcolor:'rgba(31,41,55,0.8)',bordercolor:'#374151'});return l}
+function _dd(d){return Array.isArray(d)?d.map(function(t){if(!_o(t))return t;t=_w(t);if(_o(t.marker))t.marker=_r(t.marker,['color','colors']);if(_o(t.line))t.line=_r(t.line,['color']);return t}):d}
+function _wr(s,n){var r=[],c='';String(s).split(' ').forEach(function(x){if(c&&(c+' '+x).length>n){r.push(c);c=x}else c=c?c+' '+x:x});if(c)r.push(c);return r.join('<br>')}
+function _tf(a){return _w(a,{tickfont:_w(a.tickfont,{size:11})})}
+function _nl(l){l=_w(l);var t=l.title;if(_o(t)&&typeof t.text==='string'&&t.text.indexOf('<br>')<0){var s=_wr(t.text,42),n=s.split('<br>').length;l.title=_w(t,{text:s,font:_w(t.font,{size:14})});if(n>1){l.margin=_w(l.margin,{t:(l.margin&&l.margin.t||48)+17*(n-1)});if(t.yref==='container'&&t.yanchor==='top')l.title.pad=_w(t.pad,{t:10})}}
+if(_o(l.legend)){var lt=l.legend.title;l.legend=_w(l.legend,{font:_w(l.legend.font,{size:11})});if(_o(lt)&&lt.text||typeof lt==='string')l.legend.title=_w(_o(lt)?lt:{text:lt},{side:'top'})}
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_tf(l[k])});return l}
+function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,rij:0};
+d.forEach(function(t){if(_o(t)&&Array.isArray(t.y))t.y.forEach(function(v){if(typeof v==='string'&&c.indexOf(v)<0)c.push(v)})});
+var tt=c.map(function(v){return _wr(v,24)}),r=Math.max.apply(null,[1].concat(tt.map(function(v){return v.split('<br>').length})));if(r<2)return{layout:l,rij:0};
+return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),rij:c.length*(r*14+4)}}
+function _nx(l,d,w){var a=l.xaxis,c=[];if(!_o(a)||a.type!=='category'||a.tickvals||a.dtick||!Array.isArray(d))return l;
+d.forEach(function(t){if(_o(t)&&t.orientation!=='h'&&Array.isArray(t.x))t.x.forEach(function(v){v=String(v);if(c.indexOf(v)<0)c.push(v)})});
+if(c.length<3||!c.every(function(v){return /^\d{4}/.test(v)}))return l;
+var m=l.margin||{},p=Math.max(w-(m.l||60)-(m.r||24),1),n=Math.max.apply(null,c.map(function(v){return v.length})),k=Math.min(Math.ceil(c.length*(n*6.5+10)/p),c.length-1);
+return k>1?_w(l,{xaxis:_w(a,{tickmode:'linear',tick0:(c.length-1)%k,dtick:k})}):l}
+function _nd(d){return Array.isArray(d)?d.map(function(t){return _o(t)&&t.text!=null?_w(t,{textfont:_w(t.textfont,{size:11})}):t}):d}
+function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Math.max(220,rij)-s.h:0;if(tekort<1)return;var h=Math.round(e.getBoundingClientRect().height+tekort);e.style.height=h+'px';return Plotly.relayout(e,{height:h})}
+var f={"data":[{"type":"bar","x":["hbo","wo"],"y":[1,2]}],"layout":{}},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=640,_e=document.getElementById('rp1'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>
+       
+       <p class="vis-bron">Bron: DUO, Ingeschrevenen</p>
+       
+     </div><div class="vis">
+       <h3 class="vis-title">Visualisatie 3</h3>
+       <div class="card"><div id="rp2" class="plot plot-auto"></div></div>
+    <script>(function(){function _o(v){return !!v&&typeof v==='object'&&!Array.isArray(v)}
+function _w(o,p){return Object.assign({},o,p)}
+function _c(v){return Array.isArray(v)?v.map(_c):typeof v==='string'&&/^(#000000|#000|black)$/i.test(v.trim())?'#F9FAFB':v}
+function _r(o,ks){o=_w(o);ks.forEach(function(k){if(k in o)o[k]=_c(o[k])});return o}
+function _dl(l){var t=l.title;if(_o(t))l.title=_w(t,{font:_w(t.font,{color:'#F9FAFB'})});
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_w(l[k],{gridcolor:'#374151',linecolor:'#4B5563'})});
+if(_o(l.legend))l.legend=_w(l.legend,{bgcolor:'rgba(31,41,55,0.8)',bordercolor:'#374151'});return l}
+function _dd(d){return Array.isArray(d)?d.map(function(t){if(!_o(t))return t;t=_w(t);if(_o(t.marker))t.marker=_r(t.marker,['color','colors']);if(_o(t.line))t.line=_r(t.line,['color']);return t}):d}
+function _wr(s,n){var r=[],c='';String(s).split(' ').forEach(function(x){if(c&&(c+' '+x).length>n){r.push(c);c=x}else c=c?c+' '+x:x});if(c)r.push(c);return r.join('<br>')}
+function _tf(a){return _w(a,{tickfont:_w(a.tickfont,{size:11})})}
+function _nl(l){l=_w(l);var t=l.title;if(_o(t)&&typeof t.text==='string'&&t.text.indexOf('<br>')<0){var s=_wr(t.text,42),n=s.split('<br>').length;l.title=_w(t,{text:s,font:_w(t.font,{size:14})});if(n>1){l.margin=_w(l.margin,{t:(l.margin&&l.margin.t||48)+17*(n-1)});if(t.yref==='container'&&t.yanchor==='top')l.title.pad=_w(t.pad,{t:10})}}
+if(_o(l.legend)){var lt=l.legend.title;l.legend=_w(l.legend,{font:_w(l.legend.font,{size:11})});if(_o(lt)&&lt.text||typeof lt==='string')l.legend.title=_w(_o(lt)?lt:{text:lt},{side:'top'})}
+Object.keys(l).forEach(function(k){if(/^[xy]axis\d*$/.test(k)&&_o(l[k]))l[k]=_tf(l[k])});return l}
+function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,rij:0};
+d.forEach(function(t){if(_o(t)&&Array.isArray(t.y))t.y.forEach(function(v){if(typeof v==='string'&&c.indexOf(v)<0)c.push(v)})});
+var tt=c.map(function(v){return _wr(v,24)}),r=Math.max.apply(null,[1].concat(tt.map(function(v){return v.split('<br>').length})));if(r<2)return{layout:l,rij:0};
+return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),rij:c.length*(r*14+4)}}
+function _nx(l,d,w){var a=l.xaxis,c=[];if(!_o(a)||a.type!=='category'||a.tickvals||a.dtick||!Array.isArray(d))return l;
+d.forEach(function(t){if(_o(t)&&t.orientation!=='h'&&Array.isArray(t.x))t.x.forEach(function(v){v=String(v);if(c.indexOf(v)<0)c.push(v)})});
+if(c.length<3||!c.every(function(v){return /^\d{4}/.test(v)}))return l;
+var m=l.margin||{},p=Math.max(w-(m.l||60)-(m.r||24),1),n=Math.max.apply(null,c.map(function(v){return v.length})),k=Math.min(Math.ceil(c.length*(n*6.5+10)/p),c.length-1);
+return k>1?_w(l,{xaxis:_w(a,{tickmode:'linear',tick0:(c.length-1)%k,dtick:k})}):l}
+function _nd(d){return Array.isArray(d)?d.map(function(t){return _o(t)&&t.text!=null?_w(t,{textfont:_w(t.textfont,{size:11})}):t}):d}
+function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Math.max(220,rij)-s.h:0;if(tekort<1)return;var h=Math.round(e.getBoundingClientRect().height+tekort);e.style.height=h+'px';return Plotly.relayout(e,{height:h})}
+var f={"data":[],"layout":{}},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=640,_e=document.getElementById('rp2'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>
+       
+       <p class="vis-bron">Bron niet vastgesteld</p>
+       
+     </div></div>
+  <div class="card conf">
+        <h2 class="section-label">Conclusie</h2>
+        <div class="prose"><p><h3>Kern</h3><br>De instroom is <strong>stabiel</strong> {{ geheim }}.<br><li>2023: 475.460</li><br><li>2024: 476.000</li></p><p>| Jaar | Instroom |<br>|---|---:|<br>| 2023 | <strong>475.460</strong> |<br>| 2024 | 476.000 |</p><p>Meer is er niet &amp; &lt;b&gt;niet&lt;/b&gt; vet.</p></div>
+      </div>
+  <div class="card">
+        <h2 class="section-label">Bronnen</h2>
+        <ol class="bronnen"><li>CBS StatLine 85353NED</li><li>DUO Ingeschrevenen</li></ol>
+      </div>
+</div>
+<div class="manifest">
+    <div>Verantwoording: model gpt-4.1 · prompt abc123 · app 2.8.0</div>
+    <div>Dataversie: CBS 85353NED (bijgewerkt 2026-10-01)</div>
+  </div>
+<div class="footer">Gegenereerd door openEDUdata+ · Gebaseerd op open onderwijsdata</div>
+<script>(function(){
+  var H=document.documentElement,B=document.body;
+  function plots(){return Array.prototype.slice.call(document.querySelectorAll('.js-plotly-plot'))}
+  function voorbereiden(){
+    H.setAttribute('data-print-thema',H.classList.contains('dark')?'dark':H.classList.contains('light')?'light':'');
+    H.classList.remove('dark');H.classList.add('light');
+    B.style.width='680px';
+    if(window.Plotly)plots().forEach(function(e){Plotly.relayout(e,{width:680,height:Math.min(e.getBoundingClientRect().height||330,330)})});
+  }
+  function herstellen(){
+    var t=H.getAttribute('data-print-thema');H.classList.remove('light');if(t)H.classList.add(t);H.removeAttribute('data-print-thema');
+    B.style.width='';
+    if(window.Plotly)plots().forEach(function(e){Plotly.relayout(e,{width:null,height:null,autosize:true})});
+  }
+  window.__edudataPrint={voorbereiden:voorbereiden,herstellen:herstellen};
+  window.addEventListener('afterprint',herstellen);
+  window.addEventListener('message',function(ev){if(ev.source!==window.parent||ev.data!=='edudata:print')return;voorbereiden();setTimeout(function(){window.print()},150)});
+})()</script>
+</body></html>

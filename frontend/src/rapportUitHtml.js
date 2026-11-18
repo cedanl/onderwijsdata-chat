@@ -2,6 +2,8 @@
 // (reportHtml.js, ChatPage); de spec is na het bewaren weg. DOMParser bouwt een inert document: geen script loopt,
 // en er komt alleen tekst uit, plus een link die een http(s)-adres is (bronLink.js). Zo werkt het ook voor een
 // rapport van vóór deze build. Een onderdeel dat een ouder rapport niet heeft, blijft leeg.
+// De server heeft een Python-tweeling voor "Download als Word" (tools/rapport_docx/uit_html.py, #1038): een wijziging
+// hier hoort daar ook; tests/fixtures/rapport_docx houdt beide gelijk (rapportDocxPariteit.test.js).
 import { veiligeBronUrl } from './bronLink'
 
 const tekst = el => (el?.textContent || '').replace(/\s+/g, ' ').trim()

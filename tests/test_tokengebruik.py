@@ -2,8 +2,8 @@
 
 Er werd niets gelogd van wat een run kostte, dus geen kostenattributie en geen budgetbewaking. LiteLLM meldt
 het gebruik op de laatste chunk: als `usage` met `stream_options.include_usage`, anders in
-`_hidden_params["usage"]`. Anthropic en Azure AI kennen `stream_options` niet (drop_params laat het vallen),
-dus de app leest beide.
+`_hidden_params["usage"]`; de app leest beide. Bij streaming zijn de cachevelden bovenin leeg en staat de cache
+alleen in `prompt_tokens_details` (#1027).
 """
 
 import asyncio
@@ -55,6 +55,77 @@ def test_een_chunk_met_alleen_gebruik_en_zonder_keuzes():
     sr = asyncio.run(accumulate_stream(_stream(_chunk("Ja", "stop"), _chunk(choices=False, usage=_usage(10, 2)))))
     assert sr.text == "Ja"
     assert sr.tokens == Tokens(invoer=10, uitvoer=2)
+
+
+def _streaminggebruik(invoer, uitvoer, details):
+    """Zoals LiteLLM het gebruik bij streaming meldt: de cachevelden bovenin leeg, de cache in de details (#1027)."""
+    return SimpleNamespace(
+        prompt_tokens=invoer,
+        completion_tokens=uitvoer,
+        cache_read_input_tokens=None,
+        cache_creation_input_tokens=None,
+        prompt_tokens_details=details,
+    )
+
+
+def _tokens_van(usage):
+    return asyncio.run(accumulate_stream(_stream(_chunk("Ja", "stop", verborgen=usage)))).tokens
+
+
+def test_bij_streaming_komt_de_gelezen_cache_uit_de_details():
+    usage = _streaminggebruik(34620, 412, SimpleNamespace(cached_tokens=34535))
+    assert _tokens_van(usage) == Tokens(invoer=34620, uitvoer=412, cache_gelezen=34535, cache_geschreven=0)
+
+
+def test_gebruik_en_details_als_gewone_dicts():
+    usage = {
+        "prompt_tokens": 34620,
+        "completion_tokens": 412,
+        "cache_read_input_tokens": None,
+        "cache_creation_input_tokens": None,
+        "prompt_tokens_details": {"cached_tokens": 34535, "cache_write_tokens": 85},
+    }
+    assert _tokens_van(usage) == Tokens(invoer=34620, uitvoer=412, cache_gelezen=34535, cache_geschreven=85)
+
+
+def test_details_als_dict_in_een_gebruiksobject():
+    usage = _streaminggebruik(500, 20, {"cached_tokens": 400})
+    assert _tokens_van(usage) == Tokens(invoer=500, uitvoer=20, cache_gelezen=400)
+
+
+def test_geschreven_cache_uit_cache_write_tokens():
+    usage = _streaminggebruik(2000, 10, SimpleNamespace(cached_tokens=0, cache_write_tokens=1800))
+    assert _tokens_van(usage) == Tokens(invoer=2000, uitvoer=10, cache_geschreven=1800)
+
+
+def test_geschreven_cache_uit_cache_creation_tokens():
+    """Oudere LiteLLM-versies noemen het veld `cache_creation_tokens`."""
+    usage = _streaminggebruik(2000, 10, SimpleNamespace(cached_tokens=0, cache_creation_tokens=1700))
+    assert _tokens_van(usage) == Tokens(invoer=2000, uitvoer=10, cache_geschreven=1700)
+
+
+def test_cache_write_tokens_gaat_voor_cache_creation_tokens():
+    details = SimpleNamespace(cached_tokens=0, cache_write_tokens=1800, cache_creation_tokens=1700)
+    assert _tokens_van(_streaminggebruik(2000, 10, details)).cache_geschreven == 1800
+
+
+def test_de_velden_bovenin_gaan_voor_de_details():
+    """Beide beschrijven dezelfde tokens: bovenin wint, ook een echte 0, en er wordt nooit opgeteld."""
+    usage = _usage(1200, 80, gelezen=1000, geschreven=0)
+    usage.prompt_tokens_details = SimpleNamespace(cached_tokens=999, cache_write_tokens=7)
+    assert _tokens_van(usage) == Tokens(invoer=1200, uitvoer=80, cache_gelezen=1000, cache_geschreven=0)
+
+
+def test_zonder_details_geen_cache():
+    assert _tokens_van(_streaminggebruik(300, 5, None)) == Tokens(invoer=300, uitvoer=5)
+    zonder_veld = SimpleNamespace(prompt_tokens=300, completion_tokens=5)
+    assert _tokens_van(zonder_veld) == Tokens(invoer=300, uitvoer=5)
+    assert _tokens_van({"prompt_tokens": 300, "completion_tokens": 5}) == Tokens(invoer=300, uitvoer=5)
+
+
+def test_details_met_lege_velden_geven_nul():
+    details = SimpleNamespace(cached_tokens=None, cache_write_tokens=None, cache_creation_tokens=None)
+    assert _tokens_van(_streaminggebruik(300, 5, details)) == Tokens(invoer=300, uitvoer=5)
 
 
 def test_zonder_gemeld_gebruik_nul():
