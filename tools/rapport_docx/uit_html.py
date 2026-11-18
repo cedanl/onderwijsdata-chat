@@ -17,6 +17,8 @@ from typing import Literal, TypeGuard
 from lxml import html as lxml_html
 
 _HTTP_URL = re.compile(r"^https?://", re.IGNORECASE)
+# Een stuurteken of een teken dat XML niet toestaat kan niet in de koppeling van het document (lxml weigert het).
+_ONGELDIG_IN_URL = re.compile(r"[\x00-\x1f\x7f\ud800-\udfff\ufffe\uffff]")
 _KOP = re.compile(r"^h[1-6]$")
 _SCHEIDING = re.compile(r"^\|(\s*:?-+:?\s*\|)+$")
 
@@ -95,8 +97,13 @@ def _teksten(root, xpath: str) -> tuple[str, ...]:
 
 
 def veilige_url(url: object) -> str | None:
-    """Het adres als het een http(s)-adres is, anders None (veiligeBronUrl in bronLink.js)."""
-    return url if isinstance(url, str) and _HTTP_URL.match(url) else None
+    """Het adres als het een http(s)-adres is, anders None (veiligeBronUrl in bronLink.js).
+
+    Strenger dan de JS-tweeling: een adres met een stuurteken wordt geen link, want het moet in de XML van het document.
+    """
+    if not isinstance(url, str) or not _HTTP_URL.match(url) or _ONGELDIG_IN_URL.search(url):
+        return None
+    return url
 
 
 def _definitie(el) -> Definitie:

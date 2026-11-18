@@ -4,8 +4,10 @@ Hetzelfde vaste rapport als de JS-test (tests/fixtures/rapport_docx): beide leze
 conclusie gaat daarna naar blokken, met een pipetabel als echte tabel.
 """
 
+import pytest
+
 from tests.rapport_docx_hulp import RAPPORT_HTML, RAPPORT_JS
-from tools.rapport_docx.uit_html import Blok, conclusie_blokken, kan_docx, rapport_uit_html
+from tools.rapport_docx.uit_html import Blok, conclusie_blokken, kan_docx, rapport_uit_html, veilige_url
 
 
 def _als_js(r) -> dict:
@@ -78,6 +80,18 @@ def test_alleen_een_http_adres_wordt_een_link():
     a, b = rapport_uit_html(html).visualisaties
     assert (a.bron.regel, a.bron.url) == ("Bron: X", None)
     assert (b.bron.regel, b.bron.url, b.bron.link_tekst) == ("Bron: Y", "https://example.org/y", "Bekijk")
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://ok.nl/\x01x", "https://ok.nl/\x07", "https://ok.nl/a\nb", "https://ok.nl/\x7f", "https://ok.nl/\ufffe"],
+)
+def test_een_adres_met_een_stuurteken_wordt_geen_link(url):
+    assert veilige_url(url) is None
+
+
+def test_een_gewoon_adres_blijft_een_link():
+    assert veilige_url("https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85353NED?a=1&b=é") is not None
 
 
 def test_een_script_in_het_rapport_is_alleen_tekst():

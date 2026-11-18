@@ -108,6 +108,15 @@ def test_alleen_de_bronlink_is_een_link():
     assert b"javascript:" not in zipfile.ZipFile(BytesIO(data)).read("word/document.xml")
 
 
+def test_een_bronlink_met_een_stuurteken_wordt_tekst_zonder_link():
+    html = RAPPORT_HTML.replace(
+        'href="https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85353NED"', 'href="https://ok.nl/&#1;x"'
+    )
+    doc, data = _document(html)
+    assert zipfile.ZipFile(BytesIO(data)).testzip() is None
+    assert not [r for r in doc.part.rels.values() if r.reltype.endswith("/hyperlink")]
+
+
 def test_grafieken_staan_in_de_volgorde_van_het_rapport():
     breed, hoog = grafiek(png(8, 2)), grafiek(png(2, 8))
     doc, _ = _document(grafieken={0: breed, 2: hoog})
