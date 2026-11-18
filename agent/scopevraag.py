@@ -18,6 +18,9 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
   koos dan stilzwijgend een afbakening; de kaart vraagt landelijk of per sector. Een instelling of regio noemt de
   gebruiker via "Anders formuleren".
 
+Een vraag die zelf een dataset noemt (het woord dataset of catalogus, of een ID als `85421NED` of
+`studentenwelzijn_2025`) krijgt geen kaart (#1021): de gebruiker koos de data al.
+
 De opties komen uit het register en de catalogus, dus ze zijn altijd geldig; het model formuleert na
 de keuze het antwoord en beslist niet óf de vraag komt. Een vraag kan zo tot `MAX_CLARIFY_RONDES` kaarten achter
 elkaar krijgen (de beurt leest de vraag samen met de gekozen opties), maar een slot komt nooit twee keer, en een
@@ -298,6 +301,32 @@ _AFBAKENING_OPTIES = [
 ]
 
 
+# Een vraag die zelf een dataset noemt (#1021): de gebruiker koos de data al, dus geen kaart.
+_DATASET_WOORD = re.compile(r"\b(datasets?|catalogus)\b", re.IGNORECASE)
+# Een token in de vorm van een ID, ook als de catalogus het niet kent: letters met een cijfer of liggend streepje,
+# minstens vijf tekens, eventueel met bronvoorvoegsel (`studentenwelzijn_2025`, `85421NED`, `cbs:85423NED`).
+_ID_VORM = re.compile(r"(?:[a-z]+:)?(?=[a-z0-9_]*[a-z])(?=[a-z0-9_]*[\d_])[a-z0-9_]{5,}", re.IGNORECASE)
+_ID_RAND = "'’‘\"“”`(),.;:!?"
+# Een keuze op een kaart uit code is tekst van code, geen dataset die de gebruiker noemt (#968).
+_CODELABELS = tuple(optie["label"] for optie in (*_FASE_OPTIES, *_AFBAKENING_OPTIES))
+
+
+def _id_kandidaten(tekst: str) -> list[str]:
+    """De woorden met een letter en een cijfer of liggend streepje: een jaartal of "2023/24" is geen ID."""
+    woorden = (w.strip(_ID_RAND) for w in tekst.split())
+    return [w for w in woorden if re.search(r"[^\W\d_]", w) and re.search(r"[\d_]", w)]
+
+
+def noemt_dataset(vraag: str) -> bool:
+    """Noemt de vraag zelf een dataset: het woord dataset of catalogus, een ID uit de catalogus (in elke spelling,
+    ook `wi-2021`) of een woord in de vorm van een ID? Een gewoon woord als "erkenningen" telt niet."""
+    for label in _CODELABELS:
+        vraag = vraag.replace(label, " ")
+    if _DATASET_WOORD.search(vraag):
+        return True
+    return any(_ID_VORM.fullmatch(w) or catalog.kent_dataset_id(w) for w in _id_kandidaten(vraag))
+
+
 def _eigennaam(vraag: str) -> bool:
     """Staat er midden in de zin een woord met een hoofdletter (een plaats, opleiding of afkorting)?"""
     woorden = [_kaal(w).strip("?!") for w in vraag.split()[1:]]
@@ -307,7 +336,7 @@ def _eigennaam(vraag: str) -> bool:
 def afbakeningsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
     """De afbakeningskaart voor een telling van personen zonder instelling, sector of gebied; anders None."""
     settings = settings or {}
-    if not (_TELLING.search(vraag) and _PERSONEN.search(vraag)):
+    if not (_TELLING.search(vraag) and _PERSONEN.search(vraag)) or noemt_dataset(vraag):
         return None
     if _AFGEBAKEND.search(vraag) or _eigennaam(vraag) or instelling.genoemde_namen(vraag):
         return None
@@ -324,7 +353,10 @@ def afbakeningsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
 def scopevraag(vraag: str, settings: dict | None = None, eerder: Iterable[str] = ()) -> Kaart | None:
     """De vaste eerste stap voor een vraag met een open slot; None als code niets te vragen heeft.
 
-    `vraag` is de vraag samen met de keuzes van eerdere kaarten; `eerder` zijn de slots die al gevraagd zijn."""
+    `vraag` is de vraag samen met de keuzes van eerdere kaarten; `eerder` zijn de slots die al gevraagd zijn. Een
+    vraag die zelf een dataset noemt, krijgt geen kaart van welk slot ook (#1021)."""
+    if noemt_dataset(vraag):
+        return None
     gevraagd = set(eerder)
     stappen = (
         ("scope", lambda: plaatsvraag(vraag, settings)),
