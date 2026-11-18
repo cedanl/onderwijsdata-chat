@@ -343,7 +343,7 @@ def test_valt_de_bronnenlijst_uit_dan_blijft_de_eigen_sectie(monkeypatch):
     assert "**Bronnen**\n- DUO p01hoinges" in einde["content"]
 
 
-@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, WEIGER_ANTWOORD])
+@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, run_module.GEWEIGERD_ANTWOORD, WEIGER_ANTWOORD])
 def test_een_vast_antwoord_krijgt_nooit_bronnen(vast):
     """Ook als de beurt data las: een vast antwoord uit code rust er niet op, dus geen dataantwoord."""
     assert run_module._slotbericht(vast, LoopResult(), [], False, [_DUO])["bronnen"] == []
@@ -488,7 +488,7 @@ def test_slotbericht_zonder_links_heeft_geen_bronlinks():
     assert "bronlinks" not in run_module._slotbericht(_ANTWOORD, LoopResult(), [], False, [_DUO])
 
 
-@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, WEIGER_ANTWOORD])
+@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, run_module.GEWEIGERD_ANTWOORD, WEIGER_ANTWOORD])
 def test_een_vast_antwoord_krijgt_nooit_links(vast):
     einde = run_module._slotbericht(vast, LoopResult(), [], False, [_DUO], bronlinks={_DUO: _DUO_URL})
 

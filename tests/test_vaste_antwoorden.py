@@ -136,7 +136,7 @@ def test_run_vervangt_een_verzonnen_feit_zonder_tools(monkeypatch):
 # --- vast: geen model als afzender (#565) ---------------------------------------------------
 
 
-@pytest.mark.parametrize("vast", [WEIGER_ANTWOORD, SCOPE_UITLEG])
+@pytest.mark.parametrize("vast", [WEIGER_ANTWOORD, SCOPE_UITLEG, run_module.GEWEIGERD_ANTWOORD])
 def test_een_vast_antwoord_uit_code_heeft_vast_in_het_slotbericht(vast):
     """De tekst komt uit code: de frontend zet er geen "Antwoord van <model>" onder."""
     assert run_module._slotbericht(vast, LoopResult(), [], False, [])["vast"] is True
