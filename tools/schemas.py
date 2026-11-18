@@ -583,11 +583,24 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "object",
                         "additionalProperties": {
                             "type": "string",
-                            "enum": ["sum", "mean", "count", "nunique", "size", "min", "max"],
+                            "enum": ["sum", "mean", "weighted_mean", "count", "nunique", "size", "min", "max"],
                         },
                         "description": (
                             'Aggregatiefuncties per kolom, bijv. {"AANTAL": "sum"}. Alleen samen met \'group_by\'. '
-                            "count = niet-lege waarden, nunique = verschillende waarden, size = rijen (ook lege)."
+                            "count = niet-lege waarden, nunique = verschillende waarden, size = rijen (ook lege). "
+                            "weighted_mean = gewogen gemiddelde, som(waarde × gewicht) / som(gewicht), met de "
+                            "gewichtskolom in 'weights': voor een score of percentage per groep, bijv. "
+                            '{"nse_algemeen": "weighted_mean"} met weights={"nse_algemeen": "nse_respondenten"}. '
+                            "Aantallen tel je op met sum."
+                        ),
+                    },
+                    "weights": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                        "description": (
+                            "Alleen bij weighted_mean: per kolom de gewichtskolom (een aantal, zoals respondenten "
+                            'of studenten), bijv. {"nse_algemeen": "nse_respondenten"}. Een rij zonder waarde of '
+                            "gewicht telt niet mee; de app kiest nooit zelf een gewicht."
                         ),
                     },
                 },

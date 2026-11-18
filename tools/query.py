@@ -39,10 +39,13 @@ from .rio import rio_filters
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
-_ALLOWED_AGG = {"sum", "mean", "count", "nunique", "size", "min", "max"}
+GEWOGEN = "weighted_mean"
+_ALLOWED_AGG = {"sum", "mean", GEWOGEN, "count", "nunique", "size", "min", "max"}
 # Alleen deze rekenen met getallen. count, nunique en size tellen de oorspronkelijke
 # waarden: een tekst- of UUID-kolom numeriek maken gaf overal 0 (#411).
-NUMERIEKE_AGG = frozenset({"sum", "mean", "min", "max"})
+NUMERIEKE_AGG = frozenset({"sum", "mean", GEWOGEN, "min", "max"})
+# Hulpkolommen van een gewogen gemiddelde tijdens de groepering; ze komen nooit in het resultaat (#1017).
+_TELLER, _NOEMER = "__gewogen_teller__", "__gewogen_noemer__"
 
 # Grenzen voor de suggesties bij een leeg filterresultaat. Het scannen van
 # unieke waarden is lineair in de kolomlengte, vandaar een bovengrens.
@@ -60,9 +63,15 @@ def _coerce_pair(a, b):
         return str(a).lower(), str(b).lower()
 
 
-def _stap(filters, columns, group_by, aggregate) -> str:
+def _stap(filters, columns, group_by, aggregate, weights=None) -> str:
     """De selectie in woorden, met de argumenten zoals het model ze gaf (#118)."""
-    delen = [("filters", filters), ("kolommen", columns), ("groepering", group_by), ("aggregatie", aggregate)]
+    delen = [
+        ("filters", filters),
+        ("kolommen", columns),
+        ("groepering", group_by),
+        ("aggregatie", aggregate),
+        ("gewichten", weights),
+    ]
     return "; ".join(
         f"{naam} {json.dumps(waarde, ensure_ascii=False, default=str)}" for naam, waarde in delen if waarde
     )
@@ -173,7 +182,7 @@ def _nevenlocaties(df: pd.DataFrame, verbreed: list[tuple[str, list, frozenset[s
     )
 
 
-def _validate_aggregation(df, group_by, aggregate):
+def _validate_aggregation(df, group_by, aggregate, weights=None):
     if bool(group_by) != bool(aggregate):
         return "group_by en aggregate moeten samen worden meegegeven."
     missing_gb = [c for c in group_by if c not in df.columns]
@@ -185,6 +194,44 @@ def _validate_aggregation(df, group_by, aggregate):
     bad_fns = {f for f in aggregate.values() if f not in _ALLOWED_AGG}
     if bad_fns:
         return f"Ongeldige aggregatiefuncties: {bad_fns}. Toegestaan: {sorted(_ALLOWED_AGG)}"
+    return _gewichtfout(df, group_by, aggregate, weights or {})
+
+
+_GEWICHT_VOORBEELD = (
+    'bijv. aggregate={"nse_algemeen": "weighted_mean"} met weights={"nse_algemeen": "nse_respondenten"}'
+)
+
+
+def _gewichtfout(df, group_by, aggregate, weights) -> str | None:
+    """Waarom de gewichten niet bruikbaar zijn, of None (#1017). Het model kiest het gewicht; de code toetst het."""
+    if not isinstance(weights, dict):
+        return f"weights is een object met per kolom van weighted_mean de gewichtskolom, {_GEWICHT_VOORBEELD}."
+    if zonder := [c for c, fn in aggregate.items() if fn == GEWOGEN and not weights.get(c)]:
+        return (
+            f"weighted_mean vraagt een gewicht in weights voor {zonder}: de kolom met het aantal waarnaar je weegt "
+            f"(respondenten, studenten), {_GEWICHT_VOORBEELD}. Zonder gewicht: gebruik 'mean' (ongewogen)."
+        )
+    if los := [c for c in weights if aggregate.get(c) != GEWOGEN]:
+        return f"weights geldt alleen voor kolommen met weighted_mean in aggregate; niet voor {los}."
+    for kolom, gewicht in weights.items():
+        if fout := _gewichtskolomfout(df, group_by, kolom, gewicht):
+            return fout
+    return None
+
+
+def _gewichtskolomfout(df, group_by, kolom: str, gewicht) -> str | None:
+    if not isinstance(gewicht, str) or gewicht not in df.columns:
+        return f"Gewichtskolom {gewicht!r} voor '{kolom}' niet gevonden. Beschikbaar: {list(df.columns)}"
+    if gewicht in group_by:
+        return f"Gewichtskolom '{gewicht}' staat ook in group_by: weeg naar een kolom die je niet groepeert."
+    getallen = pd.to_numeric(df[gewicht], errors="coerce")
+    if getallen.isna().all():
+        return f"Gewichtskolom '{gewicht}' voor '{kolom}' is niet numeriek: geen enkele waarde is een getal."
+    if (getallen < 0).any():
+        return (
+            f"Gewichtskolom '{gewicht}' voor '{kolom}' heeft een negatieve waarde: een gewicht is een aantal "
+            "(respondenten, studenten), geen verschil of saldo."
+        )
     return None
 
 
@@ -193,13 +240,53 @@ def _som_of_leeg(series):
     return series.sum(min_count=1)
 
 
-def _apply_aggregation(df, group_by, aggregate):
+def _gewichten(aggregate, weights) -> dict[str, str]:
+    """Per kolom met weighted_mean de gewichtskolom (na de validatie altijd aanwezig)."""
+    return {col: (weights or {})[col] for col, fn in aggregate.items() if fn == GEWOGEN}
+
+
+def _bruikbaar(df, col: str, gewicht: str) -> tuple[pd.Series, pd.Series]:
+    """(waarde, gewicht) als getallen, leeg waar een van beide leeg of onleesbaar is: die rij telt niet mee."""
+    waarde, w = pd.to_numeric(df[col], errors="coerce"), pd.to_numeric(df[gewicht], errors="coerce")
+    beide = waarde.notna() & w.notna()
+    return waarde.where(beide), w.where(beide)
+
+
+def _gewogen_hulpkolommen(df, gewogen: dict[str, str]) -> dict[str, pd.Series]:
+    """Per gewogen kolom de teller (waarde * gewicht) en de noemer (gewicht), alleen op bruikbare rijen."""
+    hulp = {}
+    for col, gewicht in gewogen.items():
+        waarde, w = _bruikbaar(df, col, gewicht)
+        hulp[_TELLER + col], hulp[_NOEMER + col] = waarde * w, w
+    return hulp
+
+
+def _deel_gewogen(agg, gewogen: dict[str, str]):
+    """Teller door noemer per groep, onder de naam van de waardekolom; noemer leeg of 0 geeft null, nooit 0."""
+    for col in gewogen:
+        noemer = agg.pop(_NOEMER + col)
+        agg[_TELLER + col] = agg[_TELLER + col] / noemer.where(noemer != 0)
+    return agg.rename(columns={_TELLER + col: col for col in gewogen})
+
+
+def _apply_aggregation(df, group_by, aggregate, weights=None):
     df = df.copy()
     for col, fn in aggregate.items():
         if fn in NUMERIEKE_AGG:
             df[col] = pd.to_numeric(df[col], errors="coerce")
-    fns = {col: _som_of_leeg if fn == "sum" else fn for col, fn in aggregate.items()}
-    return df.groupby(group_by, dropna=False).agg(fns).reset_index()
+    gewogen = _gewichten(aggregate, weights)
+    fns: dict = {}
+    for col, fn in aggregate.items():
+        if fn == GEWOGEN:
+            fns[_TELLER + col] = fns[_NOEMER + col] = _som_of_leeg
+        else:
+            fns[col] = _som_of_leeg if fn == "sum" else fn
+    df = df.assign(**_gewogen_hulpkolommen(df, gewogen))
+    return _deel_gewogen(df.groupby(group_by, dropna=False).agg(fns).reset_index(), gewogen)
+
+
+def _groepsnamen(rijen, group_by) -> str:
+    return ", ".join("/".join(f"{g}={rij[g]}" for g in group_by) for rij in rijen[group_by].to_dict(orient="records"))
 
 
 def _lege_groepen_noten(agg, group_by, aggregate) -> list[str]:
@@ -208,13 +295,28 @@ def _lege_groepen_noten(agg, group_by, aggregate) -> list[str]:
     for col, fn in aggregate.items():
         if fn != "sum" or not (leeg := agg[agg[col].isna()]).size:
             continue
-        groepen = ", ".join(
-            "/".join(f"{g}={rij[g]}" for g in group_by) for rij in leeg[group_by].to_dict(orient="records")
-        )
         noten.append(
-            f"'{col}' is voor {groepen} volledig onderdrukt of leeg (null): niet vast te stellen. "
-            "Noem dit 'onderdrukt', nooit 0."
+            f"'{col}' is voor {_groepsnamen(leeg, group_by)} volledig onderdrukt of leeg (null): niet vast te "
+            "stellen. Noem dit 'onderdrukt', nooit 0."
         )
+    return noten
+
+
+def _gewogen_noten(df, agg, group_by, aggregate, weights) -> list[str]:
+    """Per gewogen kolom de rijen die niet meetelden en de groepen zonder één bruikbare rij (null, nooit 0) (#1017)."""
+    noten = []
+    for col, gewicht in _gewichten(aggregate, weights).items():
+        waarde, _ = _bruikbaar(df, col, gewicht)
+        if n := int(waarde.isna().sum()):
+            noten.append(
+                f"'{col}' gewogen naar '{gewicht}': {n} rijen niet meegeteld in teller en noemer (lege of "
+                "onleesbare waarde of gewicht, ook onderdrukte cellen)."
+            )
+        if (leeg := agg[agg[col].isna()]).size:
+            noten.append(
+                f"'{col}' (gewogen gemiddelde) is voor {_groepsnamen(leeg, group_by)} leeg (null): geen rij met een "
+                f"waarde én een gewicht boven 0 in '{gewicht}'. Niet vast te stellen; noem dit 'onbekend', nooit 0."
+            )
     return noten
 
 
@@ -376,19 +478,22 @@ def _selectie(data_key: str, df: pd.DataFrame, known) -> _Selectie:
     )
 
 
-def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggregate) -> _Selectie | str:
+def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggregate, weights=None) -> _Selectie | str:
     """De groepering, met de cellen die meegaan naar elke groep; een foutmelding als ze niet kan."""
-    if err := _validate_aggregation(sel.df, group_by, aggregate):
+    if err := _validate_aggregation(sel.df, group_by, aggregate, weights):
         return err
     if err := next((f for c, fn in aggregate.items() if fn == "sum" and (f := optelbaar.somfout(data_key, c))), None):
         return err
     group_by = group_by or []  # na de validatie niet leeg: group_by en aggregate komen samen
-    agg = _apply_aggregation(sel.df, group_by, aggregate)
+    agg = _apply_aggregation(sel.df, group_by, aggregate, weights)
     # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
     # leest, en onderdrukte cellen in de selectie maken een totaal een ondergrens;
     # een gemiddelde, minimum of telling is alleen zonder die cellen berekend (#866).
-    notes = _onderdrukkingsnoten(duo.count_cells(sel.cells), aggregate, bron_ids.bron_van(data_key))
+    # Een gewichtskolom die zelf niet geaggregeerd wordt, telt als het gewogen gemiddelde dat ze draagt (#1017).
+    maten = {**dict.fromkeys(_gewichten(aggregate, weights).values(), GEWOGEN), **aggregate}
+    notes = _onderdrukkingsnoten(duo.count_cells(sel.cells), maten, bron_ids.bron_van(data_key))
     notes += _lege_groepen_noten(agg, group_by, aggregate)
+    notes += _gewogen_noten(sel.df, agg, group_by, aggregate, weights)
     if noot := cbs_afronding.van_key(data_key):
         notes.append(noot)
     vier = sel.vier
@@ -406,7 +511,7 @@ def _onderdrukkingsnoten(tellingen: dict[str, int], aggregate: dict[str, str], b
     return duo.sentinel_notes(som, bron) + duo.zonder_cellen_noten(anders, aggregate, bron)
 
 
-def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate, gedekt: dict) -> str:
+def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate, weights, gedekt: dict) -> str:
     """De afgeleide key van een selectie; de key zelf als er niets gekozen is.
 
     De key is de digest van het canonieke plan (#342): dezelfde selectie in een andere
@@ -415,12 +520,12 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
     """
     if not (filters or columns or group_by):
         return data_key
-    result_key = f"{data_key}:{canoniek.selectie_digest(filters, columns, group_by, aggregate)}"
+    result_key = f"{data_key}:{canoniek.selectie_digest(filters, columns, group_by, aggregate, weights)}"
     store.derive(
         data_key,
         result_key,
         sel.df,
-        stap=_stap(filters, columns, group_by, aggregate),
+        stap=_stap(filters, columns, group_by, aggregate, weights),
         vier_cellen=sel.vier_totaal,
         **gedekt,
     )
@@ -428,7 +533,8 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
     # van de selectie reizen wel mee: het totaal blijft een ondergrens. Een gemiddelde
     # is geen ondergrens, dus die cellen niet: het Telling-blok leest ze hier (#866).
     duo.record_sentinel_cells(result_key, sel.ondergrenscellen(), groepen=bool(group_by or aggregate))
-    store.alias(canoniek.legacy_selectie_key(data_key, filters, columns, group_by, aggregate), result_key)
+    if not weights:  # een gewogen selectie bestond vóór #342 niet, dus ook geen oude key (#1017)
+        store.alias(canoniek.legacy_selectie_key(data_key, filters, columns, group_by, aggregate), result_key)
     return result_key
 
 
@@ -481,10 +587,13 @@ def query_data(
     max_rows: int = DUO_ROW_LIMIT,
     group_by: list[str] | None = None,
     aggregate: dict[str, str] | None = None,
+    weights: dict[str, str] | None = None,
 ) -> str:
     df = store.get(data_key)
     if df is None:
         return fouten.onbekende_key(data_key)
+    if weights and not aggregate:
+        return f"weights hoort bij aggregate met weighted_mean en group_by, {_GEWICHT_VOORBEELD}."
 
     known = store.meta(data_key)
     complete = store.volledig(data_key)
@@ -534,11 +643,11 @@ def query_data(
     gegroepeerd = bool(group_by or aggregate)
     if gegroepeerd:
         group_by = periode.met_labelkolom_in_groep(sel.df, group_by)
-        geaggregeerd = _aggregeer(sel, data_key, group_by, aggregate)
+        geaggregeerd = _aggregeer(sel, data_key, group_by, aggregate, weights)
         if isinstance(geaggregeerd, str):
             return geaggregeerd
         sel = geaggregeerd
     sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "", bron_ids.bron_van(data_key))
 
-    result_key = _bewaar(data_key, sel, filters, columns, group_by, aggregate, gedekt)
+    result_key = _bewaar(data_key, sel, filters, columns, group_by, aggregate, weights, gedekt)
     return _resultaat(result_key, sel, known, labels, complete, max_rows, gegroepeerd)
