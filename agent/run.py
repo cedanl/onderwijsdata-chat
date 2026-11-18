@@ -629,7 +629,7 @@ async def run(
         session.get("clarify_keuzes", []),
         session.setdefault("data_keys", []),
         getalcontrole,
-        verklaring_gevraagd=verklaring,
+        verklaring,
     )
     with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:

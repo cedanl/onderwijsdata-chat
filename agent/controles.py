@@ -118,7 +118,6 @@ def antwoordcontrole(
     clarify_keuzes: list,
     data_keys: list[str],
     getalcontrole: Callable[[str, list[str]], list[Probleem]] | None = None,
-    *,
     verklaring_gevraagd: bool = True,
 ) -> Callable[[str, list[str]], list[str]]:
     """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop.
