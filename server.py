@@ -19,7 +19,7 @@ load_dotenv()
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
 from core import foutmeldingen
-from core.catalogusversie import arbeidsmarktversie, catalogusversie
+from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
 from core.verzoeklimiet import Verzoeklimiet
@@ -152,7 +152,7 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 @_routes.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
     """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
-    en de dataversie van UWV en ROA (CH-46)."""
+    met de digest uit het manifest (#1029) en de dataversie van UWV en ROA (CH-46)."""
 
     def _read() -> str:
         with open(_PYPROJECT, "rb") as f:
@@ -164,6 +164,9 @@ async def version() -> dict:
         "commit": Config.GIT_COMMIT[:8] if Config.GIT_COMMIT else "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).
         "catalogus": catalogusversie(Config.GIT_COMMIT),
+        # De geladen catalogus met bronvlaggen, gelijk aan `catalogus` in het manifest van een antwoord (#1029).
+        # De eerste aanroep laadt de catalogus, dus buiten de event loop.
+        "catalogus_digest": await asyncio.to_thread(catalogusdigest),
         # Periode uit de statische riodata-records, zonder download (CH-46).
         "arbeidsmarkt": arbeidsmarktversie(),
     }

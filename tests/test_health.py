@@ -129,8 +129,48 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
 
 def test_version_laat_versie_commit_en_catalogus_ongemoeid(client):
     data = client.get("/version").json()
-    assert set(data) == {"version", "commit", "catalogus", "arbeidsmarkt"}
+    assert set(data) == {"version", "commit", "catalogus", "catalogus_digest", "arbeidsmarkt"}
     assert [p["pakket"] for p in data["catalogus"]] == ["onderwijsbronnen"]
+
+
+# ── #1029: het catalogus-ID uit het manifest is tegen /version te controleren ──
+
+
+def test_version_noemt_de_digest_uit_het_manifest(client):
+    import re
+    from unittest.mock import patch
+
+    from agent import manifest
+    from tools.catalog import catalogus_digest
+
+    manifest._catalogus.cache_clear()
+    with patch("agent.manifest.get_supported_openai_params", return_value=[]):
+        uit_manifest = manifest.bouw("m/x", [])["catalogus"]
+    digest = client.get("/version").json()["catalogus_digest"]
+    assert re.fullmatch(r"[0-9a-f]{12}", digest)
+    assert digest == catalogus_digest() == uit_manifest
+    assert client.get("/api/version").json()["catalogus_digest"] == digest
+
+
+def test_version_volgt_de_digest_van_een_andere_bronvlag(client, monkeypatch):
+    # Met SKDB, WOPI of financiën aan laadt het proces een andere catalogus; /version noemt dan die digest.
+    from tools import catalog
+
+    monkeypatch.setattr(catalog, "catalogus_digest", lambda: "0123456789ab")
+    assert client.get("/version").json()["catalogus_digest"] == "0123456789ab"
+
+
+def test_version_zonder_catalogus_geeft_null_en_geen_500(client, monkeypatch):
+    from tools import catalog
+
+    def kapot():
+        raise RuntimeError("catalogus laadt niet")
+
+    monkeypatch.setattr(catalog, "catalogus_digest", kapot)
+    resp = client.get("/version")
+    assert resp.status_code == 200
+    assert resp.json()["catalogus_digest"] is None
+    assert [p["pakket"] for p in resp.json()["catalogus"]] == ["onderwijsbronnen"]
 
 
 def test_version_downloadt_geen_arbeidsmarktdata(client, monkeypatch):
