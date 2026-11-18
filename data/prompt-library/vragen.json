@@ -1,0 +1,85 @@
+{
+  "_doc": "De verzameling 'Vragen aan onderwijsdata' voor de bulkimport van de Prompt Library (#1047, B). De vraag zelf staat hier niet: `eval` verwijst naar een geteste vraag in tests/e2e/evaluations.json, en scripts/prompt_library_export.py haalt de tekst daar op. Zo is elke vraag in de verzameling er een met bekende uitkomsten, en loopt de verzameling niet uiteen met de evaluatieset. Alles hieronder is de redactionele laag: titel, samenvatting, tips en labels.",
+  "vragen": [
+    {
+      "eval": "ijk-mbo-studenten-landelijk",
+      "titel": "Aantal mbo-studenten landelijk",
+      "samenvatting": "Het totale aantal mbo-studenten in een studiejaar, met de bron en de peildatum erbij.",
+      "tips": "Pas het studiejaar aan. Het antwoord noemt de bron; vraag er gerust naar als je wilt weten waarom een ander overzicht een iets ander getal geeft.",
+      "waarom_dit_werkt": "De vraag noemt de sector (mbo), de maat (studenten) en het studiejaar. Daar hoeft EDUdata niets over te raden.",
+      "labels": "sector:mbo"
+    },
+    {
+      "eval": "trend-analyse",
+      "titel": "Ontwikkeling van het aantal voltijdstudenten bij een hogeschool",
+      "samenvatting": "Een tijdreeks van vijf jaar als grafiek, voor één instelling.",
+      "tips": "Vervang de instelling door een andere hbo- of wo-instelling. Vraag je om 'het totaal', dan krijg je één lijn in plaats van een uitsplitsing.",
+      "waarom_dit_werkt": "Instelling, vorm (voltijd) en periode staan in de vraag, en 'geef het totaal' zegt welk detailniveau je wilt.",
+      "labels": "sector:hbo"
+    },
+    {
+      "eval": "audit-eerstejaars-instelling",
+      "titel": "Aantal eerstejaars aan een hogeschool",
+      "samenvatting": "Hoeveel eerstejaars een instelling in een jaar had.",
+      "tips": "Eerstejaars aan een instelling is niet hetzelfde als eerstejaars in het hoger onderwijs. Kijk of het antwoord zegt welke van de twee het telt, en vraag er anders naar.",
+      "waarom_dit_werkt": "Een korte, afgebakende vraag met instelling en jaar. Goed om te leren hoe een telling precies gedefinieerd is.",
+      "labels": "sector:hbo"
+    },
+    {
+      "eval": "marktaandeel",
+      "titel": "Marktaandeel van een mbo-instelling in een regio",
+      "samenvatting": "De instroom van een instelling voor één opleidingsgebied, afgezet tegen alle instellingen in de provincie.",
+      "tips": "Wissel instelling, opleidingsgebied of provincie. Het marktaandeel is een berekening op de instroom van het laatste schooljaar; het antwoord laat zien waarover het rekent.",
+      "waarom_dit_werkt": "De vraag legt vast wat de noemer is (de regio) en welk jaar telt, zodat het percentage te controleren is.",
+      "labels": "sector:mbo"
+    },
+    {
+      "eval": "mbo-indicatoren-jr-dr",
+      "titel": "Jaar- en diplomaresultaat van een mbo-instelling",
+      "samenvatting": "Het jaarresultaat en diplomaresultaat naast de vergelijkingsgroep van de instelling.",
+      "tips": "Vervang de instelling. Het laatste jaar kan voorlopig zijn; het antwoord zegt dat erbij.",
+      "waarom_dit_werkt": "Je noemt de indicatoren bij hun naam. Daardoor kiest EDUdata de juiste bron en niet een verwant cijfer.",
+      "labels": "sector:mbo"
+    },
+    {
+      "eval": "accreditatie-hbo",
+      "titel": "Laatste accreditatie van een hbo-opleiding",
+      "samenvatting": "De datum van het laatste accreditatiebesluit voor een bachelor, met bron.",
+      "tips": "Vervang opleiding en instelling. Het gaat om de besluitdatum; een uiterste indieningsdatum is geen einddatum van de accreditatie.",
+      "waarom_dit_werkt": "Opleiding, niveau en instelling staan erin, en 'voor het laatst' maakt duidelijk dat je het meest recente besluit wilt.",
+      "labels": "sector:hbo"
+    },
+    {
+      "eval": "accreditatie-wo",
+      "titel": "Is een wo-opleiding geaccrediteerd, en tot wanneer",
+      "samenvatting": "De accreditatiestatus van een master. Een einddatum geeft de bron niet altijd, en dat hoort het antwoord te zeggen.",
+      "tips": "Een goede vraag om te zien dat EDUdata zegt wat er niet in de bron staat. Leest het antwoord een datum als einddatum terwijl het een inleverdatum is, vraag dan door naar de bron.",
+      "waarom_dit_werkt": "Twee vragen in één zin: een ja/nee en een datum. Zo zie je of het antwoord beide uit de bron haalt.",
+      "labels": "sector:wo"
+    },
+    {
+      "eval": "ijk-aeres-code-vestigingen",
+      "titel": "Instellingscode en vestigingen van een hogeschool",
+      "samenvatting": "De code uit het onderwijsregister (RIO) en de plaatsen waar de instelling vestigingen heeft.",
+      "tips": "Handig om een BRIN-code of de vestigingen van een instelling na te kijken. Vervang de instelling.",
+      "waarom_dit_werkt": "Een opzoekvraag met één juist antwoord uit het register. Het antwoord laat zich dus meteen controleren.",
+      "labels": "sector:hbo"
+    },
+    {
+      "eval": "koppel-duo-cbs-gemeente",
+      "titel": "Hbo-studenten per gemeente: woonplaats tegenover vestiging",
+      "samenvatting": "Twee bronnen naast elkaar (DUO en CBS) op gemeente, en de vijf gemeenten met het grootste verschil.",
+      "tips": "Het verschil gaat over waar studenten wonen tegenover waar ze staan ingeschreven; het antwoord hoort dat te zeggen. Een zwaardere vraag: de uitkomst duurt langer dan een telling.",
+      "waarom_dit_werkt": "Je vraagt om een vergelijking met een duidelijke uitkomst (de top vijf), en noemt het jaar en beide kanten van het verschil.",
+      "labels": "sector:hbo"
+    },
+    {
+      "eval": "audit-cbs-afronding",
+      "titel": "Waarom tellen CBS-cijfers niet op tot het totaal",
+      "samenvatting": "Een uitleg over afronding en over de opbouw van de tabel, bij cijfers over het hoger onderwijs.",
+      "tips": "Een vraag over hoe je de data leest, niet over een getal. Gebruik hem als een totaal en de som van de delen bij jou niet gelijk zijn.",
+      "waarom_dit_werkt": "Je vraagt naar de oorzaak van een verschil, niet naar een cijfer. EDUdata kijkt dan naar de opbouw van de tabel.",
+      "labels": "sector:hbo; sector:wo"
+    }
+  ]
+}
