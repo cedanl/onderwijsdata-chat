@@ -1,0 +1,74 @@
+{
+  "title": "Instroom hbo in Utrecht {{ 7*7 }}",
+  "meta": [
+    "Gegenereerd op 30 oktober 2026",
+    "Opgesteld door jansen met openEDUdata+ (AI-assistent)"
+  ],
+  "instelling": "Hogeschool Utrecht",
+  "afwijkingen": [
+    "Je vroeg naar 2025; de laatste cijfers zijn van 2024."
+  ],
+  "onderzoeksvraag": "Hoeveel studenten stromen in? {% if true %}ja{% endif %} <script>alert(1)</script> & meer\u0007",
+  "beantwoordt": [
+    "De instroom per jaar"
+  ],
+  "beantwoordtNiet": [
+    "De reden van de keuze"
+  ],
+  "definities": [
+    {
+      "begrip": "Instroom",
+      "delen": [
+        "Eerstejaars in het hoger onderwijs."
+      ]
+    },
+    {
+      "begrip": "Peildatum",
+      "delen": [
+        "Telling op 1 oktober.",
+        "Voorlopige cijfers kunnen wijzigen."
+      ]
+    }
+  ],
+  "visualisaties": [
+    {
+      "titel": "Instroom per jaar",
+      "noot": "Afgerond op tientallen.",
+      "bron": {
+        "regel": "Bron: CBS, Hoger onderwijs (85353NED), 2023",
+        "url": "https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85353NED",
+        "linkTekst": "Bekijk de bron bij CBS"
+      },
+      "toelichting": "De instroom steeg licht."
+    },
+    {
+      "titel": "Instroom naar sector",
+      "noot": "",
+      "bron": {
+        "regel": "Bron: DUO, Ingeschrevenen",
+        "url": null,
+        "linkTekst": ""
+      },
+      "toelichting": ""
+    },
+    {
+      "titel": "Visualisatie 3",
+      "noot": "",
+      "bron": {
+        "regel": "Bron niet vastgesteld",
+        "url": null,
+        "linkTekst": ""
+      },
+      "toelichting": ""
+    }
+  ],
+  "conclusie": "### Kern\n\nDe instroom is **stabiel** {{ geheim }}.\n\n- 2023: 475.460\n- 2024: 476.000\n\n| Jaar | Instroom |\n|---|---:|\n| 2023 | **475.460** |\n| 2024 | 476.000 |\n\nMeer is er niet & <b>niet</b> vet.",
+  "bronnen": [
+    "CBS StatLine 85353NED",
+    "DUO Ingeschrevenen"
+  ],
+  "herkomst": [
+    "Verantwoording: model gpt-4.1 · prompt abc123 · app 2.8.0",
+    "Dataversie: CBS 85353NED (bijgewerkt 2026-10-01)"
+  ]
+}
