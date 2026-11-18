@@ -11,6 +11,12 @@ message content sanitised to satisfy protocol]" (#322).
 Een toolnaam in de Bronnen-sectie ("RIO (via `get_rio_instelling`)") is geen
 gesprek met de controle, alleen een detail te veel. Die haalt code eruit, zonder
 herschrijving: elke herschrijving kost een modelronde (CH-01).
+
+In de lopende tekst haalt code alleen de vaste patronen weg die de zin heel laten:
+een haakje met toolnamen ("2.724 (via `query_data`)") en een staart met via/met
+vlak voor een leesteken ("2.724, berekend met `query_data`."). Een toolnaam die
+dan nog staat ("Met query_data heb ik gefilterd"), blijft een herkansing: zonder
+de toolnaam bleef er een kapotte zin over (#1028).
 """
 
 import re
@@ -40,6 +46,13 @@ _TOOL_LOS = re.compile(
     rf"(?:\s*,)?(?:\s+(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend))?\s*(?:{_VIA})?{_TOOLNAMEN}",
     re.IGNORECASE,
 )
+# Lopende tekst: ", berekend met `query_data`." of "opgehaald via get_cbs_data." Alleen een kleine via/met na een
+# woord of komma (geen zinsbegin) en vlak voor een leesteken of regeleinde; anders bleef er een kapotte zin over.
+_TOOL_BIJZIN = re.compile(
+    r"(?:\s*,\s*(?:(?:opgehaald|geraadpleegd|opgevraagd|gefilterd|berekend)\s+)?|(?<=[\w%*)`])\s+)"
+    rf"(?:via|met)\s+{_TOOLNAMEN}(?=[.,;:!?)]|\s*$)"
+)
+_CODEBLOK = re.compile(r"^\s*(?:```|~~~)")
 
 
 def _zonder_toolnamen(regel: str) -> str:
@@ -47,13 +60,33 @@ def _zonder_toolnamen(regel: str) -> str:
     return schoon if schoon == regel else schoon.rstrip(" ,;:")
 
 
+def _bronnen_zonder_toolnamen(sectie: str) -> str:
+    regels = [_zonder_toolnamen(r) for r in sectie.split("\n")]
+    return "\n".join(r for r in regels if r.strip(" -*") or not r)
+
+
+def _lopend_zonder_toolnamen(tekst: str) -> str:
+    """De vaste patronen weg uit elke tekstregel; een codeblok of tabelregel blijft zoals hij is."""
+    regels, in_code = [], False
+    for regel in tekst.split("\n"):
+        if _CODEBLOK.match(regel):
+            in_code = not in_code
+        elif not in_code and not regel.lstrip().startswith("|"):
+            regel = _TOOL_BIJZIN.sub("", _TOOL_HAAKJE.sub("", regel))
+        regels.append(regel)
+    return "\n".join(regels)
+
+
 def zonder_toolnamen(tekst: str) -> str:
-    """De tekst zonder toolnamen in de Bronnen-sectie; een regel die dan leeg is, vervalt."""
+    """De tekst zonder toolnamen: in de Bronnen-sectie elke toolnaam (een regel die dan leeg is, vervalt), in de
+    lopende tekst alleen de vaste patronen die de zin heel laten."""
     if not (sectie := BRONNEN.search(tekst)):
-        return tekst
-    regels = [_zonder_toolnamen(r) for r in sectie.group(1).split("\n")]
-    schoon = "\n".join(r for r in regels if r.strip(" -*") or not r)
-    return tekst[: sectie.start(1)] + schoon + tekst[sectie.end(1) :]
+        return _lopend_zonder_toolnamen(tekst)
+    return (
+        _lopend_zonder_toolnamen(tekst[: sectie.start(1)])
+        + _bronnen_zonder_toolnamen(sectie.group(1))
+        + _lopend_zonder_toolnamen(tekst[sectie.end(1) :])
+    )
 
 
 def metatekst(tekst: str) -> list[str]:

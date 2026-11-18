@@ -166,3 +166,63 @@ def test_toolnaam_buiten_de_bronnen_blijft_metatekst():
     tekst = "Met query_data heb ik gefilterd op 2025.\n\n**Bronnen**\n- DUO p01hoinges"
     assert metatekst(tekst)
     assert zonder_toolnamen(tekst) == tekst
+
+
+@pytest.mark.parametrize(
+    ("tekst", "schoon"),
+    [
+        ("Het totaal is 2.724, berekend met `query_data`.", "Het totaal is 2.724."),
+        ("Het totaal is 2.724 (via `get_rio_instelling`).", "Het totaal is 2.724."),
+        ("De cijfers zijn opgehaald via get_cbs_data.", "De cijfers zijn opgehaald."),
+        ("Er zijn 12 instellingen (`get_cbs_data`, `query_data`).", "Er zijn 12 instellingen."),
+        ("Dit is gefilterd met `query_data`, en het totaal is 2.724.", "Dit is gefilterd, en het totaal is 2.724."),
+        ("Het aandeel is 9,5% via query_data en compute_kpi.", "Het aandeel is 9,5%."),
+        (
+            "Het totaal is 2.724, berekend met `query_data`\n\nVolgende alinea.",
+            "Het totaal is 2.724\n\nVolgende alinea.",
+        ),
+    ],
+)
+def test_toolnaam_in_de_lopende_tekst_wordt_gefilterd_niet_herschreven(tekst, schoon):
+    """#1028 (audit L-09): "berekend met `query_data`" kostte een modelronde; code haalt het vaste patroon weg."""
+    assert metatekst(tekst) == []
+    assert zonder_toolnamen(tekst) == schoon
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Met query_data heb ik gefilterd op 2025.",
+        "Het verschil is bevestigd door compute_kpi.",
+        "compute_kpi bevestigt 900.",
+        "Het totaal is 2.724. Met query_data.",
+        "Ik heb gefilterd met query_data op 2025.",
+        "```\nresultaat = 2.724, berekend met query_data.\n```",
+        "| HU | 2.724, berekend met query_data. |",
+    ],
+)
+def test_toolnaam_die_code_niet_veilig_weghaalt_blijft_een_herkansing(tekst):
+    """Zonder de toolnaam bleef er een kapotte zin over: die publiceert code niet, het model schrijft opnieuw."""
+    assert metatekst(tekst)
+    assert zonder_toolnamen(tekst) == tekst
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Ik schreef eerder 3.400.",
+        "De correctie is terecht: het zijn er 900.",
+        "De controle vond geen fouten.",
+        "Volledig antwoord op basis van opgehaalde data: 900 studenten.",
+        "[System: Empty message content sanitised to satisfy protocol]",
+    ],
+)
+def test_andere_metatekst_blijft_gemeld_ook_naast_een_weggehaalde_toolnaam(tekst):
+    assert metatekst(tekst)
+    assert metatekst(f"{tekst} Het totaal is 2.724, berekend met `query_data`.")
+
+
+def test_toolnaam_in_lopende_tekst_en_bronnen_gaat_allebei_weg():
+    tekst = "Het totaal is 2.724 (via `query_data`).\n\n**Bronnen**\n- DUO (via `query_data`)"
+    assert metatekst(tekst) == []
+    assert zonder_toolnamen(tekst) == "Het totaal is 2.724.\n\n**Bronnen**\n- DUO"
