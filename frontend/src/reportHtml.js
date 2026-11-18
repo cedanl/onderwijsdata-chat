@@ -144,10 +144,10 @@ export const PRINT_CSS = `@media print{
     .header h1{font-size:24px;font-weight:600;color:${oranje}}
     .meta-chip,.instelling-badge,.vis-bron,.manifest{background:${roze};color:${zwart};-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .meta-chip{padding:2px 8px;border-radius:4px}
-    .vis-bron{padding:6px 10px;border-radius:4px}
+    .vis-bron{margin-top:4px;padding:4px 8px;border-radius:4px}
     .manifest{padding:8px 12px;border-top:none;margin-top:16px}
     .meta-chip b,.vis-bron a{color:${zwart}}
-    .section-label,.vraag .section-label,.afwijking .section-label{color:${zwart};font-weight:600;padding-bottom:4px;border-bottom:2px solid ${oranje}}
+    .section-label,.vraag .section-label,.afwijking .section-label{color:${zwart};font-weight:600;padding-bottom:3px;border-bottom:2px solid ${oranje}}
     .vis-title,.scope-title,.def-term,.prose h1,.prose h2,.prose h3{font-weight:600}
     .vraag .vraag-text,.def-term,.def-desc,.scope-col li,.vis-title,.vis-note,.prose,.prose h1,.prose h2,.prose h3,.bronnen li,.footer{color:${zwart}}
     .body{padding:16px 0 0;max-width:none}
