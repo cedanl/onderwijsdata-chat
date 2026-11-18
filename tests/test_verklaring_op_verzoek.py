@@ -9,6 +9,7 @@ het blok "Niet uit de data", hooguit drie, elk met een bron uit de catalogus of 
 import asyncio
 import importlib
 import json
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -16,7 +17,7 @@ import pandas as pd
 import pytest
 
 from agent import report
-from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak, verklaringsblok
+from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak, verklaringsblok, zonder_blokkop
 from agent.loop import LoopResult
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
@@ -123,6 +124,34 @@ def test_met_verzoek_en_blok_is_een_vermoeden_buiten_het_blok_een_probleem():
     assert "buiten het blok" in probleem
 
 
+def test_in_de_chat_is_een_vermoeden_zonder_blok_ook_een_probleem():
+    """Criterium 6: met verzoek hoort een vermoeden in het blok, ook als het model het blok weglaat."""
+    [probleem] = ongedekte_oorzaak(f"{_FEIT}\n\n{_HYPOTHESE}", _DATA, verklaring_gevraagd=True, alleen_in_blok=True)
+
+    assert "buiten het blok" in probleem
+
+
+def test_in_de_chat_is_een_antwoord_met_alleen_data_schoon_ook_met_verzoek():
+    assert ongedekte_oorzaak(_FEIT, _DATA, verklaring_gevraagd=True, alleen_in_blok=True) == []
+
+
+_OPGEMAAKT = (
+    "### Niet uit de data\n"
+    "- *Hangt de daling samen met minder 18-jarigen?* Te toetsen met 37296ned.\n"
+    "- **Hangt de daling samen met het lerarentekort?** Hiervoor is geen bron in deze app.\n"
+    '- "Hangt de daling samen met de instroom in het mbo?" Te toetsen met 85354NED.'
+)
+
+
+def test_een_vraag_in_opmaak_telt_als_vraag():
+    assert ongedekte_oorzaak(f"{_FEIT}\n\n{_OPGEMAAKT}", _DATA, verklaring_gevraagd=True) == []
+
+    vierde = "\n- *Kiezen studenten vaker voor de universiteit?* Hiervoor is geen bron in deze app."
+    [probleem] = ongedekte_oorzaak(f"{_FEIT}\n\n{_OPGEMAAKT}{vierde}", _DATA, verklaring_gevraagd=True)
+
+    assert "4 vragen" in probleem
+
+
 def test_met_verzoek_blijft_een_oorzaak_zonder_voorbehoud_een_probleem():
     tekst = f"{_FEIT} Dit komt doordat het lerarentekort studenten afschrikt.\n\n{_BLOK_DRIE}"
 
@@ -135,6 +164,30 @@ def test_de_standaard_is_met_verzoek_zoals_het_rapport_toetst():
     """Criterium 8: zonder blok blijft de regel van het voorbehoud, voor `report_checks` en de oude tests."""
     assert ongedekte_oorzaak(f"{_FEIT}\n\n{_HYPOTHESE}", _DATA) == []
     assert len(ongedekte_oorzaak(f"{_FEIT}\n\n{_BLOK_DRIE}{_VIERDE}", _DATA)) == 1
+
+
+@pytest.mark.parametrize("kop", ["### Niet uit de data", "**Niet uit de data**", "## **Niet uit de data:**"])
+def test_de_vormen_van_de_blokkop(kop):
+    assert verklaringsblok(f"{_FEIT}\n\n{kop}\n1. Hangt dit samen met X?")[1].strip() == "1. Hangt dit samen met X?"
+
+
+@pytest.mark.parametrize("tekst", ["###Niet uit de data", "### Niet uit de data van CBS", "Niet uit de data"])
+def test_geen_blokkop(tekst):
+    assert verklaringsblok(tekst) == (tekst, "")
+
+
+@pytest.mark.parametrize("kopteken", ["# ", "### ", "**", "  #\t"])
+def test_een_kopregel_vol_spaties_kost_geen_seconden(kopteken):
+    """Twee witruimteklassen naast elkaar in de kopregex zochten kwadratisch terug: 20.000 spaties kostten seconden,
+    terwijl de controle op de event loop draait. Lineair is dit enkele milliseconden."""
+    tekst = f"{_FEIT}\n\n{kopteken}{' ' * 50_000}x\n\n{_HYPOTHESE}"
+
+    begin = time.perf_counter()
+    verklaringsblok(tekst)
+    zonder_blokkop(tekst)
+    ongedekte_oorzaak(tekst, _DATA, verklaring_gevraagd=False)
+
+    assert time.perf_counter() - begin < 1.0
 
 
 # ── De blokkop is geen "niet beschikbaar" (criterium 7) ──────────────────────
@@ -269,6 +322,16 @@ def test_een_ongevraagde_verklaring_gaat_eruit_in_de_herkansing(monkeypatch, cap
     assert "niet om vroeg" in herkansing
     assert "HERKANSING  controles=['ongedekte_oorzaak']" in caplog.text
     assert "controle" not in events[-1]
+
+
+def test_een_gevraagd_vermoeden_zonder_blok_gaat_naar_het_blok_in_de_herkansing(monkeypatch):
+    antwoord = f"{_FEIT}\n\n{_BLOK_DRIE}"
+
+    text, events, gezien = _chat(monkeypatch, _WAAROM, [f"{_FEIT}\n\n{_HYPOTHESE}", antwoord])
+
+    assert text == antwoord
+    assert "message_cancel" in [e["type"] for e in events]
+    assert "buiten het blok" in gezien[-1][-1]["content"]
 
 
 def test_een_gevraagde_verklaring_in_het_blok_komt_door_de_controle(monkeypatch):
