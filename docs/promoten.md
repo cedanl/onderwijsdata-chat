@@ -100,7 +100,7 @@ git push origin env/playground/X.Y.Z
 
 Besluit 04-11 (#890): de bronpakketten `riodata` en `onderwijsdata` gingen op in één pakket `onderwijsbronnen`
 (#909–#914), met het ID-contract `bron:id` eerst achter de vlag `BRON_ID_CONTRACT`. Besluit 05-11
-([comment op #890](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/890#note_1318539)
+([comment op #890](https://git.sdp.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/890#note_1009013)
 en de comment op #913) verving de bevriezing: geen aparte release vóór #910 en geen schaduwperiode; release 2.7.0 ging
 met `BRON_ID_CONTRACT: "aan"` naar test en playground.
 

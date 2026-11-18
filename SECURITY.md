@@ -6,7 +6,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 Meld een kwetsbaarheid **niet** in een openbaar issue, een MR of de GitHub-spiegel (die is publiek).
 
-- **Met een account op git.ia.surf.nl:** maak een *confidential* issue in `surf-internal/npuls/ceda/onderwijsdata-chat`
+- **Met een account op git.sdp.surf.nl:** maak een *confidential* issue in `surf-internal/npuls/ceda/onderwijsdata-chat`
   met wat je zag, hoe je het naspeelt en wat het raakt.
 - **Zonder account:** open op GitHub (`cedanl/onderwijsdata-chat`) een issue met alleen de vraag om contact, zonder
   details; het team neemt dan contact met je op.

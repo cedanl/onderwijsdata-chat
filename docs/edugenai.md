@@ -1,7 +1,7 @@
 # EduGenAI-koppeling
 
 EduGenAI is het AI-platform van SURF en Npuls voor het onderwijs, gebouwd op LibreChat (de naam kan nog veranderen). Het plan
-([#704](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/704)) is dat EduGenAI onze
+([#704](https://git.sdp.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/704)) is dat EduGenAI onze
 [MCP-server](mcp.md) aanroept: een gebruiker stelt daar een vraag, het model van EduGenAI zoekt in onze catalogus en
 krijgt bij elk resultaat een link naar de volledige app. Deze pagina zegt wat die koppeling wel en niet doet, welke
 claim we erover doen en welke gegevens erdoor gaan. Ze is de basis voor de afstemming met Npuls (#711) en voor de
