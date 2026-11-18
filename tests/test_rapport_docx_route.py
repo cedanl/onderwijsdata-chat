@@ -69,6 +69,15 @@ def test_zonder_grafieken_ook(client):
     assert sum(p.text == "Grafiek niet beschikbaar" for p in doc.paragraphs) == 3
 
 
+def test_een_rapport_met_een_lange_titel(client):
+    titel = "Hoeveel studenten stromen in " + "x" * 300
+    _als(client, "anna")
+    _bewaar(client, html=RAPPORT_HTML.replace("Instroom hbo in Utrecht {{ 7*7 }}</h1>", f"{titel}</h1>"))
+    response = client.post("/api/workbooks/r1/docx")
+    assert response.status_code == 200
+    assert Document(BytesIO(response.content)).paragraphs[0].text == titel
+
+
 def test_een_rapport_van_een_ander_is_niet_gevonden(client):
     _als(client, "anna")
     _bewaar(client)

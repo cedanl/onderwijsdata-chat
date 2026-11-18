@@ -27,6 +27,8 @@ SJABLOON = Path(__file__).resolve().parents[2] / "templates" / "rapport.docx"
 # De breedte van een grafiek op A4 (de tekstkolom is 166 mm) en de hoogste grafiek die op een pagina past.
 BEELD_BREEDTE_MM = 160
 BEELD_HOOGTE_MAX_MM = 200
+# Een documenteigenschap mag in python-docx (en Word) hoogstens 255 tekens hebben; de titel is vaak de eigen vraag.
+MAX_EIGENSCHAP = 255
 
 _ONGELDIG_IN_XML = re.compile(r"[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]")
 _VET = re.compile(r"\*\*(.+?)\*\*")
@@ -180,7 +182,7 @@ def render_docx(rapport: Rapport, grafieken: Mapping[int, Grafiek], sjabloon: Pa
     tpl.render(context(tpl, rapport, grafieken), omgeving(), autoescape=True)
     # tpl.docx, niet tpl.get_docx(): dat laadt na het renderen het lege sjabloon opnieuw.
     if (document := tpl.docx) is not None:
-        document.core_properties.title = schoon(rapport.titel or "Rapport")
+        document.core_properties.title = schoon(rapport.titel or "Rapport")[:MAX_EIGENSCHAP]
     uit = BytesIO()
     tpl.save(uit)
     return uit.getvalue()

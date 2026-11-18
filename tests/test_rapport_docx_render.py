@@ -234,6 +234,14 @@ def test_het_resultaat_is_een_geldig_docx_met_titel_in_de_eigenschappen():
     assert doc.core_properties.title == "Instroom hbo in Utrecht {{ 7*7 }}"
 
 
+def test_een_lange_titel_staat_heel_in_het_document_en_ingekort_in_de_eigenschappen():
+    titel = "Hoeveel studenten stromen in " + "x" * 300
+    doc, data = _document(RAPPORT_HTML.replace("Instroom hbo in Utrecht {{ 7*7 }}</h1>", f"{titel}</h1>"))
+    assert zipfile.ZipFile(BytesIO(data)).testzip() is None
+    assert _alineas(doc)[0] == ("Title", titel)
+    assert doc.core_properties.title == titel[: render_module.MAX_EIGENSCHAP]
+
+
 # ── Grafieken uit het verzoek ─────────────────────────────────────────────────────────────────────────────────────
 
 
