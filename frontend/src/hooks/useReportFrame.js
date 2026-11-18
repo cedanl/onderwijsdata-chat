@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { metEigenPlotly, PLOTLY_URL } from '../plotlyBron'
 import { FRAME_TIMEOUT_MS, frameSignaal, metFrameSignaal } from '../reportFrame'
 import { GEEN_DIALOGEN_JS, metCsp, metLinkDoorgifte, openRapportLink } from '../rapportSandbox'
+import { metGrafiekVraag } from '../rapportGrafieken'
 import { metThema } from '../reportThema'
 
 // Plotly komt van de eigen server (#486): de enige scriptbron naast inline in de policy van het frame (#634).
@@ -17,6 +18,8 @@ const BEGIN = { geladen: false, signaal: null, verlopen: false }
 // 'niet-geladen' (no word from the frame within FRAME_TIMEOUT_MS); a later word from the frame still counts, so
 // a slow report is not failed for good. `printDoc` is the same report for the print frame (WorkbookPrint.jsx):
 // without the probe, the links or the theme (printing is light), and without alert/confirm/prompt (#634).
+// `grafiekDoc` is the same report for the chart frame of "Download als Word" (rapportGrafieken.js, #1038): light
+// theme, the same policy as the viewer frame, and the app's script that answers with the charts as PNG.
 export function useReportFrame(html, mode) {
   const frameRef = useRef(null)
   const srcDoc = useMemo(() => (html
@@ -24,6 +27,9 @@ export function useReportFrame(html, mode) {
     : null), [html, mode])
   const printDoc = useMemo(() => (html
     ? metCsp(metEigenPlotly(html), { scriptBron: scriptBron(), vooraf: GEEN_DIALOGEN_JS })
+    : null), [html])
+  const grafiekDoc = useMemo(() => (html
+    ? metCsp(metGrafiekVraag(metEigenPlotly(metThema(html, 'light'))), { scriptBron: scriptBron() })
     : null), [html])
   const [frame, setFrame] = useState({ srcDoc, ...BEGIN })
   // Another report starts from BEGIN: the state belongs to the srcDoc it was set for.
@@ -58,5 +64,5 @@ export function useReportFrame(html, mode) {
   // Busy until the frame loads or speaks, but never for good: a shown problem ends it.
   const loading = Boolean(srcDoc) && !probleem && !huidig.geladen && huidig.signaal === null
 
-  return { frameRef, srcDoc, printDoc, onLoad, loading, probleem }
+  return { frameRef, srcDoc, printDoc, grafiekDoc, onLoad, loading, probleem }
 }

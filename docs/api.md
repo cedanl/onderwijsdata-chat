@@ -152,6 +152,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 | `PUT` | `/api/workbooks/{id}` | Maak of update een workbook |
 | `GET` | `/api/workbooks/{id}` | Eén workbook met zijn inhoud (de lijst heeft alleen wat een kaart toont, #633); 404 bij onbekend ID of een workbook van een ander. Openen telt als gebruik: de bewaartermijn begint opnieuw (#485) |
 | `DELETE` | `/api/workbooks/{id}` | Verwijder een workbook |
+| `POST` | `/api/workbooks/{id}/docx` | Een eigen rapport als bewerkbaar Word-document (#1038), gemaakt uit het bewaarde rapport met `templates/rapport.docx`. Het lichaam is leeg of `multipart/form-data` met alleen grafieken: `grafiek-<n>` (n = plek van de visualisatie, vanaf 0), elk een PNG van hooguit 2 MiB, hooguit 20. 404 bij onbekend ID of een workbook van een ander, 422 voor een workbook zonder rapport, 400/413 voor een ongeldige grafiek, 429 met `Retry-After` bij te veel verzoeken per minuut |
 
 ## Gegevens en feedback
 

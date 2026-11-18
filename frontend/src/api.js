@@ -105,6 +105,17 @@ export async function putWorkbook(id, data) {
   return apiFetch(`/api/workbooks/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
+// A stored report as a Word document (#1038): the server renders the report it keeps; the form carries only the
+// chart images. Without a Content-Type header the browser sets the multipart boundary itself.
+export async function downloadRapportDocx(id, form) {
+  const token = getToken()
+  const res = await fetch(`/api/workbooks/${encodeURIComponent(id)}/docx`, {
+    method: 'POST', headers: authHeaders(token), body: form,
+  })
+  await throwIfFailed(res, token)
+  return res.blob()
+}
+
 export async function deleteWorkbookApi(id) {
   return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' }).catch(alWeg)
 }

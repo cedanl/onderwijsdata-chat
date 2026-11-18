@@ -65,6 +65,8 @@ COPY tools/ ./tools/
 COPY agent/ ./agent/
 COPY auth/ ./auth/
 COPY prompts/ ./prompts/
+# Het Word-sjabloon van "Download als Word" (#1038, tools/rapport_docx/render.py).
+COPY templates/ ./templates/
 COPY public/ ./public/
 COPY core/ ./core/
 

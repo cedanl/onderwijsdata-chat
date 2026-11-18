@@ -50,6 +50,7 @@ from routes import (
     instellingen_router,
     mijn_gegevens_router,
     persistence_router,
+    rapport_docx_router,
 )
 from routes.mcp_http import PAD as MCP_PAD
 from routes.mcp_http import McpEindpunt
@@ -234,6 +235,7 @@ _ROUTERS = (
     feedback_router,
     auth_router,
     persistence_router,
+    rapport_docx_router,
     instellingen_router,
     data_export_router,
     mijn_gegevens_router,

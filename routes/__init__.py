@@ -6,6 +6,7 @@ from .feedback import router as feedback_router
 from .instellingen import router as instellingen_router
 from .mijn_gegevens import router as mijn_gegevens_router
 from .persistence import router as persistence_router
+from .rapport_docx import router as rapport_docx_router
 
 __all__ = [
     "auth_router",
@@ -16,4 +17,5 @@ __all__ = [
     "instellingen_router",
     "mijn_gegevens_router",
     "persistence_router",
+    "rapport_docx_router",
 ]

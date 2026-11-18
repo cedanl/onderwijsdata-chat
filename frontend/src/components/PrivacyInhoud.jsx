@@ -135,6 +135,10 @@ export default function PrivacyInhoud() {
         <li>Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten.</li>
         <li>Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV.</li>
         <li>
+          Een rapport downloaden als HTML, Markdown of Word, of opslaan als PDF. Het Word-document bevat niets meer
+          dan het rapport: je browser stuurt alleen de grafieken als afbeelding mee, en de server bewaart ze niet.
+        </li>
+        <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
           dashboards, feedback, datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
