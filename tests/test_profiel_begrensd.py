@@ -48,7 +48,10 @@ def _settings_frame(settings: dict) -> dict:
     async def emit(event):
         raise AssertionError(f"onverwacht event {event}")
 
-    asyncio.run(chat.ACTIES["settings"]({"action": "settings", "settings": settings}, session, emit, None))
+    async def scenario():
+        await chat.ACTIES["settings"]({"action": "settings", "settings": settings}, session, emit, None)
+
+    asyncio.run(scenario())
     return session
 
 
