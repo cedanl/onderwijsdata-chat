@@ -115,6 +115,24 @@ _WEIGEREN = {
         _SKDB,
         f"result = pd.merge_asof(df, store_get('{_DUO}'), left_on='croho', right_on='CROHO').to_dict(orient='records')",
     ),
+    # #1019: de join als klassemethode, met het object als eerste argument.
+    "klasse_join": (
+        None,
+        f"a = store_get('{_SKDB}').set_index('brin')\n"
+        f"result = pd.DataFrame.join(a, store_get('{_DUO}').set_index('INSTELLINGSCODE')).to_dict(orient='records')",
+    ),
+    "klasse_join_op_df": (
+        _SKDB,
+        f"result = pd.DataFrame.join(df, store_get('{_DUO}'), rsuffix='_duo').to_dict(orient='records')",
+    ),
+    "klasse_join_via_alias": (
+        _SKDB,
+        f"DF = pd.DataFrame\nresult = DF.join(df, store_get('{_DUO}'), rsuffix='_duo').to_dict(orient='records')",
+    ),
+    "series_klasse_join": (
+        _SKDB,
+        f"result = {{'n': len(pd.Series.join(df['brin'], store_get('{_DUO}')['INSTELLINGSCODE']))}}",
+    ),
 }
 
 
@@ -188,6 +206,10 @@ _TOEGESTAAN = {
         _SKDB,
         f"ander = store_get('{_SKDB}')\nresult = df.merge(ander, on=['brin', 'croho']).to_dict(orient='records')",
     ),
+    "klasse_join_van_een_key": (
+        _SKDB,
+        "result = pd.DataFrame.join(df, df[['nse_oordeel']], rsuffix='_2').to_dict(orient='records')",
+    ),
     "string_join_via_variabele_over_twee_keys": (
         _SKDB,
         f"ander = store_get('{_DUO}')\nsep = ', '\n"
@@ -225,6 +247,12 @@ def test_een_alias_van_dezelfde_key_telt_als_een_key():
         ("lookup = {}\nlookup[df.k.iloc[0]] = store_get('b').v.sum()\nresult = len(df.merge(df))", "a", []),
         ("s = ';'\nresult = s.join(list(df.k) + list(store_get('b').k))", "a", []),
         ("result = ', '.join(list(df.k) + list(store_get('b').k))", "a", []),
+        # #1019: de klasse-join, ook via een alias; met één key is het geen koppeling.
+        ("result = len(pd.DataFrame.join(df, store_get('b')))", "a", [{"a", "b"}]),
+        ("t = store_get('b')\nresult = len(pd.DataFrame.join(t, df))", "a", [{"a", "b"}]),
+        ("DF = pd.DataFrame\nresult = len(DF.join(df, store_get('b')))", "a", [{"a", "b"}]),
+        ("result = len(pd.Series.join(df.k, store_get('b').k))", "a", [{"a", "b"}]),
+        ("t = store_get('a')\nresult = len(pd.DataFrame.join(df, t))", "a", []),
         # `with ... as`: de naam krijgt de key van de context-expressie.
         ("with store_get('b') as t:\n    n = 1\nresult = len(df.merge(t))", "a", [{"a", "b"}]),
         # De vullers met keywords.
