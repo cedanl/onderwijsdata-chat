@@ -110,6 +110,17 @@ def test_een_erkende_opleidingscode_is_croho_of_crebo_en_de_sector_beslist():
     assert s.paren(["OPLEIDINGSCODE_ACTUEEL"], ["MBO"]) == [{"kolom": "OPLEIDINGSCODE_ACTUEEL", "sleutel": "croho"}]
 
 
+def test_een_beroepsopleidingscode_van_duo_is_geen_crebo():
+    """Meting #1009 (#1034): BEROEPSOPLEIDING CODE heeft DUO-codes als bc365, geen crebo-code als 25180."""
+    assert s.van_kolom("BEROEPSOPLEIDING CODE") == ()
+    assert s.paren(["BEROEPSOPLEIDING CODE"], ["MBO"]) == []
+
+
+def test_geen_duo_record_koppelt_de_beroepsopleidingscode_als_crebo():
+    for r in _records("duo"):
+        assert {"kolom": "BEROEPSOPLEIDING CODE", "sleutel": "crebo"} not in r["_sleutels"], r.get("_ckan_id")
+
+
 def test_paren_zijn_uniek_en_in_kolomvolgorde():
     kolommen = ["STUDIEJAAR", "AANTAL", "INSTELLINGSCODE_ACTUEEL", "STUDIEJAAR"]
     assert s.paren(kolommen) == [

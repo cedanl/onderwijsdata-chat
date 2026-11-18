@@ -223,6 +223,15 @@ def test_een_erkende_opleidingscode_koppelt_als_croho_aan_een_ho_tabel():
     assert (k["sleutel"], k["overlap"]["gedeeld"]) == ("croho", 2)  # 04181 is 4181
 
 
+def test_een_beroepsopleidingscode_is_geen_crebo_en_een_crebokolom_wel():
+    """#1034: DUO's BEROEPSOPLEIDING CODE (bc365) is geen crebo-code; de kolommen met crebo-codes blijven crebo."""
+    bc = pd.DataFrame({"BEROEPSOPLEIDING CODE": ["bc365", "bc388"]})
+    assert rel.sleutelkolommen(bc) == []
+    for kolom in ("ERKENDE OPLEIDING CODE", "CREBO", "ERKENDEOPLEIDINGSCODE"):
+        sleutels = {k.sleutel.naam for k in rel.sleutelkolommen(pd.DataFrame({kolom: [25180]}))}
+        assert "crebo" in sleutels, kolom
+
+
 def test_een_skdb_tabel_koppelt_op_brin_en_croho_aan_duo():
     """De Studiekeuzedatabase (#957): `brin` en `croho` uit get_studiekeuze zijn dezelfde sleutels als de DUO-kolommen;
     een CROHO-code die als getal met lege cellen is gelezen (30020.0) telt als 30020."""

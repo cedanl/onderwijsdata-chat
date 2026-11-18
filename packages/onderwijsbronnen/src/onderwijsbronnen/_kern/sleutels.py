@@ -221,7 +221,9 @@ _ALLE: tuple[Sleutel, ...] = (
     Sleutel(
         "crebo",
         "opleiding in het mbo: crebo-code (25180)",
-        _k("BEROEPSOPLEIDING CODE", "ERKENDE OPLEIDING CODE", "CREBO", "CREBOCODE", "ERKENDEOPLEIDINGSCODE"),
+        # Niet BEROEPSOPLEIDING CODE (#1034): die heeft DUO's eigen codes als bc365, geen crebo-code, en het pakket
+        # heeft geen vertaling van bc-code naar crebo.
+        _k("ERKENDE OPLEIDING CODE", "CREBO", "CREBOCODE", "ERKENDEOPLEIDINGSCODE"),
         ("duo", "rio"),
         norm_opleidingscode,
         sectoren=frozenset({"mbo"}),
