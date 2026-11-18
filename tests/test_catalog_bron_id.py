@@ -34,6 +34,24 @@ def test_bron_id_brengt_elke_spelling_terug_tot_de_catalogusspelling(spelling, v
     assert bron_id(spelling) == verwacht
 
 
+@pytest.mark.parametrize(
+    ("tekst", "bekend"),
+    [
+        ("80040ned", True),  # CBS-spelling in kleine letters
+        ("85423ned", True),  # de catalogus schrijft 85423NED
+        ("cbs:85423NED", True),
+        ("P01HOINGES", True),
+        ("duo:p01hoinges", True),
+        ("wi-2021", True),
+        ("studentenwelzijn_2025", False),
+        ("2023", False),
+        ("85423", False),
+    ],
+)
+def test_kent_dataset_id_vindt_elke_spelling_in_de_volledige_inventaris(tekst, bekend):
+    assert catalog.kent_dataset_id(tekst) is bekend
+
+
 def test_zonder_bronprefix_laat_een_duo_slug_met_duo_erin_met_rust():
     assert zonder_bronprefix("duo_adressen") == "duo_adressen"
     assert zonder_bronprefix("duo-adressen") == "duo-adressen"
