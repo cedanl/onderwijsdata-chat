@@ -393,13 +393,15 @@ _GEDEKT = json.dumps(
 )
 
 
-def _rapportrun(monkeypatch, stappen: list, events: list | None = None, dispatch=None) -> ReportSpec:
+def _rapportrun(
+    monkeypatch, stappen: list, events: list | None = None, dispatch=None, figuren=((_HU_FIGURE, "k"),)
+) -> ReportSpec:
     """Een rapportrun met een nepmodel; een Exception in `stappen` is een modelaanroep die faalt.
 
     Het rapport heeft een gekozen figuur uit het gesprek (#993), zodat het iets heeft om te bewaren (keep_partial).
     """
     stappen = list(stappen)
-    vaste_figuren(monkeypatch, (_HU_FIGURE, "k"))
+    vaste_figuren(monkeypatch, *figuren)
 
     async def fake_completion(*args, **kwargs):
         if isinstance(stappen[0], Exception):

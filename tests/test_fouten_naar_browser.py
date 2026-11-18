@@ -22,7 +22,9 @@ def _emit_verzamelaar():
 
 
 def test_rapportfout_lekt_geen_exceptietekst(monkeypatch, caplog):
-    async def kapot(session, emit, model=None, stop_event=None, author=None, onderzoeksvraag=None, beurten=None):
+    async def kapot(
+        session, emit, model=None, stop_event=None, author=None, onderzoeksvraag=None, beurten=None, figuren=()
+    ):
         raise LEKKENDE_FOUT
 
     monkeypatch.setattr(chat, "generate_report_spec", kapot)
@@ -35,7 +37,9 @@ def test_rapportfout_lekt_geen_exceptietekst(monkeypatch, caplog):
 
 
 def test_rapport_gebruikersfout_bereikt_de_gebruiker(monkeypatch):
-    async def geweigerd(session, emit, model=None, stop_event=None, author=None, onderzoeksvraag=None, beurten=None):
+    async def geweigerd(
+        session, emit, model=None, stop_event=None, author=None, onderzoeksvraag=None, beurten=None, figuren=()
+    ):
         raise RapportGeweigerd
 
     monkeypatch.setattr(chat, "generate_report_spec", geweigerd)

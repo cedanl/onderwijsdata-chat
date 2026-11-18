@@ -25,6 +25,7 @@ from dataclasses import dataclass
 import numpy as np
 import plotly.io as pio
 
+from core.errors import log_interne_fout
 from tools import dispatch, fouten
 from tools.schemas import TOOL_RUN_ANALYSIS
 
@@ -83,8 +84,10 @@ def _opnieuw(stap: dict) -> VasteFiguur | None:
     """De figuur van een stap, opnieuw uitgevoerd; None als dat niet lukt."""
     try:
         result, figure = dispatch(stap["tool"], dict(stap["arguments"]))
-    except Exception:  # een figuur die niet terugkomt, valt weg; het rapport gaat door
-        logger.warning("RAPPORT vaste figuur  tool=%s  mislukt=uitzondering", stap.get("tool"), exc_info=True)
+    except Exception as e:  # een figuur die niet terugkomt, valt weg; het rapport gaat door
+        # De fouttekst kan modeltekst of argumenten citeren (#502): op WARNING alleen het fout-ID, de rest op DEBUG.
+        logger.warning("RAPPORT vaste figuur  tool=%s  mislukt=uitzondering", stap.get("tool"))
+        log_interne_fout(e, "rapportfiguur")
         return None
     if figure is None or fouten.code(result) is not None or not _heeft_waarden(figure):
         logger.warning("RAPPORT vaste figuur  tool=%s  mislukt=%s", stap.get("tool"), fouten.code(result) or "geen")
