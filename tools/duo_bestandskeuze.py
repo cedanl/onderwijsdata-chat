@@ -15,6 +15,10 @@ opleidingsvorm. Het geslacht-bestand komt overal het meest tekort. Bij mbo is he
 per instelling en leerweg leidend: de fijnere uitsplitsingen tellen honderden studenten
 minder per instelling.
 
+Buiten de groepen een vaste standaard per dataset (#1033): de adressenbestanden hebben de
+besturen op index 0 en de instellingen (met BRIN) op index 1; zonder resource het tweede.
+Die staan bewust niet in de groepen: ze tellen niets, dus geen tekst over onderdrukte cellen.
+
 Op resource-ID, niet op index: de ID's zijn stabiel. Een ID dat de catalogus niet meer
 kent, geeft geen keuze; test_duo_bestandskeuze houdt de ID's bij de gepinde catalogus.
 """
@@ -83,6 +87,13 @@ _GROEPEN: dict[str, tuple[tuple[str, ...], ...]] = {
     ),
 }
 
+# Per dataset zonder groep het bestand als het model er geen noemt (#1033): de adressen van de instellingen,
+# met INSTELLINGSCODE, niet die van de besturen op index 0.
+_STANDAARD: dict[str, str] = {
+    "adressen_ho": "bf1da9c6-c688-4873-91b1-b12c9ac2c132",  # Adressen van instellingen in het hoger onderwijs
+    "adressen_mbo": "1a946297-a7ca-48d5-9ae8-19ad73bf8176",  # Adressen instellingen
+}
+
 # Prognosebestanden met een terugblik ('Historie'): voor gerealiseerde aantallen geldt het
 # bestand ernaast. De Historie-jaren van de mbo-prognose volgen bol en bbl zonder
 # examendeelnemers (EX), op enkele studenten na; ROC Mondriaan 2025: 14.517 tegen 14.519 (#442).
@@ -119,9 +130,13 @@ def leidend(dataset_id: str, resource: int | str | None) -> int | None:
 
 
 def standaard(dataset_id: str) -> int:
-    """Het bestand als het model er geen noemt: het leidende van de eerste groep, anders 0."""
-    groepen = _GROEPEN.get(dataset_id)
-    eerste = _indexen(dataset_id, groepen[0][:1])[0] if groepen else None
+    """Het bestand als het model er geen noemt: de vaste standaard, anders het leidende van de eerste groep, anders 0."""
+    if dataset_id in _STANDAARD:
+        eerste = _indexen(dataset_id, (_STANDAARD[dataset_id],))[0]
+    elif groepen := _GROEPEN.get(dataset_id):
+        eerste = _indexen(dataset_id, groepen[0][:1])[0]
+    else:
+        eerste = None
     return eerste if eerste is not None else 0
 
 
