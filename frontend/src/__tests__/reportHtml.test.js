@@ -4,6 +4,9 @@ import { PLOTLY_URL } from '../plotlyBron'
 import { metThema } from '../reportThema'
 import { runPage, runPageNaTekenen, luminance, contrast } from './helpers/pageRun'
 import { layout, data } from './fixtures/plotFigure'
+import { parseRules } from './helpers/cssRegels'
+import { NPULS } from '../npulsHuisstijl'
+import { JSDOM } from 'jsdom'
 
 const fullSpec = {
   title: 'Instroom ROC van Flevoland 2018–2024',
@@ -719,5 +722,115 @@ describe('afrondingsnoot onder een rapportgrafiek (#651)', () => {
     expect(html).toMatch(/[,\n ]\.vis-noot,[^{]*\{overflow-wrap:anywhere\}/)
     expect(html).toMatch(/html\.dark \.vis-noot\{color:#9CA3AF\}/)
     expect(html).toMatch(/html:not\(\.light\) \.vis-noot\{color:#9CA3AF\}/)
+  })
+})
+
+// De PDF in Npuls-huisstijl (#1037): logo en "EDUdata" in de kop, Npuls-kleuren en -letter, alleen in print.
+describe('printstijl in Npuls-huisstijl (#1037)', () => {
+  const bron = {
+    bron: 'CBS', tekst: 'CBS · Hoger onderwijs (85423NED)', url: 'https://opendata.cbs.nl/ODataApi/OData/85423NED',
+  }
+  const html = buildReportHtml({
+    ...fullSpec,
+    visualisaties: [{ ...fullSpec.visualisaties[0], bron }],
+    manifest: { model: 'x/y', app: '2.2.0' },
+  }, { instelling: 'ROC van Flevoland' })
+  const css = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>'))
+  const regels = parseRules(css)
+  const print = regels.filter(r => r.media === '@media print')
+  const scherm = regels.filter(r => r.media === null)
+  const decl = (body, eigenschap) => body.match(new RegExp(`(?:^|;)${eigenschap}:([^;]+)`))?.[1]
+  const printRegel = selector => print.filter(r => r.selectors.includes(selector)).map(r => r.body).join(';')
+
+  it('zet het Npuls-logo inline in de kop, met "EDUdata" ernaast', () => {
+    const doc = new JSDOM(html).window.document
+    const merk = doc.querySelector('.header > .print-merk')
+    const svg = merk.querySelector('svg')
+    expect(svg.getAttribute('aria-hidden')).toBe('true')
+    expect(svg.getAttribute('viewBox')).toBe('0 0 72 72')
+    expect(svg.querySelector('g').getAttribute('fill')).toBe('#000000')
+    expect(svg.querySelectorAll('circle')).toHaveLength(70)
+    expect(merk.textContent.trim()).toBe('EDUdata')
+    // Het label "Rapport" blijft.
+    expect(doc.querySelector('.header-label').textContent).toBe('Rapport')
+  })
+
+  it('toont het logoblok alleen in print', () => {
+    expect(scherm.filter(r => r.selectors.includes('.print-merk')).map(r => r.body)).toEqual(['display:none'])
+    expect(decl(printRegel('.print-merk'), 'display')).toBe('flex')
+  })
+
+  it('zet in print de Npuls-letter, zonder lettertypebestand: body 400, koppen 600', () => {
+    expect(decl(printRegel('body'), 'font-family')).toBe('"General Sans",Inter,Arial,sans-serif')
+    expect(decl(printRegel('body'), 'font-weight')).toBe('400')
+    for (const kop of ['.header h1', '.section-label', '.vis-title', '.scope-title', '.prose h3']) {
+      expect(decl(printRegel(kop), 'font-weight')).toBe('600')
+    }
+    expect(css).not.toContain('@font-face')
+    expect(css).not.toContain('url(')
+    expect(css).not.toContain('@import')
+  })
+
+  it('vraagt geen lettertype of logo van buiten op: alleen de bronlink noemt een adres', () => {
+    expect(html).not.toContain('<link')
+    expect(html).not.toContain('<img')
+    expect(html).not.toMatch(/src="https?:/)
+    const zonderBronlinks = html.replace(/<a href="https:\/\/opendata\.cbs\.nl\/[^"]*"/g, '<a')
+    expect(zonderBronlinks).not.toMatch(/https?:\/\//)
+    expect(runPage(html).images).toBe(0)
+  })
+
+  it('kleurt in print de titel oranje en groot, links en nadruk blauw, tekst zwart, chips en bronblok roze', () => {
+    expect(decl(printRegel('.header h1'), 'color')).toBe(NPULS.oranje)
+    expect(parseInt(decl(printRegel('.header h1'), 'font-size'), 10)).toBeGreaterThanOrEqual(24)
+    expect(decl(printRegel('a'), 'color')).toBe(NPULS.blauw)
+    expect(decl(printRegel('strong'), 'color')).toBe(NPULS.blauw)
+    expect(decl(printRegel('body'), 'color')).toBe('#000000')
+    for (const vlak of ['.meta-chip', '.vis-bron', '.manifest']) {
+      expect(decl(printRegel(vlak), 'background')).toBe(NPULS.roze)
+      expect(decl(printRegel(vlak), 'color')).toBe(NPULS.zwart)
+      // Zonder deze regel laat Chrome de achtergrond in de PDF weg.
+      expect(decl(printRegel(vlak), 'print-color-adjust')).toBe('exact')
+    }
+  })
+
+  // Elke tekstkleur van de printregels op de achtergrond waar ze staat: die van de regel zelf, roze binnen een
+  // roze vlak, anders wit. Grote tekst (vanaf 18 pt = 24 px) hoeft alleen 3:1.
+  const rozeVlakken = print.filter(r => decl(r.body, 'background') === NPULS.roze).flatMap(r => r.selectors)
+  const achtergrond = (selector, body) => decl(body, 'background')
+    || (rozeVlakken.some(v => selector === v || selector.startsWith(`${v} `)) ? NPULS.roze : NPULS.wit)
+  const paren = print.flatMap(r => r.selectors.map(selector => ({
+    selector,
+    tekst: decl(r.body, 'color'),
+    grond: achtergrond(selector, r.body),
+    groot: (parseInt(decl(r.body, 'font-size'), 10) || 0) >= 24,
+  }))).filter(p => p.tekst)
+
+  it('haalt met elke tekstkleur van de printstijl 4,5:1, behalve op tekst van 18 pt of groter', () => {
+    expect(paren.length).toBeGreaterThan(20)
+    for (const { selector, tekst, grond, groot } of paren) {
+      expect(contrast(tekst, grond), `${selector}: ${tekst} op ${grond}`).toBeGreaterThanOrEqual(groot ? 3 : 4.5)
+    }
+  })
+
+  it('gebruikt oranje alleen op grote tekst, blauw alleen op wit en op roze alleen zwart', () => {
+    expect(contrast(NPULS.oranje, NPULS.wit)).toBeLessThan(4.5)
+    expect(contrast(NPULS.blauw, NPULS.roze)).toBeLessThan(4.5)
+    expect(contrast(NPULS.zwart, NPULS.roze)).toBeGreaterThanOrEqual(15)
+    expect(paren.filter(p => p.tekst === NPULS.oranje).every(p => p.groot)).toBe(true)
+    expect(paren.filter(p => p.tekst === NPULS.blauw).every(p => p.grond === NPULS.wit)).toBe(true)
+    expect(paren.filter(p => p.grond === NPULS.roze).every(p => p.tekst === NPULS.zwart)).toBe(true)
+  })
+
+  // Een lichte schermkleur die de printstijl niet overschrijft, komt in de PDF op wit (de browser drukt zonder
+  // print-color-adjust geen achtergrond af). De donkere regels gelden niet: de printhandler zet html.light.
+  it('laat in print alleen schermkleuren staan die op wit 4,5:1 halen', () => {
+    const inPrint = new Set(paren.map(p => p.selector))
+    const over = scherm.flatMap(r => r.selectors.map(selector => ({ selector, tekst: decl(r.body, 'color') })))
+      .filter(p => p.tekst && !p.selector.startsWith('html.dark ') && !inPrint.has(p.selector))
+    expect(over.length).toBeGreaterThan(0)
+    for (const { selector, tekst } of over) {
+      expect(contrast(tekst, NPULS.wit), `${selector}: ${tekst}`).toBeGreaterThanOrEqual(4.5)
+    }
   })
 })
