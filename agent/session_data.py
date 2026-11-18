@@ -163,6 +163,10 @@ def herstel_data_keys(session: dict, username: str | None) -> Herstel:
     Wat niet terugkomt, staat met zijn reden in `onherstelbaar`: wie daarop doorgaat,
     werkt op een deel van de data. De melding komt van elke key die na zijn antwoord is
     opgehaald, ook door een eerder verzoek of de vraag van een ander.
+
+    Bij de eerste bronfout stopt het herladen (#1050): elke volgende key wachtte anders opnieuw op de herhalingen en
+    timeouts van een bron die eruit ligt, minutenlang zonder bericht, terwijl één onherstelbare key al genoeg is om
+    het rapport te stoppen. De melding noemt dan alleen die eerste bron.
     """
     onherstelbaar: dict[str, str] = {}
     for key in session.get("data_keys", []):
@@ -174,6 +178,8 @@ def herstel_data_keys(session: dict, username: str | None) -> Herstel:
             onherstelbaar[key] = ""
         elif not uitkomst.gelukt:
             onherstelbaar[key] = uitkomst.melding
+            if uitkomst.bronfout:
+                break
     notities = (tekst for key in session_data_keys(session) if (tekst := herlaad.notitie(username, key)))
     return Herstel(tuple(dict.fromkeys(notities)), onherstelbaar)
 
