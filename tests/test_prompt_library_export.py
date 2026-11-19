@@ -29,7 +29,8 @@ def test_de_verzameling_is_klein_en_de_library_neemt_haar_aan():
         assert len(rij["samenvatting"]) <= 1000
         assert len(rij["bron"]) <= 500
     assert len({r["titel"] for r in uit}) == len(uit), "de library waarschuwt bij dubbele titels"
-    assert all("getest_in" not in r and "licentie" not in r for r in uit), "EDUdata staat niet op de lijst van ADR-008"
+    assert all("getest_in" not in r for r in uit), "EDUdata staat niet op de lijst van ADR-008"
+    assert {r["licentie"] for r in uit} == {"CC BY 4.0"}, "exact een waarde uit de gesloten lijst van de library"
 
 
 def test_de_deep_link_geeft_de_vraag_terug():
