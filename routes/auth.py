@@ -8,9 +8,16 @@ from collections import OrderedDict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
-from auth.oidc import build_authorization_url, exchange_code_for_user, is_oidc_configured
+from auth.oidc import (
+    LoginGeheimen,
+    OidcValidatieFout,
+    build_authorization_url,
+    exchange_code_for_user,
+    is_oidc_configured,
+    nieuwe_login_geheimen,
+)
 from core.auth import (
     AUTH_ENABLED,
     SESSION_MAX,
@@ -33,7 +40,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 _login_limiter = RateLimiter(max_attempts=5, window_seconds=60, naam="login")
 _LIMITER_NAAM_MAX = 64
-_OIDC_STATE_COOKIE = "oidc_state"
+# De eenmalige waarden van één SRAM-login, elk in een eigen cookie (#1024). Inloggen zet ze, de callback wist ze
+# altijd: bij succes en bij elke fout.
+_OIDC_COOKIES = {"state": "oidc_state", "nonce": "oidc_nonce", "code_verifier": "oidc_verifier"}
+_OIDC_COOKIE_MAX_AGE = 600
 
 
 def _extract_org_from_entitlement(entitlements):
@@ -214,29 +224,62 @@ async def login(body: dict, request: Request) -> dict:
     return {"token": token, "user": username or "gast"}
 
 
+def _zet_oidc_cookies(response: Response, geheimen: LoginGeheimen) -> None:
+    for veld, cookie in _OIDC_COOKIES.items():
+        response.set_cookie(
+            cookie,
+            getattr(geheimen, veld),
+            max_age=_OIDC_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+        )
+
+
+def _wis_oidc_cookies(response: Response) -> None:
+    for cookie in _OIDC_COOKIES.values():
+        response.delete_cookie(cookie, httponly=True, secure=True, samesite="lax")
+
+
+def _oidc_fout(detail: str) -> JSONResponse:
+    """400 van de callback, als response en niet als HTTPException: zo kan de callback de cookies nog wissen."""
+    return JSONResponse({"detail": detail}, status_code=400)
+
+
 @router.get("/oidc/login")
 async def oidc_login() -> RedirectResponse:
     if not is_oidc_configured():
         raise HTTPException(status_code=404, detail="OIDC is niet geconfigureerd")
-    state = secrets.token_urlsafe(32)
-    auth_url = await build_authorization_url(state)
+    geheimen = nieuwe_login_geheimen()
+    try:
+        auth_url = await build_authorization_url(geheimen)
+    except OidcValidatieFout as e:
+        # Een discovery zonder issuer of jwks_uri: zonder die twee valt het id_token niet te controleren (#1024).
+        logger.error("OIDC-login niet gestart: %s", e)
+        return RedirectResponse("/?oidc_error=1", status_code=302)
     response = RedirectResponse(auth_url, status_code=307)
-    response.set_cookie(
-        _OIDC_STATE_COOKIE,
-        state,
-        max_age=600,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-    )
+    _zet_oidc_cookies(response, geheimen)
     return response
 
 
 @router.get("/oidc/callback")
-async def oidc_callback(request: Request) -> RedirectResponse:
+async def oidc_callback(request: Request) -> Response:
     if not is_oidc_configured():
         raise HTTPException(status_code=404, detail="OIDC is niet geconfigureerd")
+    response = await _verwerk_oidc_callback(request)
+    _wis_oidc_cookies(response)
+    return response
 
+
+def _cookie_geheimen(request: Request) -> LoginGeheimen | None:
+    """De waarden die oidc_login in cookies zette; None als er een ontbreekt."""
+    state, nonce, code_verifier = (request.cookies.get(_OIDC_COOKIES[veld]) for veld in LoginGeheimen._fields)
+    if state and nonce and code_verifier:
+        return LoginGeheimen(state, nonce, code_verifier)
+    return None
+
+
+async def _verwerk_oidc_callback(request: Request) -> Response:
     error = request.query_params.get("error")
     if error:
         logger.warning("OIDC callback returned an error: %s", error)
@@ -244,12 +287,16 @@ async def oidc_callback(request: Request) -> RedirectResponse:
 
     code = request.query_params.get("code")
     state = request.query_params.get("state")
-    cookie_state = request.cookies.get(_OIDC_STATE_COOKIE)
-    if not code or not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
-        raise HTTPException(status_code=400, detail="Ongeldige of verlopen OIDC-state")
+    geheimen = _cookie_geheimen(request)
+    if not code or not state or geheimen is None or not secrets.compare_digest(state.encode(), geheimen.state.encode()):
+        return _oidc_fout("Ongeldige of verlopen OIDC-state")
 
     try:
-        userinfo = await exchange_code_for_user(code)
+        userinfo = await exchange_code_for_user(code, geheimen.code_verifier, geheimen.nonce)
+    except OidcValidatieFout as e:
+        # Eigen tekst zonder token of claimwaarde (auth/oidc.py); geen sessie (#1024).
+        logger.warning("OIDC-login afgewezen: %s", e)
+        return _oidc_fout("Ongeldige OIDC-login")
     except Exception as e:
         # De fout van de provider kan de token-URL of het antwoord citeren: op ERROR type en kenmerk (#819).
         logger.error("OIDC code exchange failed: %s", foutkenmerk(e))
@@ -289,6 +336,4 @@ async def oidc_callback(request: Request) -> RedirectResponse:
     # Also send in URL for frontend initialization (temporary, deprecated in favor of /api/user)
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))
     # In het fragment, niet in de query: een browser stuurt '#…' nooit naar een server of proxy (#103).
-    response = RedirectResponse(f"/#token={token}&user_data={user_data_encoded}", status_code=302)
-    response.delete_cookie(_OIDC_STATE_COOKIE)
-    return response
+    return RedirectResponse(f"/#token={token}&user_data={user_data_encoded}", status_code=302)

@@ -26,7 +26,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat per gebruiker of verbinding (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
-| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15) |
+| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15; het profiel alleen vaste waarden, #1020) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, #421; elke origin met een `*`, ook een patroon als `https://*.nl`, geweigerd bij het opstarten, #506) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
 | S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
@@ -47,6 +47,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S25 | De server begrensde de modelkeuze uit de chat niet tot het aanbod (`AVAILABLE_MODELS`/`USER_MODELS`) | Gemiddeld | ✅ Opgelost (#755) — `toegestaan_model` valt terug op `MODEL` bij elke naam buiten het aanbod |
 | S26 | Een omgeving buiten lokaal kon stil zonder login starten (`CHAT_USERS` leeg, geen `OIDC_PROVIDER`): elke bezoeker was `gast` en zag alle gesprekken | Gemiddeld | ✅ Opgelost (#787) — `Config.validate` weigert de start buiten `APP_ENV=local`, tenzij `ALLOW_ANONYMOUS=true` |
 | S27 | Nieuw eindpunt `/mcp` (MCP over HTTP voor SURF AI Chat) | Gemiddeld | ✅ Afgedekt bij de bouw (#706, #939, #940) — alleen met sleutels, Bearer constant-time, eigen limieten; per-IP-grens ziet achter de ingress het adres van de ingress (zoals S5) |
+| S28 | SRAM-login zonder PKCE en nonce; het `id_token` werd niet gecontroleerd en `userinfo` blind vertrouwd | Gemiddeld | ✅ Opgelost (#1024, audit F-05) — PKCE (S256), nonce, `id_token` tegen de JWKS van de discovery (`iss`, `aud`, `exp`, `nonce`), `sub` van `userinfo` gelijk aan dat van het token; handmatige login op test nog te doen |
 
 ---
 
@@ -114,6 +115,7 @@ Een bevestigde bevinding komt daarna in dit log.
 **Locatie:** `routes/chat.py` — de WebSocket-acties `message` en `clarification_choice`  
 **Probleem:** Een gebruiker kon een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
 **Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk krijgt het maximum via `/api/config` (#501), toont vanaf 80% een teller en verstuurt niets boven de grens; `maxLength` (twee keer het maximum) vangt alleen absurd grote plakacties af. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is. De historie zelf is sinds #500 begrensd op `HISTORY_MAX_CHARS` tekens in totaal (zie S15).
+**Profiel (#1020):** het profiel uit de actie `settings` gaat de systeemprompt in en was vrije tekst zonder grens, met een `context`-veld dat de frontend niet meer kent. Een getal daarin was voor de getalcontrole "hard" (niet door de gebruiker in een bericht genoemd, audit L-03), en een instructie erin ging zo naar het model. `core/profiel.py` (`normaliseer_profiel`, in `_handle_settings` en `build_persona_block`) laat nu alleen door: een functie uit de vaste lijst (gelijk aan `frontend/src/functies.js`, een test houdt ze gelijk), een sector `mbo`/`hbo`/`wo` en een instelling uit het register (naam, alias of instellingscode, opgeslagen als de registernaam; boven 200 tekens zonder opzoeking weg). `model` gaat ongewijzigd door naar `_model` (#755). De rest, ook `context`, valt weg; zonder geladen register valt de instelling ook weg. De instellingskiezer in de frontend (`InstellingPicker`) geeft ook getypte tekst door die niet in het register staat; de server laat die nu vallen, het profiel heeft dan geen instelling.
 
 ---
 
@@ -419,6 +421,47 @@ Tests: `tests/test_mcp_http.py`, `tests/test_mcp_datatools.py`.
 (zie S5) en werkt dan als totaalgrens voor `/mcp`. De definitieve waarden van de limieten volgen uit de
 belastingsmeting (#942).
 
+### S28 — SRAM-login zonder PKCE en nonce, `id_token` niet gecontroleerd ✅ Opgelost
+
+**Aangetroffen in:** audit F-05 (#1024)  
+**Locatie:** `auth/oidc.py`, `routes/auth.py` (`oidc_login`, `oidc_callback`)  
+**Probleem:** de SRAM-login was een authorization-code-flow met alleen een `state`. Zonder PKCE kon een onderschepte
+code bij de provider worden ingewisseld, en zonder nonce was een teruggespeeld antwoord niet aan deze login te koppelen.
+De callback gebruikte `userinfo` zonder het `id_token` te controleren. OAuth 2.0 Security BCP (RFC 9700) raadt PKCE en
+de controle van het `id_token` aan.  
+**Fix:**
+- `oidc_login` maakt per login drie willekeurige waarden (`secrets.token_urlsafe`): state, nonce en een code verifier
+  van 86 tekens. De URL naar SRAM bevat `code_challenge` (S256, BASE64URL(SHA256(verifier))), `code_challenge_method=S256`
+  en `nonce`. De drie waarden staan elk in een eigen cookie (`oidc_state`, `oidc_nonce`, `oidc_verifier`): `HttpOnly`,
+  `Secure`, `SameSite=Lax`, 600 seconden. De callback wist ze alle drie, bij succes en bij elke fout.
+- De callback stuurt de verifier mee naar het token-eindpunt en controleert het `id_token` (`joserfc`): handtekening
+  tegen de JWKS uit de discovery, alleen asymmetrische algoritmen (RS/PS/ES, nooit `none` of HMAC met het
+  clientgeheim), `iss` gelijk aan de `issuer` van de discovery, `aud` bevat `OIDC_CLIENT_ID`, `exp` niet verstreken
+  (60 seconden speling), `sub` aanwezig, `nonce` gelijk aan de cookie (constant-time) en `azp`, als die er is, gelijk
+  aan de client. De JWKS wordt bewaard zoals de discovery (een uur) en bij een onbekende `kid` één keer opnieuw
+  opgehaald (sleutelrotatie).
+- `sub` uit het `id_token` is de identiteit: noemt `userinfo` een ander `sub`, dan volgt geen login (OIDC Core 5.3.2).
+  Naam, e-mail en entitlements komen nog uit `userinfo`; de gebruikersnaam blijft `email`, anders `sub` (S21).
+- Ontbreekt een cookie, het `id_token` of klopt een controle niet, dan antwoordt de callback 400 zonder sessietoken,
+  zonder rij in de SRAM-cache en zonder `#token=`-redirect. Een fout van de provider zelf (verkeerde code of
+  verifier) houdt de redirect naar `/?oidc_error=1`. Een discovery zonder `issuer` of `jwks_uri` start geen login.
+- Het log noemt bij een afwijzing alleen een eigen reden (foutcode en claimnaam), nooit een token, claimwaarde of
+  sleutel.
+
+Tests: `tests/test_oidc_flow.py` (URL en cookies, verifier naar de provider, elk afwijzingsgeval, `sub` van
+`userinfo`, providerfout, discovery zonder `issuer` of `jwks_uri`, JWKS-cache en sleutelrotatie),
+`tests/test_log_hardening.py`.  
+**Niet gecontroleerd:** de discovery van de SRAM-proxy is bij de bouw niet opgevraagd. Of die `S256` in
+`code_challenge_methods_supported` noemt en met welk algoritme het `id_token` ondertekend is, is dus niet bekeken. De
+app stuurt S256 altijd mee en geeft één keer een WARNING als de discovery andere methoden noemt zonder S256.  
+**Restrisico:**
+- Geeft de SRAM-proxy geen `id_token` of ondertekent hij met een algoritme buiten RS/PS/ES, dan kan niemand meer via
+  SRAM inloggen op test en playground. Daarom eerst een handmatige SRAM-login op test, vóór de promotie naar
+  playground.
+- Blokkeert de browser de cookies of start de gebruiker in een tweede tabblad opnieuw een login, dan geeft de callback
+  400 en begint de gebruiker opnieuw.
+- De gebruikersnaam blijft het e-mailadres; de overstap naar `sub` als sleutel staat in S21 (#487).
+
 ---
 
 ## Aanbevelingen voor volgende stap
@@ -431,4 +474,5 @@ belastingsmeting (#942).
 6. **S22** — vóór productie: eigen account per gebruiker, of de server bewaart de rapportspec en bouwt de HTML zelf (#634)
 7. **S23** — besluiten of `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` open blijven (#636)
 8. **S24** — opslagquotum per gebruiker; `rateLimit` en `maxRequestBodyBytes` in Traefik (#682)
-9. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+9. **S28** — vóór de promotie naar playground een SRAM-login op test, en vastleggen wat de discovery van de SRAM-proxy over PKCE en het ondertekeningsalgoritme zegt (#1024)
+10. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

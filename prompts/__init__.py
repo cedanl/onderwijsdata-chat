@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from core.config import SEARCH_CATALOG_LIMIT
+from core.profiel import normaliseer_profiel
 from data.instellingen import HOOFDVESTIGING, REGIO_VIA_LOCATIES, instellingsprofiel
 
 _PROMPT_DIR = Path(__file__).parent
-_GEEN_VOORKEUR = "Geen voorkeur"
 
 # Limieten komen uit de code, zodat prompt en afdwinging niet uit elkaar lopen (#52).
 SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text().replace("{ZOEKLIMIET}", str(SEARCH_CATALOG_LIMIT))
@@ -34,25 +34,21 @@ def _instellingsgegevens(instelling: str) -> str | None:
 
 
 def build_persona_block(settings: dict) -> str:
+    """Het profielblok van de systeemprompt, alleen uit vaste, bekende waarden (#1020)."""
+    profiel = normaliseer_profiel(settings)
     lines = []
-    rol = settings.get("functie") or settings.get("rol", _GEEN_VOORKEUR)
-    if rol and rol != _GEEN_VOORKEUR:
+    if rol := profiel.get("functie"):
         lines.append(f"- Gebruikersrol: **{rol}** — stem taalgebruik en diepte van uitleg hierop af.")
-    domein = settings.get("domein", _GEEN_VOORKEUR)
-    if domein and domein != _GEEN_VOORKEUR:
+    if domein := profiel.get("domein"):
         lines.append(
             f"- Domein: **{domein}** — prioriteer datasets en voorbeelden uit dit domein. Sla de scope-vraag naar onderwijsniveau over als {domein} dit al bepaalt."
         )
-    instelling = (settings.get("instelling") or "").strip()
-    if instelling:
+    if instelling := profiel.get("instelling"):
         lines.append(
             f"- Instelling: **{instelling}** — dit is de instelling van de gebruiker. Gebruik deze naam bij vragen over 'mijn instelling' en sla de scope-vraag naar instellingsnaam over."
         )
         if gegevens := _instellingsgegevens(instelling):
             lines.append(gegevens)
-    context = (settings.get("context") or "").strip()
-    if context:
-        lines.append(f"- Aanvullende context: {context}")
     if not lines:
         return ""
     return "\n\n## Gebruikersprofiel\n" + "\n".join(lines)

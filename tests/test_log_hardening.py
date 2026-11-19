@@ -471,7 +471,7 @@ def test_een_mislukte_oidc_uitwisseling_logt_type_en_kenmerk(caplog, monkeypatch
 
     from routes import auth as auth_routes
 
-    async def faal(_code):
+    async def faal(*_args):
         raise RuntimeError(f"token-endpoint antwoordde {MARKER}")
 
     monkeypatch.setattr(auth_routes, "is_oidc_configured", lambda: True)
@@ -482,7 +482,8 @@ def test_een_mislukte_oidc_uitwisseling_logt_type_en_kenmerk(caplog, monkeypatch
             "method": "GET",
             "path": "/oidc/callback",
             "query_string": b"code=c&state=s",
-            "headers": [(b"cookie", b"oidc_state=s")],
+            # Sinds #1024 horen nonce en PKCE-verifier bij de state; zonder die cookies komt er een 400.
+            "headers": [(b"cookie", b"oidc_state=s; oidc_nonce=n; oidc_verifier=v")],
         }
     )
     caplog.set_level(logging.DEBUG, logger="routes.auth")
@@ -520,6 +521,9 @@ _NIVEAUS_INFO_PLUS = {"info", "warning", "error", "critical"}
 _BEWUST = {
     # Een ConfigError bevat alleen tekst uit config.py; zonder die tekst is een verkeerde configuratie niet te vinden.
     ("server.py", "", "Configuration validation failed: %s"),
+    # Een OidcValidatieFout bevat alleen eigen tekst uit auth/oidc.py (foutcode, claimnaam), nooit een token (#1024).
+    ("routes/auth.py", "oidc_login", "OIDC-login niet gestart: %s"),
+    ("routes/auth.py", "_verwerk_oidc_callback", "OIDC-login afgewezen: %s"),
 }
 
 

@@ -70,8 +70,8 @@ changelog-item wat er anders is.
 |---------|-----|--------------|
 | `GET` | `/api/auth/status` | Of authenticatie vereist is en of SRAM-login beschikbaar is (`{"required": …, "oidc_enabled": …}`) |
 | `POST` | `/api/auth/login` | Inloggen met gebruikersnaam/wachtwoord. Retourneert een HMAC-ondertekend token. Rate-limited: 5 pogingen per minuut per IP. |
-| `GET` | `/api/auth/oidc/login` | Start SRAM-login: redirect naar de OIDC-provider |
-| `GET` | `/api/auth/oidc/callback` | Callback van de provider; stuurt terug naar de app met het token in het fragment (`/#token=…`), nooit in de query |
+| `GET` | `/api/auth/oidc/login` | Start SRAM-login: redirect naar de OIDC-provider, met PKCE (S256) en een nonce |
+| `GET` | `/api/auth/oidc/callback` | Callback van de provider; stuurt terug naar de app met het token in het fragment (`/#token=…`), nooit in de query. Controleert het `id_token` (handtekening, `iss`, `aud`, `exp`, `nonce`); bij een ongeldige login 400 zonder token (SECURITY.md S28) |
 | `GET` | `/api/auth/session` | Of het token in `Authorization: Bearer …` nog geldt: 204 ja, 401 nee (ontbreekt, ongeldig, verlopen of ingetrokken). Altijd zonder body en zonder gebruikersgegevens; met en zonder OIDC. Zonder authenticatie 204; bij een databasestoring 500 |
 | `GET` | `/api/auth/user` | Gebruikersinfo (naam, instelling) bij het token in `Authorization: Bearer …` — alleen als OIDC is ingesteld |
 | `POST` | `/api/auth/refresh` | Vernieuwt een token vóór het verloopt, nooit voorbij `SESSION_MAX_HOURS` na inloggen — alleen als OIDC is ingesteld |
