@@ -13,12 +13,34 @@ GEEN_RUNTIME = {"conftest.py"}
 
 
 def _gekopieerd() -> set[str]:
+    """De bronnen van elke COPY uit de checkout (niet uit een andere stage: `--from`), los van vlaggen als `--chown`."""
+    uit = set()
+    for r in (ROOT / "Dockerfile").read_text().splitlines():
+        if not (m := re.match(r"COPY\s+((?:--\S+\s+)*)(\S+)\s+\./(?:\S*)\s*$", r)):
+            continue
+        if "--from" not in m.group(1):
+            uit.add(m.group(2).rstrip("/"))
+    return uit
+
+
+def _runtime_stage() -> list[str]:
+    """De regels van de laatste stage: het image dat draait."""
     regels = (ROOT / "Dockerfile").read_text().splitlines()
-    return {
-        m.group(1).rstrip("/")
-        for r in regels
-        if (m := re.match(r"COPY\s+(?!--from)(\S+)\s+\./(?:\S*)\s*$", r)) and not r.startswith("COPY --from")
-    }
+    begin = max(i for i, r in enumerate(regels) if r.startswith("FROM "))
+    return regels[begin:]
+
+
+def test_de_runtime_stage_geeft_de_bestanden_bij_het_kopieren_aan_appuser():
+    """Geen `chown -R /app` aan het eind: dat kostte op de CI-runner 650 s per build en zette elk bestand nog eens in een
+    eigen laag. Elke COPY geeft de bestanden meteen aan appuser, en de gebruiker bestaat vóór de eerste COPY."""
+    stage = _runtime_stage()
+    assert not [r for r in stage if not r.lstrip().startswith("#") and re.search(r"chown\s+-R", r)]
+    copies = [i for i, r in enumerate(stage) if r.startswith("COPY ")]
+    assert copies
+    assert all("--chown=appuser:appuser" in stage[i] for i in copies)
+    useradd = next(i for i, r in enumerate(stage) if "useradd" in r)
+    assert useradd < copies[0]
+    assert any(r.strip() == "USER appuser" for r in stage)
 
 
 def test_elke_root_module_wordt_gekopieerd():
