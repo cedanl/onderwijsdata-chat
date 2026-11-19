@@ -123,7 +123,7 @@ describe('verstuurknoppen buiten de composer (#774)', () => {
     await klik(opnieuwSturen())
     expect(verstuurd(ws)).toEqual([])
     expect(melding()).toBe(VOL)
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 
   it('met ruimte gaat een suggestie gewoon weg', async () => {
     persistCurrentChat('conv-a', beurten(MAX_CHAT_TURNS - 1))
