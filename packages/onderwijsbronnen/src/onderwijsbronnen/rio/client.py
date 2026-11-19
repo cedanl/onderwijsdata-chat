@@ -12,6 +12,7 @@ Wat v3 anders doet dan v2, voor wie code migreert:
   naar 2, dus ``fetch`` (dat bij 0 begint) mist niets; de laatste pagina kan leeg zijn (alleen een
   self-link). Dubbele ID's in een reeks zijn records per geldigheidsperiode, geen pagineringsfout.
 """
+
 import httpx
 
 from ._filtercontract import filtercontract
@@ -94,15 +95,38 @@ def fetch(resource: str, **params) -> list:
     return results
 
 
+def link(href: str) -> dict:
+    """Haal één HATEOAS-link op zoals RIO hem geeft (``_links.<naam>.href``), met de query die erin staat.
+
+    Alleen een link onder ``BASE_URL``: de URL komt uit een antwoord, en de client volgt geen link naar een andere host.
+    """
+    if not href.startswith(f"{BASE_URL}/"):
+        raise ValueError(f"RIO-link buiten {BASE_URL}: {href[:80]}")
+    r = httpx.get(href, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
 def related(resource: str, id: str, sub: str, **params) -> list:
-    """Haal sub-resources op die gelinkt zijn aan een resource.
+    """Haal sub-resources op die gelinkt zijn aan een resource, over alle pagina's.
+
+    Volgt de next-links, net als ``fetch``: een sub-resource kent niet altijd een ``page``-parameter
+    (``erkenningen/{brin}/onderwijslicenties`` geeft er HTTP 400 op), de next-link draagt al alle params.
 
     Voorbeeld: related("aangeboden-opleidingen", uuid, "aangeboden-opleiding-cohorten")
     """
-    r = httpx.get(f"{BASE_URL}/{resource}/{id}/{sub}", params=params, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    if "_embedded" in data:
-        items, _ = _extract(data)
-        return items
-    return data if isinstance(data, list) else [data]
+    url: str | None = f"{BASE_URL}/{resource}/{id}/{sub}"
+    query: dict | None = params
+    results: list = []
+    while url:
+        r = httpx.get(url, timeout=30, **({"params": query} if query else {}))
+        r.raise_for_status()
+        data = r.json()
+        if "_embedded" not in data:
+            if results:
+                break  # lege laatste HATEOAS-pagina
+            return data if isinstance(data, list) else [data]
+        items, next_href = _extract(data)
+        results.extend(items)
+        url, query = next_href, None
+    return results

@@ -910,6 +910,30 @@ kolommen) met `rijen` (begrensd zoals bij `run_analysis`),
 waarde van de andere kant staat dan per rij herhaald en telt niet zonder meer op (zie `dataset_profiel`). Een
 naamsleutel draagt de naamwaarschuwing van `relatie`.
 
+**Een SKDB-rij zonder DUO-rij (#1060, `tools/opvolger.py`).** De Studiekeuzedatabase toont het komende studiejaar,
+DUO het vorige; een nieuwe opleiding staat eerst alleen in de SKDB. Koppelt `koppel_data` een SKDB-tabel en een
+DUO-tabel op precies `brin` en `croho` (geen van beide zelf een koppeling), dan bepaalt de code per SKDB-rij zonder
+DUO-rij de reden uit de onderwijslicenties van RIO (`onderwijsbronnen.rio.licenties`), op de DUO-peildatum (1 oktober
+van het laatste studiejaar in de DUO-tabel) en vandaag:
+
+1. Begint de licentie van die brin + CROHO die vandaag geldt ná de peildatum (en heeft de CROHO daar geen oudere
+   licentie), dan is de reden "nieuw per <begindatum>, nog niet in DUO <jaar>".
+2. Voorgangers zijn licenties van dezelfde brin die op de peildatum golden en vandaag niet meer, in hetzelfde
+   `onderdeel` (TECHNIEK, …), met als einddatum de begindatum van de nieuwe. Ze staan erbij met hun CROHO, de naam en
+   het aantal uit de DUO-tabel (alleen bij precies één DUO-rij in het laatste jaar met één `AANTAL…`-kolom; anders het
+   aantal rijen). Ze worden genoemd, nooit opgeteld: bij Avans is Informatica (34479) de voorganger van HBO-ICT
+   (30020), Technische Informatica (34475) loopt door en staat apart in de SKDB.
+3. Anders blijft het "geen DUO-rij", zoals voorheen.
+
+Geeft RIO minstens één opvolger, dan krijgt de koppeling de kolom `koppelreden` na `koppelstatus` ("nieuw per …" of
+"geen DUO-rij" bij `alleen SKDB`, leeg bij de andere rijen), het resultaat `opvolgers` (per rij `brin`, `croho`,
+`reden`, `voorgangers` en een vaste `tekst`) en de `toelichting` van `alleen SKDB` een zin dat zo'n rij nieuw is, niet
+ontbrekend, en dat de voorgangers niet bij de nieuwe opleiding opgeteld worden. De `telling` verandert niet. Zonder
+opvolger blijft de koppeling zoals ze was. Een storing bij RIO breekt de koppeling niet: de rijen houden "geen
+DUO-rij" en de `waarschuwing` zegt voor welke instellingen het niet is nagegaan (#970). Kosten: per instelling twee
+licentielijsten en één aanroep per licentie die tussen de twee dagen wisselt (bij Avans zes), een dag in de cache;
+boven 10 instellingen met een SKDB-rij zonder DUO-rij vraagt de koppeling RIO niets, zoals bij de fusieregels.
+
 De key is afgeleid van de eerste tabel en rust op beide (`gelezen`): de herkomst en de CSV-kop noemen beide bronnen,
 bij de Studiekeuzedatabase met de verplichte zin van LCSK (#977, #985), en de CSV-knop staat eronder zoals bij
 `run_analysis`. `query_data`, `run_analysis` en `create_plot` werken op de key als op elke afgeleide key. Na een

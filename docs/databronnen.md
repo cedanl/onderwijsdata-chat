@@ -561,9 +561,19 @@ duaal) zijn het er ruim 4.400.
   geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
   dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
-  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. `brin` en
-  `croho` zijn canonieke sleutels van `onderwijsbronnen.sleutels` (#958): het catalogusrecord noemt ze als
-  `koppelbaar_via`, en `relatie` noemt een SKDB-tabel en een DUO-tabel zo als koppelkandidaten.
+  de CROHO-code, maar niet altijd (samengevoegde studies; bij 20 hbo-opleidingen wijkt ze af, niet bij ICT, #1015).
+  Koppel daarom op `croho`, niet op `studiecode`. `brin` en `croho` zijn canonieke sleutels van
+  `onderwijsbronnen.sleutels` (#958): het catalogusrecord noemt ze als `koppelbaar_via`, en `relatie` noemt een
+  SKDB-tabel en een DUO-tabel zo als koppelkandidaten.
+- **Komend studiejaar tegenover het vorige (#1015, #1060):** de SKDB toont het aanbod van het komende studiejaar, DUO
+  telt het vorige (peildatum 1 oktober). Een opleiding die na die peildatum begint, staat dus eerst alleen in de SKDB.
+  Bij Avans (07GR) begint HBO-ICT (30020) op 1-9-2026 als opvolger van Informatica (34479, laatste instroom
+  1-9-2025); de SKDB zette de oude Informatica-records al om naar 30020, DUO 2025 telt 34479 (928) en Technische
+  Informatica (34475, 206), en geen 30020. Zuyd heeft hetzelfde patroon bij Technische Informatica (34475) in
+  Maastricht. `koppel_data` geeft zo'n rij daarom niet als "geen DUO-rij": de reden komt uit de onderwijslicenties van
+  RIO ("nieuw per 1-9-2026, nog niet in DUO 2025"), met de voorgangers en hun eigen DUO-aantal erbij, nooit opgeteld
+  (zie `koppel_data` in `docs/tools.md`). De koppeling blijft brin + CROHO, zonder naamkoppeling of handmatige mapping:
+  die veroudert met DUO 2026 en telt dan dubbel.
 - **Schema en wat de chat ermee kan (#978):** de export beschrijft zichzelf in `exporttabellen` (45 tabellen) en
   `exportkolommen` (639 kolommen). `onderwijsbronnen.skdb.schema` bouwt daaruit per tabel de omschrijving, de kolommen
   met type, de korrel (de parameters van het endpoint, zoals instelling × vestiging × product bij `tracks`), de

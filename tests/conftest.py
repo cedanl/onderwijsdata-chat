@@ -106,6 +106,18 @@ def geen_fusieopvraging(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def geen_licentieopvraging(monkeypatch):
+    """Unittests vragen RIO niet om de onderwijslicenties van een instelling (#1060): geen opvolgers.
+
+    Elke koppeling van SKDB en DUO op brin + croho met een SKDB-rij zonder DUO-rij vraagt ze op
+    (`tools/opvolger.py`); `tests/test_koppel_opvolger.py` patcht zelf."""
+    from tools import opvolger
+
+    monkeypatch.setattr(opvolger, "onderwijslicenties", lambda brin, peildatum=None: ())
+    opvolger.wis_caches()
+
+
+@pytest.fixture(autouse=True)
 def geen_locatieopvraging(monkeypatch):
     """Unittests laden het mbo-aanbod per locatie niet en vragen RIO niet om aanbieders (#744): geen locaties.
 

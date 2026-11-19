@@ -99,6 +99,21 @@ onderwijsaanbieders("31JC", "2026-11-05")
 # ['100A932', '100A933', '110A638']  (Zone.college mbo, Zone.college vmbo, Zone.college)
 ```
 
+### Onderwijslicenties van een instelling
+
+`onderwijslicenties` geeft de licenties van een erkenning op een peildatum (standaard vandaag), met `begindatum` en
+`einddatum` maar zonder opleidingscode; `met_erkenning` vult die aan uit de opleidingserkenning (één aanroep per
+licentie): `croho`, `onderdeel` en `instroom_einddatum`. Twee dagen naast elkaar laten zien welke opleiding er bij kwam
+en welke verdween; de chat gebruikt dat voor een SKDB-rij zonder DUO-rij (#1060).
+
+```python
+from onderwijsbronnen.rio import met_erkenning, onderwijslicenties
+
+toen, nu = onderwijslicenties("07GR", "2025-10-01"), onderwijslicenties("07GR")
+nieuw = [met_erkenning(lic) for lic in nu if lic.begindatum > "2025-10-01"]
+# HBO-ICT (30020, TECHNIEK) per 2026-09-01, en vier andere; Informatica (34479) eindigt dan
+```
+
 ## DUO Open Data
 
 ```python
