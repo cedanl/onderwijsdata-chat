@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useState, useEffect, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import BronStatusMelding from './components/BronStatusMelding'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -300,6 +301,7 @@ function AppShell() {
         slotRef={setNavSlot}
         onZoek={openZoeken}
       />
+      <BronStatusMelding />
       <main className="page-wrap" id={MAIN_ID} tabIndex={-1}>
         <NavSlotContext.Provider value={navSlot}>
           <ErrorBoundary key={location.pathname}>

@@ -431,6 +431,14 @@ html.dark .login-melding { color: var(--accent-text); }
   font: inherit; font-weight: 600; color: var(--accent-text);
   background: none; border: none; text-decoration: underline; cursor: pointer;
 }
+/* Welke bronnen nu niet live zijn (#1057): alleen als er een is. Geen foutrood: de app werkt, de bron niet, en de
+   melding staat boven de pagina zodat ze bij het openen opvalt zonder te blokkeren. Leeg: geen ruimte. */
+.bronstatus:empty { display: none; }
+.bronstatus { display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 0; }
+.bronstatus-melding {
+  margin: 0; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px;
+  border: 1px solid rgba(217, 119, 6, .45); background: rgba(217, 119, 6, .09); color: var(--gray-700);
+}
 .chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 /* Bovenaan de rij, niet gecentreerd (#599): de wachtregel komt er tijdens het antwoord onder, en gecentreerd
    schoof de pil dan 8px omhoog. Pil plus regel (44px) passen in de 50px, dus de rij groeit niet. */

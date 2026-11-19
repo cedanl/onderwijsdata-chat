@@ -34,6 +34,16 @@ def netwerk_dicht():
 
 
 @pytest.fixture(autouse=True)
+def geen_bronbewaking(monkeypatch):
+    """Een test die de app start (lifespan) meet de bronnen niet live (#1057); tests/test_bronstatus.py patcht zelf.
+
+    Ook in de omgeving: een test die `core.config` herlaadt leest de waarde daar opnieuw, en een patch op de oude
+    module telt dan niet meer."""
+    monkeypatch.setenv("BRONSTATUS_INTERVAL_S", "0")
+    monkeypatch.setattr("core.config.BRONSTATUS_INTERVAL_S", 0)
+
+
+@pytest.fixture(autouse=True)
 def clear_store():
     store.clear()
     recepten.wis()
