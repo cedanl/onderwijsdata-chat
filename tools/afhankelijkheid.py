@@ -166,10 +166,22 @@ class Toets:
     constanten: tuple[int | float, ...] = ()
 
 
+def _resultaat(uitkomst: sandbox.Uitkomst) -> Any:
+    return uitkomst.result
+
+
 def toets(
-    code: str, df: pd.DataFrame | None, tabellen: dict[str, Any], result: Any, geerfd: Iterable[int | float] = ()
+    code: str,
+    df: pd.DataFrame | None,
+    tabellen: dict[str, Any],
+    result: Any,
+    geerfd: Iterable[int | float] = (),
+    lees: Callable[[sandbox.Uitkomst], Any] = _resultaat,
 ) -> Toets:
-    """Hangen de getallen in `result` van de data af? Bij twijfel niet (fail-closed)."""
+    """Hangen de getallen in `result` van de data af? Bij twijfel niet (fail-closed).
+
+    `lees` haalt uit een herhaling wat met `result` te vergelijken is: standaard haar `result`, voor de figuur van een
+    script de waarden van haar figuur (#993)."""
     eigen = _uit(result)
     if not eigen:
         return Toets(AFHANKELIJK)
@@ -184,7 +196,7 @@ def toets(
         return Toets(ONBEPAALD, tuple(sorted(_getal(g) for g in eigen - invoer)))
     vast = set(eigen)
     for herhaling in herhalingen:
-        vast &= _uit(herhaling.result)
+        vast &= _uit(lees(herhaling))
     vast |= eigen & (_literals(code) | afgekeurd)
     vast -= invoer
     return Toets(ONAFHANKELIJK, tuple(sorted(_getal(g) for g in vast))) if vast else Toets(AFHANKELIJK)

@@ -53,7 +53,7 @@ def _als_dict(result: str) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _bronloos(result: str) -> bool:
+def bronloos(result: str) -> bool:
     """Een toolresultaat dat zelf zegt geen data gelezen te hebben (run_analysis zonder gelezen key, #201)."""
     parsed = _als_dict(result)
     return "bron" in parsed and parsed["bron"] is None
@@ -68,7 +68,7 @@ def _scriptconstanten(result: str) -> list:
 def bewijs_getallen(result: str) -> set[str]:
     """De gehele getallen (cijfers) die één toolresultaat als bewijs levert; leeg bij een bronloos resultaat."""
     result = str(result)
-    if _bronloos(result):
+    if bronloos(result):
         return set()
     eigen = {n for c in _scriptconstanten(result) for n in _TOOL_NUMBER.findall(str(c))}
     return set(_TOOL_NUMBER.findall(result)) - eigen
@@ -77,7 +77,7 @@ def bewijs_getallen(result: str) -> set[str]:
 def _bewijs_decimalen(result: str) -> set[Decimal]:
     """De decimalen die één toolresultaat als bewijs levert, zoals bewijs_getallen."""
     result = str(result)
-    if _bronloos(result):
+    if bronloos(result):
         return set()
     eigen = {Decimal(n) for c in _scriptconstanten(result) for n in _TOOL_DECIMAL.findall(str(c))}
     return {Decimal(n.replace(",", ".")) for n in _TOOL_DECIMAL.findall(result)} - eigen

@@ -357,6 +357,7 @@ Nieuwe tabel `beurtbewijs`, in `_SCHEMA` van `persistence/db.py` (dezelfde DDL v
 | `rekenbewijs` | TEXT NOT NULL | JSON-lijst van `{tool, argumenten, resultaat}`: wat `record_rekenbewijs` sinds de vorige beurt toevoegde |
 | `kaarten` | TEXT NOT NULL | JSON `{data_key: {...}}`: de kaarten die deze beurt tekende, alleen met de velden van `_KAARTREGEL_ARGUMENTEN` (geen titel en geen rijen, #211) |
 | `bronnen` | TEXT NOT NULL DEFAULT '{}' | JSON `{data_key: [{bron, dataset, regel}]}`: per nieuwe key de bronregels van de geladen tabellen erachter, zoals bij het laden (`bronvermelding.vastgelegde_bronnen`); een vervolgantwoord zonder toolaanroep leest ze na heropenen, ook als de store de data kwijt is (#987). `_migrate` voegt de kolom toe (`_voeg_kolom_toe`); een oudere rij heeft `{}` en valt terug op de store |
+| `figuren` | TEXT NOT NULL DEFAULT '[]' | JSON-lijst van `{id, tool, arguments, titel, keys}`: de stappen achter de figuren die de beurt maakte (`create_plot`, `create_choropleth_map` of een script van `run_analysis`, `agent/figuurstappen.py`), zodat het rapport een gekozen figuur opnieuw maakt uit haar stap in plaats van uit figuur-JSON van de client (#993). Geen figuur-JSON en geen rijen; het script van `run_analysis` staat ook al in `rekenbewijs`. `_migrate` voegt de kolom toe; een oudere rij heeft `[]`, dat gesprek toont geen figuren in de checklist |
 | `created_at` | TEXT NOT NULL | ISO-tijd van `message_end` |
 
 Van #876 tot #983 had de tabel ook een kolom `controle` (de meldingen van `message_end`, besluit 2); `_migrate` haalt
@@ -420,7 +421,7 @@ app.
 - **"Verwijder al mijn gegevens"** (`persistence/verwijderen.py`): één `DELETE ... WHERE username = ?` in `DELETES`, en
   de klaarstaande rijen van de gebruiker gaan uit het geheugen, zoals bij `recepten.vergeet_gebruiker`.
 - **Export** (`persistence/export.py`): een soort `beurtbewijs` met `conv_id`, `tekst_hash`, `lineage`, `rekenbewijs`,
-  `kaarten`, `bronnen` (#987) en `created_at` (van #876 tot #983 ook `controle`), in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
+  `kaarten`, `bronnen` (#987), `figuren` (#993) en `created_at` (van #876 tot #983 ook `controle`), in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
 - **Log:** op INFO alleen aantallen en kenmerken, nooit lineage, argumenten of resultaten (#475).
 
 ### Migratie

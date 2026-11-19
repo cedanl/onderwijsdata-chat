@@ -1,6 +1,7 @@
 """De tabel beurtbewijs: per gebruiker, per gesprek en per tekst-hash, en weg met het gesprek (ADR-009, #875).
 
-Sinds #987 draagt een rij ook de bronregels per key (`bronnen`), voor een vervolgantwoord na heropenen."""
+Sinds #987 draagt een rij ook de bronregels per key (`bronnen`), voor een vervolgantwoord na heropenen, en sinds #993
+de stappen achter de figuren van de beurt (`figuren`), voor het rapport."""
 
 import importlib
 import sqlite3
@@ -22,6 +23,15 @@ _BRONNEN = {
         }
     ]
 }
+_FIGUREN = [
+    {
+        "id": "abc123def456",
+        "tool": "create_plot",
+        "arguments": {"data_key": "cbs:85423NED", "chart_type": "bar", "x": "PROVINCIE", "y": "AANTAL", "title": "T"},
+        "titel": "T",
+        "keys": ["cbs:85423NED"],
+    }
+]
 _NU = "2026-11-03T10:00:00+00:00"
 
 
@@ -31,6 +41,7 @@ def _rij(**anders):
         "rekenbewijs": _REKEN,
         "kaarten": _KAARTEN,
         "bronnen": _BRONNEN,
+        "figuren": _FIGUREN,
         "created_at": _NU,
         **anders,
     }
@@ -80,13 +91,23 @@ def test_een_rij_zonder_bronnen_bewaart_lege(db):
     assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(bronnen={})}
 
 
+def test_een_rij_zonder_figuren_bewaart_een_lege_lijst(db):
+    """Een rij in het geheugen van vóór #993 zonder `figuren`: de kolom krijgt een lege lijst."""
+    rij = _rij()
+    del rij["figuren"]
+
+    db.save_beurtbewijs("alice", "c1", {"h1": rij})
+
+    assert db.beurtbewijs_voor("alice", "c1") == {"h1": _rij(figuren=[])}
+
+
 def test_zonder_rijen_schrijft_niets(db):
     db.save_beurtbewijs("alice", "c1", {})
 
     assert db.beurtbewijs_voor("alice", "c1") == {}
 
 
-@pytest.mark.parametrize("kolom", ["lineage", "bronnen"])
+@pytest.mark.parametrize("kolom", ["lineage", "bronnen", "figuren"])
 def test_een_onleesbare_rij_wordt_overgeslagen(db, kolom):
     db.save_beurtbewijs("alice", "c1", {"goed": _rij(), "stuk": _rij()})
     conn = db._connect()
@@ -186,6 +207,7 @@ def test_een_bestaande_tabel_met_controle_verliest_de_kolom_en_houdt_de_rij(tmp_
             "rekenbewijs": [],
             "kaarten": {},
             "bronnen": {},
+            "figuren": [],
             "created_at": "2026-11-03T10:00:00+00:00",
         }
     }
@@ -212,6 +234,31 @@ def test_een_bestaande_tabel_zonder_bronnen_krijgt_de_kolom_en_houdt_de_rij(tmp_
     db.init_db()
 
     assert db.beurtbewijs_voor("alice", "c1")["h1"]["bronnen"] == {}
+    db.save_beurtbewijs("alice", "c1", {"h1": _rij()})
+    assert db.beurtbewijs_voor("alice", "c1")["h1"] == _rij()
+
+
+def test_een_bestaande_tabel_zonder_figuren_krijgt_de_kolom_en_houdt_de_rij(tmp_path, monkeypatch):
+    """#993: een rij van vóór de kolom leest terug zonder figuurstappen; daarna kan ze ze krijgen. Idempotent."""
+    pad = tmp_path / "oud.db"
+    oud = sqlite3.connect(pad)
+    oud.executescript("""
+        CREATE TABLE beurtbewijs (
+            username TEXT NOT NULL, conv_id TEXT NOT NULL, tekst_hash TEXT NOT NULL, lineage TEXT NOT NULL,
+            rekenbewijs TEXT NOT NULL, kaarten TEXT NOT NULL, bronnen TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL, PRIMARY KEY (username, conv_id, tekst_hash)
+        );
+        INSERT INTO beurtbewijs VALUES ('alice', 'c1', 'h1', '{}', '[]', '{}', '{}', '2026-11-03T10:00:00+00:00');
+    """)
+    oud.close()
+    monkeypatch.setenv("DATABASE_PATH", str(pad))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    db.init_db()
+
+    assert db.beurtbewijs_voor("alice", "c1")["h1"]["figuren"] == []
     db.save_beurtbewijs("alice", "c1", {"h1": _rij()})
     assert db.beurtbewijs_voor("alice", "c1")["h1"] == _rij()
 
@@ -298,6 +345,17 @@ def test_postgres_voegt_de_kolom_bronnen_toe(postgres):
     assert "bronnen TEXT NOT NULL DEFAULT '{}'" in " ".join(db._BEURTBEWIJS_TABLE.split())
 
 
+def test_postgres_voegt_de_kolom_figuren_toe(postgres):
+    """De kolom van #993, net zo: `IF NOT EXISTS` met een lege lijst als standaard."""
+    import persistence.db as db
+
+    db.init_db()
+
+    statements = [" ".join(sql.split()) for sql, _ in postgres.log]
+    assert "ALTER TABLE beurtbewijs ADD COLUMN IF NOT EXISTS figuren TEXT NOT NULL DEFAULT '[]'" in statements
+    assert "figuren TEXT NOT NULL DEFAULT '[]'" in " ".join(db._BEURTBEWIJS_TABLE.split())
+
+
 def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
     """De upsert gebruikt ON CONFLICT, dat SQLite en PostgreSQL allebei kennen, en %s-parameters op PostgreSQL."""
     import persistence.db as db
@@ -312,6 +370,6 @@ def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
 
     sql, params = postgres.log[0]
     assert sql.startswith("INSERT INTO beurtbewijs") and "ON CONFLICT (username, conv_id, tekst_hash)" in sql
-    assert "?" not in sql and sql.count("%s") == 8
-    assert "bronnen=excluded.bronnen" in sql
+    assert "?" not in sql and sql.count("%s") == 9
+    assert "bronnen=excluded.bronnen" in sql and "figuren=excluded.figuren" in sql
     assert params[:3] == ("alice", "c1", "h1")

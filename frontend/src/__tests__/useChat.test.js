@@ -1085,3 +1085,65 @@ describe('useChat vervolgvragen', () => {
     expect(assistantMessages().map(m => m.vervolgvragen)).toEqual([undefined, undefined, undefined, undefined, undefined])
   })
 })
+
+// #1052: een toast-timer die na het verlaten van de hook afging, deed nog setToasts (na jsdom: "window is not defined").
+describe('useChat toast-timers (#1052)', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('ruimt de timers van open toasts op bij unmount', async () => {
+    vi.useFakeTimers()
+    await act(async () => {
+      chat.addToast('x')
+      chat.addToast('y', 'warning', { duur: 8000 })
+    })
+    expect(vi.getTimerCount()).toBe(2)
+
+    const fout = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await act(async () => { root.unmount() })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(10000)
+    expect(fout).not.toHaveBeenCalled()
+    fout.mockRestore()
+
+    // De afterEach van dit bestand unmount de root nog eens: geef hem een verse.
+    await mount()
+  })
+
+  it('haalt de timer weg als de toast eerder wordt weggehaald, ook bij twee keer weg()', async () => {
+    vi.useFakeTimers()
+    let weg
+    await act(async () => { weg = chat.addToast('x') })
+    expect(vi.getTimerCount()).toBe(1)
+
+    await act(async () => { weg() })
+    expect(vi.getTimerCount()).toBe(0)
+    expect(chat.toasts).toEqual([])
+
+    await act(async () => { weg() })
+    expect(vi.getTimerCount()).toBe(0)
+    expect(chat.toasts).toEqual([])
+  })
+
+  it('sluit een toast na 4000 ms of na opties.duur', async () => {
+    vi.useFakeTimers()
+    await act(async () => {
+      chat.addToast('kort')
+      chat.addToast('lang', 'info', { duur: 6000 })
+    })
+    await act(async () => { vi.advanceTimersByTime(3999) })
+    expect(chat.toasts.map(t => t.message)).toEqual(['kort', 'lang'])
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(chat.toasts.map(t => t.message)).toEqual(['lang'])
+    await act(async () => { vi.advanceTimersByTime(2000) })
+    expect(chat.toasts).toEqual([])
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('zet geen timer bij duur: null', async () => {
+    vi.useFakeTimers()
+    await act(async () => { chat.addToast('blijft', 'info', { duur: null }) })
+    expect(vi.getTimerCount()).toBe(0)
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    expect(chat.toasts.map(t => t.message)).toEqual(['blijft'])
+  })
+})

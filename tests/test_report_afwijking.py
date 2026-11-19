@@ -14,6 +14,7 @@ import pytest
 from agent import report
 from agent.loop import LoopResult
 from agent.report_afwijking import afwijkingen, getekende_jaren
+from tests.rapportfiguren import vaste_figuren
 from tools import store
 from tools.store import KeyMeta
 
@@ -116,12 +117,10 @@ def sessie():
 
 
 def _rapport(sessie, monkeypatch, onderzoeksvraag=None):
-    figuur = report.pio.from_json(_VIJF_JAAR["figure_json"])
+    # De grafiek is een gekozen figuur uit het gesprek (#993).
+    vaste_figuren(monkeypatch, (_VIJF_JAAR["figure_json"], _KEY))
 
-    async def loop(messages, *, on_tool_result, **_):
-        await on_tool_result(
-            report.ToolCall("c1", "create_plot", json.dumps({"data_key": _KEY}), {"data_key": _KEY}), "{}", figuur
-        )
+    async def loop(messages, **_):
         tekst = {"beantwoordt": ["x"], "beantwoordt_niet": ["y"], "visualisaties": [{"titel": "t"}], "conclusie": "c"}
         return LoopResult(text=json.dumps(tekst))
 
@@ -129,7 +128,7 @@ def _rapport(sessie, monkeypatch, onderzoeksvraag=None):
         pass
 
     monkeypatch.setattr(report, "tool_loop", loop)
-    return asyncio.run(report.generate(sessie, stil, onderzoeksvraag=onderzoeksvraag))
+    return asyncio.run(report.generate(sessie, stil, onderzoeksvraag=onderzoeksvraag, figuren=("f1",)))
 
 
 def test_het_rapport_krijgt_de_afwijking_uit_de_vraag_van_de_gebruiker(sessie, monkeypatch):

@@ -6,12 +6,14 @@ from unittest.mock import patch
 
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import pytest
 
 from agent import report
 from agent.figuurbron import figuurbron
-from agent.loop import LoopResult, ToolCall
+from agent.loop import LoopResult
 from agent.report import _parse_spec_from_response
+from tests.rapportfiguren import vaste_figuren
 from tools import store
 from tools.catalog import documentatie_url
 from tools.store import KeyMeta
@@ -197,8 +199,8 @@ def test_zonder_bronregels_blijft_de_spec_bruikbaar():
     assert "bron" in spec.to_dict()["visualisaties"][0]
 
 
-def test_de_rapportrun_leest_de_bron_uit_de_create_plot_aanroep(monkeypatch, catalogus):
-    """Twee grafieken uit verschillende datasets: elk krijgt de regel van haar eigen data_key."""
+def test_de_rapportrun_leest_de_bron_uit_de_data_key_van_elke_figuur(monkeypatch, catalogus):
+    """Gekozen figuren uit verschillende datasets (#993): elk krijgt de regel van haar eigen data_key."""
     _cbs()
     store.put(
         "duo:p01hoinges:0",
@@ -206,12 +208,12 @@ def test_de_rapportrun_leest_de_bron_uit_de_create_plot_aanroep(monkeypatch, cat
         KeyMeta(bron="duo", dataset="p01hoinges", resource=0, schooljaren=(2023,)),
     )
 
-    async def loop(messages, *, on_tool_result, check, **_):
-        for key in ("cbs:85423NED", "duo:p01hoinges:0", "zonder-bron"):
-            call = ToolCall(id=key, name="create_plot", arguments="{}", args={"data_key": key})
-            await on_tool_result(call, "Grafiek aangemaakt", go.Figure())
+    leeg = pio.to_json(go.Figure())
+    vaste_figuren(monkeypatch, *((leeg, key) for key in ("cbs:85423NED", "duo:p01hoinges:0", "zonder-bron")))
+
+    async def loop(messages, *, check, **_):
         check("{}", [])
-        return LoopResult(text='{"visualisaties": [{"titel": "Hbo"}, {"titel": "Wo"}]}')
+        return LoopResult(text='{"visualisaties": [{"titel": "Hbo"}, {"titel": "Wo"}, {"titel": "Geen"}]}')
 
     monkeypatch.setattr(report, "build_dataset_context", lambda session: {"datasets": [{"data_key": "cbs:85423NED"}]})
     monkeypatch.setattr(report, "_build_system_prompt", lambda context: "")
@@ -221,10 +223,10 @@ def test_de_rapportrun_leest_de_bron_uit_de_create_plot_aanroep(monkeypatch, cat
     async def emit(event):
         pass
 
-    spec = asyncio.run(report.generate({}, emit))
+    spec = asyncio.run(report.generate({}, emit, figuren=("f1", "f2", "f3")))
 
-    # Maximaal twee figuren (#_MAX_VISUALISATIES); de derde telt niet mee, ook niet voor de bronregels.
+    # Een figuur zonder herleidbare bron krijgt geen regel.
     bronnen = [v["bron"] or {} for v in spec.visualisaties]
-    assert [b["dataset"] for b in bronnen] == ["85423NED", "p01hoinges"]
+    assert [b.get("dataset") for b in bronnen] == ["85423NED", "p01hoinges", None]
     assert bronnen[0]["tekst"].startswith("CBS · Hoger onderwijs; ingeschrevenen (85423NED)")
     assert bronnen[1]["url"] == "https://onderwijsdata.duo.nl/datasets/p01hoinges"

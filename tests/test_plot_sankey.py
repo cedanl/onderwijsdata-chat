@@ -252,13 +252,14 @@ def test_een_staafgrafiek_op_een_sankeyvraag_is_het_verkeerde_type():
     assert ontbrekende_grafiek("maak een sankey", "Hier is hij.", [sankey]) == []
 
 
-# ── Het rapport tekent en keurt een sankey uit create_plot (#995, #994) ──
+# ── Het rapport toont en keurt een sankey uit create_plot (#995, #994) ──
 
 
 def test_een_rapport_met_een_sankey_uit_create_plot_komt_door_de_controle(monkeypatch):
+    """Sinds #993 tekent het rapportmodel niet zelf: de sankey is een gekozen figuur uit het gesprek."""
     from tests.test_report_checks import _rapportrun
 
-    plot = {"id": "p1", "name": TOOL_CREATE_PLOT, "arguments": json.dumps(_SANKEY)}
+    _, sankey = dispatch(TOOL_CREATE_PLOT, _SANKEY)
     tekst = json.dumps(
         {
             "onderzoeksvraag": "Waar gaan mbo-verpleegkundigen naartoe in het hbo?",
@@ -275,13 +276,12 @@ def test_een_rapport_met_een_sankey_uit_create_plot_komt_door_de_controle(monkey
     )
     rijen = json.dumps({"rijen": _RIJEN})
 
-    def met_echte_plot(name, args):
-        return dispatch(name, args) if name == TOOL_CREATE_PLOT else (rijen, None)
-
     query = {"id": "q1", "name": "query_data", "arguments": json.dumps({"data_key": _KEY})}
-    stappen = [StreamResult(text="", tool_calls=[query, plot]), StreamResult(text=tekst, tool_calls=[])]
+    stappen = [StreamResult(text="", tool_calls=[query]), StreamResult(text=tekst, tool_calls=[])]
 
-    spec = _rapportrun(monkeypatch, stappen, dispatch=met_echte_plot)
+    spec = _rapportrun(
+        monkeypatch, stappen, dispatch=lambda name, args: (rijen, None), figuren=[(pio.to_json(sankey), _KEY)]
+    )
 
     [visualisatie] = spec.visualisaties
     figuur = visualisatie["figure_json"]

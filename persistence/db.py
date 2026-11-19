@@ -354,6 +354,7 @@ def _migrate(conn: Any) -> None:
 
     _voeg_kolom_toe(conn, "feedback", "instelling", "TEXT NOT NULL DEFAULT ''")
     _voeg_kolom_toe(conn, "beurtbewijs", "bronnen", "TEXT NOT NULL DEFAULT '{}'")
+    _voeg_kolom_toe(conn, "beurtbewijs", "figuren", "TEXT NOT NULL DEFAULT '[]'")
     _verwijder_kolom(conn, "beurtbewijs", "controle")
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
@@ -363,7 +364,8 @@ def _migrate(conn: Any) -> None:
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
     """Een kolom die later bij een bestaande tabel kwam; bestaande rijen krijgen de standaardwaarde uit `definitie`.
 
-    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `bronnen` bij beurtbewijs (#987).
+    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `bronnen` (#987) en `figuren` (#993) bij
+    beurtbewijs.
     """
     if _USE_POSTGRES:
         cursor = conn.cursor()
@@ -459,6 +461,8 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 # client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs, kaarten en bronnen zijn JSON;
 # de kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211); bronnen per key de bronregels van de
 # geladen tabellen, zoals onder een antwoord (labels en tekst, geen data, #987). Een rij van vóór #987 heeft '{}'.
+# figuren is de JSON-lijst van de stappen achter de figuren van de beurt (tool, argumenten, titel, keys; geen figuur-JSON),
+# zodat het rapport een gekozen figuur opnieuw kan maken (#993). Een rij van vóór #993 heeft '[]'.
 _BEURTBEWIJS_TABLE = """
     CREATE TABLE IF NOT EXISTS beurtbewijs (
         username    TEXT NOT NULL,
@@ -468,6 +472,7 @@ _BEURTBEWIJS_TABLE = """
         rekenbewijs TEXT NOT NULL,
         kaarten     TEXT NOT NULL,
         bronnen     TEXT NOT NULL DEFAULT '{}',
+        figuren     TEXT NOT NULL DEFAULT '[]',
         created_at  TEXT NOT NULL,
         PRIMARY KEY (username, conv_id, tekst_hash)
     )
@@ -925,7 +930,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, bronnen, created_at FROM beurtbewijs "
+            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, bronnen, figuren, created_at FROM beurtbewijs "
             "WHERE username = ? AND conv_id = ?",
             (username, conv_id),
         ).fetchall()
@@ -937,6 +942,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
                 "rekenbewijs": json.loads(r["rekenbewijs"]),
                 "kaarten": json.loads(r["kaarten"]),
                 "bronnen": json.loads(r["bronnen"]),
+                "figuren": json.loads(r["figuren"]),
                 "created_at": r["created_at"],
             }
         except ValueError:
@@ -964,10 +970,10 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
             _execute(
                 conn,
                 "INSERT INTO beurtbewijs "
-                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, bronnen, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
+                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, bronnen, figuren, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
                 "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten, "
-                "bronnen=excluded.bronnen",
+                "bronnen=excluded.bronnen, figuren=excluded.figuren",
                 (
                     username,
                     conv_id,
@@ -976,6 +982,7 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
                     json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
                     json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
                     json.dumps(rij.get("bronnen") or {}, ensure_ascii=False, default=str),
+                    json.dumps(rij.get("figuren") or [], ensure_ascii=False, default=str),
                     rij["created_at"],
                 ),
             )

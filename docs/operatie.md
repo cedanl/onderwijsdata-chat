@@ -102,6 +102,24 @@ EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je ku
 Korter onderbreken kan met een snellere start of een kleinere pod. Zonder onderbreking kan het pas met twee pods
 (#984).
 
+### Bronstatus in de app (#1057)
+
+De app meet vanuit de pod of de bronnen waarvoor de chat live aanroept nu antwoorden: CBS, DUO, RIO, UWV en de
+inspectie (`core/bronstatus.py`, elke `BRONSTATUS_INTERVAL_S` seconden, standaard 120). Antwoordt een bron niet, dan
+staat er bij het openen van de app (en bij herverbinden) een melding boven de pagina; antwoorden alle bronnen, dan staat
+er niets.
+
+- **Wat telt als live:** een antwoord onder de 400 binnen 5 seconden. Een mislukte probe wordt direct één keer
+  herhaald; pas als ook die mislukt, staat de bron als niet live. Een 404 of 410 telt dus niet als live (RIO v2 gaf op
+  19-10 HTTP 410).
+- **Eindpunt:** `GET /api/bronstatus` (openbaar) geeft `{"niet_live": [...]}`, per bron `bron`, `naam`, `tekst` en
+  `laatst_live`. Nooit een URL of foutklasse.
+- **Per pod en per omgeving:** elke pod meet zelf wat hij ziet. Test heeft een IP-blokkade op `data.overheid.nl`
+  (UWV) die playground niet heeft; daar staat UWV dan terecht als niet live.
+- **Niet hetzelfde als `bron:ping`:** de ping toetst ijkwaarden en draait in CI; deze meting kijkt alleen of een bron
+  antwoordt, op het moment dat een gebruiker de app opent. Een bron die niet live is blokkeert geen run: de melding
+  informeert alleen.
+
 ## Secrets
 
 SOPS-versleuteld in `manifests/<omgeving>/secret.yaml`; Flux ontsleutelt met de age-key van de tenant. Bewerken en

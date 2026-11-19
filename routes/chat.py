@@ -174,6 +174,7 @@ async def _generate_report(
     author: str | None = None,
     onderzoeksvraag: str | None = None,
     beurten: frozenset[int] | None = None,
+    figuren: tuple[str, ...] = (),
 ) -> None:
     await emit({"type": "report_generating"})
     stop_event = asyncio.Event()
@@ -190,6 +191,7 @@ async def _generate_report(
                 author=author or session.get("username"),
                 onderzoeksvraag=onderzoeksvraag,
                 beurten=beurten,
+                figuren=figuren,
             )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
     except TimeoutError as e:
@@ -470,10 +472,11 @@ async def _handle_generate_report(
     onderzoeksvraag = _invoer(msg, "onderzoeksvraag")
     if await _weiger_te_lang(onderzoeksvraag, emit):
         return current_task
-    # De beurten met data die de gebruiker in het rapport hield (#908): de client wordt niet vertrouwd, dus de selectie
-    # wordt tegen het gesprek gecontroleerd, vóór er een run of een berichtlimiet aan te pas komt.
+    # De beurten met data die de gebruiker in het rapport hield (#908) en de figuren uit het gesprek die erin komen
+    # (#993): de client wordt niet vertrouwd, dus de selectie wordt tegen het gesprek gecontroleerd, vóór er een run of
+    # een berichtlimiet aan te pas komt.
     try:
-        beurten = rapportselectie.kies(session, msg.get("beurten"))
+        keuze = rapportselectie.kies(session, msg.get("beurten"), msg.get("figuren"))
     except Gebruikersfout as e:
         await emit({"type": "error", "message": str(e), "modelafhankelijk": False})
         return current_task
@@ -484,7 +487,13 @@ async def _handle_generate_report(
     return asyncio.create_task(
         _in_een_runplaats(
             lambda: _generate_report(
-                session, emit, model, author=author, onderzoeksvraag=onderzoeksvraag or None, beurten=beurten
+                session,
+                emit,
+                model,
+                author=author,
+                onderzoeksvraag=onderzoeksvraag or None,
+                beurten=keuze.beurten,
+                figuren=keuze.figuren,
             ),
             emit,
         )
@@ -501,7 +510,7 @@ async def _handle_report_checklist(
     In het log staan alleen aantallen: een vraag van de gebruiker hoort daar op INFO niet.
     """
     items = rapportselectie.beurten_met_data(session)
-    logger.info("RAPPORT checklist  beurten=%d", len(items))
+    logger.info("RAPPORT checklist  beurten=%d  figuren=%d", len(items), sum(len(i["figuren"]) for i in items))
     await emit({"type": "report_checklist", "items": items})
     return current_task
 

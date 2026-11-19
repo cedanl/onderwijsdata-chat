@@ -81,6 +81,15 @@ def _vul(gebruiker: str, uniek: str) -> None:
                 "rekenbewijs": [{"tool": "compute_kpi", "argumenten": {"id": uniek}, "resultaat": f"res-{uniek}"}],
                 "kaarten": {f"key-{uniek}": {"data_key": f"key-{uniek}", "location_col": "L", "value_col": "V"}},
                 "bronnen": {f"key-{uniek}": [{"bron": "duo", "dataset": "p01hoinges", "regel": f"DUO · {uniek}"}]},
+                "figuren": [
+                    {
+                        "id": f"fig-{uniek}",
+                        "tool": "create_plot",
+                        "arguments": {"data_key": f"key-{uniek}", "title": f"Titel {uniek}"},
+                        "titel": f"Titel {uniek}",
+                        "keys": [f"key-{uniek}"],
+                    }
+                ],
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
         },
@@ -172,6 +181,8 @@ def test_json_kolommen_zijn_ontleed(client):
     assert bewijs["bronnen"] == {
         "key-ANNA-UNIEK": [{"bron": "duo", "dataset": "p01hoinges", "regel": "DUO · ANNA-UNIEK"}]
     }
+    # De stappen achter de figuren (#993), als JSON en niet als tekst.
+    assert bewijs["figuren"][0]["id"] == "fig-ANNA-UNIEK" and bewijs["figuren"][0]["keys"] == ["key-ANNA-UNIEK"]
     assert "controle" not in bewijs
     assert bewijs["created_at"] == "2026-11-03T10:00:00+00:00"
 

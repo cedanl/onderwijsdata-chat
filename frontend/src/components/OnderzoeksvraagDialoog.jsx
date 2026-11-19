@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { useMediaQuery } from '../hooks/useMediaQuery'
-import { aanBeurten, metKeuze, voortbouwNotitie } from '../rapportKeuze'
+import {
+  GEEN_KEUZE, MAX_FIGUREN, aanBeurten, aanFiguren, figurenVan, metKeuze, voortbouwNotitie, wisselBeurt, wisselFiguur,
+} from '../rapportKeuze'
 
 // Before a report (#751): the research question it answers, filled in and open to change (#732). Genereer, or Enter
 // as in the chat input, sends the text along; an empty field sends none, and the server takes the first question.
@@ -11,10 +13,19 @@ import { aanBeurten, metKeuze, voortbouwNotitie } from '../rapportKeuze'
 // user switches off what does not belong (a side step, the wrong dataset). The field stays the user's: it is not
 // rewritten from the choice. The list comes from the server; without one (an older conversation without evidence per
 // turn, no data, a failed request) the dialog is the field alone, and the report rests on the whole conversation.
+//
+// Under each turn, its figures from the conversation (#993), also on to begin with: the report shows exactly the
+// figures that are on, recreated on the server, and draws none of its own. A turn off switches its figures off; a figure
+// on switches its turn on. More than MAX_FIGUREN on cannot be sent, and the dialog says so; on a phone the list then
+// opens, so the figures to switch off are in view.
 
 // On a phone the list starts collapsed, so the field is not pushed off the screen (keep in step with styles.css).
 const KLEIN_SCHERM = '(max-width: 600px)'
 const NIETS_GEKOZEN = 'Kies minstens één vraag met data voor het rapport. Zonder data kan er geen rapport komen.'
+const teVeelFiguren = n =>
+  `Kies hoogstens ${MAX_FIGUREN} figuren voor het rapport. Nu staan er ${n} aan: zet er figuren uit in de lijst.`
+const ALLEEN_AANGEVINKT = 'Het rapport toont alleen de aangevinkte figuren uit het gesprek en tekent er zelf geen.'
+const GEEN_LIJST = 'De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek, zonder figuren.'
 
 // The field grows with the question, so all of it shows; max-height in styles.css caps it on a small screen.
 function pasHoogteAan(veld) {
@@ -31,12 +42,16 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
   const keuzeId = useId()
   const foutId = useId()
   const [tekst, setTekst] = useState(() => voorstel.slice(0, max))
-  const [uit, setUit] = useState(() => new Set())
+  const [gekozen, setGekozen] = useState(GEEN_KEUZE)
   const klein = useMediaQuery(KLEIN_SCHERM)
   const items = checklist?.items ?? []
   const keuze = metKeuze(checklist)
-  const aan = aanBeurten(items, uit)
+  const aan = aanBeurten(items, gekozen)
+  const figurenAan = aanFiguren(items, gekozen)
+  const aantalFiguren = items.reduce((n, i) => n + figurenVan(i).length, 0)
   const nietsGekozen = keuze && aan.length === 0
+  const teVeel = keuze && figurenAan.length > MAX_FIGUREN
+  const fout = nietsGekozen ? NIETS_GEKOZEN : teVeel ? teVeelFiguren(figurenAan.length) : null
   // Until the list is in, Genereer would send the whole conversation: it comes in a moment, or the request fails.
   const wacht = checklist?.status === 'laden'
 
@@ -48,19 +63,11 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
     veld.setSelectionRange(veld.value.length, veld.value.length)
   }, [])
 
-  function wissel(beurt, aangevinkt) {
-    setUit(vorige => {
-      const volgende = new Set(vorige)
-      if (aangevinkt) volgende.delete(beurt)
-      else volgende.add(beurt)
-      return volgende
-    })
-  }
-
   function genereer(e) {
     e.preventDefault()
-    if (wacht || nietsGekozen) return
-    onGenereer(tekst.trim(), keuze ? aan : undefined)
+    if (wacht || fout) return
+    if (keuze) onGenereer(tekst.trim(), aan, figurenAan)
+    else onGenereer(tekst.trim(), undefined)
   }
 
   function onKeyDown(e) {
@@ -72,23 +79,41 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
       <form className="confirm-dialog onderzoeksvraag-dialoog" ref={dialogRef} role="dialog" aria-modal="true"
         aria-labelledby={labelId} tabIndex={-1} onSubmit={genereer}>
         {keuze && (
-          <details className="rapport-keuze" open={!klein}>
-            <summary className="rapport-keuze-samenvatting">Vragen in het rapport: {aan.length} van {items.length}</summary>
-            <fieldset className="rapport-keuze-set" aria-describedby={nietsGekozen ? foutId : undefined}>
+          <details className="rapport-keuze" open={!klein || teVeel}>
+            <summary className="rapport-keuze-samenvatting">
+              Vragen in het rapport: {aan.length} van {items.length}
+              {aantalFiguren > 0 && ` · figuren: ${figurenAan.length} van ${aantalFiguren}`}
+            </summary>
+            <fieldset className="rapport-keuze-set" aria-describedby={fout ? foutId : undefined}>
               <legend className="rapport-keuze-legend">Welke vragen met data horen in het rapport?</legend>
               <ul className="rapport-keuze-lijst">
                 {items.map(item => {
                   const bron = [...(item.bronnen ?? []), voortbouwNotitie(item, items)].filter(Boolean).join(' · ')
+                  const figuren = figurenVan(item)
                   return (
                     <li key={item.beurt}>
                       <label>
-                        <input type="checkbox" checked={!uit.has(item.beurt)} onChange={e => wissel(item.beurt, e.target.checked)}
+                        <input type="checkbox" checked={!gekozen.beurtenUit.has(item.beurt)}
+                          onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselBeurt(k, item, aangevinkt)) }}
                           aria-describedby={bron ? `${keuzeId}-${item.beurt}` : undefined} />
                         <span>
                           <span className="rapport-keuze-vraag">{item.vraag}</span>
                           {bron && <span className="rapport-keuze-bron" id={`${keuzeId}-${item.beurt}`}>{bron}</span>}
                         </span>
                       </label>
+                      {figuren.length > 0 && (
+                        <ul className="rapport-keuze-figuren">
+                          {figuren.map(f => (
+                            <li key={f.id}>
+                              <label>
+                                <input type="checkbox" checked={figurenAan.includes(f.id)}
+                                  onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselFiguur(k, item, f.id, aangevinkt)) }} />
+                                <span className="rapport-keuze-figuur">Figuur: {f.titel}</span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   )
                 })}
@@ -96,12 +121,11 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
             </fieldset>
           </details>
         )}
-        {nietsGekozen && <p className="rapport-keuze-fout" id={foutId} role="alert">{NIETS_GEKOZEN}</p>}
+        {keuze && aantalFiguren > 0 && <p className="onderzoeksvraag-uitleg">{ALLEEN_AANGEVINKT}</p>}
+        {fout && <p className="rapport-keuze-fout" id={foutId} role="alert">{fout}</p>}
         {wacht && <p className="onderzoeksvraag-uitleg" role="status">De vragen met data worden opgehaald…</p>}
         {checklist?.status === 'fout' && (
-          <p className="onderzoeksvraag-uitleg" role="status">
-            De vragen met data konden niet worden opgehaald. Het rapport gebruikt het hele gesprek.
-          </p>
+          <p className="onderzoeksvraag-uitleg" role="status">{GEEN_LIJST}</p>
         )}
         <label className="onderzoeksvraag-label" id={labelId} htmlFor={veldId}>Onderzoeksvraag van het rapport</label>
         <textarea
@@ -120,8 +144,8 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
         </p>
         <div className="confirm-actions">
           <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
-          <button type="submit" className="confirm-primary" aria-disabled={wacht || nietsGekozen || undefined}
-            aria-describedby={nietsGekozen ? foutId : undefined}>Genereer</button>
+          <button type="submit" className="confirm-primary" aria-disabled={wacht || Boolean(fout) || undefined}
+            aria-describedby={fout ? foutId : undefined}>Genereer</button>
         </div>
       </form>
     </div>
