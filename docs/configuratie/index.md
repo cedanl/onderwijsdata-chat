@@ -31,6 +31,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis die het model ziet. Daarboven vallen de oudste berichten af, maar de eerste vraag blijft staan: live, bij een heropend gesprek en in de browser op dezelfde manier (#789). Bepaalt ook het aantal vragen per gesprek: `MAX_HISTORY // 2` (een vraag en zijn antwoord), minimaal 1; daarna neemt de chat geen nieuwe vraag meer aan. De frontend krijgt beide via `/api/config` en volgt dus een gewijzigde instelling |
 | `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
 | `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
+| `MAX_GESPREKKEN_PER_GEBRUIKER` | `1000` | Bewaarde gesprekken per gebruiker; een nieuw gesprek daarboven krijgt een 507 met de vraag oude gesprekken of rapporten te verwijderen, een bestaand gesprek bijwerken mag. `0` zet het uit (#682) |
+| `MAX_WERKBOEKEN_PER_GEBRUIKER` | `500` | Hetzelfde voor rapporten en dashboards (#682) |
+| `MAX_OPSLAG_PER_GEBRUIKER_MB` | `100` | De samen bewaarde grootte van gesprekken en werkboeken per gebruiker; bijwerken telt alleen het verschil. `0` zet het uit (#682) |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
 | `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
 | `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, rapport). Een volgende wacht op een plaats (#688) |

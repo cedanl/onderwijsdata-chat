@@ -2,7 +2,10 @@ import { useWorkbookDownload } from './WorkbookDownload'
 
 // Een gesprek of rapport dat de server niet kreeg (#785): de melding blijft staan tot het wel lukt, in plaats van
 // stil te falen terwijl het gesprek al in de zijbalk staat. Een 413 is niet met opnieuw proberen op te lossen.
+// Een 507 is het opslagquotum van de gebruiker (#682): na het opruimen van oude gesprekken of rapporten lukt het weer.
 const TE_GROOT = 413
+const QUOTUM_VOL = 507
+const OPRUIMEN = 'Je bewaarde gesprekken en rapporten zijn vol. Verwijder oude gesprekken of rapporten en probeer het dan opnieuw.'
 
 export function GesprekNietBewaard({ status, onOpnieuw }) {
   if (status === TE_GROOT) {
@@ -15,7 +18,7 @@ export function GesprekNietBewaard({ status, onOpnieuw }) {
   }
   return (
     <p className="niet-bewaard" role="alert">
-      Dit gesprek is niet bewaard op de server.
+      {status === QUOTUM_VOL ? `Dit gesprek is niet bewaard op de server. ${OPRUIMEN}` : 'Dit gesprek is niet bewaard op de server.'}
       <button type="button" className="niet-bewaard-actie" onClick={onOpnieuw}>Opnieuw proberen</button>
     </p>
   )
@@ -26,7 +29,9 @@ export function RapportNietBewaard({ workbook, status, onOpnieuw }) {
   const { download, error } = useWorkbookDownload(workbook)
   return (
     <p className="niet-bewaard" role="alert">
-      {status === TE_GROOT ? 'Dit rapport is te groot om op de server te bewaren.' : 'Dit rapport is niet bewaard op de server.'}
+      {status === TE_GROOT
+        ? 'Dit rapport is te groot om op de server te bewaren.'
+        : status === QUOTUM_VOL ? `Dit rapport is niet bewaard op de server. ${OPRUIMEN}` : 'Dit rapport is niet bewaard op de server.'}
       {status !== TE_GROOT && <button type="button" className="niet-bewaard-actie" onClick={onOpnieuw}>Opnieuw proberen</button>}
       <button type="button" className="niet-bewaard-actie" onClick={download}>Download als HTML</button>
       {error && <span className="wb-download-error">{error}</span>}

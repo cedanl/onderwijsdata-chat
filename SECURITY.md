@@ -43,7 +43,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S21 | SRAM-e-mailadres als sleutel van de gebruikersdata; `CHAT_USERS`-wachtwoorden in platte tekst | Laag–Gemiddeld | ℹ️ Bekend, bewust uitgesteld (#487, 19-10-2026) — de SRAM-gebruikerscache is al begrensd; voorwaarde voor productie hieronder |
 | S22 | Opgeslagen rapport-HTML draaide met dialogen en pop-ups in de viewer en ongesandboxt in de download | Gemiddeld | ⚠️ Deels opgelost (#634) — viewer alleen `allow-scripts`, policy in frame en download; de server controleert de HTML niet (restpunt, voorwaarde voor productie hieronder) |
 | S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie uit op playground en productie via `APP_ENV` (#676) |
-| S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; rand (Traefik) en quotum per gebruiker open |
+| S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; opslagquotum per gebruiker (#682); rand (Traefik) open |
 | S25 | De server begrensde de modelkeuze uit de chat niet tot het aanbod (`AVAILABLE_MODELS`/`USER_MODELS`) | Gemiddeld | ✅ Opgelost (#755) — `toegestaan_model` valt terug op `MODEL` bij elke naam buiten het aanbod |
 | S26 | Een omgeving buiten lokaal kon stil zonder login starten (`CHAT_USERS` leeg, geen `OIDC_PROVIDER`): elke bezoeker was `gast` en zag alle gesprekken | Gemiddeld | ✅ Opgelost (#787) — `Config.validate` weigert de start buiten `APP_ENV=local`, tenzij `ALLOW_ANONYMOUS=true` |
 | S27 | Nieuw eindpunt `/mcp` (MCP over HTTP voor SURF AI Chat) | Gemiddeld | ✅ Afgedekt bij de bouw (#706, #939, #940) — alleen met sleutels, Bearer constant-time, eigen limieten; per-IP-grens ziet achter de ingress het adres van de ingress (zoals S5) |
@@ -369,7 +369,9 @@ Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `
 - `Cache-Control: no-store` op `/api/` en `base-uri 'self'`, `form-action 'self'` in de CSP (S3).
 
 Tests: `tests/test_verzoeklimiet.py`, `tests/test_websocket_herkomst.py`, `tests/test_security_headers.py`.  
-**Open (voorwaarde voor productie, #682):** een opslagquotum per gebruiker (aantal en totale grootte van gesprekken en werkboeken), en aan de rand een Traefik-`rateLimit` voor ongeauthenticeerde paden en `buffering.maxRequestBodyBytes`, zodat een te groot verzoek de pod niet eens bereikt.
+- `core/opslagquotum.py`: per gebruiker een maximum aantal gesprekken (1000) en werkboeken (500) en een samen bewaarde grootte (100 MB), getoetst in `PUT /api/conversations/{id}` en `PUT /api/workbooks/{id}`; daarboven HTTP 507 en er wordt niets bewaard (#682). Tests: `tests/test_opslagquotum.py`.
+
+**Open (voorwaarde voor productie, #682):** aan de rand een Traefik-`rateLimit` voor ongeauthenticeerde paden en `buffering.maxRequestBodyBytes`, zodat een te groot verzoek de pod niet eens bereikt.
 
 ---
 
@@ -473,6 +475,6 @@ app stuurt S256 altijd mee en geeft één keer een WARNING als de discovery ande
 5. **S21** — vóór productie: sleutel naar `sub` met e-mail alleen als weergavenaam en een migratie van de bestaande rijen; productie alleen via SRAM of gehashte wachtwoorden (#487). In de demofase bewust niet gebouwd; de SRAM-cache is al begrensd
 6. **S22** — vóór productie: eigen account per gebruiker, of de server bewaart de rapportspec en bouwt de HTML zelf (#634)
 7. **S23** — besluiten of `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` open blijven (#636)
-8. **S24** — opslagquotum per gebruiker; `rateLimit` en `maxRequestBodyBytes` in Traefik (#682)
+8. **S24** — `rateLimit` en `maxRequestBodyBytes` in Traefik (#682); het opslagquotum per gebruiker is er
 9. **S28** — vóór de promotie naar playground een SRAM-login op test, en vastleggen wat de discovery van de SRAM-proxy over PKCE en het ondertekeningsalgoritme zegt (#1024)
 10. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

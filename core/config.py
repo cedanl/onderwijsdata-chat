@@ -47,6 +47,11 @@ GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
 CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
 CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
+# Opslagquotum per gebruiker (#682, S24): gesprekken, werkboeken en hun samen bewaarde grootte; 0 zet een grens uit.
+# Gemeten 23-10: het grootste gesprek 163 kB, het grootste werkboek 85 kB; gesprekken vervallen na 90 dagen.
+MAX_GESPREKKEN_PER_GEBRUIKER = int(os.getenv("MAX_GESPREKKEN_PER_GEBRUIKER", "1000"))
+MAX_WERKBOEKEN_PER_GEBRUIKER = int(os.getenv("MAX_WERKBOEKEN_PER_GEBRUIKER", "500"))
+MAX_OPSLAG_PER_GEBRUIKER_MB = int(os.getenv("MAX_OPSLAG_PER_GEBRUIKER_MB", "100"))
 # Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))

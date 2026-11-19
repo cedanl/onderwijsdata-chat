@@ -119,6 +119,7 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 | Open WebSocket-verbindingen | `MAX_WS_PER_USER` (10) per gebruiker, `MAX_WS_TOTAL` (100) in totaal | Daarboven een melding en close-code 1013 (#688) |
 | Gelijktijdige runs | `MAX_CONCURRENT_RUNS` (8) modelruns, `MAX_SANDBOX_RUNS` (2) sandboxprocessen | Wachtrij; na `RUN_QUEUE_TIMEOUT_S` (60 s) of `SANDBOX_QUEUE_TIMEOUT_S` (20 s) een melding dat het druk is (#688) |
 | Dashboardladingen | `MAX_DASHBOARD_LOADS` (4) tegelijk, tijdsgrens `DASHBOARD_TIMEOUT_S` (90 s) | Wachtrij; na `DASHBOARD_QUEUE_TIMEOUT_S` (30 s) HTTP 503 dat het druk is, na de tijdsgrens HTTP 504; de frontend biedt een nieuwe poging (#901) |
+| Opslag per gebruiker | `MAX_GESPREKKEN_PER_GEBRUIKER` (1000) gesprekken, `MAX_WERKBOEKEN_PER_GEBRUIKER` (500) werkboeken, samen `MAX_OPSLAG_PER_GEBRUIKER_MB` (100 MB) | `PUT` van een gesprek of werkboek daarboven krijgt HTTP 507 met een melding; wat er staat blijft, bijwerken telt alleen het verschil, zonder login geen quotum (#682, S24) |
 | Verzoekgrootte | `MAX_REQUEST_BYTES` (4 MiB) per HTTP-verzoek en per WebSocket-bericht | Daarboven HTTP 413; uvicorn sluit een te groot WebSocket-bericht (#682) |
 | LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
 

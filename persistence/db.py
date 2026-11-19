@@ -1068,6 +1068,38 @@ def upsert_workbook(
         conn.commit()
 
 
+_WERKBOEKGROOTTE = (
+    "LENGTH(COALESCE(messages, '')) + LENGTH(COALESCE(figures, '')) + LENGTH(COALESCE(html_content, '')) "
+    "+ LENGTH(COALESCE(dashboard_spec, ''))"
+)
+
+
+def opslagstand(username: str, soort: str, item_id: str) -> dict[str, int | None]:
+    """Wat `username` bewaart (#682, S24): aantal gesprekken en werkboeken, hun samen bewaarde grootte (tekens) en de
+    grootte van het item `item_id` van `soort` ("gesprek" of "werkboek"), None als het nog niet bestaat."""
+    tabel, grootte = ("conversations", "LENGTH(messages)") if soort == "gesprek" else ("workbooks", _WERKBOEKGROOTTE)
+    with _connection() as conn:
+        g = _execute(
+            conn,
+            "SELECT COUNT(*) AS n, COALESCE(SUM(LENGTH(messages)), 0) AS grootte FROM conversations WHERE username = ?",
+            (username,),
+        ).fetchone()
+        w = _execute(
+            conn,
+            f"SELECT COUNT(*) AS n, COALESCE(SUM({_WERKBOEKGROOTTE}), 0) AS grootte FROM workbooks WHERE username = ?",
+            (username,),
+        ).fetchone()
+        item = _execute(
+            conn, f"SELECT {grootte} AS grootte FROM {tabel} WHERE id = ? AND username = ?", (item_id, username)
+        ).fetchone()
+    return {
+        "gesprekken": int(g["n"]),
+        "werkboeken": int(w["n"]),
+        "grootte": int(g["grootte"]) + int(w["grootte"]),
+        "item": None if item is None else int(item["grootte"] or 0),
+    }
+
+
 def werkboek_geopend(username: str, wb_id: str) -> None:
     """Een eigen werkboek is geopend: zijn bewaartermijn van 365 dagen begint opnieuw (#485)."""
     with _connection() as conn:
