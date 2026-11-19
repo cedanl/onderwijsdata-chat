@@ -9,8 +9,9 @@ uit `tests/e2e/evaluations.json`, de geteste vragen met bekende uitkomsten. De k
 
 `--basis-url` is verplicht: de verzameling hoort naar één omgeving te wijzen, en welke dat is (productie is nog niet
 live) is een besluit van de beheerder, niet van dit script. De kolom `getest_in` blijft leeg: de library kent "Getest in"
-als gesloten lijst van AI-producten (ADR-008), en EDUdata staat daar niet op. De kolom `licentie` blijft ook leeg,
-tot er een licentiekeuze is (de library biedt alleen CC-licenties en "Alle rechten voorbehouden").
+als gesloten lijst van AI-producten (ADR-008), en EDUdata staat daar niet op. De kolom `licentie` is CC BY 4.0: de
+vragen en hun toelichting vallen onder die licentie (besluit van 19-11-2026). De library kent een gesloten lijst
+licenties; de waarde moet er exact in staan, anders weigert de import het hele bestand.
 """
 
 from __future__ import annotations
@@ -28,6 +29,10 @@ EVALUATIES = ROOT / "tests" / "e2e" / "evaluations.json"
 # De grens van de deep link (frontend/src/voorgevuldeVraag.js), en van de kolom `bron` in de library.
 MAX_VRAAG = 500
 MAX_BRON = 500
+
+# De licentie van de vragen en hun toelichting. Exact een waarde uit de gesloten lijst van de library
+# (`COPYRIGHT` in app/suggestions.py daar).
+LICENTIE = "CC BY 4.0"
 
 
 def evaluatievragen() -> dict[str, str]:
@@ -67,6 +72,7 @@ def rijen(basis_url: str) -> list[dict[str, str]]:
                 "tips": item["tips"],
                 "waarom_dit_werkt": item["waarom_dit_werkt"],
                 "bron": bron,
+                "licentie": LICENTIE,
                 "labels": f"{item['labels']}; tag:onderwijsdata; tag:EDUdata",
             }
         )
