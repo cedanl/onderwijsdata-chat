@@ -121,12 +121,9 @@ def test_vestigingskolommen_alleen_bij_hbo_en_wo(instelling, ho):
     assert ("`PROVINCIENAAM`/`GEMEENTENAAM`" in blok) is ho
 
 
-def test_onbekende_instelling_krijgt_geen_regioregel():
-    blok = build_persona_block({"instelling": "Onbekende Hogeschool"})
-    assert "- Instelling: **Onbekende Hogeschool**" in blok
-    assert "provincie" not in blok
-    assert "arbeidsmarktregio" not in blok
-    assert "sector" not in blok
+def test_onbekende_instelling_komt_niet_in_het_profiel():
+    # Alleen een registerinstelling gaat de prompt in (#1020): vrije tekst is geen profiel.
+    assert build_persona_block({"instelling": "Onbekende Hogeschool"}) == ""
 
 
 def test_zonder_adres_geen_regio_wel_sector(monkeypatch):
