@@ -551,8 +551,11 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 
 ## ADR-011: De eerste productie draait bewust één pod; schaalbaar maken is een vervolgepic
 
-**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677)
-**Status:** Decided
+**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677); bijgewerkt 2026-11-19 (stand #984 stap 1)
+**Status:** Decided; van #984 stap 1 zijn de tijdslimieten (login, berichten, feedback, rapport-docx, `/mcp`) naar
+Postgres verhuisd (`rate_limit_hits`, gedeeld door alle pods en bestand tegen een herstart) en migreren startende pods om
+de beurt onder een advisory lock. Nog per pod: de gelijktijdigheidstellers, de SRAM-gebruikerscache en de herlaadvlag;
+"Limieten beginnen na een herstart op nul" (Trade-offs) geldt alleen nog voor die tellers
 **Issue:** #677 (vervolgepic #984; graceful shutdown #675; productie uitrolbaar #674)
 
 ### Problem
