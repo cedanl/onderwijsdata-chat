@@ -156,12 +156,14 @@ def test_de_bewaking_draait_een_ronde_en_stopt_bij_het_afsluiten(monkeypatch):
 
     async def loop():
         async with bronstatus.bewaking(3600) as taak:
+            assert taak is not None
             await asyncio.sleep(0.05)
             assert not taak.done()
         return taak
 
     taak = asyncio.run(loop())
     assert len(rondes) == 1
+    assert taak is not None
     assert taak.done()
 
 
