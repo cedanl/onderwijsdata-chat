@@ -48,33 +48,35 @@ RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --n
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
 FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
 
+# De gebruiker eerst, zodat elke COPY hieronder de bestanden meteen aan hem geeft (--chown). Een `chown -R /app`
+# aan het eind deed er op de CI-runner 11 minuten over (650 s van een build van 13,5 min) en zette elk bestand
+# nog eens in een eigen laag. /app zelf (WORKDIR maakt hem als root) krijgt hij zonder -R: dat kost niets.
+RUN useradd --create-home --uid 1000 appuser && mkdir -p /app && chown appuser:appuser /app
+
 WORKDIR /app
 
-COPY --from=python-builder /app/.venv ./.venv
+COPY --chown=appuser:appuser --from=python-builder /app/.venv ./.venv
 
-COPY server.py ./
-COPY config.py ./
-COPY health.py ./
-COPY frontend_static.py ./
-COPY logging_config.py ./
-COPY mcp_server.py ./
-COPY routes/ ./routes/
-COPY persistence/ ./persistence/
-COPY data/ ./data/
-COPY tools/ ./tools/
-COPY agent/ ./agent/
-COPY auth/ ./auth/
-COPY prompts/ ./prompts/
+COPY --chown=appuser:appuser server.py ./
+COPY --chown=appuser:appuser config.py ./
+COPY --chown=appuser:appuser health.py ./
+COPY --chown=appuser:appuser frontend_static.py ./
+COPY --chown=appuser:appuser logging_config.py ./
+COPY --chown=appuser:appuser mcp_server.py ./
+COPY --chown=appuser:appuser routes/ ./routes/
+COPY --chown=appuser:appuser persistence/ ./persistence/
+COPY --chown=appuser:appuser data/ ./data/
+COPY --chown=appuser:appuser tools/ ./tools/
+COPY --chown=appuser:appuser agent/ ./agent/
+COPY --chown=appuser:appuser auth/ ./auth/
+COPY --chown=appuser:appuser prompts/ ./prompts/
 # Het Word-sjabloon van "Download als Word" (#1038, tools/rapport_docx/render.py).
-COPY templates/ ./templates/
-COPY public/ ./public/
-COPY core/ ./core/
+COPY --chown=appuser:appuser templates/ ./templates/
+COPY --chown=appuser:appuser public/ ./public/
+COPY --chown=appuser:appuser core/ ./core/
 
 # Copy built frontend from Stage 1
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
-
-RUN useradd --create-home --uid 1000 appuser && \
-    chown -R appuser:appuser /app
+COPY --chown=appuser:appuser --from=frontend-builder /frontend/dist ./frontend/dist
 
 # Commit voor /version (#231) en de installatieregel van snippets (#888); CI geeft de volledige CI_COMMIT_SHA mee via build_args.
 ARG GIT_COMMIT
