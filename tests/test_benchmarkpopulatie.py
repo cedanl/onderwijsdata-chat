@@ -9,6 +9,8 @@ De trap staat hier met een verzonnen register en verzonnen adressen; de rest dra
 (`duo_fixtures`) en rekent de verwachting met pandas na, los van data/dashboard.py.
 """
 
+import json
+
 import pandas as pd
 import pytest
 
@@ -23,13 +25,19 @@ def _adres(provincie: str | None, amr: str | None) -> dict:
 
 @pytest.fixture
 def register(monkeypatch):
-    """Een verzonnen register: (naam, code, type, provincie, arbeidsmarktregio) per instelling."""
+    """Een verzonnen register: (naam, code, type, provincie, arbeidsmarktregio[, omvang]) per instelling.
+
+    De omvang (ingeschrevenen in het laatste jaar, #1008) is optioneel; zonder omvang bij één instelling kent het register
+    geen omvang, zoals wanneer de DUO-bestanden niet laden, en geldt er geen omvangsdrempel.
+    """
 
     def zet(*instellingen):
-        registry = [{"naam": n, "instellingscode": c, "type": t} for n, c, t, _p, _a in instellingen]
-        adres = {c: _adres(p, a) for _n, c, _t, p, a in instellingen if p or a}
+        registry = [{"naam": i[0], "instellingscode": i[1], "type": i[2]} for i in instellingen]
+        adres = {i[1]: _adres(i[3], i[4]) for i in instellingen if i[3] or i[4]}
+        omvang = {i[1]: i[5] for i in instellingen if len(i) > 5 and i[5] is not None}
         monkeypatch.setattr(dashboard, "get_all_instellingen", lambda: registry)
         monkeypatch.setattr(dashboard, "get_adres_lookup", lambda: adres)
+        monkeypatch.setattr(dashboard, "_omvang_per_code", lambda _onderwijs_type: omvang)
 
     return zet
 
@@ -181,6 +189,165 @@ def test_een_mbo_instelling_heeft_geen_ho_vergelijking(register):
     assert dashboard._build_regio_context("Onbekend", "mbo") is None
 
 
+# ─── Een peer telt vanaf 10% van de eigen omvang (#1008) ─────────────────────
+
+_OMVANG_TE_KLEIN = "minder dan 10% van de eigen omvang"
+
+
+def _universiteiten_elders():
+    return (
+        ("TU Delft", "TD", "wo", "Zuid-Holland", "Haaglanden", 25977),
+        ("UvA", "UA", "wo", "Noord-Holland", "Groot-Amsterdam", 43236),
+        ("VU", "VU", "wo", "Noord-Holland", "Groot-Amsterdam", 30733),
+    )
+
+
+def test_de_universiteit_utrecht_vergelijkt_niet_met_drie_kleine_universiteiten(register):
+    # #1008: in Midden-Utrecht en de provincie Utrecht staan naast de UU (37.090) alleen PThU, TUU en Humanistiek,
+    # samen nog geen 1% van haar omvang. Met drie andere haalde de regio de drempel van #948.
+    register(
+        ("Universiteit U", "UU", "wo", "Utrecht", "Midden-Utrecht", 37090),
+        ("Humanistiek", "UH", "wo", "Utrecht", "Midden-Utrecht", 445),
+        ("TUU", "TU", "wo", "Utrecht", "Midden-Utrecht", 142),
+        ("PThU", "PT", "wo", "Utrecht", "Midden-Utrecht", 118),
+        *_universiteiten_elders(),
+    )
+
+    ctx = _context("Universiteit U")
+
+    assert ctx.regio_type == "nationaal"
+    assert ctx.peer_codes == {"TD", "UA", "VU"}  # ook landelijk telt geen van de drie
+    assert ctx.terugval == (
+        f"te weinig universiteiten van vergelijkbare omvang in provincie Utrecht (0 van 3 andere; {_OMVANG_TE_KLEIN})"
+    )
+    assert dashboard._benchmark_kop(ctx, 3)["label"] == f"Landelijk, 3 andere universiteiten — {ctx.terugval}"
+
+
+@pytest.mark.parametrize(("kleinste", "telt"), [(100, True), (99, False)])
+def test_precies_tien_procent_telt_net_niet_tien_procent_niet(register, kleinste, telt):
+    register(
+        ("Hogeschool A", "HA", "hbo", "Utrecht", "Midden-Utrecht", 1000),
+        ("Hogeschool B", "HB", "hbo", "Utrecht", "Midden-Utrecht", 100),
+        ("Hogeschool C", "HC", "hbo", "Utrecht", "Midden-Utrecht", 5000),
+        ("Hogeschool D", "HD", "hbo", "Utrecht", "Midden-Utrecht", kleinste),
+        ("Hogeschool E", "HE", "hbo", "Utrecht", "Eemland", 900),
+    )
+
+    ctx = _context("Hogeschool A")
+
+    assert dashboard._MIN_PEER_OMVANG == 0.10
+    if telt:
+        assert (ctx.regio_type, ctx.peer_codes, ctx.terugval) == ("arbeidsmarktregio", {"HB", "HC", "HD"}, None)
+    else:
+        assert (ctx.regio_type, ctx.peer_codes) == ("provincie", {"HB", "HC", "HE"})
+        assert ctx.terugval == (
+            "te weinig hogescholen van vergelijkbare omvang in arbeidsmarktregio Midden-Utrecht "
+            f"(2 van 3 andere; {_OMVANG_TE_KLEIN})"
+        )
+
+
+def test_twee_grote_en_drie_kleine_in_de_regio_valt_terug(register):
+    register(
+        ("Roc A", "RA", "mbo", "Gelderland", "FoodValley", 10000),
+        ("Roc B", "RB", "mbo", "Gelderland", "FoodValley", 9000),
+        ("Roc C", "RC", "mbo", "Gelderland", "FoodValley", 12000),
+        *[(f"Klein {i}", f"K{i}", "mbo", "Gelderland", "FoodValley", 300) for i in range(3)],
+        ("Roc D", "RD", "mbo", "Gelderland", "Achterhoek", 4000),
+    )
+
+    ctx = _context("Roc A", "mbo")
+
+    assert (ctx.regio_type, ctx.regio_naam) == ("provincie", "Gelderland")
+    assert ctx.peer_codes == {"RB", "RC", "RD"}  # de kleine vallen ook in de provincie af
+    assert ctx.terugval == (
+        f"te weinig mbo-instellingen van vergelijkbare omvang in arbeidsmarktregio FoodValley (2 van 5 andere; "
+        f"{_OMVANG_TE_KLEIN})"
+    )
+
+
+_MIDDELGROOT = (
+    ("Breda", "BR", "hbo", "Noord-Brabant", "West-Brabant", 9000),
+    ("Fontys", "FO", "hbo", "Noord-Brabant", "Zuidoost-Brabant", 45000),
+    ("Avans", "AV", "hbo", "Noord-Brabant", "Midden-Brabant", 30000),
+    ("HAS", "HS", "hbo", "Noord-Brabant", "Noordoost-Brabant", 2500),
+    ("Tilburg", "TI", "wo", "Noord-Brabant", "Midden-Brabant", 20000),
+)
+
+
+def test_een_middelgrote_hogeschool_met_gewone_peers_houdt_haar_vergelijking(register):
+    # Alle peers halen 10%: dezelfde groep, regio en reden als zonder omvangsdrempel (zoals vóór #1008).
+    register(*(i[:5] for i in _MIDDELGROOT))
+    zonder_omvang = _context("Breda")
+    register(*_MIDDELGROOT)
+
+    ctx = _context("Breda")
+
+    assert ctx == zonder_omvang
+    assert (ctx.regio_type, ctx.peer_codes) == ("provincie", {"FO", "AV", "HS"})
+    assert dashboard._benchmark_kop(ctx, 3)["label"] == (
+        "Provincie Noord-Brabant, 3 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
+    )
+
+
+@pytest.mark.parametrize("eigen", [None, 0])
+def test_zonder_eigen_omvang_geldt_geen_drempel(register, eigen):
+    register(
+        ("Universiteit U", "UU", "wo", "Utrecht", "Midden-Utrecht", eigen),
+        ("Humanistiek", "UH", "wo", "Utrecht", "Midden-Utrecht", 445),
+        ("TUU", "TU", "wo", "Utrecht", "Midden-Utrecht", 142),
+        ("PThU", "PT", "wo", "Utrecht", "Midden-Utrecht", 118),
+        *_universiteiten_elders(),
+    )
+
+    ctx = _context("Universiteit U")
+
+    assert (ctx.regio_type, ctx.peer_codes, ctx.terugval) == ("arbeidsmarktregio", {"UH", "TU", "PT"}, None)
+
+
+def test_een_peer_zonder_omvang_telt_niet_als_de_eigen_omvang_bekend_is(register):
+    register(
+        ("Hogeschool A", "HA", "hbo", "Utrecht", "Midden-Utrecht", 1000),
+        ("Hogeschool B", "HB", "hbo", "Utrecht", "Midden-Utrecht", 800),
+        ("Hogeschool C", "HC", "hbo", "Utrecht", "Midden-Utrecht", 700),
+        ("Zonder omvang", "HZ", "hbo", "Utrecht", "Midden-Utrecht"),
+    )
+
+    ctx = _context("Hogeschool A")
+
+    assert (ctx.regio_type, ctx.peer_codes) == ("nationaal", {"HB", "HC"})
+    assert ctx.terugval == (
+        f"te weinig hogescholen van vergelijkbare omvang in provincie Utrecht (2 van 3 andere; {_OMVANG_TE_KLEIN})"
+    )
+
+
+def test_de_omvang_van_een_mbo_instelling_telt_al_haar_codes_in_het_laatste_jaar(monkeypatch):
+    mbo = pd.DataFrame(
+        [
+            # JAAR, INSTELLINGSCODE, INSTELLINGSNAAM, BBL, BOLVT, BOLDT, EX
+            (2024, "11AA", "Twee codes", 9999, 9999, 0, 0),
+            (2025, "11AA", "Twee codes", 100, 200, 0, 10),
+            (2025, "22BB", "Twee codes", 1000, 2000, 5, None),  # een lege cel telt niet mee
+            (2025, "33CC", "Eén code", 50, 60, 0, 0),
+            (2025, "44DD", "Alles leeg", None, None, None, None),
+        ],
+        columns=["JAAR", "INSTELLINGSCODE", "INSTELLINGSNAAM", "BBL", "BOLVT", "BOLDT", "EX"],
+    )
+    monkeypatch.setattr(dashboard, "_load_mbo_studenten", lambda: mbo)
+
+    assert dashboard._omvang_per_code("mbo") == {"11AA": 3315, "22BB": 3315, "33CC": 110}
+
+
+def test_de_omvang_is_leeg_als_de_bron_niet_laadt(monkeypatch):
+    def faalt():
+        raise OSError("DUO is weg")
+
+    monkeypatch.setattr(dashboard, "_load_ho_ingeschrevenen", faalt)
+    monkeypatch.setattr(dashboard, "_load_mbo_studenten", faalt)
+
+    assert dashboard._omvang_per_code("ho") == {}
+    assert dashboard._omvang_per_code("mbo") == {}
+
+
 # ─── Mijn instelling op de bevroren DUO-bestanden ────────────────────────────
 
 _met_duo = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
@@ -211,11 +378,12 @@ def _typen() -> dict[str, str]:
             "West-Brabant (0 andere)",
         ),
         # hbo: in Midden-Utrecht staan HKU en Universiteit Utrecht; alleen HKU is een hogeschool, en in de provincie
-        # ook. Eerder stond de universiteit tussen de peers van HU.
+        # ook. Eerder stond de universiteit tussen de peers van HU. Landelijk valt Codarts af: 966 ingeschrevenen is
+        # minder dan 10% van de 35.058 van HU (#1008).
         (
             "Hogeschool Utrecht",
             "hbo",
-            "Landelijk, 4 andere hogescholen — te weinig hogescholen in provincie Utrecht (1 andere)",
+            "Landelijk, 3 andere hogescholen — te weinig hogescholen in provincie Utrecht (1 andere)",
         ),
         # wo: geen andere universiteit in Midden-Utrecht of de provincie Utrecht.
         (
@@ -236,6 +404,38 @@ def test_vergelijkingsgroep_per_niveau_is_type_zuiver(instelling, soort, label):
     assert bm["soort"] == soort
     assert bm["label"] == label
     assert bm["n_instellingen"] == len(bm["peers"]["ingeschrevenen"])
+
+
+@_met_duo
+def test_de_omvang_komt_uit_de_ingeschrevenen_van_het_laatste_jaar():
+    # ho: per INSTELLINGSCODE_ACTUEEL over hbo en wo samen (HvA: 41.889 hbo + 58 wo); mbo: per naam over alle codes,
+    # dezelfde 15.288 als de reeks van Curio (test_dashboard_mbo_reeksen).
+    ho, mbo = dashboard._omvang_per_code("ho"), dashboard._omvang_per_code("mbo")
+
+    assert (ho["21PD"], ho["28DN"], ho["14NI"]) == (37090, 41889 + 58, 966)
+    assert mbo["21CY"] == mbo["25LX"] == 15288
+    assert mbo["24ZW"] == 0  # BBO de Schalm: onderdrukte cellen en nullen
+
+
+@_met_duo
+def test_kaart_en_benchmark_volgen_de_peers_van_vergelijkbare_omvang():
+    # Hogeschool Utrecht landelijk: Codarts (966) valt af in de context, en dus overal waar die context komt.
+    ctx = _context("Hogeschool Utrecht")
+    assert "14NI" not in ctx.peer_codes
+
+    regio = dashboard.load_dashboard_regio("Hogeschool Utrecht")
+    bm = regio["benchmark"]
+    peers = set(bm["peers"]["ingeschrevenen"]) | set(bm.get("geen_gegevens", {}).get("ingeschrevenen", []))
+    assert peers == {"Hogeschool voor de Kunsten Utrecht", "De Haagse Hogeschool", "Hogeschool van Amsterdam"}
+    assert bm["n_instellingen"] == 3
+    kaart = json.loads(regio["kaart_figure_json"])["layout"]["meta"]
+    assert "Codarts, Hogeschool voor de Kunsten" not in json.dumps(kaart)
+
+    # Curio: BBO de Schalm (0 ingeschrevenen in 2025) is geen peer meer, ook niet in het rendement.
+    curio = _context("Curio", "mbo")
+    assert "24ZW" not in curio.peer_codes
+    rendement = dashboard.load_dashboard_rendement("Curio")
+    assert "BBO de Schalm" not in rendement["peers_rendement"] | rendement["peers_weggelaten"]
 
 
 # ─── Landelijk per type (#928) ───────────────────────────────────────────────

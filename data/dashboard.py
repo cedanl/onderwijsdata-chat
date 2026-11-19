@@ -287,9 +287,14 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
 # naast universiteiten, een mbo-instelling naast mbo-instellingen. De regio verbreedt van arbeidsmarktregio via
 # provincie naar landelijk, tot er ten minste _MIN_PEERS andere instellingen van hetzelfde type in zitten; de trede die
 # afviel, staat met reden in het label. Instelling en peers krijgen hun regio van dezelfde regel: het DUO-adres.
+# Een peer telt alleen vanaf _MIN_PEER_OMVANG van de eigen omvang, in elke trede (#1008).
 
 # Een gemiddelde over één andere instelling is die instelling, over twee nog erg smal: daarom ten minste drie (#948).
 _MIN_PEERS = 3
+# Een peer telt vanaf dit deel van de eigen omvang (ingeschrevenen in het laatste jaar), grens inbegrepen (#1008). Zonder
+# deze drempel vergeleek de Universiteit Utrecht (37.090) met drie theologische universiteiten van 118 tot 445
+# studenten. Alleen een ondergrens: een veel grotere peer telt wel.
+_MIN_PEER_OMVANG = 0.10
 # Waarom een kerncijfer geen gemiddelde toont: in het laatste jaar hebben te weinig peers een waarde (#1007).
 TE_WEINIG_PEERS = "te weinig vergelijkbare instellingen met cijfers"
 _TREDEN = ("arbeidsmarktregio", "provincie")  # van smal naar breed; daarna landelijk
@@ -316,22 +321,76 @@ class RegioContext:
     terugval: str | None  # waarom de vergelijking niet in een smallere regio staat; None als dat niet speelde
 
 
-def _terugvalreden(soort: str, afgevallen: list[tuple[str, str, int]], zonder_adres: bool) -> str | None:
-    """Waarom de vergelijking niet in een smallere regio staat: de breedste trede die afviel, met haar aantal."""
+@dataclass(frozen=True)
+class _Afgevallen:
+    """Een trede zonder genoeg peers: hoeveel er van vergelijkbare omvang waren, en hoeveel te klein (#1008)."""
+
+    regio_type: str
+    regio_naam: str
+    n: int  # andere instellingen van het type in de regio die meetellen
+    te_klein: int  # andere instellingen van het type in de regio onder de omvangsdrempel (of zonder omvang)
+
+
+def _terugvalreden(soort: str, afgevallen: list[_Afgevallen], zonder_adres: bool) -> str | None:
+    """Waarom de vergelijking niet in een smallere regio staat: de breedste trede die afviel, met haar aantal. Vielen
+    daar instellingen af op omvang, dan zegt de reden dat, met het aantal van vergelijkbare omvang (#1008)."""
     if zonder_adres:
         return "regio onbekend: DUO heeft geen adres van de instelling"
     if not afgevallen:
         return None
-    regio_type, regio_naam, n = afgevallen[-1]
-    return f"te weinig {_SOORTNAAM[soort][1]} in {regio_type} {regio_naam} ({n} andere)"
+    trede = afgevallen[-1]
+    meer = _SOORTNAAM[soort][1]
+    if not trede.te_klein:
+        return f"te weinig {meer} in {trede.regio_type} {trede.regio_naam} ({trede.n} andere)"
+    return (
+        f"te weinig {meer} van vergelijkbare omvang in {trede.regio_type} {trede.regio_naam} "
+        f"({trede.n} van {trede.n + trede.te_klein} andere; minder dan {_MIN_PEER_OMVANG:.0%} van de eigen omvang)"
+    )
+
+
+def _ho_omvang(df_inges: pd.DataFrame) -> dict[str, int]:
+    """{INSTELLINGSCODE_ACTUEEL: ingeschrevenen} in het laatste STUDIEJAAR, hbo en wo samen."""
+    laatste = df_inges[df_inges["STUDIEJAAR"] == df_inges["STUDIEJAAR"].max()]
+    som = _som(laatste, "INSTELLINGSCODE_ACTUEEL", "AANTAL_INGESCHREVENEN").dropna()
+    return {str(code): int(n) for code, n in som.items()}
+
+
+def _mbo_omvang(df_mbo: pd.DataFrame) -> dict[str, int]:
+    """{instellingscode: ingeschrevenen} in het laatste JAAR: de leerwegen opgeteld per naam, over al haar codes (#923),
+    en die som bij elke code van de naam."""
+    laatste = df_mbo[df_mbo["JAAR"] == df_mbo["JAAR"].max()]
+    per_naam = _som(laatste, "INSTELLINGSNAAM", _MBO_LEERWEG_COLS).dropna()
+    return {code: int(per_naam[naam]) for code, naam in _mbo_code_naam(df_mbo).items() if naam in per_naam.index}
+
+
+def _omvang_per_code(onderwijs_type: str) -> dict[str, int]:
+    """De omvang van elke instelling van `onderwijs_type` ("ho" of "mbo"): haar ingeschrevenen in het laatste jaar.
+    Een lege cel telt niet mee (een ondergrens); een instelling met alleen lege cellen heeft geen omvang. Laadt de bron
+    niet, dan {}: de vergelijkingsgroep komt dan zonder omvangsdrempel, het dashboard breekt er niet op (#1008)."""
+    try:
+        if onderwijs_type == "ho":
+            return _ho_omvang(_load_ho_ingeschrevenen())
+        return _mbo_omvang(_load_mbo_studenten())
+    except Exception as e:
+        _niet_beschikbaar(e, "regio-context: omvang van de instellingen niet beschikbaar")
+        return {}
+
+
+def _groot_genoeg(codes: frozenset, omvang: dict[str, int], eigen: int | None) -> frozenset:
+    """De codes met een omvang van ten minste _MIN_PEER_OMVANG van `eigen`. Zonder eigen omvang (onbekend of 0) geen
+    drempel; met eigen omvang telt een code zonder omvang niet."""
+    if not eigen:
+        return codes
+    return frozenset(c for c in codes if omvang.get(c, 0) / eigen >= _MIN_PEER_OMVANG)
 
 
 def _build_regio_context(instelling_naam: str, onderwijs_type: str) -> RegioContext | None:
     """De vergelijkingsgroep van een instelling (#926); None als het register haar niet kent als `onderwijs_type`
     ("ho": hbo of wo; "mbo").
 
-    Per trede (arbeidsmarktregio, provincie) de instellingen van hetzelfde type met hun DUO-adres in die regio; de eerste
-    trede met ten minste _MIN_PEERS wint. Anders landelijk: alle andere instellingen van hetzelfde type.
+    Per trede (arbeidsmarktregio, provincie) de instellingen van hetzelfde type met hun DUO-adres in die regio en met ten
+    minste _MIN_PEER_OMVANG van de eigen omvang (#1008); de eerste trede met ten minste _MIN_PEERS wint. Anders
+    landelijk: alle andere instellingen van hetzelfde type, met dezelfde omvangsdrempel.
     """
     adres = get_adres_lookup()
     registry = get_all_instellingen()
@@ -351,20 +410,26 @@ def _build_regio_context(instelling_naam: str, onderwijs_type: str) -> RegioCont
     )
     self_info = adres.get(self_code, {})
     provincie = self_info.get("provincie")
+    omvang = _omvang_per_code(onderwijs_type)
+
+    def vergelijkbaar(codes: frozenset) -> frozenset:
+        return _groot_genoeg(codes, omvang, omvang.get(self_code))
 
     def context(regio_naam: str, regio_type: str, peers: frozenset, terugval: str | None) -> RegioContext:
         return RegioContext(regio_naam, regio_type, provincie, self_code, peers, soort, terugval)
 
-    afgevallen: list[tuple[str, str, int]] = []
+    afgevallen: list[_Afgevallen] = []
     for regio_type in _TREDEN:
         regio_naam = self_info.get(regio_type)
         if not regio_naam:
             continue
-        peers = frozenset(c for c in zelfde_soort if adres.get(c, {}).get(regio_type) == regio_naam)
+        in_regio = frozenset(c for c in zelfde_soort if adres.get(c, {}).get(regio_type) == regio_naam)
+        peers = vergelijkbaar(in_regio)
         if len(peers) >= _MIN_PEERS:
             return context(regio_naam, regio_type, peers, _terugvalreden(soort, afgevallen, zonder_adres=False))
-        afgevallen.append((regio_type, regio_naam, len(peers)))
-    return context("Nederland", "nationaal", zelfde_soort, _terugvalreden(soort, afgevallen, not self_info))
+        afgevallen.append(_Afgevallen(regio_type, regio_naam, len(peers), len(in_regio) - len(peers)))
+    landelijk = vergelijkbaar(zelfde_soort)
+    return context("Nederland", "nationaal", landelijk, _terugvalreden(soort, afgevallen, not self_info))
 
 
 # ─── Sommen met onderdrukte en ontbrekende cellen (#902) ─────────────────────

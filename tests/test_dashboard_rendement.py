@@ -22,6 +22,7 @@ pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
 _CURIO = "Curio"
 _TER_AA = "Ter AA"  # Noord-Brabant, zonder eerstejaars in de fixtures; Curio is een peer
+_ZONDER_EERSTEJAARS = "Koning Willem I College"  # Noord-Brabant, groot genoeg, zonder eerstejaars in de fixtures
 _MBO = [_CURIO, "ROC Mondriaan", "Albeda", "Zadkine", "SiNTLUCAS", _TER_AA]
 _TERMIJN = 3
 
@@ -131,17 +132,19 @@ def test_het_regiogemiddelde_is_het_gemiddelde_van_de_peers_met_hun_aantal_en_la
         assert result["benchmark_rendement"][cohort] == round(sum(waarden) / len(waarden), 4)
         assert result["benchmark_n_per_jaar"][cohort] == len(waarden)
     assert result["benchmark_label"].startswith("Provincie Noord-Brabant, ")  # label van de vergelijkingsgroep (#926)
-    assert "BBO de Schalm" in result["peers_weggelaten"]  # een peer zonder eerstejaars valt niet stil weg
+    # Een peer zonder eerstejaars valt niet stil weg. BBO de Schalm (0 ingeschrevenen) is sinds #1008 geen peer meer.
+    assert _ZONDER_EERSTEJAARS in result["peers_weggelaten"]
 
 
 def test_het_label_telt_de_peers_in_het_gemiddelde_niet_de_gevonden():
-    # F1 (#951): Curio heeft 7 andere mbo-instellingen in Noord-Brabant; live heeft BBO de Schalm geen eerstejaars en
-    # valt af. De kerncijfers zeiden "6 andere", de rendementgrafiek "7 andere" met 6 in de legenda. In de bevroren
-    # fixtures hebben minder peers een verhouding; het label telt er net zoveel als het gemiddelde.
+    # F1 (#951): Curio had 7 andere mbo-instellingen in Noord-Brabant; live had BBO de Schalm geen eerstejaars en
+    # viel af. De kerncijfers zeiden "6 andere", de rendementgrafiek "7 andere" met 6 in de legenda. In de bevroren
+    # fixtures hebben minder peers een verhouding; het label telt er net zoveel als het gemiddelde. Sinds #1008 is BBO
+    # de Schalm geen peer meer (0 ingeschrevenen); Koning Willem I College heeft in de fixtures geen eerstejaars.
     result = dashboard.load_dashboard_rendement(_CURIO)
     vergeleken = result["peers_rendement"]
 
-    assert "BBO de Schalm" in result["peers_weggelaten"] and "BBO de Schalm" not in vergeleken
+    assert _ZONDER_EERSTEJAARS in result["peers_weggelaten"] and _ZONDER_EERSTEJAARS not in vergeleken
     assert len(vergeleken) == max(result["benchmark_n_per_jaar"].values())
     soort = "mbo-instelling" if len(vergeleken) == 1 else "mbo-instellingen"
     assert result["benchmark_label"].startswith(f"Provincie Noord-Brabant, {len(vergeleken)} andere {soort}")
