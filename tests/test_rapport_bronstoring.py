@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import httpx
 import onderwijsbronnen.duo
 import pytest
 
@@ -28,7 +29,7 @@ from agent.session_data import herstel_data_keys
 from core.config import GENEREER_TIMEOUT_S
 from routes import chat
 from tests.nepserver import Antwoord, nepserver
-from tools import bronretry, store
+from tools import bronretry, catalog, store
 from tools.schemas import TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA
 
 pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
@@ -150,12 +151,40 @@ def test_de_reden_is_leesbaar_nederlands_zonder_url_of_fouttekst(monkeypatch, du
 
     melding = events[-1]["message"]
     assert melding.startswith("De data van dit gesprek is niet meer beschikbaar.")
-    assert "DUO gaf de data voor key duo:p01hoinges:0 niet opnieuw: DUO gaf een serverfout (HTTP 503)." in melding
+    titel = catalog.bron_titel("p01hoinges")
+    assert f"DUO gaf de data van '{titel}' niet opnieuw: DUO gaf een serverfout (HTTP 503)." in melding
+    # Geen interne key (#1053): de gebruiker kent de dataset aan haar titel.
+    assert not re.search(r"\b[a-z]+:[\w-]+:\d+\b", melding), melding
     assert "Stel je vraag opnieuw" in melding
     for technisch in ("http://", "https://", "127.0.0.1", duo_storing.url, "Traceback", "HTTPStatusError", "Error"):
         assert technisch not in melding
     # Alleen de eerste key: de andere zijn niet geprobeerd en staan er niet in.
     assert _KEYS[1] not in melding and _KEYS[2] not in melding
+
+
+@pytest.mark.parametrize(
+    ("fout", "omschrijving"),
+    [
+        (httpx.ConnectError("geen route naar 127.0.0.1"), "DUO is nu niet bereikbaar (verbinding mislukt)."),
+        (httpx.ReadTimeout("te traag"), "DUO is nu niet bereikbaar (time-out)."),
+    ],
+    ids=["connect", "timeout"],
+)
+def test_een_onbereikbare_bron_noemt_titel_en_omschrijving_zonder_key_of_klassenaam(
+    monkeypatch, klok, fout, omschrijving
+):
+    """#1053: de report_error noemt de dataset bij haar catalogustitel en de fout in woorden."""
+    _geen_model(monkeypatch)
+    monkeypatch.setattr(onderwijsbronnen.duo.httpx, "get", MagicMock(side_effect=fout))
+
+    events, _ = _rapport(_sessie(*_KEYS))
+
+    assert [e["type"] for e in events] == ["report_generating", "report_error"]
+    melding = events[-1]["message"]
+    assert f"DUO gaf de data van '{catalog.bron_titel('p01hoinges')}' niet opnieuw: {omschrijving}" in melding
+    assert type(fout).__name__ not in melding and "Error" not in melding and "Timeout" not in melding
+    assert not re.search(r"\b[a-z]+:[\w-]+:\d+\b", melding), melding
+    assert "p01hoinges" not in melding
 
 
 def _report_timeout_ms() -> int:
