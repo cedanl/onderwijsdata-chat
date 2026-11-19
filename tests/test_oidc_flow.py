@@ -106,7 +106,12 @@ def provider(monkeypatch):
         "SERVER_URL": "https://edudata.test",
     }.items():
         monkeypatch.setattr(Config, naam, waarde)
-    for naam, waarde in {"_discovery_cache": None, "_jwks_cache": None, "_pkce_warned": False}.items():
+    for naam, waarde in {
+        "_discovery_cache": None,
+        "_jwks_cache": None,
+        "_jwks_refresh_at": 0.0,
+        "_pkce_warned": False,
+    }.items():
         monkeypatch.setattr(oidc, naam, waarde)
     nep = Provider()
     monkeypatch.setattr(oidc, "_fetch_json", nep.fetch_json)
@@ -360,3 +365,52 @@ def test_discovery_zonder_s256_waarschuwt_een_keer_en_stuurt_s256_toch(client, p
     assert [r.getMessage() for r in caplog.records].count(
         "OIDC discovery noemt S256 niet in code_challenge_methods_supported"
     ) == 1
+
+
+# ── #1042: restpunten van de reviews van #1024 ──────────────────────────────────────────────────
+
+
+def test_een_onverwachte_fout_na_de_code_uitwisseling_geeft_500_en_wist_de_cookies(client, monkeypatch, caplog):
+    """Elk pad wist de drie login-cookies, ook een fout die de callback niet zelf afvangt."""
+
+    def kapot(username):
+        raise RuntimeError("geheime-details-uit-de-fout")
+
+    monkeypatch.setattr(routes.auth, "make_token", kapot)
+    response = client.get(CALLBACK, headers={"Cookie": COOKIES})
+    assert response.status_code == 500
+    assert _alle_cookies_gewist(response)
+    assert "fout-ID" in response.json()["detail"]
+    assert "geheime-details-uit-de-fout" not in response.text
+
+
+def test_een_discovery_met_een_andere_issuer_start_geen_login(client, provider, tokens):
+    """OIDC Discovery §4.3: de issuer hoort bij de discovery-URL; anders fail closed."""
+    provider.discovery = _discovery(issuer="https://elders.example")
+    login = client.get("/api/auth/oidc/login")
+    assert login.headers["location"] == "/?oidc_error=1"
+    assert not login.headers.get_list("set-cookie")
+    _geen_sessie(client.get(CALLBACK, headers={"Cookie": COOKIES}), tokens)
+    assert provider.token_verzoeken == []
+
+
+def test_een_issuer_met_een_slash_aan_het_eind_telt_als_dezelfde(client, provider):
+    provider.discovery = _discovery(issuer=f"{ISSUER}/")
+    assert client.get("/api/auth/oidc/login").headers["location"].startswith(f"{ISSUER}/authorize")
+
+
+def test_twee_onbekende_kids_binnen_een_minuut_halen_de_jwks_een_keer_opnieuw(client, provider, tokens):
+    provider.id_token = _id_token(NIEUWE_SLEUTEL)  # een kid die de provider niet heeft
+    for _ in range(2):
+        _geen_sessie(client.get(CALLBACK, headers={"Cookie": COOKIES}), tokens)
+    # één keer gewoon, één keer opnieuw voor de onbekende kid; de tweede callback haalt niets meer op
+    assert provider.opgehaald.count(provider.discovery["jwks_uri"]) == 2
+
+
+def test_na_een_minuut_mag_een_onbekende_kid_weer_opnieuw_ophalen(client, provider, monkeypatch):
+    provider.id_token = _id_token(NIEUWE_SLEUTEL)
+    client.get(CALLBACK, headers={"Cookie": COOKIES})
+    monkeypatch.setattr(oidc, "_jwks_refresh_at", oidc._jwks_refresh_at - oidc._JWKS_REFRESH_MIN_S - 1)
+    provider.sleutels = [NIEUWE_SLEUTEL]  # de provider roteerde intussen echt
+    assert client.get(CALLBACK, headers={"Cookie": COOKIES}).headers["location"].startswith("/#token=")
+    assert provider.opgehaald.count(provider.discovery["jwks_uri"]) == 3

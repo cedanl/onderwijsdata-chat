@@ -42,6 +42,11 @@ _ASYMMETRIC_ALGS = ("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256
 _discovery_cache: dict | None = None
 _discovery_cache_at: float = 0.0
 _jwks_cache: tuple[str, float, KeySet] | None = None  # (jwks_uri, fetched at, keys)
+# Een onbekende `kid` haalt de JWKS opnieuw op (sleutelrotatie), maar hooguit één keer per minuut (#1042): anders laat
+# elke callback met zo'n token de app de provider opnieuw bevragen.
+_JWKS_REFRESH_MIN_S = 60
+_jwks_refresh_at: float = 0.0
+_DISCOVERY_PAD = "/.well-known/openid-configuration"
 _pkce_warned = False
 
 
@@ -126,6 +131,10 @@ async def _get_discovery_config() -> dict:
         raise OidcValidatieFout("geen discovery-URL")
     config = await _fetch_json(Config.OIDC_DISCOVERY_URL)
     _check_discovery(config)
+    # OIDC Discovery §4.3: de issuer is de discovery-URL zonder het well-known-pad (#1042). Anders fail closed.
+    verwacht = Config.OIDC_DISCOVERY_URL.removesuffix(_DISCOVERY_PAD).rstrip("/")
+    if str(config["issuer"]).rstrip("/") != verwacht:
+        raise OidcValidatieFout("issuer in de discovery hoort niet bij de discovery-URL")
     _discovery_cache = config
     _discovery_cache_at = now
     return config
@@ -133,10 +142,15 @@ async def _get_discovery_config() -> dict:
 
 async def _get_jwks(jwks_uri: str, refresh: bool = False) -> KeySet:
     """The provider's public keys, cached like the discovery document; `refresh` skips the cache."""
-    global _jwks_cache
+    global _jwks_cache, _jwks_refresh_at
     now = time.time()
-    if not refresh and _jwks_cache and _jwks_cache[0] == jwks_uri and (now - _jwks_cache[1]) < _DISCOVERY_CACHE_TTL:
+    zelfde = _jwks_cache is not None and _jwks_cache[0] == jwks_uri
+    if not refresh and zelfde and (now - _jwks_cache[1]) < _DISCOVERY_CACHE_TTL:
         return _jwks_cache[2]
+    if refresh:
+        if zelfde and (now - _jwks_refresh_at) < _JWKS_REFRESH_MIN_S:
+            return _jwks_cache[2]  # net opnieuw opgehaald: een tweede onbekende kid blijft onbekend
+        _jwks_refresh_at = now
     document = await _fetch_json(jwks_uri)
     try:
         keys = KeySet.import_key_set(document)
