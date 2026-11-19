@@ -14,12 +14,15 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
+from itertools import combinations, islice
 
+import numpy as np
 import pandas as pd
 from onderwijsbronnen import sleutels as kern
 
 from . import dekking, fouten, relaties, store
 from .analysis import modelrijen, rijmaximum
+from .kolomlabel import is_labelkolom
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,12 @@ MAX_RIJEN = 200_000
 # 5 miljoen tekstcellen is ongeveer 335 MB, onder die grens met ruimte over; een één-op-veel van twee gewone loads
 # (honderdduizenden rijen x zo'n 10 kolommen) blijft eronder.
 MAX_CELLEN = 5_000_000
+# Veel-op-veel (n:m) gaat nooit door, ook klein niet (#1031): meting #1009 gaf geen enkele zinnige n:m-koppeling. De
+# melding noemt per kant de korrelkolommen. De zoeker draait alleen bij een weigering, in het serverproces: exact voor
+# één en twee kolommen (hooguit _MAX_PAREN paren), daarna gulzig tot hooguit _MAX_KORREL kolommen; zo blijft hij
+# lineair in de rijen.
+_MAX_PAREN = 200
+_MAX_KORREL = 8
 
 
 class _Melding(Exception):
@@ -48,12 +57,14 @@ class _Melding(Exception):
 
 @dataclass(frozen=True)
 class _Kant:
-    """Eén tabel van de koppeling: haar key, haar label in `koppelstatus` en de kolom per sleutel."""
+    """Eén tabel van de koppeling: haar key, haar label in `koppelstatus`, de kolom per sleutel en per sleutel alle
+    kolommen die hem dragen (`_kandidaten`)."""
 
     key: str
     label: str
     df: pd.DataFrame
     kolommen: dict[str, str]
+    kandidaten: dict[str, list[str]]
 
     @property
     def alleen(self) -> str:
@@ -64,6 +75,7 @@ class _Kant:
 class _Uitkomst:
     df: pd.DataFrame
     korrel: dict[str, str]
+    kardinaliteit: str
     uniek: dict[str, int]
     zonder_sleutel: dict[str, int]
 
@@ -118,14 +130,36 @@ def _is_koppeling(key: str) -> bool:
     return known is not None and (known.stap or "").startswith(STAP)
 
 
-def _kolommen(kant: tuple[str, str], df: pd.DataFrame, sleutels: list[str], opgave: object, veld: str):
+def _gelijke_kolom(df: pd.DataFrame, sleutel: str, opties: list[str]) -> str | None:
+    """De bronkolom als een sleutel in een kolom en haar labelkolommen staat met dezelfde waarden (#1032), anders None.
+
+    DUO-ho heeft STUDIEJAAR (2021) en STUDIEJAAR_LABEL (2021/2022): na normalisatie in elke rij gelijk (leeg is gelijk
+    aan leeg), dus één sleutel. Twee bronkolommen (INSTELLINGSCODE en INSTELLINGSCODE_ACTUEEL) blijven een keuze voor het
+    model, ook als ze nu gelijk zijn: ze betekenen niet hetzelfde.
+    """
+    bron = [k for k in opties if not is_labelkolom(k)]
+    if len(bron) > 1:
+        return None
+    normaliseer = kern.SLEUTELS[sleutel].normaliseer
+    eerste, *rest = (df[k].map(normaliseer).astype(object) for k in opties)
+    return (bron or opties)[0] if all(eerste.equals(r) for r in rest) else None
+
+
+def _kolommen(
+    kant: tuple[str, str],
+    df: pd.DataFrame,
+    kandidaten: dict[str, list[str]],
+    sleutels: list[str],
+    opgave: object,
+    veld: str,
+):
     """De kolom per sleutel in één tabel, en wat er niet klopt; een opgave kiest uit de kandidaten, nooit daarbuiten.
 
     Een eerdere koppeling (ketenen) heeft de sleutel twee keer: de oorspronkelijke kolom en vooraan de genormaliseerde
-    onder de sleutelnaam. Die laatste is dan de keuze, zonder melding.
+    onder de sleutelnaam. Die laatste is dan de keuze, zonder melding. Een kolom met haar labelkolom en dezelfde waarden
+    ook (`_gelijke_kolom`).
     """
     key, label = kant
-    kandidaten = _kandidaten(df)
     voorkeur = _is_koppeling(key)
     opgave = opgave if isinstance(opgave, dict) else {}
     kolommen: dict[str, str] = {}
@@ -140,6 +174,9 @@ def _kolommen(kant: tuple[str, str], df: pd.DataFrame, sleutels: list[str], opga
         elif gekozen is not None and gekozen not in opties:
             problemen.append(f"Kolom {gekozen!r} draagt in {label} geen sleutel {sleutel}; kandidaten: {opties}.")
         elif gekozen is None and len(opties) > 1 and not (voorkeur and sleutel in opties):
+            if (gelijk := _gelijke_kolom(df, sleutel, opties)) is not None:
+                kolommen[sleutel] = gelijk
+                continue
             problemen.append(
                 f"Sleutel {sleutel} staat in {label} in meer kolommen: {opties}. Kies er één met "
                 f'{veld}: {{"{sleutel}": "<kolom>"}}.'
@@ -157,12 +194,17 @@ def _kanten(data_key: str, andere_key: str, opgegeven: object, links_opgave, rec
         raise _Melding(_melding("Koppel twee verschillende tabellen: data_key en andere_key zijn dezelfde key."))
     sleutels = _sleutelnamen(opgegeven)
     links_label, rechts_label = _labels(data_key, andere_key)
-    links, p_links = _kolommen((data_key, links_label), links_df, sleutels, links_opgave, "kolommen_links")
-    rechts, p_rechts = _kolommen((andere_key, rechts_label), rechts_df, sleutels, rechts_opgave, "kolommen_rechts")
+    k_links, k_rechts = _kandidaten(links_df), _kandidaten(rechts_df)
+    links, p_links = _kolommen((data_key, links_label), links_df, k_links, sleutels, links_opgave, "kolommen_links")
+    rechts, p_rechts = _kolommen(
+        (andere_key, rechts_label), rechts_df, k_rechts, sleutels, rechts_opgave, "kolommen_rechts"
+    )
     if problemen := [*p_links, *p_rechts]:
-        kandidaten = {links_label: _kandidaten(links_df), rechts_label: _kandidaten(rechts_df)}
-        raise _Melding(_melding(" ".join(problemen), kandidaten=kandidaten))
-    return _Kant(data_key, links_label, links_df, links), _Kant(andere_key, rechts_label, rechts_df, rechts)
+        raise _Melding(_melding(" ".join(problemen), kandidaten={links_label: k_links, rechts_label: k_rechts}))
+    return (
+        _Kant(data_key, links_label, links_df, links, k_links),
+        _Kant(andere_key, rechts_label, rechts_df, rechts, k_rechts),
+    )
 
 
 def _genormaliseerd(kant: _Kant, sleutels: list[str], bezet: set[str]) -> pd.DataFrame:
@@ -188,12 +230,273 @@ def _korrel(df: pd.DataFrame, sleutels: list[str]) -> str:
     return _VEEL if df.duplicated(subset=sleutels).any() else _EEN
 
 
+@dataclass(frozen=True)
+class _Tellingen:
+    """Rijen per sleutelwaarde aan elke kant, uitgelijnd over de vereniging (NaN: de waarde ontbreekt aan die kant).
+
+    Eén telling per tabel, voor de omvang, de n:m-weigering en de kardinaliteit samen.
+    """
+
+    links: pd.Series
+    rechts: pd.Series
+
+    @classmethod
+    def van(cls, a_ok: pd.DataFrame, b_ok: pd.DataFrame, sleutels: list[str]) -> "_Tellingen":
+        links, rechts = (t.value_counts(subset=sleutels, sort=False) for t in (a_ok, b_ok))
+        alle = links.index.union(rechts.index)
+        return cls(links.reindex(alle), rechts.reindex(alle))
+
+    @property
+    def rijen(self) -> int:
+        """Per gedeelde waarde links x rechts, anders het aantal van de kant die haar heeft."""
+        return int((self.links.fillna(1) * self.rechts.fillna(1)).to_numpy(dtype="int64").sum())
+
+    @property
+    def nm_waarden(self) -> int:
+        """Hoeveel gedeelde waarden aan beide kanten meer dan één rij hebben (NaN > 1 is False)."""
+        return int(((self.links > 1) & (self.rechts > 1)).sum())
+
+    @property
+    def kardinaliteit(self) -> str:
+        """1:1, n:1 of 1:n, links eerst, op de gedeelde waarden; n:m komt na de weigering niet meer voor."""
+        gedeeld = self.links.notna() & self.rechts.notna()
+        links, rechts = ("n" if (t[gedeeld] > 1).any() else "1" for t in (self.links, self.rechts))
+        return f"{links}:{rechts}"
+
+
 def omvang(a_ok: pd.DataFrame, b_ok: pd.DataFrame, sleutels: list[str]) -> int:
     """Hoeveel rijen de outer join geeft, zonder hem te maken: per gedeelde waarde links x rechts, anders het aantal
     van de kant die haar heeft. Kost één telling per tabel."""
-    links, rechts = (t.groupby(sleutels, sort=False).size() for t in (a_ok, b_ok))
-    links, rechts = links.align(rechts, join="outer")
-    return int((links.fillna(1) * rechts.fillna(1)).to_numpy(dtype="int64").sum())
+    return _Tellingen.van(a_ok, b_ok, sleutels).rijen
+
+
+# --- Korrelkolommen: wat maakt een rij eenduidig (#1031) ------------------------------------------------------------
+
+
+def _codes(reeks: pd.Series) -> np.ndarray | None:
+    """De waarden als groepsnummers 0..k-1, leeg als eigen waarde (zoals df.duplicated); None als ze niet te hashen
+    zijn (een lijst in een cel)."""
+    try:
+        return pd.factorize(reeks, use_na_sentinel=False)[0].astype("int64")
+    except TypeError:
+        return None
+
+
+def _samen(groep: np.ndarray, codes: np.ndarray) -> np.ndarray:
+    """De indeling naar groep én codes, weer als groepsnummers 0..k-1."""
+    return pd.factorize(groep * (int(codes.max(initial=-1)) + 1) + codes)[0]
+
+
+def _dubbel(groep: np.ndarray) -> int:
+    """Hoeveel rijen een groep delen met een eerdere rij: 0 is elke rij uniek."""
+    return len(groep) - (int(groep.max()) + 1 if len(groep) else 0)
+
+
+def _uniek_met(groep: np.ndarray, codes: dict[str, np.ndarray], kolommen: list[str]) -> bool:
+    for k in kolommen:
+        groep = _samen(groep, codes[k])
+    return not _dubbel(groep)
+
+
+def _kleinste(groep: np.ndarray, codes: dict[str, np.ndarray], kandidaten: list[str]) -> list[str] | None:
+    """Exact: de eerste kolom, anders het eerste paar, dat elke rij uniek maakt; anders None.
+
+    Een paar dat te weinig waarden heeft om elke rij te onderscheiden, wordt overgeslagen; hooguit _MAX_PAREN paren
+    worden echt geteld.
+    """
+    met = {k: _samen(groep, codes[k]) for k in kandidaten}
+    if (een := next((k for k in kandidaten if not _dubbel(met[k])), None)) is not None:
+        return [een]
+    aantal = {k: int(c.max(initial=-1)) + 1 for k, c in codes.items()}
+    met_aantal = {k: int(c.max(initial=-1)) + 1 for k, c in met.items()}
+    paren = ((i, j) for i, j in combinations(kandidaten, 2) if met_aantal[i] * aantal[j] >= len(groep))
+    for i, j in islice(paren, _MAX_PAREN):
+        if not _dubbel(_samen(met[i], codes[j])):
+            return [i, j]
+    return None
+
+
+def _gulzig(groep: np.ndarray, codes: dict[str, np.ndarray], pools: list[list[str]]) -> list[str]:
+    """Telkens de kolom die de meeste dubbele rijen wegneemt (bij gelijkspel de eerste), eerst uit de eerste pool;
+    tot elke rij uniek is, geen kolom meer helpt of er _MAX_KORREL gekozen zijn."""
+    gekozen: list[str] = []
+    for pool in pools:
+        while _dubbel(groep) and len(gekozen) < _MAX_KORREL:
+            nog = np.bincount(groep)[groep] > 1  # een rij die al uniek is, blijft dat: alleen de rest telt
+            groep, codes = pd.factorize(groep[nog])[0], {k: c[nog] for k, c in codes.items()}
+            scores = [(_dubbel(_samen(groep, codes[k])), k) for k in pool if k not in gekozen]
+            beste = min(scores, key=lambda paar: paar[0], default=None)
+            if beste is None or beste[0] >= _dubbel(groep):
+                break
+            gekozen.append(beste[1])
+            groep = _samen(groep, codes[beste[1]])
+    return gekozen
+
+
+def _gesnoeid(groep: np.ndarray, codes: dict[str, np.ndarray], gekozen: list[str]) -> list[str]:
+    """Zonder de gulzig gekozen kolommen die achteraf niet nodig zijn."""
+    for k in list(gekozen):
+        zonder = [c for c in gekozen if c != k]
+        if _uniek_met(groep, codes, zonder):
+            gekozen = zonder
+    return gekozen
+
+
+def _korrelkandidaten(kant: _Kant, gedeeld: set[str]) -> tuple[list[str], list[str]]:
+    """De kolommen die de korrel kunnen dragen, in zoekvolgorde, en het deel dat een dimensie is.
+
+    Eerst een kolom met een sleutel die beide tabellen dragen (een code voor een naam), dan de andere kolommen in
+    kolomvolgorde; `koppelstatus` en de gekozen sleutelkolommen tellen niet mee. Een getal zonder sleutel (AANTAL, een
+    CBS-meetwaarde) is een waarde, geen korrel: het komt pas in aanmerking als de dimensies de rijen niet uniek maken.
+    """
+    draagt: dict[str, list[str]] = {}
+    for sleutel, kolommen in kant.kandidaten.items():
+        for k in kolommen:
+            draagt.setdefault(k, []).append(sleutel)
+
+    def rang(kolom: str) -> int:
+        eigen = draagt.get(kolom, [])
+        if any(s in gedeeld and not kern.SLEUTELS[s].op_naam for s in eigen):
+            return 0
+        if any(s in gedeeld for s in eigen):
+            return 1
+        reeks = kant.df[kolom]
+        getal = pd.api.types.is_numeric_dtype(reeks) and not pd.api.types.is_bool_dtype(reeks)
+        return 3 if getal and not eigen else 2
+
+    uit = {KOPPELSTATUS, *kant.kolommen.values()}
+    kandidaten = sorted((k for k in kant.df.columns if k not in uit), key=rang)
+    return kandidaten, [k for k in kandidaten if rang(k) < 3]
+
+
+def _eigen(kant: _Kant, t_ok: pd.DataFrame, sleutels: list[str]) -> pd.DataFrame:
+    """De rijen met een sleutel onder hun eigen kolomnamen, zonder de genormaliseerde sleutels vooraan: zo noemt de
+    melding de kolommen die het model in query_data kent (_genormaliseerd hernoemt alleen, in dezelfde volgorde)."""
+    return t_ok.iloc[:, len(sleutels) :].set_axis(list(kant.df.columns), axis=1)
+
+
+def _korrelkolommen(kant: _Kant, t_ok: pd.DataFrame, sleutels: list[str], gedeeld: set[str]) -> tuple[list[str], bool]:
+    """De kolommen die samen met de sleutels elke rij van deze kant uniek maken, en of dat lukt.
+
+    Zo klein als bekend: exact voor één en twee kolommen, daarna gulzig en gesnoeid; deterministisch. Zijn rijen
+    volledig gelijk, dan is de lijst onvolledig (False). Werkt op de rijen met een sleutel, met de eigen kolomnamen.
+    """
+    eigen = _eigen(kant, t_ok, sleutels)
+    groep = t_ok.groupby(sleutels, sort=False).ngroup().to_numpy()
+    kandidaten, dimensies = _korrelkandidaten(kant, gedeeld)
+    codes = {k: c for k in kandidaten if (c := _codes(eigen[k])) is not None}
+    pools = [[k for k in dimensies if k in codes], [k for k in kandidaten if k in codes]]
+    gekozen = _kleinste(groep, codes, pools[0]) if _dubbel(groep) else []
+    if gekozen is None:
+        gekozen = _gesnoeid(groep, codes, _gulzig(groep, codes, pools))
+    return gekozen, _uniek_met(groep, codes, gekozen)
+
+
+# --- De n:m-melding ---------------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Korrel:
+    """De korrelkolommen van één kant en of ze elke rij uniek maken."""
+
+    kant: _Kant
+    t_ok: pd.DataFrame
+    kolommen: list[str]
+    volledig: bool
+
+    def sleutelkolom(self, sleutel: str) -> str | None:
+        """De korrelkolom die `sleutel` draagt, of None."""
+        return next((k for k in self.kolommen if k in self.kant.kandidaten.get(sleutel, [])), None)
+
+
+def _ook_op(korrels: tuple[_Korrel, _Korrel], gedeeld: set[str]) -> list[str]:
+    """De sleutels die een korrelkolom aan beide kanten draagt, in de volgorde van de linker korrel."""
+    links, rechts = korrels
+    if not (links.volledig and rechts.volledig):
+        return []
+    volgorde = [s for k in links.kolommen for s, kolommen in links.kant.kandidaten.items() if k in kolommen]
+    return [s for s in dict.fromkeys(volgorde) if s in gedeeld and rechts.sleutelkolom(s) is not None]
+
+
+def _nog_nm(korrels: tuple[_Korrel, _Korrel], sleutels: list[str], ook: list[str]) -> int:
+    """Hoeveel gedeelde waarden ook op de uitgebreide sleutels nog n:m zijn (een rij zonder de extra sleutel valt af)."""
+    delen = []
+    for korrel in korrels:
+        eigen = _eigen(korrel.kant, korrel.t_ok, sleutels)
+        extra = {s: eigen[korrel.sleutelkolom(s)].map(kern.SLEUTELS[s].normaliseer).astype(object) for s in ook}
+        delen.append(korrel.t_ok[sleutels].assign(**extra).dropna())
+    return _Tellingen.van(*delen, [*sleutels, *ook]).nm_waarden
+
+
+def _is_cbs(kant: _Kant) -> bool:
+    known = store.meta(kant.key)
+    return known is not None and known.bron.lower() == "cbs"
+
+
+def _aggregeren(links: _Kant, rechts: _Kant, op: str) -> str:
+    tekst = (
+        f"Maak eerst één kant één rij per {op}: aggregeer met query_data (group_by op de sleutelkolom, aggregate som "
+        "van de aantallen) en koppel die data_key"
+    )
+    if cbs := [k.label for k in (links, rechts) if _is_cbs(k)]:
+        tekst += (
+            f", of zet bij {' en '.join(cbs)} de andere dimensies op hun totaalcode (selectie in get_cbs_data, of een "
+            "filter in query_data)"
+        )
+    return f"{tekst}."
+
+
+def _korrel_van(kant: _Kant, t_ok: pd.DataFrame, sleutels: list[str], gedeeld: set[str]) -> _Korrel:
+    return _Korrel(kant, t_ok, *_korrelkolommen(kant, t_ok, sleutels, gedeeld))
+
+
+def _nm_melding(
+    links: _Kant,
+    rechts: _Kant,
+    sleutels: list[str],
+    oks: tuple[pd.DataFrame, pd.DataFrame],
+    tellingen: _Tellingen,
+    rijen: int,
+) -> _Melding:
+    """De weigering van een veel-op-veel-koppeling, met per kant de korrelkolommen en een route die wel werkt.
+
+    `rijen` is wat de join zou geven (zoals voor de grenzen): `verwachte_rijen`."""
+    gedeeld = (set(links.kandidaten) & set(rechts.kandidaten)) - set(sleutels)
+    korrels = (_korrel_van(links, oks[0], sleutels, gedeeld), _korrel_van(rechts, oks[1], sleutels, gedeeld))
+    op, nm = ", ".join(sleutels), tellingen.nm_waarden
+    tekst = (
+        f"Deze koppeling op {op} is veel-op-veel (n:m): bij {nm} waarden van {op} hebben {links.label} en "
+        f"{rechts.label} allebei meer dan één rij, en elke rij van de ene kant zou bij elke rij van de andere kant "
+        f"komen ({rijen} rijen, met dubbele waarden). Er is niets gekoppeld. korrel_kolommen noemt per kant de "
+        f"kolommen die samen met {op} één rij aanwijzen."
+    )
+    for korrel in korrels:
+        if not korrel.volledig:
+            tekst += (
+                f" In {korrel.kant.label} maakt geen kolomkeuze elke rij eenduidig: rijen zijn volledig gelijk, of "
+                f"verschillen pas in meer dan {_MAX_KORREL} kolommen."
+            )
+    if ook := _ook_op(korrels, gedeeld):
+        tekst += (
+            f" Koppel ook op {', '.join(ook)}: sleutels={json.dumps([*sleutels, *ook])}. Die kolommen dragen in beide "
+            "tabellen dezelfde sleutel; controleer met relatie dat ze hetzelfde betekenen"
+        )
+        if any(_is_cbs(k) for k in (links, rechts)):
+            tekst += " (bij DUO en CBS is gemeente bijvoorbeeld vestigingsgemeente tegenover woongemeente)"
+        tekst += "."
+        if rest := _nog_nm(korrels, sleutels, ook):
+            tekst += f" Ook dan hebben nog {rest} waarden aan beide kanten meer rijen. {_aggregeren(links, rechts, op)}"
+    else:
+        tekst += f" {_aggregeren(links, rechts, op)}"
+    return _Melding(
+        _melding(
+            tekst,
+            kardinaliteit="n:m",
+            verwachte_rijen=rijen,
+            nm_waarden=nm,
+            korrel_kolommen={k.kant.label: k.kolommen for k in korrels},
+        )
+    )
 
 
 def _te_groot(
@@ -231,14 +534,18 @@ def _te_groot(
 def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     """De outer join; een rij met een lege of onleesbare sleutel kan niet matchen en blijft met haar eigen status.
 
-    Een join boven MAX_RIJEN of MAX_CELLEN gaat niet door (_Melding): eerst tellen, dan pas koppelen.
+    Een veel-op-veel-koppeling gaat nooit door, een join boven MAX_RIJEN of MAX_CELLEN ook niet (_Melding): eerst
+    tellen, dan pas koppelen.
     """
     bezet = {*sleutels, KOPPELSTATUS}
     a = _genormaliseerd(links, sleutels, bezet | set(rechts.df.columns))
     b = _genormaliseerd(rechts, sleutels, bezet | set(links.df.columns))
     a_ok, b_ok = (t[t[sleutels].notna().all(axis=1)] for t in (a, b))
+    tellingen = _Tellingen.van(a_ok, b_ok, sleutels)
+    rijen = tellingen.rijen + (len(a) - len(a_ok)) + (len(b) - len(b_ok))
+    if tellingen.nm_waarden:
+        raise _nm_melding(links, rechts, sleutels, (a_ok, b_ok), tellingen, rijen)
     korrel = {links.label: _korrel(a_ok, sleutels), rechts.label: _korrel(b_ok, sleutels)}
-    rijen = omvang(a_ok, b_ok, sleutels) + (len(a) - len(a_ok)) + (len(b) - len(b_ok))
     kolommen = len(a.columns) + len(b.columns) - len(sleutels) + 1  # de sleutels één keer, plus koppelstatus
     melding = _te_groot(links, rechts, sleutels, rijen, kolommen, "_to_".join(korrel.values()))
     if melding is not None:
@@ -256,6 +563,7 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     return _Uitkomst(
         df=df,
         korrel=korrel,
+        kardinaliteit=tellingen.kardinaliteit,
         uniek={
             links.label: len(a_ok[sleutels].drop_duplicates()),
             rechts.label: len(b_ok[sleutels].drop_duplicates()),
@@ -356,6 +664,7 @@ def _tekst(key: str, links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst:
         "sleutels": sleutels,
         "kolommen": {links.label: links.kolommen, rechts.label: rechts.kolommen},
         "korrel": {**uitkomst.korrel, "koppeling": uitkomst.koppeling},
+        "kardinaliteit": uitkomst.kardinaliteit,
         "uniek": uitkomst.uniek,
         "telling": telling,
         "toelichting": _toelichting(links, rechts, sleutels, telling),

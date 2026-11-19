@@ -273,9 +273,14 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "sleutels, met de waarden in één vorm (30020.0 is 30020, 2021SJ00 is 2021). Elke rij van beide tabellen "
                 "blijft; een rij zonder match houdt lege cellen voor de andere kant (nooit 0). De kolom koppelstatus zegt "
                 "per rij 'beide' of 'alleen <bron>', met toelichting per status: noem rijen zonder match en waarom. "
-                "Geeft een nieuwe data_key (query_data, run_analysis, create_plot werken erop), de telling per status "
-                "en de korrel: bij many staat een waarde van de andere kant per rij herhaald, tel die niet zonder meer "
-                "op. Schrijf geen eigen merge in run_analysis en filter vóór de koppeling niet op een lege waarde."
+                "Geeft een nieuwe data_key (query_data, run_analysis, create_plot werken erop), de telling per status, "
+                "de kardinaliteit (1:1, n:1, 1:n) en de korrel: bij many staat een waarde van de andere kant per rij "
+                "herhaald, tel die niet zonder meer op. Veel-op-veel (n:m: een sleutelwaarde met meer rijen aan beide "
+                "kanten) koppelt de tool nooit: de melding noemt per kant korrel_kolommen en de route (ook op een "
+                "gedeelde sleutel koppelen, of eerst een kant aggregeren met query_data); volg die, herhaal de "
+                "koppeling niet. Staat een sleutel in een kolom en haar labelkolom met dezelfde waarden (STUDIEJAAR, "
+                "STUDIEJAAR_LABEL), dan kiest de tool de bronkolom. Schrijf geen eigen merge in run_analysis en filter "
+                "vóór de koppeling niet op een lege waarde."
             ),
             "parameters": {
                 "type": "object",

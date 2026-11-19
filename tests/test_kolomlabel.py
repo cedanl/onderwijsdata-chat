@@ -2,7 +2,7 @@
 
 import pytest
 
-from tools.kolomlabel import kolomlabel
+from tools.kolomlabel import is_labelkolom, kolomlabel
 from tools.plot import create_plot
 
 
@@ -31,6 +31,15 @@ def test_bronkolom_wordt_zinsnotatie(kop, label):
 @pytest.mark.parametrize("kop", ["Aantal", "jaar", "WO", "BRIN", "CROHO", "VT", "Instroom per jaar"])
 def test_andere_koppen_blijven_staan(kop):
     assert kolomlabel(kop) == kop
+
+
+@pytest.mark.parametrize(
+    ("kop", "label"),
+    [("STUDIEJAAR_LABEL", True), ("Perioden_label", True), ("STUDIEJAAR", False), ("LABEL", False), ("_LABEL", False)],
+)
+def test_is_labelkolom(kop, label):
+    """koppel_data kiest tussen een kolom en haar labelkolom de bronkolom (#1032)."""
+    assert is_labelkolom(kop) is label
 
 
 def test_titel_uit_de_bron_gaat_voor():
