@@ -53,7 +53,7 @@ from routes import (
     rapport_docx_router,
 )
 from routes.mcp_http import PAD as MCP_PAD
-from routes.mcp_http import McpEindpunt
+from routes.mcp_http import McpEindpunt, mcp_aan
 
 # Initialize database
 try:
@@ -170,6 +170,8 @@ async def version() -> dict:
         "catalogus_digest": await asyncio.to_thread(catalogusdigest),
         # Periode uit de statische riodata-records, zonder download (CH-46).
         "arbeidsmarkt": arbeidsmarktversie(),
+        # Of /mcp aan staat (MCP_API_KEYS gezet), zodat een deploy dat zonder sleutel te controleren is (#941, L-07).
+        "mcp": mcp_aan(),
     }
 
 

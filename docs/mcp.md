@@ -150,7 +150,9 @@ werken zoals ze werkten, en er is geen tweede deployment.
   `tooldefinities()`, `INSTRUCTIES` en `voer_uit()`, dus dezelfde envelope, scopegrens en statussen. Over HTTP draait
   een aanroep in een thread, zodat de eerste zoekactie (het DUO-register laden) de chat niet ophoudt.
 - **Alleen met sleutels.** Zonder `MCP_API_KEYS` bestaat `/mcp` niet: elk verzoek, ook `GET`, krijgt 404 en het log
-  zegt bij de start één keer waarom. Met sleutels vraagt elk verzoek er een ([Sleutels](#sleutels)).
+  zegt bij de start één keer waarom: een WARNING als `APP_URL` gezet is (die omgeving hoort `/mcp` aan te bieden),
+  anders INFO. `/version` zegt met `mcp` (`true`/`false`) of het aan staat, zonder iets over de sleutels (#941). Met
+  sleutels vraagt elk verzoek er een ([Sleutels](#sleutels)).
 - **Log.** Per aanroep een regel `MCP TOOL <naam> args_len=… args_hash=… fout=… duur=… tekens=… sleutel_len=… sleutel_hash=…`:
   de argumenten (zoekwoorden, vaak uit de vraag van de gebruiker) alleen als kenmerk, zoals in de chat, en welke
   sleutel de aanroep deed.
@@ -201,7 +203,7 @@ sops set manifests/test/secret.yaml '["stringData"]["MCP_API_KEYS"]' "\"$(python
 kubectl --context testing -n services-onderwijsdata-chat rollout restart deploy/fn-onderwijsdata-chat
 ```
 
-Controle: zonder `Authorization` geeft `https://onderwijsdata-chat.test.sdp.surf.nl/mcp` 401 (voor de sleutel was het 404); met
+Controle: `/version` geeft `"mcp": true`; zonder `Authorization` geeft `https://onderwijsdata-chat.test.sdp.surf.nl/mcp` 401 (voor de sleutel was het 404); met
 de sleutel (`sops -d --extract '["stringData"]["MCP_API_KEYS"]' manifests/test/secret.yaml`) werken `search_catalog`,
 `dataset_details` en `dataset_counts` in de MCP Inspector (`npx @modelcontextprotocol/inspector`, transport *Streamable HTTP*,
 header `Authorization: Bearer <sleutel>`). `/health`, `/version` en de chat blijven werken. De sleutel voor #705 gaat via een
