@@ -71,8 +71,8 @@ dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen bui
   bevestigde; geen titels of inhoud. Hoort bij het account (`SESSION_DATA_KEYS`): uitloggen stuurt die verwijderingen
   eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
-  inloggen. Tijdens het inloggen met SRAM staat er kort een cookie met de OIDC-state; verder gebruikt de app geen
-  cookies en geen analytics.
+  inloggen. Tijdens het inloggen met SRAM staan er kort drie cookies met eenmalige waarden van die login (OIDC-state,
+  nonce en PKCE-verifier, hoogstens 10 minuten); verder gebruikt de app geen cookies en geen analytics.
 
 ## Het logboek
 
