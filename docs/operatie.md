@@ -32,10 +32,10 @@ Waarden uit `manifests/<omgeving>/values.yaml`, met de chart (`charts/onderwijsd
 | Opschonen (CronJob) | aan | aan | uit | uit |
 | `APP_ENV` | `test` | `playground` | `development` | `production` |
 
-**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de limieten (login, berichten,
-feedback, gelijktijdige verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod
-kent die niet. De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py` bewaakt per omgeving één
-replica. Wat dat betekent:
+**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de gelijktijdigheidstellers
+(verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod kent die niet. Alleen de
+tijdslimieten staan al in Postgres (#984). De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py`
+bewaakt per omgeving één replica. Wat dat betekent:
 
 - **Elke uitrol of herstart is een onderbreking.** Bij `Recreate` (test, playground) is de app weg tot de nieuwe pod
   gestart is en de startupProbe haalt; op test duurde dat op 29-10 8 minuten (harde 503). Bij RollingUpdate
