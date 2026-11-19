@@ -4550,7 +4550,7 @@
     "onderwijstype": [
       "VO"
     ],
-    "doel": "Examenkandidaten en geslaagden in het voortgezet onderwijs per onderwijssoort en woonregio. Toont slagingspercentages per regio en geslacht.",
+    "doel": "Examenkandidaten en geslaagden in het voortgezet onderwijs per onderwijssoort, vanaf schooljaar 2011/'12. Toont slagingspercentages naar geslacht en naar woonregio van de leerling: landsdeel, provincie en de vier grootste gemeenten (G4), plus de groep overige gemeenten met 100 000 inwoners of meer; geen andere gemeenten.",
     "frequentie": "Jaarlijks",
     "categorie": "Voortgezet Onderwijs",
     "sectie": "Studentgegevens & Onderwijs",
@@ -4561,7 +4561,7 @@
     "repositories": [],
     "publieke_producten": [],
     "voorbeeldvragen": [
-      "Wat is het slagingspercentage voor VWO in mijn regio?",
+      "Wat is het slagingspercentage voor het vwo per provincie?",
       "Hoe verschilt het slagingspercentage tussen mannen en vrouwen?",
       "In welke regio's is het slagingspercentage het laagst?"
     ],
@@ -4573,13 +4573,13 @@
       "slagingspercentage",
       "geslacht",
       "provincie",
-      "gemeente"
+      "landsdeel"
     ],
     "_cbs_id": "85382NED",
     "_thema": "Vo gediplomeerden",
     "_archief": false,
     "_laatste_update": "2026-03-27",
-    "samenvatting": "Examenkandidaten en geslaagden in het voortgezet onderwijs per onderwijssoort en woonregio. Toont slagingspercentages per regio en geslacht.",
+    "samenvatting": "Examenkandidaten en geslaagden in het voortgezet onderwijs per onderwijssoort, vanaf schooljaar 2011/'12. Toont slagingspercentages naar geslacht en naar woonregio van de leerling: landsdeel, provincie en de vier grootste gemeenten (G4), plus de groep overige gemeenten met 100 000 inwoners of meer; geen andere gemeenten.",
     "_dimensies": [
       "Geslacht",
       "Onderwijssoort",
@@ -4594,7 +4594,6 @@
     "_geo_niveau": [
       "landelijk",
       "provincie",
-      "gemeente",
       "landsdeel"
     ],
     "_perioden_formaat": [
@@ -4692,7 +4691,7 @@
     },
     "_verrijking": {
       "versie": 2,
-      "inputhash": "1df704837fc25507",
+      "inputhash": "4f96ab79487877f8",
       "bronrevisie": "f3c6b1162cb2e971"
     }
   },
@@ -4856,11 +4855,11 @@
   {
     "leverancier": "CBS",
     "bron": "Vo; leerlingen, onderwijssoort, leerjaar, woonregio",
-    "periode": "2021/'22-2025/'26",
+    "periode": "2011/'12-2025/'26",
     "onderwijstype": [
       "VO"
     ],
-    "doel": "Actuele leerlingenaantallen in het voortgezet onderwijs per onderwijssoort, leerjaar en woonregio. Geschikt voor regionale capaciteitsplanning en instroomanalyses.",
+    "doel": "Leerlingenaantallen in het voortgezet onderwijs per onderwijssoort en leerjaar, vanaf schooljaar 2011/'12. Regionaal naar woonregio van de leerling: landsdeel, provincie en de vier grootste gemeenten (G4), plus de groep overige gemeenten met 100 000 inwoners of meer; geen andere gemeenten. Geschikt voor instroomanalyses.",
     "frequentie": "Jaarlijks",
     "categorie": "Voortgezet Onderwijs",
     "sectie": "Studentgegevens & Onderwijs",
@@ -4871,8 +4870,8 @@
     "repositories": [],
     "publieke_producten": [],
     "voorbeeldvragen": [
-      "Hoeveel VWO-leerlingen zitten er in leerjaar 4 in mijn regio?",
-      "Hoe ontwikkelt het aantal VMBO-leerlingen zich regionaal?",
+      "Hoeveel havo 4/5- en vwo 4-6-leerlingen zijn er, als voorspeller voor de ho-instroom?",
+      "Hoe ontwikkelt het aantal vmbo-leerlingen zich per provincie?",
       "Welke leerjaren tonen krimp of groei?"
     ],
     "tags": [
@@ -4885,13 +4884,13 @@
       "havo",
       "vwo",
       "provincie",
-      "gemeente"
+      "landsdeel"
     ],
     "_cbs_id": "85380NED",
     "_thema": "Vo leerlingen",
     "_archief": false,
     "_laatste_update": "2026-04-02",
-    "samenvatting": "Actuele leerlingenaantallen in het voortgezet onderwijs per onderwijssoort, leerjaar en woonregio. Geschikt voor regionale capaciteitsplanning en instroomanalyses.",
+    "samenvatting": "Leerlingenaantallen in het voortgezet onderwijs per onderwijssoort en leerjaar, vanaf schooljaar 2011/'12. Regionaal naar woonregio van de leerling: landsdeel, provincie en de vier grootste gemeenten (G4), plus de groep overige gemeenten met 100 000 inwoners of meer; geen andere gemeenten. Geschikt voor instroomanalyses.",
     "_dimensies": [
       "Geslacht",
       "Onderwijssoort",
@@ -4908,7 +4907,6 @@
     "_geo_niveau": [
       "landelijk",
       "provincie",
-      "gemeente",
       "landsdeel"
     ],
     "_meetwaarden_details": {
@@ -5000,14 +4998,14 @@
     },
     "_verrijking": {
       "versie": 2,
-      "inputhash": "5a37d0708731504b",
-      "bronrevisie": "91b05a6fb8db141f"
+      "inputhash": "001490fecb19f8dc",
+      "bronrevisie": "efeb3117e45e9109"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Vo; leerlingen, onderwijssoort in detail, leerjaar, herkomst",
-    "periode": "2020/'21-2025/'26",
+    "periode": "2011/'12-2025/'26",
     "onderwijstype": [
       "VO"
     ],
@@ -5150,7 +5148,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "4f256b66d4c614d7",
-      "bronrevisie": "77d99377925cb654"
+      "bronrevisie": "d69f0bb3f81fd309"
     }
   },
   {
