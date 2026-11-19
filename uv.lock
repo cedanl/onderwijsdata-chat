@@ -1,10 +1,13 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
@@ -694,9 +697,12 @@ name = "contourpy"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
@@ -1910,14 +1916,15 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.108.3"
+version = "1.109.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "anyio" },
     { name = "boto3" },
     { name = "certifi" },
     { name = "click" },
-    { name = "fastuuid" },
+    { name = "fastuuid", marker = "python_full_version < '3.15'" },
     { name = "filelock" },
     { name = "httpx", extra = ["http2"] },
     { name = "huggingface-hub" },
@@ -1934,15 +1941,15 @@ dependencies = [
     { name = "tokenizers" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/e5/12c5184d984554d968cd8f8963b604e4759ffcdb8d5a63d3996529746bd1/litellm-1.108.3.tar.gz", hash = "sha256:b6ce7a78efbaff7214e731ba0769b156e05b150d05184def61913ee9ff0befb3", size = 21457171, upload-time = "2026-11-07T22:26:06.992Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/80/8db8389b6bf3b16b549d187e18f922c08d07ec0cf1dfa103db53d16f78b6/litellm-1.109.2.tar.gz", hash = "sha256:e91dec54daeb55d1f10bbade8f5d135550770b7e8ed694fd813a83dd6851b5f3", size = 25595481, upload-time = "2026-11-19T02:37:39.843Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/8e/45520278f600465f8e3d155e604ba17b4a10688e7be45260f8c0f673591b/litellm-1.108.3-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:8267641fce3803bb7a56bd6ff046d4919bbd079c96c9d9c1c4c43fdf96d5244c", size = 35863180, upload-time = "2026-11-07T22:25:38.857Z" },
-    { url = "https://files.pythonhosted.org/packages/52/15/b45ffb4cd6f82e26b37eba73a3c9191677186f8de61fe145a886eaa30590/litellm-1.108.3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:9955cc7a29b3060bb791a90cefb6d10df2f0cf63ea720c9d3a26bc8d253eae43", size = 34971257, upload-time = "2026-11-07T22:25:43.822Z" },
-    { url = "https://files.pythonhosted.org/packages/53/90/a4bc7b59649537dec77a659affab8f8b8c5eec5af6402008a15ecc294112/litellm-1.108.3-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:ffd746c20138a078c451a851a68c85da43d67e114001e4a4cd4082953de5494d", size = 35474892, upload-time = "2026-11-07T22:25:47.069Z" },
-    { url = "https://files.pythonhosted.org/packages/77/48/deba4c906336f0c9569e00800f9c5a82ac14326d79254bdc0e58d743d6e2/litellm-1.108.3-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:4ac55c4a80be5b131659b1f42487de96fed69c6717745953c74fede1d6a5113c", size = 36341841, upload-time = "2026-11-07T22:25:50.484Z" },
-    { url = "https://files.pythonhosted.org/packages/44/ce/dab82ec6e7706339642bea58ff01811e48507c6cef1bdead42cd390d480a/litellm-1.108.3-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:46a78bfe948a25cd678acc8a1ed442775688e2b60bda6ac2166ae5b48b747d08", size = 35603914, upload-time = "2026-11-07T22:25:57.199Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/6a/129d6b210e25ce6fa3a1eb119ee78968547861d9887575e3b159a2ff67a3/litellm-1.108.3-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:e74f7a0df27ac03eb2280e23c5a72a52a0d64260a96b0da3f95be60ae872469b", size = 36406511, upload-time = "2026-11-07T22:26:00.27Z" },
-    { url = "https://files.pythonhosted.org/packages/a4/57/852070eb90b57d21f7707d57384e9bc8da26d8478a081d0088164343561e/litellm-1.108.3-cp310-abi3-win_amd64.whl", hash = "sha256:efdd0d6c57c9814673ee9c491c428945fd58ffb84842557759d2209403dc033e", size = 37013327, upload-time = "2026-11-07T22:26:03.825Z" },
+    { url = "https://files.pythonhosted.org/packages/23/f2/28286ba8eaee3862e4772d93309d9c39dd909854315b0d31eb87f2463a4e/litellm-1.109.2-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:61504d7ea38281aaf45109ad80a3c0fb6760fe6e882552cf5d9c5b887840fb16", size = 40583176, upload-time = "2026-11-19T02:37:12.431Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/9f/4b70e6f6975de6ec9b21c0c8c263b0e2a01d25e3c655c7b20d861e06d0ca/litellm-1.109.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:5d7d48b4331ca461828605617d8b4b357e80ceda83ae482a83477bf1180eb0be", size = 39915626, upload-time = "2026-11-19T02:37:16.458Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/4e/c1a0845729c65cdbd397d7af18299b1dd5ae0286666503c6e2686b11b8ca/litellm-1.109.2-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:64acf60e76fdc27bb4d15a394016eea453eaa32241992b9311742366aa5ddd5e", size = 40479272, upload-time = "2026-11-19T02:37:20.124Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/91/451615655326b9c019d082419eff99fd7143286898e709bc772125886754/litellm-1.109.2-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:633ff9914fd23b72529150778bc0127ef8a01abc5d3b22932b94eeb825a67c8a", size = 41106816, upload-time = "2026-11-19T02:37:23.931Z" },
+    { url = "https://files.pythonhosted.org/packages/35/ad/4fa48013908631639fa0a93f6a3c1260405f4185b60a094d74512ffdeb22/litellm-1.109.2-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:cdf871eda3d8d23c8a895666f8ee596a0e89465d561c8b1723daae4ff3dcc300", size = 40577121, upload-time = "2026-11-19T02:37:27.375Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/05/eec016bd58b80bcbe9b60043111a223526b8fe8cdc3d6a0bf8a19d00de25/litellm-1.109.2-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:0e23755bdef934208b6f87910fabc28c6a3abcb7accee2f42292a0ba5eaba4c7", size = 41263279, upload-time = "2026-11-19T02:37:30.575Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/da/89345c4542939f6e55a819d58b4e382f4456c4f8d073a566fb8e05e52a03/litellm-1.109.2-cp310-abi3-win_amd64.whl", hash = "sha256:044bb2b67f283f9cb8593d9d1dbe18f5d98b35e41316125daf9383a98b0240e0", size = 41982953, upload-time = "2026-11-19T02:37:33.694Z" },
 ]
 
 [[package]]
@@ -2663,9 +2670,12 @@ name = "numpy"
 version = "2.5.4"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
@@ -2850,7 +2860,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "joserfc", specifier = ">=1.6.8" },
-    { name = "litellm", specifier = ">=1.108,<1.109" },
+    { name = "litellm", specifier = ">=1.109,<1.110" },
     { name = "lxml", specifier = ">=5.3" },
     { name = "markdown", specifier = ">=3.10.2" },
     { name = "mcp", specifier = ">=2.3" },
@@ -3635,9 +3645,12 @@ name = "pymdown-extensions"
 version = "13.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
