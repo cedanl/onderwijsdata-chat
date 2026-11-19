@@ -56,3 +56,56 @@ def test_een_juiste_rekensom_geeft_ok_in_het_log(caplog: pytest.LogCaptureFixtur
 
     assert not [p for p in problemen if getattr(p, "controle", None) == "onjuiste_rekensommen"]
     assert "onjuiste_rekensommen=ok" in caplog.text
+
+
+# --- #1013: telling en vergelijking tegen de tabel in het antwoord ---------------------------------------------------
+
+_HOGESCHOLEN = "\n".join(f"| Hogeschool {i} | {v} |" for i, v in enumerate([-5] * 9 + [4] * 3, 1))
+_TELTABEL = f"| Hogeschool | Verschil |\n|---|---:|\n{_HOGESCHOLEN}"
+_M01 = (
+    "| Diplomasoort | 2023/24 | 2024/25 |\n|---|---:|---:|\n"
+    "| Bachelor | 50.110 | 52.250 |\n| Wo-master | 50.690 | 53.570 |"
+)
+
+
+def _tabelbeweringen(problemen: list[str]) -> list[str]:
+    return [p for p in problemen if getattr(p, "controle", None) == "onjuiste_tabelbeweringen"]
+
+
+def test_een_foute_telling_tegen_de_tabel_is_hard_en_staat_in_het_log(caplog: pytest.LogCaptureFixture):
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        problemen = _problemen(f"10 van de 12 hogescholen is gedaald.\n\n{_TELTABEL}")
+
+    [telling] = _tabelbeweringen(problemen)
+    assert "zijn het er 9 van de 12" in telling and getattr(telling, "hard", False)
+    assert "onjuiste_tabelbeweringen=hard" in caplog.text
+
+
+def test_een_foute_vergelijking_is_zacht_en_staat_in_het_log(caplog: pytest.LogCaptureFixture):
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        problemen = _problemen(f"In 2023/24 en 2024/25 waren er meer bachelor- dan wo-masterdiploma's.\n\n{_M01}")
+
+    [vergelijking] = _tabelbeweringen(problemen)
+    assert not getattr(vergelijking, "hard", False)
+    assert "onjuiste_tabelbeweringen=zacht" in caplog.text
+
+
+def test_een_juiste_telling_geeft_ok_in_het_log(caplog: pytest.LogCaptureFixture):
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        problemen = _problemen(f"9 van de 12 hogescholen is gedaald.\n\n{_TELTABEL}")
+
+    assert not _tabelbeweringen(problemen)
+    assert "onjuiste_tabelbeweringen=ok" in caplog.text
+
+
+def test_een_fout_in_de_tabelcontrole_wordt_niet_gecontroleerd(monkeypatch, caplog: pytest.LogCaptureFixture):
+    def onjuiste_tabelbeweringen(lezingen, tool_results):
+        raise ValueError("kapot")
+
+    monkeypatch.setattr(controles, "onjuiste_tabelbeweringen", onjuiste_tabelbeweringen)
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        problemen = _problemen(f"10 van de 12 hogescholen is gedaald.\n\n{_TELTABEL}")
+
+    [probleem] = _tabelbeweringen(problemen)
+    assert getattr(probleem, "niet_gecontroleerd", False) and not getattr(probleem, "hard", False)
+    assert "onjuiste_tabelbeweringen=niet gecontroleerd" in caplog.text

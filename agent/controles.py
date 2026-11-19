@@ -11,6 +11,7 @@ from collections.abc import Callable
 from .aanspreekcontrole import overgebleven_u_vorm
 from .antwoordtaal import Taal, taal, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
+from .beweringtelling import onjuiste_tabelbeweringen
 from .binding import verkeerd_gebonden
 from .bronvermelding import zonder_bronnensectie
 from .dimensielabels import verkeerde_dimensielabels
@@ -148,6 +149,9 @@ def antwoordcontrole(
             (verkeerde_tabeljaren, (zichtbaar, tool_results), False),
             # Op de getallen zoals de gebruiker ze leest: een som die in elke lezing fout is (#1001).
             (onjuiste_rekensommen, tuple(zichtbaar), True),
+            # Een telling of vergelijking in de lopende tekst tegen de ene tabel eronder (#1013). Zacht; alleen een
+            # telling die eenduidig tegen de tabel in het antwoord staat, markeert de module zelf als hard.
+            (onjuiste_tabelbeweringen, (lezingen(gelezen), tool_results), False),
             (onvervangen_tabelcorrectie, (text,), False),
             (verkeerde_kenmerken, (text, tool_results), True),
             (verkeerde_kpi_periodes, (text, tool_results), True),
