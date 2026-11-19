@@ -157,7 +157,9 @@ describe('the download in the notice (#541)', () => {
     const save = vi.fn()
     const knop = await renderWithNotice(RAPPORT, save)
     await act(async () => knop.click())
-    await act(async () => container.querySelector('.wb-download-btn').click())
+    // De knop in de kopbalk staat in het menu Downloaden (RapportExportMenu).
+    const balkKnop = [...container.querySelectorAll('.wb-export-paneel .wb-download-btn')].find(b => b.textContent === 'Download als HTML')
+    await act(async () => balkKnop.click())
     expect(save).toHaveBeenCalledTimes(2)
     const [[blob, naam], [blobBalk, naamBalk]] = save.mock.calls
     expect(naam).toBe('Instroom_hbo.html')
