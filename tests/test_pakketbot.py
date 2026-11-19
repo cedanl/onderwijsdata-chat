@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -257,6 +258,33 @@ def test_het_token_staat_niet_op_de_opdrachtregel_van_git(repo):
     push_cmd, push_env = next((c, e) for c, e in gezien if "push" in c)
     assert push_env["PAKKETBOT_TOKEN"] == "geheim-token"
     assert "${PAKKETBOT_TOKEN}" in " ".join(push_cmd)
+
+
+def test_de_bothelper_gaat_voor_de_jobtokenhelper_van_de_runner(repo, monkeypatch):
+    """De runner zet een helper met het job-token in de git-config; die mag niet pushen (#974). Systeem- en
+    gebruikersconfig staan buiten de test, zodat een echte helper van de ontwikkelaar hier nooit antwoordt."""
+    werk, _ = repo
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("HOME", str(werk.parent))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    runner = "!f() { echo username=gitlab-ci-token; echo password=job-token; }; f"
+    _git(werk, "config", "credential.helper", runner)
+    _git(werk, "config", "credential.https://gitlab.test.helper", runner)
+
+    def gevraagd(*config: str) -> str:
+        return subprocess.run(
+            ["git", *config, "credential", "fill"],
+            input="protocol=https\nhost=gitlab.test\n\n",
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PAKKETBOT_TOKEN": "geheim-token", "GIT_TERMINAL_PROMPT": "0"},
+        ).stdout
+
+    assert "username=gitlab-ci-token" in gevraagd("-c", f"credential.helper={pakketbot.CREDENTIAL_HELPER}")
+    uit = gevraagd(*pakketbot.CREDENTIAL_CONFIG)
+    assert "username=oauth2" in uit
+    assert "password=geheim-token" in uit
 
 
 def test_een_open_mr_van_de_botbranch_wordt_hergebruikt():

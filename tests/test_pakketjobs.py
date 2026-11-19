@@ -116,3 +116,10 @@ def test_de_helmjobs_loggen_alleen_in_bij_harbor(ci):
     script = _script(ci[".helm_login"])
     assert "$HARBOR_HOST" in script
     assert "CI_REGISTRY" not in script
+
+
+def test_de_uv_cache_van_de_pakketjobs_staat_buiten_de_pakketbron(ci):
+    """cbs:laatste-update draait de pakkettests, en test_release bouwt met `uv build` vanuit packages/onderwijsbronnen.
+    Een relatieve UV_CACHE_DIR kwam daar terecht en ging de sdist in, waarna de build faalde (#974)."""
+    for naam in (".bronnen-python", "pytest"):
+        assert ci[naam]["variables"]["UV_CACHE_DIR"] == "$CI_PROJECT_DIR/.uv-cache"

@@ -232,7 +232,9 @@ eval:bronwaarheid:
   image:
     name: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
   variables:
-    UV_CACHE_DIR: .uv-cache
+    # Absoluut, net als bij pytest: tests/test_release.py draait `uv build` vanuit packages/onderwijsbronnen, en een
+    # relatief pad legde de cache daar neer, in de sdist, waarna de build faalde op de symlinks van de build-venvs (#974).
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
   cache: &uv-cache
     key:
       files:
