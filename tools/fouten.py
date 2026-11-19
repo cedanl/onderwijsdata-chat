@@ -71,12 +71,27 @@ def bronfout(bron: str, e: Exception, uitleg: str = "") -> str:
         return melding(Fout.BRON_WEIGERT, f"{bron}: {e}{uitleg}")
     if isinstance(e, httpx.HTTPStatusError):
         status = e.response.status_code
+        if status == 429:
+            return melding(Fout.BRON_WEIGERT, f"{bron} weigerde de aanvraag: te veel verzoeken (HTTP 429).{uitleg}")
         if status < 500:
             return melding(Fout.BRON_WEIGERT, f"{bron} weigerde de aanvraag (HTTP {status}).{uitleg}")
         return melding(Fout.BRON_ONBEREIKBAAR, f"{bron} gaf een serverfout (HTTP {status}).{uitleg}")
     if isinstance(e, httpx.TransportError):
-        return melding(Fout.BRON_ONBEREIKBAAR, f"{bron} is nu niet bereikbaar ({type(e).__name__}).{uitleg}")
-    return melding(Fout.BRON_FOUT, f"Laden uit {bron} mislukte ({type(e).__name__}).{uitleg}")
+        return melding(Fout.BRON_ONBEREIKBAAR, f"{bron} is nu niet bereikbaar ({_omschrijving(e)}).{uitleg}")
+    return melding(Fout.BRON_FOUT, f"Laden uit {bron} mislukte ({_omschrijving(e)}).{uitleg}")
+
+
+# Sinds #1050 leest de gebruiker deze tekst in de report_error: een vaste omschrijving, geen klassenaam (#1053).
+# ConnectTimeout is een TimeoutException en geen ConnectError, dus de volgorde maakt niet uit; de klassenaam staat in
+# het DEBUG-log van bronfout.
+_OMSCHRIJVINGEN: tuple[tuple[type[Exception], str], ...] = (
+    (httpx.ConnectError, "verbinding mislukt"),
+    (httpx.TimeoutException, "time-out"),
+)
+
+
+def _omschrijving(e: Exception) -> str:
+    return next((tekst for soort, tekst in _OMSCHRIJVINGEN if isinstance(e, soort)), "onbekende fout")
 
 
 def toolfout(naam: str, e: Exception) -> str:
