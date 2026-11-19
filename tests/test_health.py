@@ -129,7 +129,7 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
 
 def test_version_laat_versie_commit_en_catalogus_ongemoeid(client):
     data = client.get("/version").json()
-    assert set(data) == {"version", "commit", "catalogus", "catalogus_digest", "arbeidsmarkt"}
+    assert set(data) == {"version", "commit", "catalogus", "catalogus_digest", "arbeidsmarkt", "mcp"}
     assert [p["pakket"] for p in data["catalogus"]] == ["onderwijsbronnen"]
 
 
