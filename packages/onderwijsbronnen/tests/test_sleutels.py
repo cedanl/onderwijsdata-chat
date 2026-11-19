@@ -110,6 +110,17 @@ def test_een_erkende_opleidingscode_is_croho_of_crebo_en_de_sector_beslist():
     assert s.paren(["OPLEIDINGSCODE_ACTUEEL"], ["MBO"]) == [{"kolom": "OPLEIDINGSCODE_ACTUEEL", "sleutel": "croho"}]
 
 
+def test_een_beroepsopleidingscode_van_duo_is_geen_crebo():
+    """Meting #1009 (#1034): BEROEPSOPLEIDING CODE heeft DUO-codes als bc365, geen crebo-code als 25180."""
+    assert s.van_kolom("BEROEPSOPLEIDING CODE") == ()
+    assert s.paren(["BEROEPSOPLEIDING CODE"], ["MBO"]) == []
+
+
+def test_geen_duo_record_koppelt_de_beroepsopleidingscode_als_crebo():
+    for r in _records("duo"):
+        assert {"kolom": "BEROEPSOPLEIDING CODE", "sleutel": "crebo"} not in r["_sleutels"], r.get("_ckan_id")
+
+
 def test_paren_zijn_uniek_en_in_kolomvolgorde():
     kolommen = ["STUDIEJAAR", "AANTAL", "INSTELLINGSCODE_ACTUEEL", "STUDIEJAAR"]
     assert s.paren(kolommen) == [
@@ -182,6 +193,17 @@ def test_cbs_sleutels_zijn_dimensies_van_de_tabel():
         "Perioden": ["schooljaar"],
     }
     assert _per_kolom(_record("cbs", "_cbs_id", "71898ned")) == {"RegioS": ["gemeente", "provincie"]}
+
+
+@pytest.mark.parametrize("cbs_id", ["85353NED", "85356NED"])
+def test_cbs_mbo_regiokenmerken_zijn_ook_arbeidsmarktregio(cbs_id):
+    """Meting #1009 (#1035): Regio van de mbo-tabellen met regiokenmerken heeft vooral arbeidsmarktregio's (AM), naast
+    provincies, landsdelen en enkele gemeenten; geen COROP-gebieden."""
+    record = _record("cbs", "_cbs_id", cbs_id)
+    assert set(_per_kolom(record)["Regio"]) == {"gemeente", "provincie", "arbeidsmarktregio"}
+    assert {"arbeidsmarktregio", "provincie", "gemeente", "landelijk", "landsdeel"} == set(record["_geo_niveau"])
+    assert "arbeidsmarktregio" in record["tags"] and "corop" not in record["tags"]
+    assert "arbeidsmarktregio" in record["samenvatting"] and "arbeidsmarktregio" in record["doel"]
 
 
 def test_cbs_kalenderjaren_en_overgangen_zijn_geen_schooljaar():

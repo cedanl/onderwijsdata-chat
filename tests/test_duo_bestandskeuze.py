@@ -59,7 +59,41 @@ def test_zonder_groep_geen_leidend_bestand():
 def test_standaard_is_het_leidende_bestand_van_de_eerste_groep():
     assert duo_bestandskeuze.standaard("p01hoinges") == 2
     assert duo_bestandskeuze.standaard("mbo-studenten-per-instelling") == 0
-    assert duo_bestandskeuze.standaard("adressen_ho") == 0
+    assert duo_bestandskeuze.standaard("instromende-mbo-studenten") == 0  # geen groep en geen vaste standaard
+
+
+# Meting #1009 (#1033): zonder resource gaf adressen_ho het bestand van de besturen (index 0), zonder BRIN.
+_INSTELLINGENBESTAND = {
+    "adressen_ho": "bf1da9c6-c688-4873-91b1-b12c9ac2c132",  # Adressen van instellingen in het hoger onderwijs
+    "adressen_mbo": "1a946297-a7ca-48d5-9ae8-19ad73bf8176",  # Adressen instellingen
+}
+
+
+@pytest.mark.parametrize("dataset_id", sorted(_INSTELLINGENBESTAND))
+def test_standaard_van_een_adressenbestand_is_het_instellingenbestand(dataset_id):
+    assert duo_bestandskeuze.standaard(dataset_id) == 1
+    assert duo_bestandskeuze._STANDAARD[dataset_id] == _INSTELLINGENBESTAND[dataset_id]
+
+
+@pytest.mark.parametrize("dataset_id", sorted(_INSTELLINGENBESTAND))
+def test_het_instellingenbestand_staat_in_de_gepinde_catalogus(dataset_id):
+    # Een catalogusbump die het ID laat vallen, moet hier opvallen en niet stil weer de besturen geven.
+    bestanden = {r.get("id"): r.get("naam", "") for r in duo_meta.record(dataset_id)["_resources"]}
+    assert "instellingen" in bestanden[_INSTELLINGENBESTAND[dataset_id]].lower()
+
+
+@pytest.mark.parametrize("dataset_id", sorted(_INSTELLINGENBESTAND))
+def test_een_adressenbestand_heeft_geen_leidend_bestand_en_geen_melding(dataset_id):
+    # Geen groep: de adressenbestanden tellen niets, dus geen tekst over onderdrukte cellen.
+    for resource in (0, 1):
+        assert duo_bestandskeuze.leidend(dataset_id, resource) is None
+        assert duo_bestandskeuze.melding(dataset_id, resource) is None
+        assert duo_bestandskeuze.noot(dataset_id, resource) is None
+
+
+def test_een_vaste_standaard_die_de_catalogus_niet_meer_kent_valt_terug_op_nul():
+    with patch.object(duo_meta, "record", return_value={"_resources": [{"id": "ander", "naam": "x"}]}):
+        assert duo_bestandskeuze.standaard("adressen_ho") == 0
 
 
 def test_een_id_dat_de_catalogus_niet_meer_kent_geeft_geen_keuze():
@@ -112,6 +146,22 @@ def test_get_duo_data_zonder_resource_laadt_het_leidende_bestand():
     resultaat, load = _laad("p01hoinges")
     assert load.call_args.args == ("p01hoinges", 2)
     assert resultaat["data_key"] == "duo:p01hoinges:2"
+    assert "bestandskeuze" not in resultaat
+
+
+_ADRESSEN = {
+    0: pd.DataFrame({"BEVOEGD GEZAG NUMMER": [30588], "BEVOEGD GEZAG NAAM": ["Stichting Hanzehogeschool"]}),
+    1: pd.DataFrame({"INSTELLINGSCODE": ["25BE"], "INSTELLINGSNAAM": ["Hanzehogeschool Groningen"]}),
+}
+
+
+@pytest.mark.parametrize("dataset_id", sorted(_INSTELLINGENBESTAND))
+def test_get_duo_data_zonder_resource_laadt_de_adressen_van_de_instellingen(dataset_id):
+    with patch.object(duo.duo_laden, "laad", side_effect=lambda _d, r: _ADRESSEN[r].copy()) as laad:
+        resultaat = json.loads(duo.get_duo_data(dataset_id))
+    assert laad.call_args.args == (dataset_id, 1)
+    assert resultaat["data_key"] == f"duo:{dataset_id}:1"
+    assert "INSTELLINGSCODE" in {k["kolom"] for k in resultaat["kolommen"]}
     assert "bestandskeuze" not in resultaat
 
 

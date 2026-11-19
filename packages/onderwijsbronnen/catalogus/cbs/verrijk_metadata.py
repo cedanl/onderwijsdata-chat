@@ -26,7 +26,9 @@ AI_DATASETS = Path(__file__).parent.parent.parent / "data/02-prepared/cbs_datase
 DIM_TYPES = {"Dimension", "GeoDimension", "TimeDimension"}
 
 # Vaste volgorde van geo-niveaus in de output
-GEO_VOLGORDE = ["landelijk", "corop", "provincie", "gemeente", "landsdeel"]
+GEO_VOLGORDE = ["landelijk", "corop", "arbeidsmarktregio", "provincie", "gemeente", "landsdeel"]
+# Codeprefix → geo-niveau. AM: de arbeidsmarktregio's in Regio van de mbo-tabellen met regiokenmerken (#1035).
+GEO_PREFIXEN = {"GM": "gemeente", "PV": "provincie", "CR": "corop", "LD": "landsdeel", "AM": "arbeidsmarktregio"}
 
 
 def bepaal_geo_niveau(dataset_id: str, props: list[dict]) -> list[str]:
@@ -50,14 +52,8 @@ def bepaal_geo_niveau(dataset_id: str, props: list[dict]) -> list[str]:
         for key in regio_keys:
             if key == "NL01":
                 niveaus.add("landelijk")
-            elif key.startswith("GM"):
-                niveaus.add("gemeente")
-            elif key.startswith("PV"):
-                niveaus.add("provincie")
-            elif key.startswith("CR"):
-                niveaus.add("corop")
-            elif key.startswith("LD"):
-                niveaus.add("landsdeel")
+            elif niveau := GEO_PREFIXEN.get(key[:2]):
+                niveaus.add(niveau)
         return [n for n in GEO_VOLGORDE if n in niveaus]
     except Exception as e:
         print(f"    FOUT bij geo-dimensie ophalen ({geo_prop['Key']}): {e}")
@@ -187,7 +183,7 @@ def main():
         # Voeg geo-tags toe aan de tags-lijst
         geo  = base.get("_geo_niveau", [])
         tags = entry.get("tags", [])
-        for geo_tag in ("corop", "provincie", "gemeente"):
+        for geo_tag in ("corop", "arbeidsmarktregio", "provincie", "gemeente"):
             if geo_tag in geo and geo_tag not in tags:
                 tags.append(geo_tag)
         entry["tags"] = tags
