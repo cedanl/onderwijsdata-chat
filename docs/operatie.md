@@ -260,7 +260,7 @@ nodig (de approval rule uit gitlab-config). Blijft een bot-MR liggen, dan schrij
 *Issues.* `cbs:discovery` en `rio:broncontrole` houden elk één open issue bij ("Discovery: nieuwe CBS-tabellen ter
 review" en "Broncontrole: review nodig (DUO CKAN en RIO)", label `data`). Bestaat het al, dan blijft het ongemoeid
 zolang de stand gelijk is; bij een andere stand wordt de beschrijving vervangen en komt de nieuwe stand als notitie.
-Sluit het issue na de beoordeling; een volgende bevinding opent een nieuw. De broncontrole vergelijkt met het
+Sluit het issue na de beoordeling; een volgende bevinding opent een nieuw. Zet bij `cbs:discovery` de afgewezen tabellen met reden in `BEOORDEELDE_TABEL_IDS` (`catalogus/cbs/discovery_diff.py`), anders meldt de volgende run ze opnieuw (#1059). De broncontrole vergelijkt met het
 manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel `rio-bronmanifest`). Is die cache leeg
 (eerste run, of een runner zonder gedeelde cache), dan legt de run de basis: de vergelijking met de catalogus werkt,
 "gewijzigd sinds vorige keer" pas vanaf de volgende run. De log zegt het als dat zo is.

@@ -5,7 +5,8 @@ JSON-rapport voor review; er wordt niets automatisch aan de catalogus toegevoegd
 
 Het rapport scheidt:
   - nieuw_voor_review:   mogelijk mbo/hbo/wo-relevant (inclusief onbekend)
-  - uitgesloten:         buiten scope of arbeidsmarkt-only (met motivatie)
+  - uitgesloten:         buiten scope, arbeidsmarkt-only of al beoordeeld en afgewezen
+                         (BEOORDEELDE_TABEL_IDS), met motivatie
   - bestaand:            sectorclassificatie van de bestaande records, actief vs. archief
   - bestaand_niet_gevonden: catalogusitems die de themasweep niet meer vindt
                             (informatief; verdwijnen nooit stilzwijgend)
@@ -43,6 +44,16 @@ EXTRA_THEMA_IDS: dict[int, str] = {}
 EXTRA_TABEL_IDS: dict[str, str] = {}
 # CBS-miscategorisaties onder onderwijsthema's
 UITGESLOTEN_THEMA_NAMEN = {"Toerisme", "Bouwen en wonen", "Hypotheken", "Prijzen"}
+# Tabellen die een discovery-issue al beoordeeld en afgewezen heeft: {id: reden met issue}. Ze gaan naar `uitgesloten`,
+# zodat het issue niet elke week dezelfde tabellen meldt en een echt nieuwe ertussen opvalt (#1059). Per tabel, niet per
+# thema: het thema van de SES-tabellen kan ook onderwijstabellen bevatten. Wie een discovery-issue afhandelt, zet de
+# afgewezen tabellen hier (docs/operatie.md). Een tabel die toch in de catalogus komt, telt als al_in_catalogus.
+BEOORDEELDE_TABEL_IDS: dict[str, str] = {
+    "83861NED": "bevolking van Caribisch Nederland naar opleidingsniveau, geen studenten; mbo in CN staat als "
+                "84312NED (cbs-onderwijsdata#35, #1056)",
+    **{tid: "SES-scores van huishoudens per wijk en buurt, geen onderwijsdata (cbs-onderwijsdata#35, #1056)"
+       for tid in ("85163NED", "85539NED", "85900NED", "86092NED", "86296NED")},
+}
 
 
 def selecteer_themas(themas: list[dict]) -> dict[int, str]:
@@ -118,10 +129,19 @@ def bouw_rapport(catalogus: list[dict], sweep: dict[str, int], themanamen: dict[
                  aangevraagde_themas: list[int] | None = None) -> dict:
     """Pure functie: combineert catalogus, themasweep en tabeldetails tot het rapport."""
     in_catalogus = {r["_cbs_id"].upper(): r for r in catalogus}
+    beoordeeld = {k.upper(): reden for k, reden in BEOORDEELDE_TABEL_IDS.items()}
     nieuw, uitgesloten = [], []
     for tid in sorted(i for i in sweep if i.upper() not in in_catalogus):
         d = details.get(tid)
         thema = themanamen.get(sweep[tid], "")
+        if tid.upper() in beoordeeld:
+            d = d or {"titel": "", "frequentie": "", "periode": "", "modified": None, "dimensies": []}
+            uitgesloten.append({
+                "dataset_id": f"cbs:{tid}", "titel": d["titel"], "thema": thema, "periode": d["periode"],
+                "gearchiveerd": _archief(d), "classificatie": "beoordeeld", "sectoren": [],
+                "motivatie": f"al beoordeeld en afgewezen: {beoordeeld[tid.upper()]}", "arbeidsmarkt_only": False,
+                "advies": "niet_toevoegen"})
+            continue
         if d is None:  # details niet op te halen: een thema alleen is geen bewijs
             d = {"titel": "", "frequentie": "", "periode": "", "modified": None, "dimensies": []}
             kl = {"classificatie": ONBEKEND, "sectoren": [], "arbeidsmarkt_only": False,

@@ -107,6 +107,34 @@ class TestDiff:
         import json
         assert json.loads(json.dumps(rapport)) == rapport
 
+    def test_beoordeelde_tabel_is_uitgesloten_met_reden(self, monkeypatch):
+        """Een al afgewezen tabel komt niet elke week terug als nieuw (#1059), ook niet met andere hoofdletters."""
+        monkeypatch.setattr(dd, "BEOORDEELDE_TABEL_IDS", {"11111ned": "geen onderwijsdata (#1056)"})
+        r = dd.bouw_rapport([], {"11111NED": 912}, THEMA, DETAILS)
+        assert r["nieuw_voor_review"] == []
+        assert r["samenvatting"]["nieuw_voor_review_actief"] == 0
+        (uit,) = r["uitgesloten"]
+        assert uit["dataset_id"] == "cbs:11111NED" and uit["advies"] == "niet_toevoegen"
+        assert "geen onderwijsdata (#1056)" in uit["motivatie"]
+        assert uit["titel"] == DETAILS["11111NED"]["titel"]
+
+    def test_beoordeelde_tabel_zonder_details_blijft_uitgesloten(self, monkeypatch):
+        monkeypatch.setattr(dd, "BEOORDEELDE_TABEL_IDS", {"99999NED": "afgewezen"})
+        r = dd.bouw_rapport([], {"99999NED": 912}, THEMA, {})
+        assert r["nieuw_voor_review"] == [] and r["uitgesloten"][0]["advies"] == "niet_toevoegen"
+        assert r["mislukte_details"] == ["cbs:99999NED"], "een mislukte ophaling blijft zichtbaar"
+
+    def test_de_catalogus_wint_van_de_lijst(self, monkeypatch):
+        monkeypatch.setattr(dd, "BEOORDEELDE_TABEL_IDS", {"11111NED": "afgewezen"})
+        r = dd.bouw_rapport([_rec("11111NED", "Mbo; x")], {"11111NED": 912}, THEMA, DETAILS)
+        s = r["samenvatting"]
+        assert s["al_in_catalogus"] == 1 and s["uitgesloten"] == 0 and s["nieuw_voor_review"] == 0
+
+    def test_de_zes_actieve_tabellen_van_1056_staan_in_de_lijst(self):
+        ids = {k.upper() for k in dd.BEOORDEELDE_TABEL_IDS}
+        assert {"83861NED", "85163NED", "85539NED", "85900NED", "86092NED", "86296NED"} <= ids
+        assert all(dd.BEOORDEELDE_TABEL_IDS.values()), "elke afwijzing heeft een reden"
+
     def test_afwijking_van_curatie_gemeld(self):
         rec = _rec("A1NED", "Primair onderwijs; leerlingen", onderwijstype=("MBO",), thema="")
         r = dd.bouw_rapport([rec], {}, {}, {})
