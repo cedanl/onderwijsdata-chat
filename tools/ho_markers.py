@@ -16,6 +16,10 @@ vwo?") opende zo de poort, tegen het scopebesluit in (#355). Een doorstroomwoord
 een vo-niveau ("Hoeveel vmbo'ers stromen door?"), het mbo alleen naast een vo-niveau ("van het vmbo naar
 het mbo"), en een vraag die het po noemt opent zo niets: po en (v)so blijven dicht. Voortijdig
 schoolverlaters (vsv) zijn geen vo-niveau, maar hun terugkeer in het onderwijs is wel doorstroom.
+Naast een vo-niveau telt ook de instroom in vervolgonderwijs als vervolgdoel (#1039, seminar): "instroom",
+"eerstejaars" en "aankomende/toekomstige/potentiële studenten" ("Hoeveel potentiële eerstejaars zitten nu in havo 4?").
+Instroom binnen het vo ("instroom in de havo", "Hoeveel eerstejaars zitten er op het vwo?") blijft dicht, behalve met
+een van die drie bijvoeglijke naamwoorden ervoor: die zeggen dat het om toekomstige studenten gaat.
 
 De poort kijkt naar de vraag van de gebruiker, niet naar de zoekterm van het model (#597): anders opent
 het model de poort door zelf "hbo" of "doorstroom" toe te voegen. `run()` zet die vraag per beurt
@@ -63,6 +67,23 @@ _VO_DOEL = re.compile(
     r"\b(?:naar|tot)\s+(?:het\s+|de\s+|een\s+)?(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|voortgezet\s+onderwijs)\b",
     re.IGNORECASE,
 )
+# Instroom in vervolgonderwijs als vervolgdoel naast een vo-niveau (#1039): de bovenbouw als voorspeller van de
+# ho-instroom. Los telt het niet (zie de module-uitleg): alleen samen met `_VO_NIVEAU`.
+_TOEKOMSTIG = r"(?:aankomende|toekomstige|potenti[eë]le)"
+_HO_INSTROOM = re.compile(rf"\b(?:instro\w*|eerstejaars\w*|{_TOEKOMSTIG}\s+(?:\w+\s+)?student\w*)", re.IGNORECASE)
+# Instroom binnen het vo: instroom of eerstejaars in, op of naar een vo-soort ("instroom in de havo", "eerstejaars op
+# het vwo", "eerstejaars in de brugklas"). Niet "van": "instroom van havisten" gaat over leerlingen die het vo verlaten.
+# Een bijvoeglijk naamwoord als "toekomstige" maakt er weer ho-instroom van.
+_VO_SOORT = r"(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|onderbouw|brugklas\w*|voortgezet\s+onderwijs|middelbare\s+school)"
+_VO_INSTROOM = re.compile(
+    rf"\b(?:instro\w*|eerstejaars\w*)\s+(?:\w+\s+){{0,2}}?(?:in|op|naar)\s+(?:het\s+|de\s+|een\s+)?{_VO_SOORT}\b"
+    # "Hoeveel instroom heeft het vmbo?"
+    rf"|\binstro\w*\s+(?:heeft|hebben|had|hadden)\s+(?:het\s+|de\s+)?{_VO_SOORT}\b"
+    # "eerstejaars havo", "havo-eerstejaars": de eerste klas van die vo-soort
+    rf"|\beerstejaars\w*\s+{_VO_SOORT}\b|\b{_VO_SOORT}[-\s]eerstejaars\b",
+    re.IGNORECASE,
+)
+_TOEKOMSTIG_RE = re.compile(rf"\b{_TOEKOMSTIG}\b", re.IGNORECASE)
 # Voortijdig schoolverlaters die terugkeren in het onderwijs (#877).
 _VSV = re.compile(r"\b(?:vsv\w*|voortijdig(?:e)?\s+schoolverlat\w*)", re.IGNORECASE)
 _TERUGKEER = re.compile(
@@ -118,14 +139,16 @@ def noemt_ho(query: str) -> bool:
 def noemt_vo_doorstroom(query: str) -> bool:
     """Waar als de vraag gaat over doorstroom uit het vo naar vervolgonderwijs zonder het ho te noemen (#877).
 
-    Een vo-niveau met het mbo of een doorstroomwoord ("van het vmbo naar het mbo", "havisten na hun diploma"),
+    Een vo-niveau met het mbo, een doorstroomwoord ("van het vmbo naar het mbo", "havisten na hun diploma") of de
+    instroom in vervolgonderwijs ("potentiële eerstejaars in havo 4", #1039),
     of voortijdig schoolverlaters die terugkeren in het onderwijs. Noemt de vraag het po of (v)so, dan niet; een
     doorstroomwoord met een vo-doel ("van het vmbo naar de havo") is doorstroom binnen het vo, en ook niet.
     """
     if _PO_SO.search(query):
         return False
     doorstroom = _DOORSTROOM.search(query) and not _VO_DOEL.search(query)
-    vo_vervolg = _VO_NIVEAU.search(query) and (_MBO.search(query) or doorstroom)
+    instroom = _HO_INSTROOM.search(query) and not (_VO_INSTROOM.search(query) and not _TOEKOMSTIG_RE.search(query))
+    vo_vervolg = _VO_NIVEAU.search(query) and (_MBO.search(query) or doorstroom or instroom)
     return bool(vo_vervolg or (_VSV.search(query) and _TERUGKEER.search(query)))
 
 

@@ -127,6 +127,14 @@ _DOORSTROOM = {
     "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?",
     "terugkeer vsv'ers onderwijs",
     "Hoeveel vsv'ers komen na een jaar terug?",
+    # De bovenbouw als voorspeller van de ho-instroom (#1039, seminar)
+    "Hoeveel potentiële eerstejaars zitten nu in havo 4?",
+    "Wat is de toekomstige instroom vanuit havo en vwo?",
+    "Hoeveel vwo-leerlingen worden volgend jaar eerstejaars?",
+    "Hoeveel aankomende studenten zitten er in vwo 5 en 6?",
+    "instroomprognose op basis van havo 4 en havo 5",
+    "Hoeveel instroom van havisten verwachten we de komende jaren?",
+    "Hoeveel toekomstige eerstejaars zitten op het vwo?",
 }
 # Geen doorstroom: een losse vo-vraag, doorstroom of mbo zonder vo-niveau, vsv zonder terugkeer, of po/(v)so erbij.
 _GEEN_DOORSTROOM = {
@@ -149,6 +157,17 @@ _GEEN_DOORSTROOM = {
     "doorstroom van het vmbo naar de havo",
     "Hoeveel havisten stromen door naar het vwo?",
     "Hoeveel vo-leerlingen stromen door naar de bovenbouw?",
+    # Instroom binnen het vo blijft dicht (#1039).
+    "instroom in de havo",
+    "Hoeveel eerstejaars zitten er op het vwo?",
+    "Hoeveel eerstejaars in de brugklas van het vmbo?",
+    "Hoeveel eerstejaars vwo?",
+    "eerstejaars havo per gemeente",
+    "Hoeveel instroom heeft het vmbo?",
+    "Hoeveel examenkandidaten havo en vwo zijn er per jaar?",
+    # Instroom zonder vo-niveau opent niets (de lek van 6 oktober).
+    "instroom per instelling",
+    "Hoeveel eerstejaars heeft het mbo per sector?",
 }
 
 

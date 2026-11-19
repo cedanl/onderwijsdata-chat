@@ -263,7 +263,8 @@ Die kijkt naar de vraag van de gebruiker, niet naar de zoekterm die het model me
 per beurt (`ho_markers.beurtvraag`), bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent.
 Buiten de chat (MCP) beslist de zoekterm. De poort gaat open als de vraag het ho noemt (hbo, wo, ho, hoger onderwijs,
 hogeschool, universiteit; havo en vwo niet, want dat is vo, #597), of een vo-niveau samen met het mbo of een
-doorstroomwoord ("Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havisten heen na hun diploma?"), of
+doorstroomwoord ("Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havisten heen na hun diploma?") of
+een instroomwoord ("Hoeveel potentiële eerstejaars zitten nu in havo 4?", #1039; niet "instroom in de havo"), of
 voortijdig schoolverlaters die terugkeren in het onderwijs (`ho_markers.opent_vo_context`, #877). Po, (v)so en
 doorstroom binnen het vo openen niets. Zo'n hit draagt het veld `context` met de waarde
 `vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs (ook vavo en vsv), geen mbo- of ho-studenten`;
