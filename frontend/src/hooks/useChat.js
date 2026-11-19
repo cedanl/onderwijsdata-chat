@@ -123,6 +123,8 @@ export function useChat({ maxHistory } = {}) {
   const runVerlatenRef = useRef(false)
   // Per reason, until when its toast shows: quick taps during an outage stacked identical toasts (#648).
   const reasonToastUntilRef = useRef({})
+  // De lopende sluittimers van toasts (#1052): bij unmount opgeruimd, anders doet er een nog setToasts.
+  const toastTimersRef = useRef(new Set())
   const nextId = () => ++idRef.current
 
   // The report is over, with or without a result: no more waiting, button free again.
@@ -161,11 +163,29 @@ export function useChat({ maxHistory } = {}) {
   // voor de ToastStack. Geeft een functie terug die de toast eerder weghaalt.
   const addToast = useCallback((message, level = 'info', opties = {}) => {
     const id = nextId()
-    const weg = () => setToasts(t => t.filter(x => x.id !== id))
+    let timer = null
+    const weg = () => {
+      clearTimeout(timer)
+      toastTimersRef.current.delete(timer)
+      setToasts(t => t.filter(x => x.id !== id))
+    }
     const { focus = false, pauzeer = null, hervat = null, verlaat = null } = opties
     setToasts(t => [...t, { id, message, level, actie: opties.actie || null, focus, pauzeer, hervat, verlaat }])
-    if (opties.duur !== null) setTimeout(weg, opties.duur || 4000)
+    if (opties.duur !== null) {
+      timer = setTimeout(weg, opties.duur || 4000)
+      toastTimersRef.current.add(timer)
+    }
     return weg
+  }, [])
+
+  // Een eigen effect zonder deps: het grote effect hieronder draait opnieuw bij nieuwe deps en
+  // zou open toasts dan hun timer afnemen.
+  useEffect(() => {
+    const timers = toastTimersRef.current
+    return () => {
+      for (const t of timers) clearTimeout(t)
+      timers.clear()
+    }
   }, [])
 
   // The open card ends without an answer: its steps stay as the turn's trace (#398).
