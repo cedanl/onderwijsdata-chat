@@ -102,6 +102,7 @@ Optionele instellingen:
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 | `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
+| `BRONSTATUS_INTERVAL_S` | `120` | Seconden tussen twee metingen of CBS, DUO, RIO, UWV en de inspectie antwoorden (#1057); een bron die niet antwoordt staat dan bij het openen van de app als niet live. `0` zet de meting uit |
 
 ## Starten
 

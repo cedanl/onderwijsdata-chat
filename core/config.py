@@ -42,6 +42,8 @@ RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
 # (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats bezet tot de
 # time-out per leesoperatie (LITELLM_REQUEST_TIMEOUT) afging, per poging.
 GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
+# Hoe vaak de app meet of de bronnen antwoorden (core/bronstatus.py, #1057), in seconden; 0 zet de bewaking uit.
+BRONSTATUS_INTERVAL_S = float(os.getenv("BRONSTATUS_INTERVAL_S", "120"))
 # Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen en rapporten per
 # gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
