@@ -500,6 +500,15 @@ docker:docker-promote:
   needs:
     - version:promote
 
+# Overschrijft de login die de SDP-helmcomponenten (helm-lint, helm-publish, helm-promote) via
+# !reference [.helm_login, script] gebruiken; GitLab lost die verwijzing op na het samenvoegen van de includes,
+# dus deze versie wint. De component logt daarna ook in op $CI_REGISTRY (git.sdp.surf.nl:5050), maar dit project
+# heeft geen GitLab-registry: de chart heeft geen dependencies en alle helm-jobs pushen en pullen bij Harbor.
+# Die tweede login liep vanaf de runners vaak in een time-out en maakte helm:lint en helm:publish rood (#1030).
+.helm_login:
+  script:
+    - echo "$HARBOR_PASSWORD" | helm registry login -u "$HARBOR_USERNAME" --password-stdin "$HARBOR_HOST"
+
 helm:lint:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
