@@ -108,3 +108,11 @@ def test_de_broncontrole_houdt_het_manifest_van_de_vorige_controle_in_de_cache(c
 def test_de_oude_github_workflows_staan_niet_meer_in_de_pakketten():
     """GitHub voert alleen root-workflows uit: in packages/ waren ze dood en dubbel met deze jobs."""
     assert not list((ROOT / "packages").glob("*/.github"))
+
+
+def test_de_helmjobs_loggen_alleen_in_bij_harbor(ci):
+    """De SDP-helmcomponenten loggen via .helm_login ook in op $CI_REGISTRY, dat dit project niet heeft; die
+    login liep in een time-out en maakte helm:lint en helm:publish rood (#1030). Onze .helm_login overschrijft die."""
+    script = _script(ci[".helm_login"])
+    assert "$HARBOR_HOST" in script
+    assert "CI_REGISTRY" not in script
