@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "catalogus", "c
 import pytest
 import verrijk_tableinfo as vt
 from onderwijsbronnen import cbs as od
+from tests.lineair import assert_lineair
 
 ROOT = Path(__file__).parent.parent
 FIX = Path(__file__).parent / "fixtures" / "contract_v1"
@@ -146,6 +147,75 @@ class TestParser:
         zin = "Als een opleiding (nog) niet is afgerond, gaat het om het vereiste niveau."
         r = vt.parse_tableinfo("X", {"Description": f"1. TOELICHTING\n\n{zin}\n"}, [], "d")
         assert r["afronding"]["status"] == "niet_vermeld"
+
+
+# De secties van DESCRIPTION, vastgelegd met de regex van vóór #1054.
+SECTIES = {
+    1: "Deze tabel bevat het aantal ingeschreven studenten. Vanaf studiejaar 2015/'16 ook het aantal studenten aan "
+    "enkele aangewezen instellingen.\n\nStatus van de cijfers:\nDe cijfers tot en met 2024/'25 zijn definitief en "
+    "2025/'26 is voorlopig.\n\nWanneer komen de nieuwe cijfers?\nIn het eerste kwartaal van 2027 komen de voorlopige "
+    "cijfers beschikbaar.",
+    2: "Definities:\n\nIngeschrevenen\nIngeschrevenen in het ho. Wie hbo en wo volgt, wordt bij beide meegeteld. Het "
+    "totaal is daardoor lager dan de som van hbo en wo.\n\nStudiejaar\nEen studiejaar loopt van 1 september tot en met "
+    "31 augustus.\n\nVerklaring van symbolen:\nniets (blanco): het cijfer kan op logische gronden niet voorkomen\n"
+    "* : voorlopige cijfers\nDe aantallen in de tabel zijn afgerond op 10-tallen. Hierdoor kan de som van de details "
+    "afwijken van het totaal.",
+    3: "<a href='https://opendata.cbs.nl/#/CBS/nl/dataset/85422NED'>Eerstejaarsstudenten</a>",
+    4: "<a href='https://www.cbs.nl/methode'>Hoger onderwijs</a>",
+}
+
+
+def _met_lege_regels(tekst: str) -> str:
+    """Extra lege regels (ook met spaties en tabs) en witruimte achter elk kopje; de sectietekst blijft gelijk."""
+    for kop in ("1. TOELICHTING", "2. DEFINITIES EN VERKLARING VAN SYMBOLEN",
+                "3. KOPPELINGEN NAAR RELEVANTE TABELLEN EN ARTIKELEN", "4. BRONNEN EN METHODEN"):
+        tekst = tekst.replace(f"\n{kop}\n", f"\n \n\t\n\n\n{kop} \t\n\n\n \n")
+    return tekst
+
+
+class TestSecties:
+    """De kopjes van TableInfos (#1054): zelfde secties, rekentijd lineair in het aantal lege regels."""
+
+    @pytest.mark.parametrize("regel", [
+        "1. INLEIDING", "  2. BRONNEN EN METHODEN", "3. KOPPELINGEN NAAR TABELLEN \t", "4. BRONNEN\r",
+        "1. DEFINITIES EN VERKLARING VAN SYMBOLEN",
+    ])
+    def test_kopje_herkend(self, regel):
+        assert vt._SECTIE.search(f"tekst\n{regel}\nmeer tekst")
+
+    @pytest.mark.parametrize("regel", ["1. Inleiding", "1.INLEIDING", "INLEIDING", "12. INLEIDING", "1.\nINLEIDING"])
+    def test_geen_kopje(self, regel):
+        assert not vt._SECTIE.search(f"tekst\n{regel}\nmeer tekst")
+
+    def test_secties_vastgelegd(self):
+        assert vt._secties(DESCRIPTION) == SECTIES
+
+    def test_extra_lege_regels_veranderen_secties_niet(self):
+        assert vt._secties(_met_lege_regels(DESCRIPTION)) == SECTIES
+
+    def test_crlf_geeft_dezelfde_secties(self):
+        verwacht = {nr: tekst.replace("\n", "\r\n") for nr, tekst in SECTIES.items()}
+        assert vt._secties(DESCRIPTION.replace("\n", "\r\n")) == verwacht
+        assert vt._secties(_met_lege_regels(DESCRIPTION).replace("\n", "\r\n")) == verwacht
+
+    def test_blok_over_meerdere_lege_regels(self):
+        # Een blok eindigt bij een lege regel met daarna een kopregel met dubbelepunt.
+        tekst = "Status van de cijfers:\nDefinitief.\n\n \n\t\n\nBron:\nCBS.\n \n\nNog een kop:\nIn 2027."
+        assert vt._blok(tekst, "Status van de cijfers") == "Definitief."
+        assert vt._blok(tekst, "Bron") == "CBS."
+        assert vt._blok(tekst, "Nog een kop") == "In 2027."
+
+    @pytest.mark.parametrize("maak", [
+        lambda n: "\n" * n,
+        lambda n: " \n" * n,
+        lambda n: "\r\n" * n,
+    ])
+    def test_secties_lineair_in_lege_regels(self, maak):
+        assert_lineair(vt._secties, maak, n=2_000)
+
+    @pytest.mark.parametrize("maak", [lambda n: "Kop\n" + "\n" * n, lambda n: "Kop\n" + " \n" * n])
+    def test_blok_lineair_in_lege_regels(self, maak):
+        assert_lineair(lambda tekst: vt._blok(tekst, "Kop"), maak, n=2_000)
 
 
 class TestPerioden:
