@@ -118,8 +118,12 @@ def antwoordcontrole(
     clarify_keuzes: list,
     data_keys: list[str],
     getalcontrole: Callable[[str, list[str]], list[Probleem]] | None = None,
+    verklaring_gevraagd: bool = True,
 ) -> Callable[[str, list[str]], list[str]]:
-    """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop."""
+    """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop.
+
+    `verklaring_gevraagd`: vroeg de gebruiker om een verklaring (#1036); zonder verzoek is elk vermoeden een probleem,
+    met verzoek alleen een vermoeden buiten het blok "Niet uit de data". `run` geeft het altijd mee."""
     getalcontrole = getalcontrole or maak_getalcontrole(earlier, said_by_user)
 
     def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
@@ -151,7 +155,8 @@ def antwoordcontrole(
             (genegeerde_keuze, (clarify_keuzes, text), False),
             (ongekozen_studies, (vraag, tool_results), False),
             (onbeschikbaar_zonder_zoekpad, (vraag, text, tool_results), False),
-            (ongedekte_oorzaak, (text, tool_results), False),
+            # In de chat hoort een gevraagd vermoeden in het blok "Niet uit de data", ook als het blok ontbreekt.
+            (ongedekte_oorzaak, (text, tool_results, verklaring_gevraagd, True), False),
             (ontbrekende_grafiek, (vraag, text, tool_results, data_keys), False),
             (metatekst, (text,), False),
             (verkeerde_antwoordtaal, (vraag, gelezen), False),

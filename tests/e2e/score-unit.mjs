@@ -139,6 +139,21 @@ test('elke eis faalt apart, ook als de totaalscore hoog blijft', () => {
   assert.deepEqual(scoreResult(zonderPlot, TREND).fouten, ['tool ontbreekt: create_plot', 'grafiek ontbreekt'])
 })
 
+test('een term uit must_not_mention in het antwoord is een eigen fout (#1036)', () => {
+  const ev = EVALS.find(e => e.label === 'geen-verklaring-zonder-verzoek')
+  const r = goed()
+  r.content = 'Er waren 30.280 eerstejaars in 2022.'
+  const schoon = scoreResult(r, ev)
+  assert.deepEqual(schoon.fouten, [])
+  assert.equal(schoon.has_all_mentions, true)
+
+  r.content += '\n\n### Niet uit de data\nHangt de daling samen met de krimp? Hiervoor is geen bron in deze app.'
+  const s = scoreResult(r, ev)
+  assert.deepEqual(s.fouten, ['term mag niet: Niet uit de data'])
+  assert.equal(s.has_all_mentions, false)
+  assert.ok(s.total < schoon.total)
+})
+
 // Antwoordcorrectheid (#463): alleen het eindantwoord bewijst een referentiewaarde.
 
 /** Een resultaat met alle tools goed en de juiste bron, met `content` als eindantwoord. */

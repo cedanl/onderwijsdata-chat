@@ -47,7 +47,13 @@ export function scoreResult(r, ev) {
   for (const term of (ex.must_mention || [])) {
     scores.mentions[term] = new RegExp(term, 'i').test(r.content)
   }
-  scores.has_all_mentions = Object.values(scores.mentions).every(Boolean)
+  // Termen die niet in het antwoord mogen, zoals een blok "Niet uit de data" zonder verzoek (#1036).
+  scores.verboden = {}
+  for (const term of (ex.must_not_mention || [])) {
+    scores.verboden[term] = new RegExp(term, 'i').test(r.content)
+  }
+  scores.has_all_mentions = Object.values(scores.mentions).every(Boolean) &&
+    !Object.values(scores.verboden).some(Boolean)
 
   // 5. Plot aanwezig als verwacht?
   if (ex.must_have_plot) {
@@ -115,8 +121,9 @@ export function scoreResult(r, ev) {
   maxPoints += 20
   if (scores.has_all_mentions) total += 20
   else {
-    const found = Object.values(scores.mentions).filter(Boolean).length
-    const needed = Object.keys(scores.mentions).length
+    const found = Object.values(scores.mentions).filter(Boolean).length +
+      Object.values(scores.verboden).filter(gevonden => !gevonden).length
+    const needed = Object.keys(scores.mentions).length + Object.keys(scores.verboden).length
     if (needed > 0) total += Math.round(20 * found / needed)
   }
 
@@ -159,6 +166,7 @@ function dataEisFouten(scores, datasetsVerwacht) {
   for (const [tool, ok] of Object.entries(scores.required_tools)) if (!ok) uit.push(`tool ontbreekt: ${tool}`)
   if (datasetsVerwacht && !scores.dataset_match) uit.push('verwachte dataset niet gebruikt')
   for (const [term, ok] of Object.entries(scores.mentions)) if (!ok) uit.push(`term ontbreekt: ${term}`)
+  for (const [term, gevonden] of Object.entries(scores.verboden)) if (gevonden) uit.push(`term mag niet: ${term}`)
   for (const [k, v] of Object.entries(scores.reference_checks || {})) {
     if (v !== 'exact') uit.push(`referentiewaarde ontbreekt: ${k}`)
   }

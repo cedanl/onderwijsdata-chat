@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt. Bronwaarheid-cases (#190) verwijzen per sleutel naar een ijkwaarde in ijkwaarden.json (data_points.ijkwaarden, exact, geen tolerantie), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; eenheid, schooljaar en status toetsen ze met must_mention. expected.kritiek markeert de kritieke set (besluit #693): de ijk-cases, de weigeringen en het #742-paar. Een weigering moet in elke herhaling slagen, een andere kritieke vraag in een meerderheid; de uitslag staat in eval_results/kritiek-<datum>.json (kritiek.js) en hoort in de promotie-MR.",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt. expected.must_not_mention zijn termen (hoofdletterongevoelige regex) die niet in het antwoord mogen staan (#1036). Bronwaarheid-cases (#190) verwijzen per sleutel naar een ijkwaarde in ijkwaarden.json (data_points.ijkwaarden, exact, geen tolerantie), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; eenheid, schooljaar en status toetsen ze met must_mention. expected.kritiek markeert de kritieke set (besluit #693): de ijk-cases, de weigeringen en het #742-paar. Een weigering moet in elke herhaling slagen, een andere kritieke vraag in een meerderheid; de uitslag staat in eval_results/kritiek-<datum>.json (kritiek.js) en hoort in de promotie-MR.",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -590,6 +590,25 @@
         "tool_flow_description": "Zoek → laad DUO → laad CBS (gemeenten, hbo, 2024) → relatie → koppel_data → verschil in run_analysis",
         "max_search_catalog": 4,
         "must_mention": ["Amsterdam", "vestig", "woon"]
+      }
+    },
+    {
+      "label": "verklaring-op-verzoek",
+      "message": "Waarom daalt de instroom in de lerarenopleidingen?",
+      "description": "#1036: een waaromvraag krijgt de data en daarna een apart blok 'Niet uit de data' met hooguit drie toetsbare vragen, elk met een bron uit de catalogus of 'hiervoor is geen bron in deze app'; geen oorzaak als feit",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["Niet uit de data", "leraren|pabo"]
+      }
+    },
+    {
+      "label": "geen-verklaring-zonder-verzoek",
+      "message": "Hoeveel eerstejaars hbo zijn er per jaar sinds 2020?",
+      "description": "#1036: een datavraag zonder verzoek om een verklaring krijgt geen oorzaken, geen vermoedens en geen blok 'Niet uit de data'",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["eerstejaars"],
+        "must_not_mention": ["Niet uit de data", "mogelijke (verklaring|oorza)", "denkbaar"]
       }
     }
   ]
