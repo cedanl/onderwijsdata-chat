@@ -82,7 +82,11 @@ export function vraagGrafieken(srcDoc, { doc = document, timeoutMs = GRAFIEK_TIM
 function pngBlob(dataUrl) {
   try {
     const binair = atob(dataUrl.slice(PNG_DATA_URL.length))
-    return new Blob([Uint8Array.from(binair, teken => teken.charCodeAt(0))], { type: 'image/png' })
+    // Een lus in een vooraf gemaakte array, geen Uint8Array.from met een callback per byte: bij grafieken van
+    // megabytes scheelt dat een veelvoud, en de test op de grenzen liep op een volle runner over de 5 s.
+    const bytes = new Uint8Array(binair.length)
+    for (let i = 0; i < binair.length; i += 1) bytes[i] = binair.charCodeAt(i)
+    return new Blob([bytes], { type: 'image/png' })
   } catch {
     return null
   }
