@@ -14,6 +14,7 @@ import pytest
 
 from agent import scopevraag as module
 from agent.scopevraag import Kaart, afbakeningsvraag, scopevraag
+from data.arbeidsmarkt import SECTOR_INDELING, load_sector_indeling
 from tools import instelling
 
 _REGISTER = [
@@ -158,9 +159,10 @@ def test_de_kaart_heeft_twee_of_drie_opties_met_een_label():
 # --- de beurt: meerdere kaarten achter elkaar ---------------------------------------------------
 
 
-def _beurt(messages: list[dict], session: dict) -> tuple[str, list[dict]]:
+def _beurt(messages: list[dict], session: dict, events: list[dict] | None = None) -> tuple[str, list[dict]]:
+    """Een beurt zonder model; `events` krijgt de events ook als het model toch wordt aangeroepen."""
     run_module = importlib.import_module("agent.run")
-    events: list[dict] = []
+    events = [] if events is None else events
 
     async def emit(event):
         events.append(event)
@@ -227,3 +229,75 @@ def test_na_drie_rondes_vraagt_code_niets_meer():
     messages = [{"role": "user", "content": "Hoeveel studenten?"}]
     with pytest.raises(AssertionError, match="het model is aangeroepen"):
         _beurt(messages, session)
+
+
+# --- #1049: de kaart alleen als een van haar opties de vraag afbakent -----------------------------
+
+_WAAROM_TECHNIEK = "Hoe komt het dat het aantal eerstejaars in de techniek daalt?"
+
+
+def test_een_waarom_vraag_over_een_studierichting_krijgt_geen_afbakeningskaart():
+    assert afbakeningsvraag(_WAAROM_TECHNIEK) is None
+    kaart = scopevraag(_WAAROM_TECHNIEK)
+    assert kaart is None or kaart.slot != "afbakening"
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Hoeveel eerstejaars techniek zijn er?",
+        "Hoeveel eerstejaars in technische opleidingen zijn er?",
+        "Hoeveel studenten economie?",  # een ho-onderdeel
+        "Hoeveel studenten gezondheidszorg zijn er?",
+        "Hoeveel deelnemers zorg en welzijn?",  # een mbo-sector
+        "Hoeveel studenten ICT zijn er?",  # korte vormen
+        "Hoeveel studenten volgen een opleiding in de zorg?",
+        "Hoeveel studenten groen zijn er?",
+        "Hoeveel studenten onderwijs zijn er?",
+    ],
+)
+def test_een_studierichting_telt_als_afbakening(vraag):
+    assert afbakeningsvraag(vraag) is None
+
+
+def test_elke_sector_uit_de_indeling_telt_als_afbakening():
+    """De domeinen komen uit `_indelingen` in data/sector_cluster_mapping.json, geschreven zoals een gebruiker dat doet."""
+    namen = sorted(SECTOR_INDELING)
+    assert {"TECHNIEK", "ECONOMIE", "Zorg en welzijn", "Techniek en procesindustrie"} <= set(namen)
+    for naam in namen:
+        vraag = f"Hoeveel studenten {naam.replace('_', ' ').lower()}?"
+        assert afbakeningsvraag(vraag) is None, vraag
+
+
+@pytest.mark.parametrize(
+    ("waarom", "telling"),
+    [
+        ("Waarom daalt het aantal studenten?", "Daalt het aantal studenten?"),
+        ("Wat is de oorzaak van het dalende aantal eerstejaars?", "Wat is het dalende aantal eerstejaars?"),
+        ("Hoe kan het dat het aantal studenten daalt?", "Hoeveel studenten zijn er?"),
+        ("Wat is de verklaring voor het aantal studenten?", "Wat is het aantal studenten?"),
+    ],
+)
+def test_een_waarom_vraag_krijgt_geen_afbakeningskaart_een_telling_wel(waarom, telling):
+    assert afbakeningsvraag(waarom) is None
+    assert _slot(afbakeningsvraag(telling)) == "afbakening"
+
+
+def test_zonder_leesbare_indeling_blijven_de_korte_vormen(monkeypatch, tmp_path):
+    kapot = tmp_path / "kapot.json"
+    kapot.write_text("{geen json")
+    for pad in (tmp_path / "weg.json", kapot):
+        assert load_sector_indeling(pad) == {}
+        monkeypatch.setattr(module, "_DOMEIN", module._domeinpatroon(load_sector_indeling(pad)))
+        assert _slot(afbakeningsvraag("Hoeveel studenten?")) == "afbakening"
+        assert afbakeningsvraag("Hoeveel studenten techniek?") is None
+        assert afbakeningsvraag("Hoeveel studenten ICT?") is None
+
+
+def test_de_beurt_stuurt_een_waarom_vraag_zonder_kaart_naar_het_model():
+    session: dict = {"chat_settings": {}, "clarify_rondes": 0}
+    events: list[dict] = []
+    with pytest.raises(AssertionError, match="het model is aangeroepen"):
+        _beurt([{"role": "user", "content": _WAAROM_TECHNIEK}], session, events)
+    assert [e for e in events if e["type"] == "clarification"] == []  # het event noemt geen slot: geen enkele kaart
+    assert "afbakening" not in session.get("clarify_slots", [])

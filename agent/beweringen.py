@@ -5,6 +5,10 @@ die geen getal zijn en toch een claim: "die data is er niet" en "dit komt doorda
 "Die data is er niet" mag alleen met een zoekpad; een oorzaak alleen met voorbehoud, want
 telreeksen tonen een verschil of samenhang, niet de reden ervan (#413). Anders gaat het model
 terug naar de data of markeert het de uitspraak als niet vast te stellen.
+
+Een vermoeden alleen als de gebruiker om een verklaring vroeg (#1036, `tools.verklaring_markers`): dan in een apart
+blok "Niet uit de data", met hooguit drie toetsbare vragen. Zonder verzoek is elk vermoeden een probleem, ook met
+voorbehoud.
 """
 
 import json
@@ -53,9 +57,48 @@ _VOORBEHOUD = re.compile(
     r"|\bik\s+weet\s+(?:de\s+oorzaak\s+niet|niet\s+wat\s+de\s+oorzaak\s+is)\b",
     re.IGNORECASE,
 )
+# Een vermoeden, als zodanig gemarkeerd (#1036): zonder verzoek om een verklaring hoort het niet in het antwoord, met
+# verzoek alleen in het blok "Niet uit de data".
+_HYPOTHESE = re.compile(
+    r"\bmogelijke\s+(?:verklaring(?:en)?|oorza(?:ak|ken))\b"
+    r"|\bzou(?:den)?\s+(?:\w+\s+)?kunnen\s+(?:samenhangen\s+met|komen\s+doordat)\b"
+    r"|\bhet\s+is\s+denkbaar\s+dat\b",
+    re.IGNORECASE,
+)
+# De kop van het blok "Niet uit de data" (#1036): een markdown-kop of een vetgedrukte regel. Het blok loopt tot de
+# volgende kop (markdown of een vetgedrukte regel) of het einde van de tekst. Tussen het kopteken en de woorden staat
+# één witruimteklasse: twee naast elkaar geven kwadratisch terugzoeken op een kopregel vol spaties.
+_BLOKKOP = re.compile(
+    r"^[ \t]*(?:#{1,6}[ \t]|\*\*)[ \t*]*niet\s+uit\s+de\s+data[ \t*:]*$", re.IGNORECASE | re.MULTILINE
+)
+_KOP = re.compile(r"^[ \t]*(?:#{1,6}[ \t]|\*\*[^*\n]+\*\*[ \t:]*$)", re.MULTILINE)
+# Een zin eindigt op . ? of !, eventueel gevolgd door opmaak of een sluitteken ("*Hangt dit samen met X?* Te toetsen").
+_SLUITTEKENS = "*_)\"'”’"
+_ZINSGRENS = re.compile(rf"(?<=[.?!])[{re.escape(_SLUITTEKENS)}]*\s+|\n+")
+MAX_BLOKVRAGEN = 3
+_BLOK = "het blok 'Niet uit de data'"
+_HET_BLOK = "Het blok 'Niet uit de data'"
 # De onderzoeksvraag herhaalt wat de gebruiker vroeg ("te verklaren uit locatie?"): geen bewering van het model.
 # Geen \n in het voorvoegsel: met \W liep elke regelstart door alle volgende lege regels, kwadratisch (#1048).
 _ONDERZOEKSVRAAG = re.compile(r"^[^\w\n]*onderzoeksvraag\b.*$", re.IGNORECASE | re.MULTILINE)
+
+
+def verklaringsblok(tekst: str) -> tuple[str, str]:
+    """De tekst buiten het blok "Niet uit de data" en de inhoud van het blok, zonder kop; zonder blok (tekst, "").
+
+    Markdown lezen is een heuristiek: een `###`-kop en een vetgedrukte kopregel tellen allebei."""
+    kop = _BLOKKOP.search(tekst)
+    if not kop:
+        return tekst, ""
+    rest = tekst[kop.end() :]
+    volgende = _KOP.search(rest)
+    eind = volgende.start() if volgende else len(rest)
+    return tekst[: kop.start()] + rest[eind:], rest[:eind]
+
+
+def zonder_blokkop(tekst: str) -> str:
+    """De tekst zonder de kop "Niet uit de data": die kop zegt niet dat er data ontbreekt."""
+    return _BLOKKOP.sub("", tekst)
 
 
 def _catalogus_id(dataset_id: str) -> str:
@@ -104,7 +147,8 @@ def onbeschikbaar_zonder_zoekpad(vraag: str, tekst: str, tool_results: list[str]
     - werkelijk niet beschikbaar: wat overblijft. Vragen zonder instelling (ROA, UWV) vallen
       eronder: daar blijft "niet via de chat" een eerlijk antwoord.
     """
-    if not _ONBESCHIKBAAR.search(tekst):
+    # De kop van het blok "Niet uit de data" (#1036) is geen bewering over afwezige data.
+    if not _ONBESCHIKBAAR.search(zonder_blokkop(tekst)):
         return []
     resultaten = _resultaten(tool_results)
     if any(r.get("opvraagbaar") is False for r in resultaten):
@@ -148,18 +192,20 @@ def _heeft_data(tool_results: list[str]) -> bool:
     return False
 
 
-def ongedekte_oorzaak(tekst: str, tool_results: list[str]) -> list[str]:
-    """Een oorzaak of duiding die niet uit de data volgt, moet als zodanig gemarkeerd zijn.
+def _alineas(tekst: str) -> list[str]:
+    return [alinea.strip() for alinea in re.split(r"\n\s*\n", tekst) if alinea.strip()]
 
-    Zonder opgehaalde data zwijgt de controle (een algemene vraag mag uitleg geven). Met data
-    bewijzen de aggregaten een verschil, niet de reden ervan. Ook een getal uit een tweede
-    telbron bewijst geen oorzaak: twee telreeksen naast elkaar zijn samenhang, geen verklaring
-    (#413). Per alinea: staat er een voorbehoud ("niet vast te stellen met deze gegevens") bij
-    de oorzaak, dan is het eerlijk.
-    """
-    if not _heeft_data(tool_results):
-        return []
-    alineas = [alinea.strip() for alinea in re.split(r"\n\s*\n", _ONDERZOEKSVRAAG.sub("", tekst))]
+
+def _zinnen(tekst: str) -> list[str]:
+    return [zin.strip() for zin in _ZINSGRENS.split(tekst) if zin.strip()]
+
+
+def _is_vraag(zin: str) -> bool:
+    return zin.rstrip(_SLUITTEKENS + " \t").endswith("?")
+
+
+def _gestelde_oorzaak(alineas: list[str]) -> list[Probleem]:
+    """Een oorzaak zonder voorbehoud in dezelfde alinea (#225, #413)."""
     ongedekt = [alinea for alinea in alineas if _OORZAAK.search(alinea) and not _VOORBEHOUD.search(alinea)]
     if not ongedekt:
         return []
@@ -170,3 +216,89 @@ def ongedekte_oorzaak(tekst: str, tool_results: list[str]) -> list[str]:
             "met deze gegevens niet vast te stellen is. Twee telreeksen naast elkaar tonen samenhang, geen oorzaak.",
         )
     ]
+
+
+def _ongevraagde_verklaring(alineas: list[str], blok: str) -> list[Probleem]:
+    """Zonder verzoek om een verklaring: geen vermoeden, ook niet met voorbehoud, en geen blok (#1036)."""
+    problemen = []
+    if blok:
+        problemen.append(
+            Probleem(
+                f"Het antwoord heeft {_BLOK}, maar de gebruiker vroeg niet om een verklaring.",
+                "Laat dat blok weg: beschrijf alleen wat de data laat zien.",
+            )
+        )
+    if vermoeden := next((alinea for alinea in alineas if _HYPOTHESE.search(alinea)), None):
+        problemen.append(
+            Probleem(
+                "Het antwoord geeft een vermoedelijke verklaring waar de gebruiker niet om vroeg.",
+                f"Betreft: {vermoeden[:160]!r}. Laat oorzaken, verklaringen en vermoedens weg: "
+                "beschrijf alleen wat de data laat zien.",
+            )
+        )
+    return problemen
+
+
+def _verklaring_buiten_blok(alineas: list[str]) -> list[Probleem]:
+    """Met een verzoek om een verklaring hoort elk vermoeden in het blok "Niet uit de data" (#1036)."""
+    vermoeden = next((alinea for alinea in alineas if _HYPOTHESE.search(alinea)), None)
+    if vermoeden is None:
+        return []
+    return [
+        Probleem(
+            f"Het antwoord geeft een vermoeden buiten {_BLOK}.",
+            f"Betreft: {vermoeden[:160]!r}. Zet het als toetsbare vraag in het blok '### Niet uit de data', "
+            "of laat het weg.",
+        )
+    ]
+
+
+def _blokproblemen(blok: str) -> list[Probleem]:
+    """In het blok staan vragen, geen vastgestelde oorzaken, en hooguit drie (#1036)."""
+    zinnen = _zinnen(blok)
+    problemen = []
+    if gesteld := next((zin for zin in zinnen if not _is_vraag(zin) and _OORZAAK.search(zin)), None):
+        problemen.append(
+            Probleem(
+                f"{_HET_BLOK} stelt een oorzaak als feit.",
+                f'Betreft: {gesteld[:160]!r}. Schrijf elk punt als vraag ("Hangt de daling samen met ...?"), '
+                "met een dataset-ID uit de catalogus of 'hiervoor is geen bron in deze app'.",
+            )
+        )
+    if (vragen := sum(_is_vraag(zin) for zin in zinnen)) > MAX_BLOKVRAGEN:
+        problemen.append(
+            Probleem(
+                f"{_HET_BLOK} heeft {vragen} vragen; er mogen er hooguit {MAX_BLOKVRAGEN} in.",
+                f"Houd de {MAX_BLOKVRAGEN} vragen die het best te toetsen zijn.",
+            )
+        )
+    return problemen
+
+
+def ongedekte_oorzaak(
+    tekst: str, tool_results: list[str], verklaring_gevraagd: bool = True, alleen_in_blok: bool = False
+) -> list[str]:
+    """Een oorzaak of duiding die niet uit de data volgt, moet als zodanig gemarkeerd zijn.
+
+    Zonder opgehaalde data zwijgt de controle (een algemene vraag mag uitleg geven). Met data
+    bewijzen de aggregaten een verschil, niet de reden ervan. Ook een getal uit een tweede
+    telbron bewijst geen oorzaak: twee telreeksen naast elkaar zijn samenhang, geen verklaring
+    (#413). Per alinea: staat er een voorbehoud ("niet vast te stellen met deze gegevens") bij
+    de oorzaak, dan is het eerlijk.
+
+    `verklaring_gevraagd` (#1036): zonder verzoek is elk vermoeden een probleem, ook met voorbehoud, en ook een blok
+    "Niet uit de data". Met verzoek mag een vermoeden alleen als vraag in dat blok staan: in de chat
+    (`alleen_in_blok`, gezet door `antwoordcontrole`) is een vermoeden erbuiten altijd een probleem, ook als het blok
+    ontbreekt. Het rapport (`report_checks`, de standaard) kent geen blok: daar is een vermoeden buiten een blok alleen
+    een probleem als de tekst toch een blok heeft, en verder geldt de regel van het voorbehoud zoals voorheen.
+    """
+    if not _heeft_data(tool_results):
+        return []
+    buiten, blok = verklaringsblok(_ONDERZOEKSVRAAG.sub("", tekst))
+    alineas = _alineas(buiten)
+    problemen: list[str] = [*_gestelde_oorzaak(alineas)]
+    if not verklaring_gevraagd:
+        return [*problemen, *_ongevraagde_verklaring(alineas, blok)]
+    if blok or alleen_in_blok:
+        problemen += _verklaring_buiten_blok(alineas)
+    return problemen + _blokproblemen(blok)

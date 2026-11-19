@@ -41,7 +41,7 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 | **Bronvermelding verplicht** | Elk getal verwijst naar een dataset-ID en periode (bijv. "CBS, 85423NED, Perioden: 2023JJ00"). |
 | **Eerlijk falen** | Na 2 mislukte pogingen om data op te halen, wordt eerlijk gezegd wat er wel beschikbaar is. |
 | **Professionele toon** | Geen complimenten ("goede vraag!"), geen opvulzinnen, direct antwoord. |
-| **Voorzichtig met causaliteit** | Causale claims worden geformuleerd als hypothese, niet als feit. |
+| **Verklaringen alleen op verzoek** | Een oorzaak of vermoeden komt alleen in het antwoord als de gebruiker erom vraagt (#1036); code beslist dat uit de vraag. Dan staat het in een apart blok "Niet uit de data": hooguit drie toetsbare vragen, elk met een bron uit de catalogus of "hiervoor is geen bron in deze app", nooit als feit. De controle na het antwoord toetst het. |
 
 ### Controle na het antwoord (#207)
 
@@ -49,8 +49,8 @@ Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, 
 
 | Soort | Voorbeelden | Chat | Rapport |
 |-------|-------------|------|---------|
-| **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode, een uitgeschreven rekensom die niet klopt (alleen chat, #1001) | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
-| **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook), antwoord in de andere taal dan de vraag, u-vorm die de code niet kon omzetten | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
+| **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode, een uitgeschreven rekensom die niet klopt (alleen chat, #1001), een telling ("10 van de 12") die niet klopt met de tabel in het antwoord (alleen chat, #1013) | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
+| **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook), antwoord in de andere taal dan de vraag, u-vorm die de code niet kon omzetten, een vergelijking ("meer A dan B") die niet klopt met de tabel (alleen chat, #1013) | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
 
 Een uitzondering in de chat (#619): is het enige harde probleem na de herkansing een getal dat niet in de data staat, dan vervalt alleen de zin of tabelrij met dat getal (`agent/schrappen.py`). De rest wordt opnieuw gecontroleerd en de gebruiker ziet "Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten." Valt er meer dan de helft weg, of blijft de rest hard, dan wordt het antwoord ingehouden zoals hierboven.
 
