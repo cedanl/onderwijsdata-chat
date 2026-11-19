@@ -6,7 +6,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat, CHECKLIST_TIMEOUT_MS } from '../hooks/useChat'
-import { metKeuze, aanBeurten, voortbouwNotitie } from '../rapportKeuze'
+import {
+  GEEN_KEUZE, MAX_FIGUREN, aanBeurten, aanFiguren, figurenVan, metKeuze, voortbouwNotitie, wisselBeurt, wisselFiguur,
+} from '../rapportKeuze'
 import { FakeWebSocket } from './fakeWebSocket'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -155,6 +157,24 @@ describe('de gekozen beurten meesturen (#908)', () => {
     expect(rapportFrame(ws)).toEqual({ action: 'generate_report', author: 'tester', onderzoeksvraag: 'Mijn vraag', beurten: [1, 3] })
   })
 
+  it('de gekozen figuren gaan mee naast de beurten (#993)', async () => {
+    const ws = await mount()
+
+    await act(async () => { chat.generateReport('tester', 'Mijn vraag', [1, 3], ['f1', 'f3']) })
+
+    expect(rapportFrame(ws)).toEqual({
+      action: 'generate_report', author: 'tester', onderzoeksvraag: 'Mijn vraag', beurten: [1, 3], figuren: ['f1', 'f3'],
+    })
+  })
+
+  it('geen figuur gekozen gaat mee als een lege lijst: het rapport heeft dan geen figuren (#993)', async () => {
+    const ws = await mount()
+
+    await act(async () => { chat.generateReport('tester', 'Mijn vraag', [1], []) })
+
+    expect(rapportFrame(ws).figuren).toEqual([])
+  })
+
   it('zonder keuze gaat er niets extra mee: het frame is dat van voor de checklist', async () => {
     const ws = await mount()
 
@@ -175,9 +195,10 @@ describe('de helpers (#908)', () => {
   })
 
   it('alles staat aan tot de gebruiker iets uitzet', () => {
-    expect(aanBeurten(ITEMS, new Set())).toEqual([1, 2, 3])
-    expect(aanBeurten(ITEMS, new Set([2]))).toEqual([1, 3])
-    expect(aanBeurten(ITEMS, new Set([1, 2, 3]))).toEqual([])
+    const uit = beurten => ({ beurtenUit: new Set(beurten), figurenUit: new Set() })
+    expect(aanBeurten(ITEMS, GEEN_KEUZE)).toEqual([1, 2, 3])
+    expect(aanBeurten(ITEMS, uit([2]))).toEqual([1, 3])
+    expect(aanBeurten(ITEMS, uit([1, 2, 3]))).toEqual([])
   })
 
   it('zegt waar een beurt op voortbouwt, en dat die bron vermeld blijft', () => {
@@ -190,5 +211,65 @@ describe('de helpers (#908)', () => {
     const notitie = voortbouwNotitie({ beurt: 2, bouwt_voort_op: [1] }, [lang])
     expect(notitie).toContain('…”')
     expect(notitie.length).toBeLessThan(lang.vraag.length + 40)
+  })
+})
+
+describe('figuren in de checklist (#993)', () => {
+  const MET_FIGUREN = [
+    { ...ITEMS[0], figuren: [{ id: 'f1', titel: 'Instroom UU' }, { id: 'f2', titel: 'Als staven' }] },
+    ITEMS[1],
+    { ...ITEMS[2], figuren: [{ id: 'f3', titel: 'Vrouwen' }] },
+  ]
+
+  it('een checklist met één beurt en een figuur heeft een keuze', () => {
+    expect(metKeuze({ status: 'klaar', items: [MET_FIGUREN[0]] })).toBe(true)
+    expect(metKeuze({ status: 'klaar', items: [{ ...ITEMS[0], figuren: [] }] })).toBe(false)
+  })
+
+  it('alle figuren staan aan, in de volgorde van de checklist', () => {
+    expect(aanFiguren(MET_FIGUREN, GEEN_KEUZE)).toEqual(['f1', 'f2', 'f3'])
+  })
+
+  it('een beurt uit zet haar figuren uit, en weer aan zet ze weer aan', () => {
+    const uit = wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+    expect(aanBeurten(MET_FIGUREN, uit)).toEqual([2, 3])
+    expect(aanFiguren(MET_FIGUREN, uit)).toEqual(['f3'])
+
+    const weer = wisselBeurt(uit, MET_FIGUREN[0], true)
+    expect(aanBeurten(MET_FIGUREN, weer)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, weer)).toEqual(['f1', 'f2', 'f3'])
+  })
+
+  it('een figuur aan zet haar beurt aan; de andere figuren van die beurt blijven uit', () => {
+    const uit = wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+
+    const keuze = wisselFiguur(uit, MET_FIGUREN[0], 'f2', true)
+
+    expect(aanBeurten(MET_FIGUREN, keuze)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, keuze)).toEqual(['f2', 'f3'])
+  })
+
+  it('een figuur uit laat haar beurt aan', () => {
+    const keuze = wisselFiguur(GEEN_KEUZE, MET_FIGUREN[0], 'f1', false)
+
+    expect(aanBeurten(MET_FIGUREN, keuze)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, keuze)).toEqual(['f2', 'f3'])
+  })
+
+  it('wisselen verandert de vorige keuze niet', () => {
+    wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+    wisselFiguur(GEEN_KEUZE, MET_FIGUREN[0], 'f1', false)
+
+    expect(GEEN_KEUZE.beurtenUit.size + GEEN_KEUZE.figurenUit.size).toBe(0)
+  })
+
+  it('een figuur zonder id of titel telt niet', () => {
+    expect(figurenVan({ figuren: [{ id: 'f1', titel: 'T' }, { id: 7, titel: 'T' }, { id: 'f2' }, null] })).toEqual([{ id: 'f1', titel: 'T' }])
+    expect(figurenVan({ figuren: 'geen lijst' })).toEqual([])
+    expect(figurenVan({})).toEqual([])
+  })
+
+  it('de grens is vier figuren, net als op de server', () => {
+    expect(MAX_FIGUREN).toBe(4)
   })
 })
