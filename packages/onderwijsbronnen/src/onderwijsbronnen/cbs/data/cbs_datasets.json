@@ -3489,6 +3489,7 @@
     ],
     "_geo_niveau": [
       "landelijk",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente",
       "landsdeel"
@@ -3633,6 +3634,7 @@
     ],
     "_geo_niveau": [
       "landelijk",
+      "arbeidsmarktregio",
       "provincie",
       "gemeente",
       "landsdeel"

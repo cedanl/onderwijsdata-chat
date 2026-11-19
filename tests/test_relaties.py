@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from onderwijsbronnen import catalogus
 from onderwijsbronnen import sleutels as kern
 
 from tools import relaties as rel
@@ -150,6 +151,30 @@ def test_provincies_met_nederland_en_landsdelen_blijven_een_provinciesleutel():
     assert sleutel["dekking"] == {"naslag": "CBS-provinciecodes", "bekend": 12, "van": 12}
 
 
+# Regio van CBS 85353NED (mbo-studenten, regiokenmerken), in de vorm van de catalogus: Nederland, landsdelen, de
+# provincies, enkele gemeenten en de arbeidsmarktregio's (#1035); de AM-codes zijn hier opgesomd, niet gemeten.
+_REGIO_85353 = [
+    "NL01",
+    *(f"LD0{n}" for n in range(1, 5)),
+    *(f"PV{n}" for n in range(20, 32)),
+    "GM0363",
+    "GM0518",
+    "GM0599",
+    "GM0344",
+    *(f"AM{n:02d}" for n in range(1, 36)),
+]
+
+
+def test_regiokolom_van_85353ned_is_in_relatie_en_catalogus_de_arbeidsmarktregio():
+    """#1035: de catalogus noemde voor Regio gemeente en provincie, relatie las de kolom als arbeidsmarktregio."""
+    (sleutel,) = rel.sleutels_van("Regio", pd.Series(_REGIO_85353))
+    assert sleutel.naam == "arbeidsmarktregio"
+    record = next(r for r in catalogus()["cbs"] if r["_cbs_id"] == "85353NED")
+    catalogussleutels = {p["sleutel"] for p in record["_sleutels"] if p["kolom"] == "Regio"}
+    assert catalogussleutels == {"gemeente", "provincie", "arbeidsmarktregio"}
+    assert sleutel.naam in catalogussleutels
+
+
 def test_een_codekolom_zonder_regiocodes_is_geen_regiosleutel():
     _put("cbs:soort", pd.DataFrame({"Onderwijssoort": ["A025294", "A025297", "T001345", "A041867"]}))
     assert json.loads(relatie("cbs:soort"))["sleutels"] == []
@@ -221,6 +246,15 @@ def test_een_erkende_opleidingscode_koppelt_als_croho_aan_een_ho_tabel():
     assert [s["sleutel"] for s in uit["sleutels"]] == ["croho", "crebo"]
     (k,) = uit["koppelingen"]
     assert (k["sleutel"], k["overlap"]["gedeeld"]) == ("croho", 2)  # 04181 is 4181
+
+
+def test_een_beroepsopleidingscode_is_geen_crebo_en_een_crebokolom_wel():
+    """#1034: DUO's BEROEPSOPLEIDING CODE (bc365) is geen crebo-code; de kolommen met crebo-codes blijven crebo."""
+    bc = pd.DataFrame({"BEROEPSOPLEIDING CODE": ["bc365", "bc388"]})
+    assert rel.sleutelkolommen(bc) == []
+    for kolom in ("ERKENDE OPLEIDING CODE", "CREBO", "ERKENDEOPLEIDINGSCODE"):
+        sleutels = {k.sleutel.naam for k in rel.sleutelkolommen(pd.DataFrame({kolom: [25180]}))}
+        assert "crebo" in sleutels, kolom
 
 
 def test_een_skdb_tabel_koppelt_op_brin_en_croho_aan_duo():

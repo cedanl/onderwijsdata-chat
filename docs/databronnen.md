@@ -117,7 +117,7 @@ in de repo (en dus op de publieke spiegel) valt onder dezelfde regel, met de URL
 | Prognoses | Studentprognoses MBO, HO |
 | Diplomering | Geslaagden per opleiding, sector |
 | Instroom | Eerstejaars inschrijvingen |
-| Adressen | Vestigingsadressen instellingen |
+| Adressen | Vestigingsadressen instellingen: `adressen_ho` en `adressen_mbo` hebben de besturen in bestand 0 en de instellingen (met BRIN) in bestand 1, de standaard zonder bestandskeuze (#1033) |
 
 **Regio en nevenlocaties (mbo, #744):** adressen en studentaantallen bestaan bij DUO alleen per instelling (BRIN), met
 de plaats van de hoofdvestiging. Zone.college (31JC) heeft zijn hoofdvestiging in Lochem en geeft 22 opleidingen in

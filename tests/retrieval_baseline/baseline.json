@@ -1,12 +1,12 @@
 {
-  "catalogus_digest": "1fd5700c6a3a",
+  "catalogus_digest": "d1aeb27c68d0",
   "catalogusversie": [
     {
       "pakket": "onderwijsbronnen",
       "versie": "0.11.2",
       "commit": null,
       "manifest": {
-        "catalogusrevisie": "076d42ee7c5ec9b8",
+        "catalogusrevisie": "9cb373f426545bfd",
         "consistent": true,
         "aantal": 268,
         "laatste_succesvolle_controle": "2026-10-21",
@@ -186,7 +186,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-11-09",
+  "gemeten_op": "2026-11-18",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 22,
@@ -196,10 +196,10 @@
         0.7639,
         0.9911
       ],
-      "mrr": 0.7729,
+      "mrr": 0.7979,
       "mrr_95": [
-        0.6354,
-        0.9062
+        0.6521,
+        0.9313
       ],
       "recall_at_5_vraag": 0.7,
       "mrr_vraag": 0.6183,
@@ -226,7 +226,7 @@
         1.0
       ],
       "recall_at_5_vraag": 0.7778,
-      "mrr_vraag": 0.5463,
+      "mrr_vraag": 0.6296,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -250,7 +250,7 @@
         0.8382
       ],
       "recall_at_5_vraag": 0.7059,
-      "mrr_vraag": 0.5515,
+      "mrr_vraag": 0.5123,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -274,7 +274,7 @@
         0.92
       ],
       "recall_at_5_vraag": 0.5,
-      "mrr_vraag": 0.4601,
+      "mrr_vraag": 0.4587,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -340,13 +340,13 @@
         0.8009,
         0.9598
       ],
-      "mrr": 0.7506,
+      "mrr": 0.7599,
       "mrr_95": [
-        0.6538,
-        0.8463
+        0.6627,
+        0.8556
       ],
       "recall_at_5_vraag": 0.7222,
-      "mrr_vraag": 0.5823,
+      "mrr_vraag": 0.5699,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
@@ -370,7 +370,7 @@
         0.8661
       ],
       "recall_at_5_vraag": 0.6429,
-      "mrr_vraag": 0.5364,
+      "mrr_vraag": 0.5626,
       "onbeantwoordbaar_geslaagd": [
         1,
         3

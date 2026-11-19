@@ -283,9 +283,18 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
 
 De peers zijn de andere instellingen van hetzelfde type (#926): een hogeschool vergelijkt met hogescholen, een
 universiteit met universiteiten, een mbo-instelling met mbo-instellingen. Het type komt uit het register
-(`data/instellingen.py`), de regio van instelling en peers uit hetzelfde DUO-adres (`get_adres_lookup`). De regio
-verbreedt in vaste treden tot er ten minste drie andere instellingen van het type in zitten (`_MIN_PEERS`; een
-gemiddelde over één andere instelling is die instelling, over twee nog erg smal; tot #948 was de drempel twee):
+(`data/instellingen.py`), de regio van instelling en peers uit hetzelfde DUO-adres (`get_adres_lookup`).
+
+Een peer telt alleen als hij ten minste 10% zo groot is als de instelling zelf (`_MIN_PEER_OMVANG`, #1008), in elke
+trede, ook landelijk; precies 10% telt. De omvang is het aantal ingeschrevenen in het laatste jaar van het bestand: bij
+het ho `AANTAL_INGESCHREVENEN` van p01hoinges per `INSTELLINGSCODE_ACTUEEL` (hbo en wo samen), bij het mbo de
+leerwegen van mbo-studenten-per-instelling opgeteld per instellingsnaam, over al haar codes. Een lege cel telt niet
+mee; een peer zonder omvang telt niet. Is de eigen omvang onbekend of 0, of laadt het bestand niet, dan geldt de drempel
+niet en blijft de groep zoals zonder omvang. Het is alleen een ondergrens: een veel grotere peer telt wel.
+
+De regio verbreedt in vaste treden tot er ten minste drie andere instellingen van het type en van vergelijkbare
+omvang in zitten (`_MIN_PEERS`; een gemiddelde over één andere instelling is die instelling, over twee nog erg smal;
+tot #948 was de drempel twee):
 
 1. de arbeidsmarktregio van de instelling;
 2. haar provincie;
@@ -301,12 +310,17 @@ terugval:
 - "Provincie Noord-Brabant, 5 andere hogescholen — te weinig hogescholen in arbeidsmarktregio West-Brabant (0 andere)"
 - "Landelijk, 17 andere universiteiten — te weinig universiteiten in provincie Noord-Brabant (1 andere)"
 
-Het aantal in het label is `n_instellingen`, het aantal peers achter het gemiddelde in het laatste jaar. Tot #926
-stonden hogescholen en universiteiten samen in één regio (Breda: vijf hogescholen en twee universiteiten in
-Noord-Brabant) en vergeleek elke universiteit stil landelijk; een hogeschool zonder andere ho-instelling in haar
-provincie (HZ, NHL Stenden) kreeg geen vergelijking. Bij universiteiten kan de regio een paar kleine instellingen
-bevatten: de Universiteit Utrecht vergelijkt in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek. Met
-drie andere haalt zij ook de drempel van #948; die drempel telt instellingen, niet hun omvang.
+Vielen er in de trede instellingen af op omvang, dan noemt de reden hoeveel er van vergelijkbare omvang waren van
+hoeveel andere: "te weinig universiteiten van vergelijkbare omvang in provincie Utrecht (0 van 3 andere; minder dan 10%
+van de eigen omvang)". Viel er geen af, dan blijft de reden zoals hierboven. Het aantal in het label is
+`n_instellingen`, het aantal peers achter het gemiddelde in het laatste jaar. Tot #926 stonden hogescholen en
+universiteiten samen in één regio (Breda: vijf hogescholen en twee universiteiten in Noord-Brabant) en vergeleek elke
+universiteit stil landelijk; een hogeschool zonder andere ho-instelling in haar provincie (HZ, NHL Stenden) kreeg geen
+vergelijking. Tot #1008 telde de drempel van #948 instellingen, niet hun omvang: de Universiteit Utrecht (37.090
+ingeschrevenen) vergeleek in Midden-Utrecht met PThU, TUU en de Universiteit voor Humanistiek (118 tot 445). Die drie
+halen geen 10% van haar omvang, dus vergelijkt zij landelijk, met de universiteiten van vergelijkbare omvang. De kaart,
+de reeksen, het aantal en het label volgen dezelfde groep, net als het rendement en de arbeidsmarktmatch. Een instelling
+dicht bij de grens kan per jaar in of uit de groep vallen.
 
 Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / landelijk: hbo 20 / 12 / 4 bij drempel
 twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
