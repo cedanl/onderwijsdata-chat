@@ -42,6 +42,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de kolommen van kaarten en de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
+| Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder de accountnaam als hash; geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget) |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
 Een oordeel op een antwoord (👍/👎 met toelichting en een kopie van vraag, antwoord en stappen) bewaart de server sinds

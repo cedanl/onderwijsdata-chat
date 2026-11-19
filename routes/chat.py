@@ -14,6 +14,7 @@ from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from agent.timebox import harde_grens
 from config import Config
+from core import tokenbudget
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import (
     CHAT_RATE_LIMIT,
@@ -26,6 +27,8 @@ from core.config import (
     MAX_WS_TOTAL,
     MODEL,
     RUN_QUEUE_TIMEOUT_S,
+    TOKENBUDGET_DAG,
+    TOKENBUDGET_MAAND,
     toegestaan_model,
 )
 from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, error_event, log_interne_fout
@@ -411,10 +414,20 @@ async def _binnen_limiet(session: dict, emit) -> bool:
     sleutel = _limietsleutel(session)
     wacht = await asyncio.to_thread(_berichtlimiter.probeer, sleutel)
     if wacht is None:
-        return True
+        return await _binnen_budget(session, emit)
     # Geen gebruikersnaam in het log; de verbinding is aan de regels van die verbinding te koppelen.
     logger.warning("BERICHTLIMIET bereikt  limiet=%d/%ds  wacht=%ds", CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S, wacht)
     await emit({"type": "error", "message": _LIMIET_MELDING.format(wacht=wacht), "modelafhankelijk": False})
+    return False
+
+
+async def _binnen_budget(session: dict, emit) -> bool:
+    """Het tokenbudget van de gebruiker (#678, S24): erboven een melding en geen modelaanroep."""
+    melding = await asyncio.to_thread(tokenbudget.over_budget, session.get("username"))
+    if melding is None:
+        return True
+    logger.warning("TOKENBUDGET op  dag=%d  maand=%d", TOKENBUDGET_DAG, TOKENBUDGET_MAAND)
+    await emit({"type": "error", "message": melding, "modelafhankelijk": False})
     return False
 
 
@@ -598,6 +611,8 @@ async def chat_websocket(ws: WebSocket) -> None:
 
     # Zonder login heet iedereen "gast": dan telt alleen het totaal (#688).
     sleutel = username if username and username != FALLBACK_USER else None
+    # Elke run van deze verbinding telt mee voor het tokenbudget van deze gebruiker (#678).
+    tokenbudget.zet_gebruiker(sleutel)
     if not _verbindingen.open(sleutel):
         # Pas na accept: zo leest de gebruiker waarom, in plaats van een kale 1006.
         logger.warning("VERBINDINGEN vol  open=%d  max=%d/%d", _verbindingen.aantal, MAX_WS_PER_USER, MAX_WS_TOTAL)

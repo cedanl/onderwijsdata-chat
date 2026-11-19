@@ -173,6 +173,8 @@ def test_een_run_logt_het_totaal_over_alle_modelaanroepen(monkeypatch, caplog):
 
     monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (json.dumps({"ok": True}), None))
     tools = [{"type": "function", "function": {"name": "echo", "parameters": {"type": "object"}}}]
+    geboekt = []  # wat de run meetelt voor het tokenbudget van de gebruiker (#678)
+    monkeypatch.setattr(loop_module.tokenbudget, "boek", geboekt.append)
     with caplog.at_level(logging.INFO, logger="agent.loop"):
         result = asyncio.run(
             loop_module.tool_loop(
@@ -185,6 +187,7 @@ def test_een_run_logt_het_totaal_over_alle_modelaanroepen(monkeypatch, caplog):
             )
         )
     assert result.tokens == Tokens(invoer=2100, uitvoer=80, cache_gelezen=1900, cache_geschreven=100)
+    assert geboekt == [result.tokens], "het totaal van de run telt één keer mee voor het budget"
     regels = [r.getMessage() for r in caplog.records if r.getMessage().startswith("TOKENS")]
     assert regels == [
         "TOKENS  model=azure_ai/claude-sonnet-5-5  aanroepen=2  invoer=2100  uitvoer=80  "

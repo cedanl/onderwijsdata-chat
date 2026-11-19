@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -509,6 +509,19 @@ _RATE_LIMIT_TABLE = """
 """
 _RATE_LIMIT_INDEX = "CREATE INDEX IF NOT EXISTS idx_rate_limit ON rate_limit_hits(bucket, sleutel, verloopt)"
 
+# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een sha256
+# van de gebruikersnaam, zoals bij de limieten; `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
+# bij het opruimen: genoeg voor deze en de vorige maand.
+_TOKENGEBRUIK_TABLE = """
+    CREATE TABLE IF NOT EXISTS tokengebruik (
+        sleutel  TEXT   NOT NULL,
+        dag      TEXT   NOT NULL,
+        eenheden BIGINT NOT NULL,
+        PRIMARY KEY (sleutel, dag)
+    )
+"""
+TOKENGEBRUIK_DAGEN = 62
+
 
 _CONVERSATIONS_TABLE = """
     CREATE TABLE IF NOT EXISTS conversations (
@@ -558,6 +571,7 @@ _SCHEMA = (
     _REVOKED_USERS_TABLE,
     _RATE_LIMIT_TABLE,
     _RATE_LIMIT_INDEX,
+    _TOKENGEBRUIK_TABLE,
     _SCHEMA_MIGRATIONS_TABLE,
 )
 
@@ -636,6 +650,8 @@ def purge_expired_revocations(conn: Any) -> None:
     _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
     _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
     _execute(conn, "DELETE FROM rate_limit_hits WHERE verloopt <= ?", (nu * 1000,))
+    grens = (datetime.now(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
+    _execute(conn, "DELETE FROM tokengebruik WHERE dag < ?", (grens,))
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
@@ -682,6 +698,30 @@ def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
 def deelt_staat() -> bool:
     """Waar de database de staat van meerdere pods deelt: Postgres. SQLite is één proces, daar telt het geheugen (#984)."""
     return _USE_POSTGRES
+
+
+def tokengebruik_boek(sleutel: str, dag: str, eenheden: int) -> None:
+    """Tel `eenheden` op bij het gebruik van `sleutel` op `dag` (#678); atomisch, ook met twee pods tegelijk."""
+    with _connection() as conn:
+        _execute(
+            conn,
+            "INSERT INTO tokengebruik (sleutel, dag, eenheden) VALUES (?, ?, ?) "
+            "ON CONFLICT (sleutel, dag) DO UPDATE SET eenheden = tokengebruik.eenheden + excluded.eenheden",
+            (sleutel, dag, eenheden),
+        )
+        conn.commit()
+
+
+def tokengebruik_stand(sleutel: str, dag: str, maand_vanaf: str) -> tuple[int, int]:
+    """(gebruik op `dag`, gebruik van `maand_vanaf` tot en met `dag`) voor `sleutel` (#678)."""
+    with _connection() as conn:
+        rij = _execute(
+            conn,
+            "SELECT COALESCE(SUM(CASE WHEN dag = ? THEN eenheden ELSE 0 END), 0) AS vandaag, "
+            "COALESCE(SUM(eenheden), 0) AS maand FROM tokengebruik WHERE sleutel = ? AND dag >= ? AND dag <= ?",
+            (dag, sleutel, maand_vanaf, dag),
+        ).fetchone()
+    return int(rij["vandaag"]), int(rij["maand"])
 
 
 def rate_limit_poging(bucket: str, sleutel: str, max_aantal: int, venster_ms: int, *, tel: bool = True) -> int | None:

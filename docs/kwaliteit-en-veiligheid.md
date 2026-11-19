@@ -116,6 +116,7 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 |----------|--------|---------|
 | `/api/auth/login` | 5 pogingen/minuut per gebruikersnaam + adres (S5) | HTTP 429 met `Retry-After` header |
 | WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
+| Tokenbudget | `TOKENBUDGET_DAG` (1.500.000) per dag en `TOKENBUDGET_MAAND` (15.000.000) per maand per gebruiker, in invoertoken-equivalenten (gewogen naar de tarieven) | Elke run telt mee in de database (`tokengebruik`, gedeeld door de pods); erboven een melding wanneer het weer kan en geen modelaanroep. Een databasefout laat de chat door (#678) |
 | Open WebSocket-verbindingen | `MAX_WS_PER_USER` (10) per gebruiker, `MAX_WS_TOTAL` (100) in totaal | Daarboven een melding en close-code 1013 (#688) |
 | Gelijktijdige runs | `MAX_CONCURRENT_RUNS` (8) modelruns, `MAX_SANDBOX_RUNS` (2) sandboxprocessen | Wachtrij; na `RUN_QUEUE_TIMEOUT_S` (60 s) of `SANDBOX_QUEUE_TIMEOUT_S` (20 s) een melding dat het druk is (#688) |
 | Dashboardladingen | `MAX_DASHBOARD_LOADS` (4) tegelijk, tijdsgrens `DASHBOARD_TIMEOUT_S` (90 s) | Wachtrij; na `DASHBOARD_QUEUE_TIMEOUT_S` (30 s) HTTP 503 dat het druk is, na de tijdsgrens HTTP 504; de frontend biedt een nieuwe poging (#901) |
