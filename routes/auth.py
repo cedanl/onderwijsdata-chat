@@ -31,6 +31,7 @@ from core.auth import (
     session_start,
     verify_token,
 )
+from core.errors import log_interne_fout
 from core.logging_util import foutkenmerk
 from core.rate_limit import RateLimiter
 
@@ -266,7 +267,13 @@ async def oidc_login() -> RedirectResponse:
 async def oidc_callback(request: Request) -> Response:
     if not is_oidc_configured():
         raise HTTPException(status_code=404, detail="OIDC is niet geconfigureerd")
-    response = await _verwerk_oidc_callback(request)
+    # Elk pad wist de drie login-cookies, ook een onverwachte fout na de code-uitwisseling (#1042): anders blijven ze
+    # tot 10 minuten staan. De gebruiker krijgt een fout-ID, het type en een kenmerk staan in het log (core.errors).
+    try:
+        response = await _verwerk_oidc_callback(request)
+    except Exception as e:
+        fout_id = log_interne_fout(e, "OIDC-callback")
+        response = JSONResponse({"detail": f"Inloggen mislukte door een interne fout (fout-ID {fout_id})."}, 500)
     _wis_oidc_cookies(response)
     return response
 

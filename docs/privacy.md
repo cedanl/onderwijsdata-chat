@@ -72,7 +72,8 @@ dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen bui
   eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
   inloggen. Tijdens het inloggen met SRAM staan er kort drie cookies met eenmalige waarden van die login (OIDC-state,
-  nonce en PKCE-verifier, hoogstens 10 minuten); verder gebruikt de app geen cookies en geen analytics.
+  nonce en PKCE-verifier, hoogstens 10 minuten); daarna worden ze verwijderd, ook als het inloggen misgaat. Verder
+  gebruikt de app geen cookies en geen analytics.
 
 ## Het logboek
 
