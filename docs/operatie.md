@@ -132,6 +132,11 @@ De database is de Postgres van het platform (secret `onderwijsdata-chat-app`, ke
 kubeconfig van het team zijn ze **niet te zien** (`backups` en `scheduledbackups` geven *Forbidden*). Schema, retentie,
 hersteltest en RPO/RTO zijn nog niet vastgelegd: zie #683.
 
+## Incidenten
+
+Voor een storing, onjuiste antwoorden op schaal, een beveiligingsincident of een datalek (rollen, meldplicht van 72
+uur, indammen en de route van feedback naar een beheerder): zie [Incidenten en datalekken](incidenten.md).
+
 ## Runbook
 
 **Status bekijken**
