@@ -1,5 +1,6 @@
-"""Het rapport van een kaartvraag bevat de kaart (#648): de kaarttool hoort bij de rapporttools, de prompt
-noemt haar, en een kaart uit de rapportrun komt als `choroplethmap` in de spec, zonder harde controlefout."""
+"""Het rapport van een kaartvraag bevat de kaart (#648): sinds #993 (besluit 18-11) als kaart uit het gesprek die de
+gebruiker koos, opnieuw gemaakt op de server; het rapportmodel tekent zelf geen kaart. De kaart komt als `choroplethmap`
+in de spec, zonder harde controlefout. De kaartregels per data_key (`agent/kaarten.py`) zijn weg sinds #1044."""
 
 import asyncio
 import json
@@ -10,14 +11,12 @@ import pandas as pd
 import pytest
 
 from agent import report
-from agent.datasetcontext import build_dataset_context
-from agent.kaarten import kaarten_in_gesprek
 from agent.loop import LoopResult, ToolCall
 from agent.probleem import harde
-from agent.report_checks import report_problems
+from tests.rapportfiguren import figuur_in_gesprek
 from tools import store
 from tools.plot import create_choropleth_map
-from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP
+from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP, TOOL_CREATE_PLOT
 
 _VORM = {"type": "Polygon", "coordinates": [[[5, 52], [6, 52], [6, 53], [5, 52]]]}
 _PROVINCIES = {"PV20": "Groningen", "PV22": "Drenthe", "PV26": "Utrecht"}
@@ -68,132 +67,90 @@ def sessie():
     return {"data_keys": [_KEY], "turns": [_kaartbeurt(_KAART)]}
 
 
-def test_de_rapportrun_kan_een_kaart_maken():
+def test_de_rapportrun_tekent_geen_kaart_of_grafiek():
+    """Besluit 18-11 (#993): het rapportmodel tekent zelf geen figuren; een kaart uit het gesprek komt als vaste figuur."""
     namen = [s["function"]["name"] for s in report._REPORT_TOOLS]
-    assert TOOL_CREATE_CHOROPLETH_MAP in namen
+    assert TOOL_CREATE_CHOROPLETH_MAP not in namen and TOOL_CREATE_PLOT not in namen
 
 
-def test_de_rapportprompt_noemt_de_kaarttool():
+def test_de_rapportprompt_noemt_de_kaarttool_niet():
     prompt = (Path(report.__file__).parent.parent / "prompts" / "report.md").read_text()
-    assert TOOL_CREATE_CHOROPLETH_MAP in prompt
+    assert TOOL_CREATE_CHOROPLETH_MAP not in prompt and TOOL_CREATE_PLOT not in prompt
 
 
-def _systeemprompt(sessie, monkeypatch) -> str:
+def _rapport(sessie, monkeypatch, antwoord: str = _ANTWOORD, figuren: tuple[str, ...] = ()):
+    """Het rapport met een nepmodel; geeft de spec (of de fout), de systeemprompt en de harde problemen."""
     prompts: list[str] = []
+    harde_problemen: list[list[str]] = []
 
-    async def loop(messages, **_):
+    async def loop(messages, *, check, tools, **_):
         prompts.append(messages[0]["content"])
-        return LoopResult(text=_ANTWOORD)
+        assert TOOL_CREATE_CHOROPLETH_MAP not in [t["function"]["name"] for t in tools]
+        problemen = check(antwoord, [])
+        harde_problemen.append(harde(problemen))
+        return LoopResult(text=antwoord, problems=problemen)
 
     monkeypatch.setattr(report, "tool_loop", loop)
-    asyncio.run(report.generate(sessie, _stil))
-    return prompts[0]
+    try:
+        uitkomst = asyncio.run(report.generate(sessie, _stil, figuren=figuren))
+    except report.RapportGeweigerd as fout:
+        uitkomst = fout
+    return uitkomst, prompts[0], harde_problemen[0]
 
 
-def test_de_kaart_uit_het_gesprek_staat_bij_haar_dataset_in_de_prompt(sessie, monkeypatch):
-    """Het model ziet welke kaart het gesprek van deze data tekende, met haar kolommen."""
-    blok = _systeemprompt(sessie, monkeypatch).split(f"### {_KEY}", 1)[1]
-    assert f"Kaart in het gesprek: {TOOL_CREATE_CHOROPLETH_MAP} " in blok
-    assert '"location_col": "PROVINCIE"' in blok and '"value_col": "AANTAL"' in blok
+def test_een_gekozen_kaart_uit_het_gesprek_komt_als_kaart_in_het_rapport(sessie, monkeypatch):
+    figuur_id = figuur_in_gesprek(sessie, TOOL_CREATE_CHOROPLETH_MAP, _KAART)
+
+    spec, prompt, harde_problemen = _rapport(sessie, monkeypatch, figuren=(figuur_id,))
+
+    [visualisatie] = spec.visualisaties
+    figuur = json.loads(visualisatie["figure_json"])
+    assert [t["type"] for t in figuur["data"]] == ["choroplethmap"]
+    assert sorted(figuur["data"][0]["locations"]) == sorted(_PROVINCIES)
+    assert visualisatie["titel"] == "Mbo-studenten per provincie"
+    assert "## Vaste figuren" in prompt and "choroplethmap" in prompt.rsplit("## Vaste figuren", 1)[1]
+    assert harde_problemen == []
 
 
-def test_de_kaartregel_noemt_alleen_data_key_kolommen_en_niveau(sessie, monkeypatch):
-    """De titel is tekst van het model en `data` zijn rijen buiten de store (#211): geen van beide hoort in de
-    prompt, anders herhaalt het rapport ze en komen ze via het toolresultaat toch als bewijs terug."""
-    kaart = {**_KAART, "level": "provincie", "title": "Samen 98765 studenten", "data": [{"PROVINCIE": "X"}]}
-    sessie["turns"][0]["tool_calls"] = [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": json.dumps(kaart)}]
+def test_zonder_gekozen_figuur_heeft_het_rapport_geen_kaart(sessie, monkeypatch):
+    """Besluit 18-11: zonder keuze geen figuren, ook niet als het gesprek een kaart had."""
+    figuur_in_gesprek(sessie, TOOL_CREATE_CHOROPLETH_MAP, _KAART)
+    antwoord = json.loads(_ANTWOORD) | {"visualisaties": []}
 
-    regel = _systeemprompt(sessie, monkeypatch).split("Kaart in het gesprek: ", 1)[1].split("\n", 1)[0]
+    spec, prompt, _ = _rapport(sessie, monkeypatch, antwoord=json.dumps(antwoord))
 
-    argumenten = json.loads(regel.removeprefix(f"{TOOL_CREATE_CHOROPLETH_MAP} "))
-    assert argumenten == {"data_key": _KEY, "location_col": "PROVINCIE", "value_col": "AANTAL", "level": "provincie"}
-
-
-def test_zonder_kaart_in_het_gesprek_geen_kaartregel(sessie, monkeypatch):
-    sessie["turns"] = [{"question": "Hoeveel?", "tool_calls": [{"name": "query_data", "arguments": "{}"}]}]
-    blok = _systeemprompt(sessie, monkeypatch).split(f"### {_KEY}", 1)[1]
-    assert "Kaart in het gesprek" not in blok
-
-
-@pytest.mark.parametrize("argumenten", ["geen json", "[1, 2]", '{"data_key": 7}', None])
-def test_een_onleesbare_kaartaanroep_wordt_overgeslagen(sessie, argumenten):
-    sessie["turns"][0]["tool_calls"] = [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": argumenten}]
-    assert kaarten_in_gesprek(sessie) == {}
+    assert spec.visualisaties == []
+    assert "de gebruiker koos geen figuren" in prompt
 
 
 def test_een_getal_uit_de_kaarttitel_van_het_gesprek_is_geen_bewijs(sessie, monkeypatch):
     """Een titel is tekst van het model, geen data (#211): een getal dat alleen daarin staat, blijft een harde
-    fout in de controle van het rapport (#175, #515), en het rapport wordt geweigerd."""
-    titel = "Mbo-studenten per provincie, samen 98765"
-    sessie["turns"] = [_kaartbeurt({**_KAART, "title": titel})]
+    fout in de controle van het rapport (#175, #515), en het rapport wordt geweigerd. De prompt noemt de titel wel,
+    om de figuur te herkennen (#993), maar het bewijs van de figuur zijn haar waarden, zonder titel."""
+    figuur_id = figuur_in_gesprek(sessie, TOOL_CREATE_CHOROPLETH_MAP, {**_KAART, "title": "Per provincie, samen 98765"})
     antwoord = json.loads(_ANTWOORD) | {"conclusie": "Samen zijn er 98765 mbo-studenten in deze provincies."}
-    prompts: list[str] = []
-    harde_problemen: list[list[str]] = []
 
-    async def loop(messages, *, on_tool_result, check, **_):
-        prompts.append(messages[0]["content"])
-        # Het rapport tekent de kaart met de kolommen uit de kaartregel en een eigen titel.
-        melding, figuur = create_choropleth_map(
-            data_key=_KEY, location_col="PROVINCIE", value_col="AANTAL", title="Mbo-studenten per provincie"
-        )
-        call = ToolCall(id="k", name=TOOL_CREATE_CHOROPLETH_MAP, arguments="{}", args={"data_key": _KEY})
-        await on_tool_result(call, melding, figuur)
-        problemen = check(json.dumps(antwoord), [melding])
-        harde_problemen.append(harde(problemen))
-        return LoopResult(text=json.dumps(antwoord), problems=problemen)
+    fout, _, harde_problemen = _rapport(sessie, monkeypatch, antwoord=json.dumps(antwoord), figuren=(figuur_id,))
 
-    monkeypatch.setattr(report, "tool_loop", loop)
-    with pytest.raises(report.RapportGeweigerd):
-        asyncio.run(report.generate(sessie, _stil))
-
-    assert "98765" not in prompts[0]
-    assert any("98.765" in str(p) for p in harde_problemen[0])
+    assert isinstance(fout, report.RapportGeweigerd)
+    assert any("98.765" in str(p) for p in harde_problemen)
 
 
-def test_een_kaartaanroep_die_niets_tekende_komt_niet_in_de_prompt(sessie):
-    """De beurt bewaart wat het model vroeg, ook een geweigerde aanroep; alleen een kaart met een figuur telt."""
-    mislukt = {**_KAART, "value_col": "BESTAAT_NIET"}
-    sessie["turns"] = [_kaartbeurt(mislukt)]
-    assert sessie["turns"][0]["figures"] == []
-    assert kaarten_in_gesprek(sessie) == {}
+def test_een_kaart_die_het_rapportmodel_toch_aanroept_komt_niet_in_het_rapport(sessie, monkeypatch):
+    """Het model heeft geen kaarttool; noemt het er toch een (de loop voert elke naam uit), dan valt de figuur weg."""
 
-
-def test_naast_een_mislukte_aanroep_telt_de_kaart_die_wel_tekende(sessie):
-    gelukt = _kaartbeurt(_KAART)
-    mislukt = _kaartbeurt({**_KAART, "value_col": "BESTAAT_NIET"})
-    sessie["turns"] = [{**gelukt, "tool_calls": [*gelukt["tool_calls"], *mislukt["tool_calls"]]}]
-    assert kaarten_in_gesprek(sessie)[_KEY]["value_col"] == "AANTAL"
-
-
-def test_de_kaart_van_de_rapportrun_komt_als_kaart_in_het_rapport(sessie, monkeypatch):
-    meldingen: list[str] = []
-    harde_problemen: list[list[str]] = []
-
-    async def loop(messages, *, on_tool_result, check, **_):
+    async def loop(messages, *, on_tool_result, **_):
         melding, figuur = create_choropleth_map(
             data_key=_KEY, location_col="PROVINCIE", value_col="AANTAL", title=_KAART["title"]
         )
-        assert figuur is not None
-        meldingen.append(melding)
         call = ToolCall(id="k", name=TOOL_CREATE_CHOROPLETH_MAP, arguments=json.dumps(_KAART), args=dict(_KAART))
         await on_tool_result(call, melding, figuur)
-        # De controle van de rapportrun zelf, met haar eigen bronnen.
-        problemen = check(_ANTWOORD, [melding])
-        harde_problemen.append(harde(problemen))
-        return LoopResult(text=_ANTWOORD, problems=problemen)
+        return LoopResult(text=json.dumps(json.loads(_ANTWOORD) | {"visualisaties": []}))
 
     monkeypatch.setattr(report, "tool_loop", loop)
     spec = asyncio.run(report.generate(sessie, _stil))
 
-    assert 1 <= len(spec.visualisaties) <= report._MAX_VISUALISATIES
-    figuur = json.loads(spec.visualisaties[0]["figure_json"])
-    assert [t["type"] for t in figuur["data"]] == ["choroplethmap"]
-    assert sorted(figuur["data"][0]["locations"]) == sorted(_PROVINCIES)
-    assert harde_problemen == [[]]
-    # Ook op de uiteindelijke spec, met de toolmelding en de datasetcontext als bron (zoals generate ze geeft).
-    bronnen = [*meldingen, json.dumps(build_dataset_context(sessie), default=str)]
-    figuren = [v["figure_json"] for v in spec.visualisaties]
-    assert harde(report_problems(spec, figuren, bronnen)) == []
+    assert spec.visualisaties == []
 
 
 async def _stil(event):

@@ -40,6 +40,12 @@ describe('termijnen in de teksten (#835)', () => {
     expect(tekst()).toContain('Een sessie duurt 8 uur en wordt bij gebruik verlengd tot ten hoogste 24 uur')
   })
 
+  it('noemt de drie login-cookies van SRAM, zoals docs/privacy.md (#1041)', async () => {
+    await render(createElement(PrivacyInhoud))
+    expect(tekst()).toContain('drie cookies met eenmalige waarden van die login (OIDC-state, nonce en PKCE-verifier, hoogstens 10 minuten)')
+    expect(tekst()).not.toContain('kort een cookie')
+  })
+
   it('volgt de termijnen uit /api/config in de privacytekst', async () => {
     zetTermijnen({ bewaartermijn_gesprekken_dagen: 30, bewaartermijn_rapporten_dagen: 180, sessie_uren: 2, sessie_max_uren: 12.5 })
     await render(createElement(PrivacyInhoud))

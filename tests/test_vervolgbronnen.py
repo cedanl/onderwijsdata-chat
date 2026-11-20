@@ -451,7 +451,9 @@ def _bewaard_koppelgesprek(monkeypatch) -> list[dict]:
         {"id": 1, "role": "user", "content": vraag, "done": True},
         {"id": 2, "role": "assistant", "content": einde["content"], "done": True},
     ]
-    put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
+    put_route.upsert_conversation(
+        "c1", put_route.ConversationUpsert(title="HU", timestamp=1, messages=berichten), "alice"
+    )
     return berichten
 
 

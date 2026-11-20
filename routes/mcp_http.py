@@ -27,6 +27,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -117,6 +118,11 @@ async def _weiger(
     await JSONResponse({"detail": detail}, status_code=status, headers=koppen)(scope, receive, send)
 
 
+def mcp_aan() -> bool:
+    """Of /mcp bestaat: alleen aan of uit, zonder iets over de sleutels (voor /version, audit L-07)."""
+    return bool(MCP_API_KEYS)
+
+
 class McpEindpunt:
     """De ASGI-app achter /mcp. Eén per app: server.create_app maakt hem en zet `draai()` in de lifespan.
 
@@ -155,7 +161,12 @@ class McpEindpunt:
     async def draai(self) -> AsyncGenerator[None]:
         """De sessiemanager voor de duur van de app; zonder sleutels geen manager en één logregel waarom."""
         if not self._sleutels:
-            logger.info("MCP uit: MCP_API_KEYS is leeg, /mcp geeft 404")
+            # APP_URL zet alleen een omgeving die /mcp aanbiedt (test, #941): daar is een lege sleutellijst een fout in de
+            # uitrol, geen keuze, en die moet in de logs opvallen (audit L-07).
+            if os.getenv("APP_URL"):
+                logger.warning("MCP uit terwijl APP_URL gezet is: MCP_API_KEYS is leeg, /mcp geeft 404 (docs/mcp.md)")
+            else:
+                logger.info("MCP uit: MCP_API_KEYS is leeg, /mcp geeft 404")
             yield
             return
         # Elke start een nieuwe manager: die van de SDK draait maar één keer, en een app kan vaker starten (tests).

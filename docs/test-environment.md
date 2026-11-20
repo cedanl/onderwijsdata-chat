@@ -30,6 +30,9 @@ Afspraken voor de gedeelde testomgeving (#488, privacy H2):
   alleen eigen werk en ruimt alleen eigen werk op. De beheerder voegt accounts toe aan `CHAT_USERS` in
   `manifests/test/secret_orig.yaml`, versleutelt met SOPS en pusht; Flux rolt de pod opnieuw uit (zie `Agents.md`,
   Secrets & Security). Het account `demo` blijft voor het team en voor demo's; metingen doe je niet op `demo`.
+- **Tokenbudget op test.** Elk account heeft op test een ruimer budget dan de standaard: 6 mln per dag en 60 mln per
+  maand in plaats van 1,5 en 15 mln (`TOKENBUDGET_DAG`, `TOKENBUDGET_MAAND` in `manifests/test/values.yaml`, #678, #1066),
+  omdat `demo` door het team, demo's en live audits gedeeld wordt. Playground en productie houden de standaard.
 - **Geen persoonsgegevens in de testomgeving**, ook geen dummy-BSN of fictief e-mailadres in een vraag: de vraag gaat
   naar de externe AI-dienst en wordt bewaard. De app waarschuwt bij een BSN, e-mailadres of telefoonnummer, maar
   blokkeert niet.

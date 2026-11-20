@@ -18,7 +18,7 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import foutmeldingen
+from core import bronstatus, config, foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
@@ -43,6 +43,7 @@ from auth.oidc import is_oidc_configured
 from persistence import db as persistence_db
 from routes import (
     auth_router,
+    bronstatus_router,
     chat_router,
     config_router,
     data_export_router,
@@ -53,7 +54,7 @@ from routes import (
     rapport_docx_router,
 )
 from routes.mcp_http import PAD as MCP_PAD
-from routes.mcp_http import McpEindpunt
+from routes.mcp_http import McpEindpunt, mcp_aan
 
 # Initialize database
 try:
@@ -170,6 +171,8 @@ async def version() -> dict:
         "catalogus_digest": await asyncio.to_thread(catalogusdigest),
         # Periode uit de statische riodata-records, zonder download (CH-46).
         "arbeidsmarkt": arbeidsmarktversie(),
+        # Of /mcp aan staat (MCP_API_KEYS gezet), zodat een deploy dat zonder sleutel te controleren is (#941, L-07).
+        "mcp": mcp_aan(),
     }
 
 
@@ -220,7 +223,7 @@ def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsync
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         await on_startup()
         try:
-            async with mcp.draai():
+            async with bronstatus.bewaking(config.BRONSTATUS_INTERVAL_S), mcp.draai():
                 yield
         finally:
             await on_shutdown()
@@ -232,6 +235,7 @@ def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsync
 
 _ROUTERS = (
     config_router,
+    bronstatus_router,
     feedback_router,
     auth_router,
     persistence_router,

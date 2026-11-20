@@ -17,16 +17,23 @@ import json
 import pandas as pd
 import pytest
 
-from agent import beurtbewijs, rapportselectie, report
+from agent import beurtbewijs, figuurstappen, rapportselectie, report
 from agent.loop import LoopResult, ToolCall
-from agent.rapportselectie import LEGE_SELECTIE, VEROUDERDE_SELECTIE, beperk, beurten_met_data, kies
+from agent.rapportselectie import LEGE_SELECTIE, VEROUDERDE_SELECTIE, Keuze, beperk, beurten_met_data, kies
 from agent.report import RapportGeweigerd
 from agent.session_data import gebruikersvragen, record_data_key, record_rekenbewijs
 from core.errors import Gebruikersfout
 from routes import chat
 from tools import store
 from tools.kpi import compute_kpi
-from tools.schemas import TOOL_COMPUTE_KPI, TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_QUERY_DATA
+from tools.schemas import (
+    TOOL_COMPUTE_KPI,
+    TOOL_CREATE_PLOT,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+)
 from tools.store import KeyMeta
 
 _UU = "duo:p01hoinges:3"
@@ -153,7 +160,6 @@ def _rijen(sessie: dict) -> dict[str, dict]:
             rijen[beurtbewijs.tekst_hash(bericht["content"])] = {
                 "lineage": {k: sessie["data_provenance"][k] for k in keys},
                 "rekenbewijs": [],
-                "kaarten": {},
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
     return rijen
@@ -170,7 +176,7 @@ def test_een_heropend_gesprek_zonder_bewijs_per_beurt_valt_terug_op_het_huidige_
 
     assert heropend["data_keys"] == sessie["data_keys"]
     assert beurten_met_data(heropend) == []
-    assert kies(heropend, None) is None
+    assert kies(heropend, None) == Keuze()
     with pytest.raises(Gebruikersfout, match=VEROUDERDE_SELECTIE):
         kies(heropend, [1])
 
@@ -179,13 +185,15 @@ def test_een_heropend_gesprek_zonder_bewijs_per_beurt_valt_terug_op_het_huidige_
 
 
 def test_zonder_selectie_of_met_alles_aan_blijft_het_rapport_zoals_het_was(sessie):
-    assert kies(sessie, None) is None
-    assert kies(sessie, [1, 2, 3]) is None
-    assert kies(sessie, [3, 3, 2, 1]) is None
+    assert kies(sessie, None) == Keuze(None, ())
+    assert kies(sessie, [1, 2, 3]) == Keuze(None, ())
+    assert kies(sessie, [3, 3, 2, 1]) == Keuze(None, ())
+    # Een oudere client stuurt geen figuren; een lege lijst is hetzelfde: geen figuren in het rapport (#993).
+    assert kies(sessie, [1, 2, 3], []) == Keuze(None, ())
 
 
 def test_een_deel_van_de_beurten_is_een_selectie(sessie):
-    assert kies(sessie, [3, 1]) == frozenset({1, 3})
+    assert kies(sessie, [3, 1]) == Keuze(frozenset({1, 3}))
 
 
 def test_een_selectie_die_niets_overlaat_wordt_geweigerd_met_de_reden(sessie):
@@ -240,13 +248,6 @@ def test_rekenbewijs_zonder_herleidbare_key_gaat_niet_mee_bij_een_selectie(sessi
     record_rekenbewijs(sessie, json.dumps({"raw": 7}), {"name": TOOL_COMPUTE_KPI, "arguments": {}})
 
     assert len(beperk(sessie, frozenset({1, 3}))["rekenbewijs"]) == 1
-
-
-def test_een_kaart_van_een_uitgezette_beurt_valt_weg(sessie):
-    sessie["kaarten"] = {_CBS: {"data_key": _CBS, "location_col": "REGIO", "value_col": "AANTAL"}}
-
-    assert beperk(sessie, frozenset({1, 3}))["kaarten"] == {}
-    assert _CBS in beperk(sessie, frozenset({1, 2}))["kaarten"]
 
 
 def test_de_weergave_neemt_alleen_de_velden_van_het_rapport_mee(sessie):
@@ -381,3 +382,103 @@ def test_de_dataversie_van_het_rapport_noemt_geen_uitgezette_bron(sessie, monkey
     spec, _ = _rapport(sessie, monkeypatch, beurten=frozenset({2}))
 
     assert _datasets_in(spec) == {"83285NED"}
+
+
+# ── Figuren uit het gesprek (#993) ───────────────────────────────────────────
+
+
+def _stap(naam: str, tool: str, keys: list[str], titel: str = "") -> dict:
+    return {"id": naam, "tool": tool, "arguments": {"data_key": keys[0]}, "titel": titel, "keys": keys}
+
+
+@pytest.fixture
+def met_figuren(sessie):
+    """Beurt 1 tekende een lijn; beurt 4 ("maak er staven van") tekende zonder nieuwe data een staafgrafiek van de
+    data van beurt 1; beurt 3 draaide een script op de vrouwen dat ook het CBS-rendement van beurt 2 las."""
+    figuurstappen.voeg_toe(
+        sessie,
+        [
+            _stap("lijn", TOOL_CREATE_PLOT, [_UU], "Inschrijvingen UU"),
+            _stap("script", TOOL_RUN_ANALYSIS, [_VROUW, "analysis:abc", _CBS], "Vrouwen en rendement"),
+            _stap("staaf", TOOL_CREATE_PLOT, [_UU], ""),
+        ],
+    )
+    return sessie
+
+
+def test_de_checklist_noemt_de_figuren_bij_de_beurt_van_hun_data(met_figuren):
+    items = beurten_met_data(met_figuren)
+
+    assert [i["figuren"] for i in items] == [
+        [
+            {"id": "lijn", "titel": "Inschrijvingen UU", "beurten": [1]},
+            {"id": "staaf", "titel": rapportselectie.ZONDER_TITEL, "beurten": [1]},
+        ],
+        [],
+        # Het script staat bij beurt 3 (de vrouwen) en las ook het CBS-rendement van beurt 2 (#1045).
+        [{"id": "script", "titel": "Vrouwen en rendement", "beurten": [2, 3]}],
+    ]
+
+
+def test_een_figuur_noemt_alle_beurten_die_ze_meetrekt(sessie):
+    """#1045: een figuur op de data van beurt 1 en 2 noemt beide, gesorteerd, zodat de app ze aanvinkt; dat zijn de
+    beurten die `kies` meetrekt."""
+    figuurstappen.voeg_toe(sessie, [_stap("samen", TOOL_RUN_ANALYSIS, [_CBS, "analysis:def", _UU], "UU naast CBS")])
+
+    [figuur] = [f for i in beurten_met_data(sessie) for f in i["figuren"]]
+
+    assert figuur == {"id": "samen", "titel": "UU naast CBS", "beurten": [1, 2]}
+    assert kies(sessie, [], ["samen"]).beurten == frozenset(figuur["beurten"])
+
+
+def test_een_figuur_zonder_beurt_staat_niet_in_de_checklist(sessie):
+    figuurstappen.voeg_toe(sessie, [_stap("los", TOOL_CREATE_PLOT, ["onbekend:key"])])
+
+    assert all(i["figuren"] == [] for i in beurten_met_data(sessie))
+
+
+def test_een_gekozen_figuur_trekt_haar_beurten_mee(met_figuren):
+    assert kies(met_figuren, [1], ["lijn"]) == Keuze(frozenset({1}), ("lijn",))
+    # Het script rust op beurt 3 en las de data van beurt 2: beide gaan mee.
+    assert kies(met_figuren, [1], ["script"]) == Keuze(None, ("script",))
+    assert kies(met_figuren, [2], ["script"]) == Keuze(frozenset({2, 3}), ("script",))
+    # Ook als de client de beurt van de figuur leeg liet.
+    assert kies(met_figuren, [], ["lijn"]) == Keuze(frozenset({1}), ("lijn",))
+
+
+def test_figuren_zonder_beurten_gaan_ook_mee(met_figuren):
+    """Een API-client zonder beurtenlijst: het hele gesprek, met de gekozen figuren."""
+    assert kies(met_figuren, None, ["staaf", "lijn"]) == Keuze(None, ("staaf", "lijn"))
+
+
+@pytest.mark.parametrize(
+    ("figuren", "melding"),
+    [
+        (["bestaat-niet"], VEROUDERDE_SELECTIE),
+        ("lijn", VEROUDERDE_SELECTIE),
+        ([1], VEROUDERDE_SELECTIE),
+        ([None], VEROUDERDE_SELECTIE),
+        (["lijn", "lijn"], VEROUDERDE_SELECTIE),
+        (["a", "b", "c", "d", "e"], rapportselectie.TE_VEEL_FIGUREN),
+    ],
+    ids=repr,
+)
+def test_een_onbekende_of_misvormde_figuurkeuze_wordt_geweigerd(met_figuren, figuren, melding):
+    with pytest.raises(Gebruikersfout) as fout:
+        kies(met_figuren, [1, 2, 3], figuren)
+
+    assert str(fout.value) == melding
+
+
+def test_een_figuurkeuze_bij_een_gesprek_zonder_checklist_wordt_geweigerd(met_figuren):
+    del met_figuren["data_vraag"][_CBS]
+
+    with pytest.raises(Gebruikersfout, match=VEROUDERDE_SELECTIE):
+        kies(met_figuren, None, ["lijn"])
+
+
+def test_de_weergave_houdt_alleen_de_figuren_van_de_gekozen_beurten(met_figuren):
+    assert [s["id"] for s in beperk(met_figuren, frozenset({1}))["figuurstappen"]] == ["lijn", "staaf"]
+    assert [s["id"] for s in beperk(met_figuren, frozenset({2, 3}))["figuurstappen"]] == ["script"]
+    # Het script las ook beurt 2: zonder die beurt gaat het niet mee.
+    assert [s["id"] for s in beperk(met_figuren, frozenset({1, 3}))["figuurstappen"]] == ["lijn", "staaf"]

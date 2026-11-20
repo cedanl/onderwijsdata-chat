@@ -10,6 +10,7 @@ instead of three times.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
@@ -18,6 +19,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from core import tokenbudget
 from core.config import MAX_TOKENS
 from core.errors import log_interne_fout
 from core.geheugen import rss_mb
@@ -495,6 +497,9 @@ async def tool_loop(
         result.partial_error = str(exc)
     finally:
         _log_tokens(model, result)
+        # Dezelfde tokens tellen mee voor het budget van de gebruiker (#678); een databasefout breekt de run niet.
+        with contextlib.suppress(Exception):
+            await asyncio.to_thread(tokenbudget.boek, result.tokens)
     return result
 
 

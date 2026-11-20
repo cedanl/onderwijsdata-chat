@@ -42,5 +42,5 @@ describe('de meegeleverde basiskaart', () => {
     const require = createRequire(import.meta.url)
     const { topojson } = require('plotly.js/dist/plotly-geo-assets.js')
     expect(europe50m).toEqual(topojson.europe_50m)
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 })

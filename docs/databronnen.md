@@ -183,15 +183,15 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 | Dataset | Wat | Periode |
 |---------|-----|---------|
 | `85566NED` (CBS) | Doorstroom en uitstroom uit vo en vso | 2015/'16 naar 2016/'17 t/m 2022/'23 naar 2023/'24 |
-| `85380NED` (CBS) | Vo-leerlingen per onderwijssoort, leerjaar en woonregio | 2021/'22-2025/'26 |
-| `85379NED` (CBS) | Vo-leerlingen per onderwijssoort in detail (vmbo-leerweg), leerjaar en herkomst | 2020/'21-2025/'26 |
+| `85380NED` (CBS) | Vo-leerlingen per onderwijssoort, leerjaar en woonregio (landsdeel, provincie en de vier grootste gemeenten, geen gemeenteniveau) | 2011/'12-2025/'26 |
+| `85379NED` (CBS) | Vo-leerlingen per onderwijssoort in detail (vmbo-leerweg), leerjaar en herkomst | 2011/'12-2025/'26 |
 | `85381NED` (CBS) | Vo-gediplomeerden naar onderwijssoort en herkomst | 2011/'12-2024/'25 |
-| `85382NED` (CBS) | Vo-gediplomeerden naar woonregio | 2011/'12-2024/'25 |
+| `85382NED` (CBS) | Vo-gediplomeerden naar woonregio (landsdeel, provincie en de vier grootste gemeenten, geen gemeenteniveau) | 2011/'12-2024/'25 |
 | `85534NED` (CBS) | Vo-cohorten: hoogst behaald diploma en onderwijspositie op een later peilmoment | startjaren 2008-2018 (even jaren) |
 | `85328NED` (CBS) | Vavo-gediplomeerden naar onderwijssoort | 2006/'07-2024/'25 |
 | `85329NED` (CBS) | Vavo-deelnemers naar onderwijssoort | 2006/'07-2025/'26 |
 | `85948NED` (CBS) | Terugkeer in het onderwijs van voortijdig schoolverlaters uit vo en mbo | 2007/'08-2021/'22 |
-| `voprognoses` (DUO) | Leerlingenprognose vo per instelling | 2024-2030 |
+| `voprognoses` (DUO) | Leerlingenprognose vo per instelling, onderwijsniveau en jaar (geen leerjaar) | 2024-2043 |
 
 - **Alleen bij een vraag over vervolgonderwijs.** De zoekfunctie toont deze tien alleen als de vraag van de gebruiker het hoger onderwijs noemt (hbo, wo, ho, hoger onderwijs, hogeschool, universiteit), of een vo-niveau (vmbo, havo, vwo, vo, vavo, voortgezet onderwijs, middelbare school, havisten) samen met het mbo, een doorstroomwoord (doorstroom, stromen door, uitstroom, vervolgonderwijs, vervolgopleiding, na het examen, na hun diploma) of een instroomwoord (instroom, eerstejaars, aankomende, toekomstige of potentiële studenten: de bovenbouw als voorspeller van de ho-instroom, #1039; instroom binnen het vo zoals "instroom in de havo" of "eerstejaars op het vwo" telt niet), of voortijdig schoolverlaters die terugkeren in het onderwijs. Code beslist dat (`ho_markers.opent_vo_context`), op de vraag van de gebruiker (bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent), niet op de zoekterm die het model meegeeft. Een keuze op een kaart uit code telt niet mee: "Landelijk: mbo, hbo en wo samen" op de afbakeningskaart is tekst van code en opent de poort niet (#968). Buiten de chat (MCP) is er geen gebruikersvraag en beslist de zoekterm. Zie [`search_catalog`](tools.md#search_catalog).
 - **Voorbeelden.** Wel: "Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havo-leerlingen heen na hun diploma?", "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?". Niet: "Hoeveel leerlingen zitten er op het vwo in Utrecht?" (een losse vo-vraag krijgt de vaste scope-uitleg) en "Hoeveel mbo-studenten per instelling?" (het mbo zonder vo-niveau).
@@ -561,9 +561,19 @@ duaal) zijn het er ruim 4.400.
   geen reeks met CBS StatLine.
 - **Koppelen:** `brin` is de instellingscode van RIO en DUO, `croho` de opleidingscode van RIO en DUO; daarmee vind je
   dezelfde opleiding in de DUO-bestanden en in RIO. `studiecode` is de landelijke studie van LCSK: meestal gelijk aan
-  de CROHO-code, maar niet altijd (samengevoegde studies). Koppel daarom op `croho`, niet op `studiecode`. `brin` en
-  `croho` zijn canonieke sleutels van `onderwijsbronnen.sleutels` (#958): het catalogusrecord noemt ze als
-  `koppelbaar_via`, en `relatie` noemt een SKDB-tabel en een DUO-tabel zo als koppelkandidaten.
+  de CROHO-code, maar niet altijd (samengevoegde studies; bij 20 hbo-opleidingen wijkt ze af, niet bij ICT, #1015).
+  Koppel daarom op `croho`, niet op `studiecode`. `brin` en `croho` zijn canonieke sleutels van
+  `onderwijsbronnen.sleutels` (#958): het catalogusrecord noemt ze als `koppelbaar_via`, en `relatie` noemt een
+  SKDB-tabel en een DUO-tabel zo als koppelkandidaten.
+- **Komend studiejaar tegenover het vorige (#1015, #1060):** de SKDB toont het aanbod van het komende studiejaar, DUO
+  telt het vorige (peildatum 1 oktober). Een opleiding die na die peildatum begint, staat dus eerst alleen in de SKDB.
+  Bij Avans (07GR) begint HBO-ICT (30020) op 1-9-2026 als opvolger van Informatica (34479, laatste instroom
+  1-9-2025); de SKDB zette de oude Informatica-records al om naar 30020, DUO 2025 telt 34479 (928) en Technische
+  Informatica (34475, 206), en geen 30020. Zuyd heeft hetzelfde patroon bij Technische Informatica (34475) in
+  Maastricht. `koppel_data` geeft zo'n rij daarom niet als "geen DUO-rij": de reden komt uit de onderwijslicenties van
+  RIO ("nieuw per 1-9-2026, nog niet in DUO 2025"), met de voorgangers en hun eigen DUO-aantal erbij, nooit opgeteld
+  (zie `koppel_data` in `docs/tools.md`). De koppeling blijft brin + CROHO, zonder naamkoppeling of handmatige mapping:
+  die veroudert met DUO 2026 en telt dan dubbel.
 - **Schema en wat de chat ermee kan (#978):** de export beschrijft zichzelf in `exporttabellen` (45 tabellen) en
   `exportkolommen` (639 kolommen). `onderwijsbronnen.skdb.schema` bouwt daaruit per tabel de omschrijving, de kolommen
   met type, de korrel (de parameters van het endpoint, zoals instelling × vestiging × product bij `tracks`), de

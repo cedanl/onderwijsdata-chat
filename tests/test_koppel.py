@@ -7,6 +7,7 @@ DUO-rij, Capabel zonder oordeel). Er staat geen data van LCSK in de repo: de get
 """
 
 import json
+from itertools import product
 
 import pandas as pd
 import pytest
@@ -15,7 +16,7 @@ from onderwijsbronnen.skdb import proefbestand
 
 import tools
 from data import instellingen
-from tools import herlaad, koppel, relaties, snippet, store, studiekeuze
+from tools import herlaad, koppel, periode, relaties, snippet, store, studiekeuze
 from tools.analysis import run_analysis
 from tools.csv_export import export_key, naar_csv
 from tools.outcome import outcome
@@ -251,35 +252,289 @@ def test_one_to_one_zonder_korrelwaarschuwing():
     assert "dataset_profiel" not in uit.get("waarschuwing", "")
 
 
-def test_veel_op_veel_geeft_een_waarschuwing_over_herhaalde_waarden():
-    """DUO per opleiding en vorm tegen SKDB per opleiding en vorm, op alleen croho: elke rij herhaalt de andere kant."""
+def test_een_op_veel_geeft_een_waarschuwing_over_herhaalde_waarden():
+    """SKDB per opleiding en vorm tegen DUO per opleiding, op croho: elke SKDB-rij herhaalt de DUO-waarde."""
     store.put(_SKDB, pd.DataFrame({"croho": [30020, 30020], "vorm": ["voltijd", "deeltijd"]}), _SKDB_META)
-    duo_df = pd.DataFrame({"OPLEIDINGSCODE_ACTUEEL": [30020, 30020], "AANTAL": [100, 20]})
-    store.put(_DUO, duo_df, _DUO_META)
+    store.put(_DUO, pd.DataFrame({"OPLEIDINGSCODE_ACTUEEL": [30020], "AANTAL": [120]}), _DUO_META)
     uit = _koppel()
-    assert uit["korrel"]["koppeling"] == "many_to_many"
+    assert uit["korrel"]["koppeling"] == "many_to_one" and uit["kardinaliteit"] == "n:1"
     assert "herhaald" in uit["waarschuwing"] and "dataset_profiel" in uit["waarschuwing"]
     # De route naar de koppelkorrel (#1017): eerst per sleutel aggregeren met query_data, dan koppelen.
     assert "query_data" in uit["waarschuwing"] and "weighted_mean" in uit["waarschuwing"]
     assert "sum voor aantallen" in uit["waarschuwing"]
-    assert len(store.get(uit["data_key"])) == 4
+    assert len(store.get(uit["data_key"])) == 2
+
+
+# --- Veel-op-veel: altijd weigeren, met de korrelkolommen (#1031) ----------------------------------------------------
+
+
+def _veel_op_veel_per_vorm() -> None:
+    """SKDB per opleiding en vorm, DUO per opleiding met twee rijen: op croho is 30020 aan beide kanten dubbel."""
+    store.put(_SKDB, pd.DataFrame({"croho": [30020, 30020], "vorm": ["voltijd", "deeltijd"]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"OPLEIDINGSCODE_ACTUEEL": [30020, 30020], "AANTAL": [100, 20]}), _DUO_META)
+
+
+def test_een_kleine_veel_op_veel_koppeling_wordt_geweigerd_en_laat_niets_achter():
+    _veel_op_veel_per_vorm()
+    voor = store.list_keys()
+    uit = _koppel()
+    assert "data_key" not in uit and "rijen" not in uit
+    assert uit["verwachte_rijen"] == 4 and uit["nm_waarden"] == 1 and uit["kardinaliteit"] == "n:m"
+    assert uit["korrel_kolommen"] == {"SKDB": ["vorm"], "DUO": ["AANTAL"]}
+    assert "Er is niets gekoppeld" in uit["melding"] and "n:m" in uit["melding"]
+    assert store.list_keys() == voor
+
+
+def test_de_n_m_weigering_gaat_voor_de_grenzen(monkeypatch):
+    """Ook onder (of boven) MAX_RIJEN en MAX_CELLEN: n:m is de melding, niet de grens."""
+    _veel_op_veel_per_vorm()
+    monkeypatch.setattr(koppel, "MAX_RIJEN", 1)
+    monkeypatch.setattr(koppel, "MAX_CELLEN", 1)
+    uit = _koppel()
+    assert "nm_waarden" in uit and "verwachte_cellen" not in uit and "korrel" not in uit
+    assert "veel-op-veel" in uit["melding"] and "cellen" not in uit["melding"]
+
+
+def test_een_groot_kruisproduct_wordt_als_n_m_geweigerd():
+    """1500 x 1500 rijen op één brin: geweigerd als n:m, met de telling vooraf, zonder de join te maken."""
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW"] * 1500, "x": range(1500)}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"] * 1500, "AANTAL": range(1500)}), _DUO_META)
+    voor = store.list_keys()
+    uit = _koppel(sleutels=["brin"])
+    assert uit["verwachte_rijen"] == 2_250_000 and uit["nm_waarden"] == 1
+    assert "query_data" in uit["melding"] and str(koppel.MAX_RIJEN) not in uit["melding"]
+    assert store.list_keys() == voor
+
+
+def test_een_lege_sleutel_telt_niet_mee_voor_n_m():
+    """Twee lege sleutels per kant matchen niet: geen n:m, ze staan erin met hun eigen status."""
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW", None, None], "x": [1, 2, 3]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW", None, ""], "AANTAL": [5, 7, 9]}), _DUO_META)
+    uit = _koppel(sleutels=["brin"])
+    assert uit["kardinaliteit"] == "1:1" and uit["zonder_sleutel"] == {"SKDB": 2, "DUO": 2}
+
+
+def _uniek(df: pd.DataFrame, sleutelkolom: str, korrel: list[str]) -> bool:
+    return not df.duplicated(subset=[sleutelkolom, *korrel]).any()
+
+
+def test_de_korrelkolommen_maken_elke_rij_uniek_en_zijn_minimaal():
+    """Per brin vier rijen: geen kolom alleen maakt ze uniek (vorm en fase herhalen, naam is per brin gelijk), het paar
+    vorm + fase wel."""
+    skdb_df = pd.DataFrame(
+        {
+            "brin": ["25DW"] * 4 + ["21PD"] * 4,
+            "naam": ["HU"] * 4 + ["Hogeschool Rotterdam"] * 4,
+            "vorm": ["voltijd", "voltijd", "deeltijd", "deeltijd"] * 2,
+            "fase": ["bachelor", "master"] * 4,
+        }
+    )
+    store.put(_SKDB, skdb_df, _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW", "25DW"], "GESLACHT": ["MAN", "VROUW"]}), _DUO_META)
+    uit = _koppel(sleutels=["brin"])
+    korrel = uit["korrel_kolommen"]["SKDB"]
+    assert korrel == ["vorm", "fase"]
+    assert _uniek(skdb_df, "brin", korrel)
+    assert not any(_uniek(skdb_df, "brin", [k]) for k in ("naam", "vorm", "fase"))
+    assert uit["korrel_kolommen"]["DUO"] == ["GESLACHT"]
+
+
+def test_de_korrelkolommen_boven_twee_kolommen_zijn_gulzig_en_gesnoeid():
+    """Drie kolommen nodig (elk paar laat dubbelen): de zoeker vindt ze, zonder een overbodige vierde."""
+    rijen = [(a, b, c) for a in "xy" for b in "pq" for c in "uv"]
+    df = pd.DataFrame(rijen, columns=["a", "b", "c"]).assign(brin="25DW", vast="zelfde")
+    store.put(_SKDB, df, _SKDB_META)
+    store.put(_DUO, df.rename(columns={"brin": "INSTELLINGSCODE"}), _DUO_META)
+    uit = _koppel(sleutels=["brin"])
+    for label, tabel, sleutelkolom in (("SKDB", df, "brin"), ("DUO", df, "brin")):
+        korrel = uit["korrel_kolommen"][label]
+        assert sorted(korrel) == ["a", "b", "c"]
+        assert _uniek(tabel, sleutelkolom, korrel)
+        assert not any(_uniek(tabel, sleutelkolom, [k for k in korrel if k != weg]) for weg in korrel)
+
+
+def test_volledig_gelijke_rijen_geven_alleen_het_aggregatieadvies():
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW", "25DW"], "x": ["a", "a"]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW", "25DW"], "AANTAL": [5, 7]}), _DUO_META)
+    uit = _koppel(sleutels=["brin"])
+    assert uit["korrel_kolommen"]["SKDB"] == []
+    assert "volledig gelijk" in uit["melding"] and "query_data" in uit["melding"]
+    assert "Koppel ook op" not in uit["melding"]
+
+
+# Synthetische DUO-ho-tabellen in de vorm van p01hoinges:3 en p02ho1ejrs:3 (ingeschrevenen en eerstejaars met
+# opleidingsvorm): per instelling twee vestigingsgemeenten in één provincie.
+_P01, _P02 = "duo:p01hoinges:3", "duo:p02ho1ejrs:3"
+_P01_META = KeyMeta(bron="duo", dataset="p01hoinges", resource=3)
+_P02_META = KeyMeta(bron="duo", dataset="p02ho1ejrs", resource=3)
+_VESTIGINGEN = [
+    ("25DW", 344, "Utrecht", "Utrecht"),
+    ("25DW", 307, "Amersfoort", "Utrecht"),
+    ("21PD", 599, "Rotterdam", "Zuid-Holland"),
+    ("21PD", 518, "'s-Gravenhage", "Zuid-Holland"),
+]
+
+
+def _duo_ho(aantal: str, vestigingen=_VESTIGINGEN, jaren=(2023,)) -> pd.DataFrame:
+    rijen = [
+        {
+            "STUDIEJAAR": jaar,
+            "PROVINCIENAAM": provincie,
+            "GEMEENTENUMMER": gemeente,
+            "GEMEENTENAAM": gemeentenaam,
+            "SOORT_INSTELLING": "reguliere inst.",
+            "TYPE_HOGER_ONDERWIJS": "bachelor",
+            "INSTELLINGSCODE_ACTUEEL": brin,
+            "INSTELLINGSNAAM_ACTUEEL": f"Hogeschool {brin}",
+            "ONDERDEEL": "techniek",
+            "SUBONDERDEEL": "ict",
+            "OPLEIDINGSVORM": "voltijd",
+            aantal: 100 + i,
+        }
+        for i, (jaar, (brin, gemeente, gemeentenaam, provincie)) in enumerate(product(jaren, vestigingen))
+    ]
+    return periode.met_studiejaarlabel(pd.DataFrame(rijen))
+
+
+def _p01_en_p02(**extra) -> None:
+    store.put(_P01, _duo_ho("AANTAL_INGESCHREVENEN", **extra), _P01_META)
+    store.put(_P02, _duo_ho("AANTAL_EERSTEJAARS_INGESCHREVENEN", **extra), _P02_META)
+
+
+def test_p01_en_p02_op_brin_worden_geweigerd_met_koppel_ook_op_gemeente():
+    _p01_en_p02()
+    voor = store.list_keys()
+    uit = _koppel(_P01, _P02, sleutels=["brin"])
+    assert "data_key" not in uit and uit["nm_waarden"] == 2
+    assert uit["korrel_kolommen"] == {_P01: ["GEMEENTENUMMER"], _P02: ["GEMEENTENUMMER"]}
+    assert "Koppel ook op gemeente" in uit["melding"] and '["brin", "gemeente"]' in uit["melding"]
+    assert "relatie" in uit["melding"] and "Ook dan" not in uit["melding"]
+    assert store.list_keys() == voor
+
+
+def test_p01_en_p02_op_brin_en_gemeente_koppelen_een_op_een():
+    _p01_en_p02()
+    uit = _koppel(_P01, _P02, sleutels=["brin", "gemeente"])
+    assert uit["korrel"]["koppeling"] == "one_to_one" and uit["kardinaliteit"] == "1:1"
+    assert uit["telling"] == {"beide": 4}
+
+
+def _cbs_woonregio(geslachten=("T001038", "3000", "4000")) -> str:
+    """Synthetisch in de vorm van CBS 85701NED: leerlingen en studenten per woonprovincie, geslacht en onderwijssoort."""
+    key = "cbs:85701NED:synthetisch"
+    rijen = [
+        {"Geslacht": g, "Onderwijssoort": "T001074", "RegioS": regio, "Perioden": "2023SJ00", "Studenten_1": 1000.0 + i}
+        for i, (g, regio) in enumerate(product(geslachten, ["PV26", "PV28"]))
+    ]
+    store.put(key, pd.DataFrame(rijen), KeyMeta(bron="cbs", dataset="85701NED"))
+    return key
+
+
+def test_duo_en_cbs_per_provincie_worden_geweigerd_met_aggregeren_en_totaalcode():
+    store.put(_P01, _duo_ho("AANTAL_INGESCHREVENEN"), _P01_META)
+    cbs = _cbs_woonregio()
+    uit = _koppel(_P01, cbs, sleutels=["provincie"])
+    assert "data_key" not in uit and uit["nm_waarden"] == 2
+    assert uit["korrel_kolommen"] == {"DUO": ["GEMEENTENUMMER"], "CBS": ["Geslacht"]}
+    melding = uit["melding"]
+    assert "query_data" in melding and "group_by" in melding and "totaalcode" in melding and "CBS" in melding
+    assert "Koppel ook op" not in melding
+
+
+def test_een_hint_zonder_cbs_noemt_geen_totaalcode():
+    _veel_op_veel_per_vorm()
+    assert "totaalcode" not in _koppel()["melding"]
+
+
+# --- Kardinaliteit op de gedeelde waarden --------------------------------------------------------------------------
+
+
+def test_duo_tegen_het_cbs_totaal_is_n_op_1():
+    store.put(_P01, _duo_ho("AANTAL_INGESCHREVENEN"), _P01_META)
+    uit = _koppel(_P01, _cbs_woonregio(geslachten=("T001038",)), sleutels=["provincie"])
+    assert uit["kardinaliteit"] == "n:1" and uit["korrel"]["koppeling"] == "many_to_one"
+
+
+@pytest.mark.parametrize(
+    ("links", "rechts", "verwacht"), [(_SKDB, "rio:register:0", "n:1"), ("rio:register:0", _SKDB, "1:n")]
+)
+def test_een_per_instellingtabel_tegen_het_register(links, rechts, verwacht):
+    skdb_df = pd.DataFrame({"brin": ["25DW", "25DW", "21PD"], "croho": [30020, 34139, 30020]})
+    store.put(_SKDB, skdb_df, _SKDB_META)
+    register = pd.DataFrame({"INSTELLINGSCODE": ["25DW", "21PD", "07GR"], "naam": ["HU", "HR", "Avans"]})
+    store.put("rio:register:0", register, KeyMeta(bron="rio", dataset="register"))
+    assert _koppel(links, rechts, sleutels=["brin"])["kardinaliteit"] == verwacht
+
+
+def test_een_een_op_een_koppeling_heeft_kardinaliteit_1_op_1():
+    _ict()
+    assert _koppel(sleutels=["brin", "croho"])["kardinaliteit"] == "1:1"
+
+
+def test_dubbele_waarden_zonder_match_tellen_niet_voor_de_kardinaliteit():
+    """Een waarde die alleen links dubbel staat en rechts ontbreekt, maakt de koppeling niet n:1."""
+    store.put(_SKDB, pd.DataFrame({"brin": ["25DW", "07GR", "07GR"], "x": [1, 2, 3]}), _SKDB_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"], "AANTAL": [5]}), _DUO_META)
+    uit = _koppel(sleutels=["brin"])
+    assert uit["kardinaliteit"] == "1:1" and uit["korrel"]["koppeling"] == "many_to_one"
+
+
+# --- Een sleutel in een kolom en haar labelkolom (#1032) ----------------------------------------------------------
+
+_EEN_VESTIGING = [_VESTIGINGEN[0], _VESTIGINGEN[2]]
+
+
+def test_studiejaar_en_studiejaar_label_kiezen_de_bronkolom():
+    _p01_en_p02(vestigingen=_EEN_VESTIGING, jaren=(2022, 2023))
+    uit = _koppel(_P01, _P02, sleutels=["brin", "schooljaar"])
+    assert "melding" not in uit
+    assert uit["kolommen"][_P01]["schooljaar"] == "STUDIEJAAR" == uit["kolommen"][_P02]["schooljaar"]
+    assert uit["kardinaliteit"] == "1:1" and uit["telling"] == {"beide": 4}
+
+
+def test_een_opgegeven_labelkolom_blijft_gelden():
+    _p01_en_p02(vestigingen=_EEN_VESTIGING, jaren=(2022, 2023))
+    uit = _koppel(_P01, _P02, sleutels=["brin", "schooljaar"], kolommen_links={"schooljaar": "STUDIEJAAR_LABEL"})
+    assert uit["kolommen"][_P01]["schooljaar"] == "STUDIEJAAR_LABEL"
+
+
+def test_een_kolom_en_labelkolom_met_een_ander_jaar_blijven_dubbelzinnig():
+    _p01_en_p02(vestigingen=_EEN_VESTIGING, jaren=(2022, 2023))
+    afwijkend = store.get(_P01).copy()
+    afwijkend.loc[0, "STUDIEJAAR_LABEL"] = "2020/2021"
+    store.put(_P01, afwijkend, _P01_META)
+    voor = store.list_keys()
+    uit = _koppel(_P01, _P02, sleutels=["brin", "schooljaar"])
+    assert f"Sleutel schooljaar staat in {_P01} in meer kolommen" in uit["melding"]
+    assert uit["kandidaten"][_P01]["schooljaar"] == ["STUDIEJAAR", "STUDIEJAAR_LABEL"]
+    assert sorted(store.list_keys()) == sorted(voor)
+
+
+def test_lege_jaren_in_kolom_en_labelkolom_tellen_als_gelijk():
+    _p01_en_p02(vestigingen=_EEN_VESTIGING, jaren=(2022, 2023))
+    met_gat = store.get(_P01).copy()
+    met_gat.loc[0, ["STUDIEJAAR", "STUDIEJAAR_LABEL"]] = None
+    store.put(_P01, met_gat, _P01_META)
+    uit = _koppel(_P01, _P02, sleutels=["brin", "schooljaar"])
+    assert uit["kolommen"][_P01]["schooljaar"] == "STUDIEJAAR" and uit["zonder_sleutel"] == {_P01: 1}
 
 
 # --- Omvang: eerst tellen, dan koppelen (de join draait in het serverproces, niet in de sandbox) -------------------
 
 
-def _veel_op_veel(n: int) -> None:
-    """n rijen per kant, allemaal dezelfde brin: de outer join is een kruisproduct van n x n rijen."""
+def _een_op_veel(n: int) -> None:
+    """n rijen links, allemaal dezelfde brin, en één rij rechts: de outer join geeft n rijen (n:1)."""
     store.put(_SKDB, pd.DataFrame({"brin": ["25DW"] * n, "x": range(n)}), _SKDB_META)
-    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"] * n, "AANTAL": range(n)}), _DUO_META)
+    store.put(_DUO, pd.DataFrame({"INSTELLINGSCODE": ["25DW"], "AANTAL": [n]}), _DUO_META)
 
 
 def test_een_te_grote_koppeling_gaat_niet_door_en_laat_niets_achter():
-    _veel_op_veel(1500)
+    """Een n:1 boven MAX_RIJEN: de grensmelding van _te_groot, niet de n:m-melding."""
+    _een_op_veel(koppel.MAX_RIJEN + 1)
     voor = store.list_keys()
     uit = _koppel(sleutels=["brin"])
-    assert "data_key" not in uit and "rijen" not in uit
-    assert uit["verwachte_rijen"] == 2_250_000 and uit["korrel"] == "many_to_many"
+    assert "data_key" not in uit and "rijen" not in uit and "nm_waarden" not in uit
+    assert uit["verwachte_rijen"] == koppel.MAX_RIJEN + 1 and uit["korrel"] == "many_to_one"
     assert str(koppel.MAX_RIJEN) in uit["melding"] and "query_data" in uit["melding"]
     assert store.list_keys() == voor
 
@@ -291,7 +546,7 @@ def _sleutelloos() -> None:
 
 @pytest.mark.parametrize(
     ("vul", "sleutels"),
-    [(_hu, ["croho"]), (_ict, ["brin", "croho"]), (lambda: _veel_op_veel(4), ["brin"]), (_sleutelloos, ["brin"])],
+    [(_hu, ["croho"]), (_ict, ["brin", "croho"]), (lambda: _een_op_veel(4), ["brin"]), (_sleutelloos, ["brin"])],
 )
 def test_de_telling_vooraf_is_precies_het_aantal_rijen(monkeypatch, vul, sleutels):
     """De grens telt wat de join zou geven: precies op de grens gaat hij door, één rij eronder niet."""
@@ -304,22 +559,23 @@ def test_de_telling_vooraf_is_precies_het_aantal_rijen(monkeypatch, vul, sleutel
 
 
 def _breed(rijen: int, kolommen: int) -> None:
-    """Twee tabellen van `rijen` rijen op één brin, elk met `kolommen` tekstkolommen: onder de rijgrens, toch breed."""
+    """`rijen` rijen links op één brin tegen één rij rechts (n:1), elk met `kolommen` tekstkolommen: onder de
+    rijgrens, toch breed."""
     df = pd.DataFrame({"brin": ["25DW"] * rijen, **{f"c{i}": [f"tekst {i}"] * rijen for i in range(kolommen)}})
     store.put(_SKDB, df, _SKDB_META)
-    store.put(_DUO, df.copy(), _DUO_META)
+    store.put(_DUO, df.head(1).copy(), _DUO_META)
 
 
 def test_een_te_brede_koppeling_onder_de_rijgrens_gaat_niet_door_en_laat_niets_achter():
-    """#1011: 447 x 447 = 199.809 rijen (onder MAX_RIJEN) met 40 tekstkolommen per kant; weigeren vóór de join."""
-    _breed(447, 40)
+    """#1011: 60.000 rijen (onder MAX_RIJEN) met 40 tekstkolommen per kant, n:1; weigeren vóór de join."""
+    _breed(60_000, 40)
     voor = store.list_keys()
     uit = _koppel(sleutels=["brin"])
     assert "data_key" not in uit and "rijen" not in uit
-    assert uit["verwachte_rijen"] == 199_809 < koppel.MAX_RIJEN
-    assert uit["korrel"] == "many_to_many"
+    assert uit["verwachte_rijen"] == 60_000 < koppel.MAX_RIJEN
+    assert uit["korrel"] == "many_to_one"
     # brin één keer, per kant de eigen brin en c0..c39, plus koppelstatus
-    assert uit["verwachte_cellen"] == 199_809 * (1 + 41 + 41 + 1) > koppel.MAX_CELLEN
+    assert uit["verwachte_cellen"] == 60_000 * (1 + 41 + 41 + 1) > koppel.MAX_CELLEN
     melding = uit["melding"]
     assert str(koppel.MAX_CELLEN) in melding and str(uit["verwachte_cellen"]) in melding
     assert "niets gekoppeld" in melding and "query_data" in melding and "meer sleutels" in melding
@@ -331,7 +587,7 @@ def test_een_te_brede_koppeling_onder_de_rijgrens_gaat_niet_door_en_laat_niets_a
     [
         (_hu, ["croho"]),
         (_ict, ["brin", "croho"]),
-        (lambda: _veel_op_veel(4), ["brin"]),
+        (lambda: _een_op_veel(4), ["brin"]),
         (_sleutelloos, ["brin"]),
         (lambda: _breed(5, 3), ["brin"]),
     ],
@@ -347,9 +603,11 @@ def test_de_celtelling_vooraf_is_precies_rijen_maal_kolommen(monkeypatch, vul, s
     assert "data_key" not in uit and uit["verwachte_cellen"] == cellen
 
 
-def test_boven_beide_grenzen_gaat_de_rijmelding_voor():
-    """Eén melding: bij een kruisproduct boven MAX_RIJEN helpen minder kolommen niet, dus geen celmelding."""
-    _veel_op_veel(1500)
+def test_boven_beide_grenzen_gaat_de_rijmelding_voor(monkeypatch):
+    """Eén melding: boven MAX_RIJEN helpen minder kolommen niet, dus geen celmelding."""
+    _een_op_veel(30)
+    monkeypatch.setattr(koppel, "MAX_RIJEN", 10)
+    monkeypatch.setattr(koppel, "MAX_CELLEN", 25)
     uit = _koppel(sleutels=["brin"])
     assert uit["verwachte_rijen"] > koppel.MAX_RIJEN and uit["verwachte_cellen"] > koppel.MAX_CELLEN
     assert str(koppel.MAX_RIJEN) in uit["melding"]

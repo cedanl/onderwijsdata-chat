@@ -77,7 +77,7 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, bronnen = {}, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
   // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
   const bewaak = useBewaak()
   const runSoort = reportBusy ? 'rapport' : busy ? 'antwoord' : null
@@ -647,8 +647,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
 
   // Gaat het verzoek niet de deur uit (verbinding net weg), dan blijft het veld open met de tekst erin.
   // Zonder checklist (geen keuze te maken) gaat er geen beurtenlijst mee: het rapport rust dan op het hele gesprek.
-  const handleGenereer = useCallback((onderzoeksvraag, beurten) => {
-    if (generateReport(user, onderzoeksvraag, ...(beurten ? [beurten] : []))) setVraagVoorRapport(false)
+  // Met checklist gaan ook de gekozen figuren mee (#993); het rapport toont precies die.
+  const handleGenereer = useCallback((onderzoeksvraag, beurten, figuren) => {
+    if (generateReport(user, onderzoeksvraag, ...(beurten ? [beurten, figuren] : []))) setVraagVoorRapport(false)
   }, [generateReport, user])
 
   // Save the generated report as a workbook when the spec arrives
@@ -897,7 +898,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                 onOpnieuw={bewaarRapportOpnieuw} />
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
-            <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
+            <ReportProgress busy={reportBusy} progress={reportProgress} slow={reportSlow} onCancel={cancelReport} />
             {/* Geen recept om de data uit te herladen: dan is de laatste datavraag opnieuw stellen de enige
                 weg, met één klik in plaats van zelf een vraag verzinnen (#551). */}
             {hasMessages && !busy && reportState === 'needs_reload' && (

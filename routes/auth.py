@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, StrictStr
 
 from auth.oidc import (
     LoginGeheimen,
@@ -31,6 +32,7 @@ from core.auth import (
     session_start,
     verify_token,
 )
+from core.errors import log_interne_fout
 from core.logging_util import foutkenmerk
 from core.rate_limit import RateLimiter
 
@@ -134,6 +136,19 @@ def _get_oidc_user(username: str) -> dict | None:
     return user_data
 
 
+class LoginBody(BaseModel):
+    """Zonder login (geen CHAT_USERS) wordt een lege gebruikersnaam "gast". Geen tekst geeft 422, geen 500 (#1064)."""
+
+    username: StrictStr = ""
+    password: StrictStr = ""
+
+
+class RefreshBody(BaseModel):
+    """Een leeg token blijft 400 "Token ontbreekt"; een token dat geen tekst is geeft 422 (#1064)."""
+
+    token: StrictStr = ""
+
+
 def vergeet_oidc_gebruiker(username: str) -> None:
     """Na "verwijder al mijn gegevens" (#646) staan naam, e-mail en organisatie niet meer in het geheugen."""
     _oidc_user_cache.pop(username, None)
@@ -161,14 +176,14 @@ if is_oidc_configured():
         return user_info
 
     @router.post("/refresh")
-    def refresh_token(body: dict) -> dict:
+    def refresh_token(body: RefreshBody) -> dict:
         """
         Refresh auth token before expiration.
         Only available with OIDC.
         The new token keeps the session start: after SESSION_MAX_HOURS the user logs in again (#479).
         A plain function: verify_token reads the denylist, and that belongs in the threadpool (#508).
         """
-        old_token = body.get("token", "").strip()
+        old_token = body.token.strip()
         if not old_token:
             raise HTTPException(status_code=400, detail="Token ontbreekt")
 
@@ -203,9 +218,9 @@ def _limiter_key(username: str, client_ip: str) -> str:
 
 
 @router.post("/login")
-async def login(body: dict, request: Request) -> dict:
-    username = body.get("username", "").strip()
-    password = body.get("password", "")
+async def login(body: LoginBody, request: Request) -> dict:
+    username = body.username.strip()
+    password = body.password
     client_ip = request.client.host if request.client else "unknown"
     # Achter de ingress ziet uvicorn vaak voor iedereen hetzelfde adres (#504, S5):
     # tellen op IP alleen zette dan alle wachtwoordgebruikers in één bucket, en één
@@ -266,7 +281,13 @@ async def oidc_login() -> RedirectResponse:
 async def oidc_callback(request: Request) -> Response:
     if not is_oidc_configured():
         raise HTTPException(status_code=404, detail="OIDC is niet geconfigureerd")
-    response = await _verwerk_oidc_callback(request)
+    # Elk pad wist de drie login-cookies, ook een onverwachte fout na de code-uitwisseling (#1042): anders blijven ze
+    # tot 10 minuten staan. De gebruiker krijgt een fout-ID, het type en een kenmerk staan in het log (core.errors).
+    try:
+        response = await _verwerk_oidc_callback(request)
+    except Exception as e:
+        fout_id = log_interne_fout(e, "OIDC-callback")
+        response = JSONResponse({"detail": f"Inloggen mislukte door een interne fout (fout-ID {fout_id})."}, 500)
     _wis_oidc_cookies(response)
     return response
 

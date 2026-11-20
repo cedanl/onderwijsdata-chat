@@ -13,7 +13,7 @@ of een antwoord dat de geschiedenis niet meer haalt), dan weten we niet bij welk
 huidige gedrag staan, het hele gesprek. Een selectie bij zo'n gesprek wordt geweigerd, niet geraden.
 
 **Het filter** bouwt een weergave van het gesprek zonder de uitgezette beurten (`beperk`): hun vraag en antwoord, hun
-keys, het rekenbewijs en de kaarten die erop rustten. Daarna ziet `agent.report` niets meer van wat de gebruiker
+keys, het rekenbewijs en de figuren die erop rustten. Daarna ziet `agent.report` niets meer van wat de gebruiker
 uitzette: de datasets, bronnen, definities, dataversie, controles (#754, #872) en afwijkingen volgen vanzelf uit die
 weergave. Bewust een witte lijst van velden: een veld dat hier niet staat, bereikt het rapport niet.
 
@@ -21,14 +21,24 @@ weergave. Bewust een witte lijst van velden: een veld dat hier niet staat, berei
 een beurt voort op de key van een uitgezette beurt, dan komt de bron van die laadaanroep in de bronnen: de data van het
 rapport komt er immers vandaan. De uitgezette beurt zelf (vraag, figuur, tabel) blijft weg, en de regel van de
 checklist zegt waar een beurt op voortbouwt (`bouwt_voort_op`), zodat de gebruiker dit voor zijn keuze weet.
+
+**Figuren** (#993): per beurt ook de figuren die op haar data rusten (`figuren`, uit `agent.figuurstappen`), met de
+titel van de figuur die de server maakte. Een figuur hoort bij de beurt waarin de data van haar `data_key` ontstond,
+of anders de key die ze maakte: een latere beurt als "maak hem horizontaal" zonder nieuwe data heeft geen eigen regel,
+haar figuur staat bij de beurt van de data. Het rapport bevat alleen de figuren die de gebruiker koos (hoogstens
+`MAX_FIGUREN`); een gekozen figuur trekt de beurten van haar keys mee in de selectie. Welke beurten dat zijn, staat
+per figuur in de checklist (`beurten`, #1045), zodat de app ze aanvinkt en het rapport niet stil rust op een beurt die
+in de checklist uit staat.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from core.errors import Gebruikersfout
 
+from . import figuurstappen
 from .datasetcontext import build_recipe, sources_from_recipe
-from .kaarten import kaarten_in_gesprek
 from .selectie import stapkeys
 from .session_data import data_lineage, gebruikersvragen, is_vraag, rekenbewijs
 
@@ -38,17 +48,42 @@ MAX_VRAAG_TEKENS = 200
 LEGE_SELECTIE = "Kies minstens één vraag met data voor het rapport. Zonder data kan ik geen rapport maken."
 VEROUDERDE_SELECTIE = "Je keuze past niet meer bij dit gesprek. Sluit het venster en open het opnieuw."
 
+# Zoveel figuren uit het gesprek neemt een rapport hoogstens over (besluit 10-11, #993).
+MAX_FIGUREN = 4
+TE_VEEL_FIGUREN = f"Kies hoogstens {MAX_FIGUREN} figuren voor het rapport."
+ZONDER_TITEL = "Figuur zonder titel"
+
+
+@dataclass(frozen=True)
+class Keuze:
+    """Wat de gebruiker voor het rapport koos: de beurten (None is het hele gesprek) en de figuren, in volgorde."""
+
+    beurten: frozenset[int] | None = None
+    figuren: tuple[str, ...] = ()
+
 
 def beurten_met_data(session: dict) -> list[dict]:
-    """De checklist van een gesprek: per beurt met data `beurt`, `vraag`, `bronnen` en `bouwt_voort_op`.
+    """De checklist van een gesprek: per beurt met data `beurt`, `vraag`, `bronnen`, `bouwt_voort_op` en `figuren`.
 
     `bronnen` zijn de bronregels van de data van die beurt, zoals het rapport ze noemt (catalogustitel en dataset-ID,
-    uit code). Leeg als het gesprek geen beurten met data heeft, of als niet elke key bij een beurt te plaatsen is.
+    uit code). `figuren` zijn de figuren van die beurt als `{id, titel, beurten}`, in de volgorde waarin ze ontstonden;
+    `beurten` zijn de gesorteerde nummers van de beurten van al haar keys, haar eigen beurt inbegrepen (#1045). Leeg als
+    het gesprek geen beurten met data heeft, of als niet elke key bij een beurt te plaatsen is.
     """
     nummers = _vraagnummers(session)
     per_beurt: dict[int, list[str]] = {}
     for key, nummer in nummers.items():
         per_beurt.setdefault(nummer, []).append(key)
+    figuren: dict[int, list[dict]] = {}
+    for stap in figuurstappen.stappen(session):
+        if (thuis := _thuisbeurt(stap, nummers)) is not None:
+            figuren.setdefault(thuis, []).append(
+                {
+                    "id": stap["id"],
+                    "titel": stap.get("titel") or ZONDER_TITEL,
+                    "beurten": sorted(_beurten_van(stap, nummers)),
+                }
+            )
     vragen = gebruikersvragen(session)
     return [
         {
@@ -63,29 +98,65 @@ def beurten_met_data(session: dict) -> list[dict]:
                     if (vorig := nummers.get(ouder)) is not None and vorig != nummer
                 }
             ),
+            "figuren": figuren.get(nummer, []),
         }
         for nummer, keys in sorted(per_beurt.items())
     ]
 
 
-def kies(session: dict, beurten: object) -> frozenset[int] | None:
-    """De beurten die de gebruiker koos, gecontroleerd tegen het gesprek; de client wordt niet vertrouwd.
+def kies(session: dict, beurten: object, figuren: object = None) -> Keuze:
+    """De beurten en figuren die de gebruiker koos, gecontroleerd tegen het gesprek; de client wordt niet vertrouwd.
 
-    None betekent het hele gesprek: er is geen selectie gestuurd, of alle beurten staan aan, zodat het rapport
-    hetzelfde is als zonder selectie. Een lege selectie, een onbekend nummer, iets dat geen lijst getallen is en een
-    selectie bij een gesprek zonder checklist worden geweigerd (`Gebruikersfout`). Onbekende nummers negeren zou stil
-    een ander rapport geven dan de gebruiker op zijn scherm kiest.
+    `beurten` None betekent het hele gesprek: er is geen selectie gestuurd, of alle beurten staan aan (ook doordat een
+    gekozen figuur haar beurt meetrok), zodat het rapport hetzelfde is als zonder selectie. `figuren` zijn ids uit de
+    checklist; zonder (een oudere client) of leeg komt er geen figuur in het rapport. Een lege selectie, een onbekend
+    nummer of id, iets dat geen lijst getallen of ids is, meer dan `MAX_FIGUREN` figuren en een selectie bij een gesprek
+    zonder checklist worden geweigerd (`Gebruikersfout`). Onbekende nummers negeren zou stil een ander rapport geven dan
+    de gebruiker op zijn scherm kiest.
     """
+    items = beurten_met_data(session) if beurten is not None or figuren else []
+    gekozen_figuren = _gekozen_figuren(items, figuren)
     if beurten is None:
-        return None
+        return Keuze(None, gekozen_figuren)
     if not isinstance(beurten, list) or not all(type(n) is int for n in beurten):
         raise Gebruikersfout(VEROUDERDE_SELECTIE)
-    if not beurten:
-        raise Gebruikersfout(LEGE_SELECTIE)
-    bekend = {item["beurt"] for item in beurten_met_data(session)}
+    bekend = {item["beurt"] for item in items}
     if not set(beurten) <= bekend:
         raise Gebruikersfout(VEROUDERDE_SELECTIE)
-    return None if set(beurten) == bekend else frozenset(beurten)
+    # Een gekozen figuur trekt de beurten van haar keys mee (besluit 10-11).
+    gekozen = set(beurten) | _beurten_van_figuren(session, gekozen_figuren)
+    if not gekozen:
+        raise Gebruikersfout(LEGE_SELECTIE)
+    return Keuze(None if gekozen == bekend else frozenset(gekozen), gekozen_figuren)
+
+
+def _gekozen_figuren(items: list[dict], figuren: object) -> tuple[str, ...]:
+    """De gekozen figuur-ids, gecontroleerd tegen de checklist; leeg zonder keuze."""
+    if figuren is None or figuren == []:
+        return ()
+    if not isinstance(figuren, list) or not all(isinstance(f, str) for f in figuren):
+        raise Gebruikersfout(VEROUDERDE_SELECTIE)
+    if len(figuren) > MAX_FIGUREN:
+        raise Gebruikersfout(TE_VEEL_FIGUREN)
+    bekend = {figuur["id"] for item in items for figuur in item["figuren"]}
+    if len(set(figuren)) != len(figuren) or not set(figuren) <= bekend:
+        raise Gebruikersfout(VEROUDERDE_SELECTIE)
+    return tuple(figuren)
+
+
+def _beurten_van_figuren(session: dict, ids: tuple[str, ...]) -> set[int]:
+    nummers = _vraagnummers(session)
+    return {b for stap in figuurstappen.stappen(session) if stap["id"] in ids for b in _beurten_van(stap, nummers)}
+
+
+def _thuisbeurt(stap: dict, nummers: dict[str, int]) -> int | None:
+    """De beurt van de eerste key van de stap die een beurt heeft: haar data_key, anders de key die ze maakte."""
+    return next((nummers[k] for k in stap.get("keys") or [] if k in nummers), None)
+
+
+def _beurten_van(stap: dict, nummers: dict[str, int]) -> set[int]:
+    """De beurten van alle keys waar de figuur op rust, ook die van een script dat een andere key las."""
+    return {nummers[k] for k in stap.get("keys") or [] if k in nummers}
 
 
 def beperk(session: dict, beurten: frozenset[int]) -> dict:
@@ -110,7 +181,10 @@ def beperk(session: dict, beurten: frozenset[int]) -> dict:
         "data_vraag": {key: nummers[key] - sum(1 for u in uit if u < nummers[key]) for key in gekozen},
         "data_provenance": {key: call for key, call in provenance.items() if key in toegestaan},
         "rekenbewijs": [b for b in rekenbewijs(session) if _rust_op(b) <= toegestaan and _rust_op(b)],
-        "kaarten": {key: kaart for key, kaart in kaarten_in_gesprek(session).items() if key in gekozen},
+        # De figuren die op de overgebleven beurten rusten; welke ervan in het rapport komen, kiest de gebruiker.
+        "figuurstappen": [
+            s for s in figuurstappen.stappen(session) if (b := _beurten_van(s, nummers)) and b <= beurten
+        ],
         "turns": [],
     }
 

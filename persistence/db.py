@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -354,7 +354,9 @@ def _migrate(conn: Any) -> None:
 
     _voeg_kolom_toe(conn, "feedback", "instelling", "TEXT NOT NULL DEFAULT ''")
     _voeg_kolom_toe(conn, "beurtbewijs", "bronnen", "TEXT NOT NULL DEFAULT '{}'")
+    _voeg_kolom_toe(conn, "beurtbewijs", "figuren", "TEXT NOT NULL DEFAULT '[]'")
     _verwijder_kolom(conn, "beurtbewijs", "controle")
+    _verwijder_kolom(conn, "beurtbewijs", "kaarten")
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _verwijder_tabel(conn, "answer_feedback")
@@ -363,7 +365,8 @@ def _migrate(conn: Any) -> None:
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
     """Een kolom die later bij een bestaande tabel kwam; bestaande rijen krijgen de standaardwaarde uit `definitie`.
 
-    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `bronnen` bij beurtbewijs (#987).
+    Idempotent, dus veilig bij elke start: `instelling` bij feedback, `bronnen` (#987) en `figuren` (#993) bij
+    beurtbewijs.
     """
     if _USE_POSTGRES:
         cursor = conn.cursor()
@@ -376,7 +379,8 @@ def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
 
 
 def _verwijder_kolom(conn: Any, tabel: str, kolom: str) -> None:
-    """Een kolom die niet meer bestaat, met haar waarden: `controle` bij beurtbewijs (#876, weg sinds #983, besluit 09-11).
+    """Een kolom die niet meer bestaat, met haar waarden: `controle` bij beurtbewijs (#876, weg sinds #983, besluit 09-11)
+    en `kaarten` bij beurtbewijs (#648, weg sinds #1044: niets las haar nog na #993).
 
     Idempotent, dus veilig bij elke start. PostgreSQL kent `DROP COLUMN IF EXISTS`; SQLite (vanaf 3.35) alleen
     `DROP COLUMN`, dus daar eerst kijken of de kolom er nog is.
@@ -456,9 +460,12 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 
 # Wat de server zelf vastlegde bij een afgerond antwoord, zodat een heropend gesprek hetzelfde rapport geeft als het
 # levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
-# client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs, kaarten en bronnen zijn JSON;
-# de kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211); bronnen per key de bronregels van de
-# geladen tabellen, zoals onder een antwoord (labels en tekst, geen data, #987). Een rij van vóór #987 heeft '{}'.
+# client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en bronnen zijn JSON; bronnen
+# per key de bronregels van de geladen tabellen, zoals onder een antwoord (labels en tekst, geen data, #987). Een rij
+# van vóór #987 heeft '{}'.
+# figuren is de JSON-lijst van de stappen achter de figuren van de beurt (tool, argumenten, titel, keys; geen figuur-JSON),
+# zodat het rapport een gekozen figuur opnieuw kan maken (#993). Een rij van vóór #993 heeft '[]'. De kolom kaarten (de
+# kaartregels per data_key) is weg sinds #1044: een kaart uit het gesprek staat als figuur in figuren.
 _BEURTBEWIJS_TABLE = """
     CREATE TABLE IF NOT EXISTS beurtbewijs (
         username    TEXT NOT NULL,
@@ -466,8 +473,8 @@ _BEURTBEWIJS_TABLE = """
         tekst_hash  TEXT NOT NULL,
         lineage     TEXT NOT NULL,
         rekenbewijs TEXT NOT NULL,
-        kaarten     TEXT NOT NULL,
         bronnen     TEXT NOT NULL DEFAULT '{}',
+        figuren     TEXT NOT NULL DEFAULT '[]',
         created_at  TEXT NOT NULL,
         PRIMARY KEY (username, conv_id, tekst_hash)
     )
@@ -508,6 +515,19 @@ _RATE_LIMIT_TABLE = """
     )
 """
 _RATE_LIMIT_INDEX = "CREATE INDEX IF NOT EXISTS idx_rate_limit ON rate_limit_hits(bucket, sleutel, verloopt)"
+
+# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een sha256
+# van de gebruikersnaam, zoals bij de limieten; `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
+# bij het opruimen: genoeg voor deze en de vorige maand.
+_TOKENGEBRUIK_TABLE = """
+    CREATE TABLE IF NOT EXISTS tokengebruik (
+        sleutel  TEXT   NOT NULL,
+        dag      TEXT   NOT NULL,
+        eenheden BIGINT NOT NULL,
+        PRIMARY KEY (sleutel, dag)
+    )
+"""
+TOKENGEBRUIK_DAGEN = 62
 
 
 _CONVERSATIONS_TABLE = """
@@ -558,6 +578,7 @@ _SCHEMA = (
     _REVOKED_USERS_TABLE,
     _RATE_LIMIT_TABLE,
     _RATE_LIMIT_INDEX,
+    _TOKENGEBRUIK_TABLE,
     _SCHEMA_MIGRATIONS_TABLE,
 )
 
@@ -636,6 +657,8 @@ def purge_expired_revocations(conn: Any) -> None:
     _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
     _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
     _execute(conn, "DELETE FROM rate_limit_hits WHERE verloopt <= ?", (nu * 1000,))
+    grens = (datetime.now(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
+    _execute(conn, "DELETE FROM tokengebruik WHERE dag < ?", (grens,))
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
@@ -682,6 +705,30 @@ def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
 def deelt_staat() -> bool:
     """Waar de database de staat van meerdere pods deelt: Postgres. SQLite is één proces, daar telt het geheugen (#984)."""
     return _USE_POSTGRES
+
+
+def tokengebruik_boek(sleutel: str, dag: str, eenheden: int) -> None:
+    """Tel `eenheden` op bij het gebruik van `sleutel` op `dag` (#678); atomisch, ook met twee pods tegelijk."""
+    with _connection() as conn:
+        _execute(
+            conn,
+            "INSERT INTO tokengebruik (sleutel, dag, eenheden) VALUES (?, ?, ?) "
+            "ON CONFLICT (sleutel, dag) DO UPDATE SET eenheden = tokengebruik.eenheden + excluded.eenheden",
+            (sleutel, dag, eenheden),
+        )
+        conn.commit()
+
+
+def tokengebruik_stand(sleutel: str, dag: str, maand_vanaf: str) -> tuple[int, int]:
+    """(gebruik op `dag`, gebruik van `maand_vanaf` tot en met `dag`) voor `sleutel` (#678)."""
+    with _connection() as conn:
+        rij = _execute(
+            conn,
+            "SELECT COALESCE(SUM(CASE WHEN dag = ? THEN eenheden ELSE 0 END), 0) AS vandaag, "
+            "COALESCE(SUM(eenheden), 0) AS maand FROM tokengebruik WHERE sleutel = ? AND dag >= ? AND dag <= ?",
+            (dag, sleutel, maand_vanaf, dag),
+        ).fetchone()
+    return int(rij["vandaag"]), int(rij["maand"])
 
 
 def rate_limit_poging(bucket: str, sleutel: str, max_aantal: int, venster_ms: int, *, tel: bool = True) -> int | None:
@@ -817,7 +864,7 @@ def _vragen(messages: list) -> list:
     return [m.get("content") for m in messages if isinstance(m, dict) and m.get("role") == "user"]
 
 
-def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
+def upsert_conversation(username: str, conv_id: str, title: str, timestamp: float, messages: list[dict]) -> None:
     """Bewaar een gesprek; de titel alleen bij het aanmaken.
 
     Elke opslag na een antwoord stuurt de automatische titel uit de eerste vraag mee. Een bestaand gesprek houdt
@@ -925,7 +972,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, bronnen, created_at FROM beurtbewijs "
+            "SELECT tekst_hash, lineage, rekenbewijs, bronnen, figuren, created_at FROM beurtbewijs "
             "WHERE username = ? AND conv_id = ?",
             (username, conv_id),
         ).fetchall()
@@ -935,8 +982,8 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
             uit[r["tekst_hash"]] = {
                 "lineage": json.loads(r["lineage"]),
                 "rekenbewijs": json.loads(r["rekenbewijs"]),
-                "kaarten": json.loads(r["kaarten"]),
                 "bronnen": json.loads(r["bronnen"]),
+                "figuren": json.loads(r["figuren"]),
                 "created_at": r["created_at"],
             }
         except ValueError:
@@ -964,18 +1011,18 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
             _execute(
                 conn,
                 "INSERT INTO beurtbewijs "
-                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, bronnen, created_at) "
+                "(username, conv_id, tekst_hash, lineage, rekenbewijs, bronnen, figuren, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
-                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten, "
-                "bronnen=excluded.bronnen",
+                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, "
+                "bronnen=excluded.bronnen, figuren=excluded.figuren",
                 (
                     username,
                     conv_id,
                     tekst_hash,
                     json.dumps(rij["lineage"], ensure_ascii=False, default=str),
                     json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
-                    json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
                     json.dumps(rij.get("bronnen") or {}, ensure_ascii=False, default=str),
+                    json.dumps(rij.get("figuren") or [], ensure_ascii=False, default=str),
                     rij["created_at"],
                 ),
             )

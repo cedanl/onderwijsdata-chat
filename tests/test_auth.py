@@ -210,3 +210,83 @@ def test_gemanipuleerd_token_is_ongeldig(auth_module, maak):
 
     assert auth_module.verify_token(token) is None
     assert auth_module.session_start(token) is None
+
+
+# ── Ongeldige body op /login en /refresh: 422, nooit 500 (#1064) ─────────────
+
+_GEEN_TEKST = [5, None, True, ["a"], {"a": 1}]
+
+
+@pytest.mark.parametrize("users", [None, "testuser:testpass"], ids=["zonder-login", "met-login"])
+@pytest.mark.parametrize("veld", ["username", "password"])
+def test_login_met_veld_dat_geen_tekst_is_geeft_422(app_client, caplog, users, veld):
+    from fastapi.testclient import TestClient
+
+    from core.foutmeldingen import ONGELDIGE_INVOER
+
+    # Eén app per geval: elke app_client maakt een database aan, en dat is traag.
+    client = TestClient(app_client(users=users).app, raise_server_exceptions=False)
+    for waarde in _GEEN_TEKST:
+        resp = client.post("/api/auth/login", json={"username": "testuser", "password": "testpass", veld: waarde})
+        assert resp.status_code == 422, waarde
+        assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+@pytest.mark.parametrize("inhoud", ["[]", "geen json"], ids=["lijst", "geen-json"])
+def test_login_zonder_object_blijft_422(app_client, inhoud):
+    client = app_client()
+    resp = client.post("/api/auth/login", content=inhoud, headers={"Content-Type": "application/json"})
+    assert resp.status_code == 422
+
+
+def test_login_zonder_login_en_zonder_naam_blijft_gast(app_client):
+    """Zonder CHAT_USERS (demo): een lege body of lege naam wordt "gast", zoals voor #1064."""
+    client = app_client()
+    assert client.post("/api/auth/login", json={}).json()["user"] == "gast"
+    assert client.post("/api/auth/login", json={"username": "  ", "password": ""}).json()["user"] == "gast"
+
+
+@pytest.fixture
+def oidc_auth_client(auth_module, monkeypatch):
+    """Alleen de auth-routes, met OIDC aan zodat /refresh bestaat; daarna weer zonder."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    import routes.auth
+    from config import Config
+    from core import foutmeldingen
+
+    monkeypatch.setattr(auth_module, "AUTH_ENABLED", True)
+    for naam in ("OIDC_PROVIDER", "OIDC_DISCOVERY_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "SERVER_URL"):
+        monkeypatch.setattr(Config, naam, "test")
+    importlib.reload(routes.auth)
+    app = FastAPI()
+    foutmeldingen.registreer(app)
+    app.include_router(routes.auth.router)
+    yield TestClient(app, raise_server_exceptions=False)
+    monkeypatch.undo()
+    importlib.reload(routes.auth)
+
+
+@pytest.mark.parametrize("waarde", _GEEN_TEKST, ids=["getal", "null", "bool", "lijst", "object"])
+def test_refresh_met_token_dat_geen_tekst_is_geeft_422(oidc_auth_client, caplog, waarde):
+    from core.foutmeldingen import ONGELDIGE_INVOER
+
+    resp = oidc_auth_client.post("/api/auth/refresh", json={"token": waarde})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+@pytest.mark.parametrize("body", [{}, {"token": ""}, {"token": "   "}], ids=["zonder", "leeg", "spaties"])
+def test_refresh_zonder_token_blijft_400(oidc_auth_client, body):
+    resp = oidc_auth_client.post("/api/auth/refresh", json=body)
+    assert resp.status_code == 400
+    assert resp.json() == {"detail": "Token ontbreekt"}
+
+
+def test_refresh_met_geldig_token_geeft_een_nieuw(oidc_auth_client, auth_module):
+    resp = oidc_auth_client.post("/api/auth/refresh", json={"token": auth_module.make_token("alice")})
+    assert resp.status_code == 200
+    assert resp.json()["user"]["username"] == "alice"

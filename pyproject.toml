@@ -12,7 +12,7 @@ dependencies = [
     # is `mcp` een gewone dependency en geen extra meer (#938): het runtime-image heeft hem altijd, en `/mcp` in de app
     # (#706) heeft hem ook nodig. tests/test_litellm_mcp.py bewaakt dat, en dat de chattools niet via de MCP-gateway
     # van litellm gaan. Eén minor tegelijk, zoals Renovate hem voorstelt.
-    "litellm>=1.108,<1.109",
+    "litellm>=1.110,<1.111",
     "mcp>=2.3",
     "plotly>=5.0",
     "python-dotenv>=1.0",

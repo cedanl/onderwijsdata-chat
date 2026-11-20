@@ -5,10 +5,8 @@ import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN } from '../workbooks'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
-import WorkbookDownload from './WorkbookDownload'
-import WorkbookMarkdown from './WorkbookMarkdown'
-import WorkbookWord from './WorkbookWord'
 import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
+import RapportExportMenu from './RapportExportMenu'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 
@@ -84,7 +82,7 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
   const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
   // Op een telefoon is er geen ruimte voor titel én knoppen naast elkaar (#604): de titel blijft op één
   // regel en Download en feedback verhuizen naar het ⋯-menu in de navbar, net als bij de chat (#596).
-  // Desktop houdt de knoppen inline in de kopbalk.
+  // Desktop houdt feedback inline in de kopbalk; de exportformaten staan achter één knop Downloaden (RapportExportMenu).
   const smal = useMediaQuery(NARROW_SCREEN)
   // A report renders in a sandboxed frame whose content is not in this DOM: until it has loaded the region is
   // busy, a report without content says so instead of showing a blank frame (#387, #533), and a frame that
@@ -146,10 +144,7 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
           />
         ) : (
           <div className="wb-viewer-actions">
-            <WorkbookDownload workbook={workbook} save={save} />
-            <WorkbookMarkdown workbook={workbook} save={save} />
-            <WorkbookWord workbook={workbook} save={save} grafiekDoc={grafiekDoc} />
-            <WorkbookPrint html={reportFrame.printDoc} />
+            <RapportExportMenu workbook={workbook} save={save} printDoc={reportFrame.printDoc} grafiekDoc={grafiekDoc} />
             {feedbackEnabled && (
               feedbackGiven ? (
                 <span className="wb-feedback-given" role="status">

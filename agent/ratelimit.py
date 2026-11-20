@@ -7,6 +7,7 @@ import litellm
 
 from core.logging_util import foutkenmerk
 
+from . import nepmodel
 from .stream import Emit
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,12 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
     """litellm.acompletion met backoff bij rate limit en timeout retry (#431).
 
     Timeout: LITELLM_REQUEST_TIMEOUT (seconden), een grens per leesoperatie, geen totale duur; zie `_REQUEST_TIMEOUT`.
+    Het nepmodel (`mock/…`, #1065) gaat niet naar LiteLLM: zijn stroom komt uit agent/nepmodel.py.
     """
+    if nepmodel.is_nepmodel(kwargs.get("model")):
+        return nepmodel.stroom(
+            kwargs["model"], kwargs.get("messages") or [], kwargs.get("tools"), kwargs.get("tool_choice")
+        )
     # Voeg request_timeout toe tenzij al meegegeven
     if "request_timeout" not in kwargs:
         kwargs["request_timeout"] = _REQUEST_TIMEOUT

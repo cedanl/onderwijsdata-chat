@@ -130,6 +130,33 @@ def test_zonder_sleutels_is_mcp_er_niet(maak_app, caplog):
     assert len(uit) == 1, "één keer bij de start, niet per verzoek"
 
 
+def test_zonder_sleutels_maar_met_app_url_waarschuwt_de_start(maak_app, caplog, monkeypatch):
+    """APP_URL zet alleen een omgeving die /mcp aanbiedt (test); ontbreekt de sleutel daar, dan een WARNING, geen INFO
+    die tussen de startregels verdwijnt (#941, audit L-07)."""
+    monkeypatch.setenv("APP_URL", "https://onderwijsdata-chat.test.sdp.surf.nl")
+    with caplog.at_level("INFO", logger=mcp_http.__name__), TestClient(maak_app()):
+        pass
+    uit = [r for r in caplog.records if "MCP_API_KEYS" in r.getMessage()]
+    assert [r.levelname for r in uit] == ["WARNING"]
+
+
+def test_zonder_sleutels_en_zonder_app_url_blijft_het_info(maak_app, caplog, monkeypatch):
+    monkeypatch.delenv("APP_URL", raising=False)
+    with caplog.at_level("INFO", logger=mcp_http.__name__), TestClient(maak_app()):
+        pass
+    uit = [r for r in caplog.records if "MCP_API_KEYS" in r.getMessage()]
+    assert [r.levelname for r in uit] == ["INFO"]
+
+
+@pytest.mark.parametrize(("sleutels", "aan"), [((), False), ((SLEUTEL,), True)])
+def test_version_zegt_of_mcp_aan_staat_zonder_sleutels_te_tonen(maak_app, sleutels, aan):
+    """Een deploy is zonder sleutel te controleren: /version zegt alleen aan of uit (#941, audit L-07)."""
+    with TestClient(maak_app(*sleutels)) as client:
+        antwoord = client.get("/version")
+    assert antwoord.json()["mcp"] is aan
+    assert SLEUTEL not in antwoord.text
+
+
 def test_health_version_en_beveiligingsheaders_blijven(maak_app):
     with TestClient(maak_app(SLEUTEL)) as client:
         assert client.get("/health").status_code == 200

@@ -687,7 +687,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom; de vraag noemt het hbo, want havo of vwo alleen opent de zoekpoort niet (#597). 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.VO_CONTEXT). 85381NED heeft geen regio."
+      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom; de vraag noemt het hbo, want havo of vwo alleen opent de zoekpoort niet (#597). 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, de vier grootste gemeenten; geen gemeenteniveau); vo-context voor ho (scopeprofiel.VO_CONTEXT). 85381NED heeft geen regio."
     },
     {
       "id": "hbo-26",
@@ -1084,7 +1084,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): 85382NED: gediplomeerden per onderwijssoort (Vwo) en woonregio (landsdeel, provincie, gemeente); vo-context voor de regionale instroom in het ho (scopeprofiel.VO_CONTEXT)."
+      "toelichting": "Ho-doorstroom (#559): 85382NED: gediplomeerden per onderwijssoort (Vwo) en woonregio (landsdeel, provincie, de vier grootste gemeenten; geen gemeenteniveau); vo-context voor de regionale instroom in het ho (scopeprofiel.VO_CONTEXT)."
     },
     {
       "id": "wo-29",

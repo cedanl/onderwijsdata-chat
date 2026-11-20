@@ -274,17 +274,16 @@ def test_patch_masks_personal_data_in_title(client, titel):
     assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
 
 
-@pytest.mark.parametrize("titel", [111222333, 111222333.0])
-def test_put_masks_bsn_sent_as_json_number(client, titel):
-    assert _bewaar(client, titel).json() == {"ok": True}
-    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
-
-
-@pytest.mark.parametrize("titel", [["BSN 111222333"], [111222333], {"t": "BSN 111222333"}, True])
-def test_put_never_stores_a_title_that_is_neither_text_nor_number(client, titel):
-    """Postgres slaat een JSON-lijst als tekst op, BSN en al; de server bewaart dus alleen gecontroleerde tekst."""
-    assert _bewaar(client, titel).json() == {"ok": True}
-    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+@pytest.mark.parametrize(
+    "titel", [111222333, 111222333.0, ["BSN 111222333"], [111222333], {"t": "BSN 111222333"}, True]
+)
+def test_put_never_stores_a_title_that_is_not_text(client, titel):
+    """Postgres slaat een getal of JSON-lijst als tekst op, BSN en al (#552). Sinds #1064 weigert de route alles wat
+    geen tekst is met een 422; er wordt dus niets bewaard, ook geen ongecontroleerde titel."""
+    resp = _bewaar(client, titel)
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert client.get("/api/conversations").json() == []
 
 
 def test_put_and_patch_cut_a_long_title(client):
@@ -355,6 +354,141 @@ def test_delete_workbook(client):
     resp = client.delete("/api/workbooks/wb1")
     assert resp.status_code == 200
     assert client.get("/api/workbooks").json() == []
+
+
+# ── Ongeldige body: 422, nooit 500 (#1064) ───────────────────────────────────
+
+_GELDIG_GESPREK = {"title": "Vraag", "timestamp": 1_700_000_000_000, "messages": [{"role": "user", "content": "hi"}]}
+
+
+def _zonder(veld: str) -> dict:
+    return {k: v for k, v in _GELDIG_GESPREK.items() if k != veld}
+
+
+@pytest.fixture
+def los_client(client):
+    """Dezelfde app, maar een fout in de route geeft een 500-response in plaats van een uitzondering in de test."""
+    return TestClient(client.app, raise_server_exceptions=False)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        _zonder("title"),
+        _zonder("timestamp"),
+        _zonder("messages"),
+        {**_GELDIG_GESPREK, "timestamp": "gisteren"},
+        {**_GELDIG_GESPREK, "timestamp": "1700000000000"},
+        {**_GELDIG_GESPREK, "timestamp": True},
+        {**_GELDIG_GESPREK, "timestamp": None},
+        {**_GELDIG_GESPREK, "messages": "x"},
+        {**_GELDIG_GESPREK, "messages": [1, 2]},
+        {**_GELDIG_GESPREK, "messages": {"role": "user"}},
+        {**_GELDIG_GESPREK, "title": 5},
+        {**_GELDIG_GESPREK, "title": None},
+    ],
+    ids=[
+        "leeg",
+        "zonder-title",
+        "zonder-timestamp",
+        "zonder-messages",
+        "timestamp-tekst",
+        "timestamp-getal-als-tekst",
+        "timestamp-bool",
+        "timestamp-null",
+        "messages-tekst",
+        "messages-getallen",
+        "messages-object",
+        "title-getal",
+        "title-null",
+    ],
+)
+def test_put_conversation_met_ongeldige_body_geeft_422(los_client, caplog, body):
+    resp = los_client.put("/api/conversations/c1", json=body)
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert los_client.get("/api/conversations").json() == []
+
+
+@pytest.mark.parametrize("tekst", ["NaN", "Infinity", "-Infinity"])
+def test_put_conversation_met_niet_eindige_timestamp_geeft_422(los_client, tekst):
+    """Python's json leest NaN en Infinity; int(nan) in _normalize_ts gaf een 500."""
+    body = f'{{"title": "Vraag", "timestamp": {tekst}, "messages": []}}'
+    resp = los_client.put("/api/conversations/c1", content=body, headers={"Content-Type": "application/json"})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+
+
+@pytest.mark.parametrize(
+    "inhoud",
+    ["[]", "geen json", ""],
+    ids=["lijst", "geen-json", "leeg"],
+)
+def test_put_conversation_zonder_object_blijft_422(los_client, inhoud):
+    resp = los_client.put("/api/conversations/c1", content=inhoud, headers={"Content-Type": "application/json"})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+
+
+def test_put_conversation_zoals_de_frontend_hem_stuurt(client):
+    """ChatPage.jsx: putConversation(id, { title, timestamp: Date.now(), messages }); ook een kommagetal mag."""
+    messages = [
+        {"role": "user", "content": "Hoeveel studenten?"},
+        {"role": "assistant", "content": "Zoveel.", "sources": [{"id": "85313NED"}], "tables": []},
+    ]
+    assert client.put("/api/conversations/c1", json={**_GELDIG_GESPREK, "messages": messages}).status_code == 200
+    assert (
+        client.put("/api/conversations/c2", json={**_GELDIG_GESPREK, "timestamp": 1_700_000_000.5}).status_code == 200
+    )
+    gesprek = client.get("/api/conversations/c1").json()
+    assert gesprek["messages"] == messages
+    assert gesprek["timestamp"] == 1_700_000_000
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"messages": "x"},
+        {"messages": {"role": "user"}},
+        {"messages": 5},
+        {"figures": "x"},
+        {"figures": {"data": []}},
+        {"figures": 5},
+    ],
+    ids=["messages-tekst", "messages-object", "messages-getal", "figures-tekst", "figures-object", "figures-getal"],
+)
+def test_put_workbook_met_ongeldige_lijsten_geeft_422(los_client, caplog, body):
+    resp = los_client.put("/api/workbooks/wb1", json={"title": "X", **body})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert los_client.get("/api/workbooks").json() == []
+
+
+def test_put_workbook_zonder_object_blijft_422(los_client):
+    assert los_client.put("/api/workbooks/wb1", json=[]).status_code == 422
+
+
+def test_put_workbook_zoals_de_frontend_hem_stuurt(client):
+    """serverFields in workbooks.js, met de velden die null zijn of ontbreken (JSON laat undefined weg)."""
+    body = {
+        "title": "Dashboard",
+        "description": "",
+        "messages": [{"role": "user", "content": "data"}],
+        "figures": [{"data": [], "layout": {}}],
+        "instelling": None,
+        "dashboardSpec": {"titel": "Mijn dashboard", "panelen": []},
+        "type": "dashboard",
+        "createdAt": "2024-01-01T00:00:00Z",
+    }
+    assert client.put("/api/workbooks/wb1", json=body).status_code == 200
+    werkboek = client.get("/api/workbooks/wb1").json()
+    assert json.loads(werkboek["dashboard_spec"]) == body["dashboardSpec"]
+    assert json.loads(werkboek["figures"]) == body["figures"]
+    assert werkboek["created_at"] == "2024-01-01T00:00:00Z"
+    assert client.put("/api/workbooks/wb2", json={}).status_code == 200
 
 
 # ── Auth enforcement ──────────────────────────────────────────────────────────

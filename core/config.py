@@ -42,6 +42,8 @@ RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
 # (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats bezet tot de
 # time-out per leesoperatie (LITELLM_REQUEST_TIMEOUT) afging, per poging.
 GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
+# Hoe vaak de app meet of de bronnen antwoorden (core/bronstatus.py, #1057), in seconden; 0 zet de bewaking uit.
+BRONSTATUS_INTERVAL_S = float(os.getenv("BRONSTATUS_INTERVAL_S", "120"))
 # Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen en rapporten per
 # gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
@@ -52,6 +54,10 @@ CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
 MAX_GESPREKKEN_PER_GEBRUIKER = int(os.getenv("MAX_GESPREKKEN_PER_GEBRUIKER", "1000"))
 MAX_WERKBOEKEN_PER_GEBRUIKER = int(os.getenv("MAX_WERKBOEKEN_PER_GEBRUIKER", "500"))
 MAX_OPSLAG_PER_GEBRUIKER_MB = int(os.getenv("MAX_OPSLAG_PER_GEBRUIKER_MB", "100"))
+# Tokenbudget per gebruiker (#678, S24), in invoertoken-equivalenten (core/tokenbudget.py); 0 zet een grens uit. Een
+# typische vraag kost na #1027 rond de 20k (71k invoer waarvan 69k uit de cache, 2k uitvoer): de dag dus rond de 75 vragen.
+TOKENBUDGET_DAG = int(os.getenv("TOKENBUDGET_DAG", "1500000"))
+TOKENBUDGET_MAAND = int(os.getenv("TOKENBUDGET_MAAND", "15000000"))
 # Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))
@@ -123,6 +129,18 @@ BEWAARTERMIJN_RAPPORTEN_DAGEN = os.getenv("BEWAARTERMIJN_RAPPORTEN_DAGEN", "365"
 WILLMA_API_KEY = os.getenv("WILLMA_API_KEY")
 WILLMA_BASE_URL = os.getenv("WILLMA_BASE_URL", "")
 
+# Het nepmodel voor lokaal testen zonder providersleutel (#1065, agent/nepmodel.py): `MODEL=mock/<scenario>`. Het prefix is
+# de schakelaar; config.py weigert het buiten NEP_OMGEVINGEN.
+NEP_PREFIX = "mock/"
+NEP_SCENARIOS = ("default", "tekst")
+NEP_OMGEVINGEN = ("local", "development")
+
+
+def is_nepmodel(model_id: object) -> bool:
+    """Is dit het nepmodel (`mock/…`)?"""
+    return isinstance(model_id, str) and model_id.lower().startswith(NEP_PREFIX)
+
+
 # Kommagescheiden lijst van LiteLLM model-IDs voor de model-picker in de UI.
 # Niet ingesteld → geen model-picker, de app gebruikt altijd MODEL.
 _AVAILABLE_MODELS_RAW = os.getenv("AVAILABLE_MODELS")
@@ -141,6 +159,7 @@ _PROVIDER_API_KEYS: dict[str, str] = {
     "gemini": "GEMINI_API_KEY",
     "ollama": None,  # Ollama doesn't require API key
     "ollama_chat": None,
+    "mock": None,  # het nepmodel (#1065) roept geen provider aan
 }
 # Sleutels zonder eigen prefix (#829): Willma loopt via openai/ met WILLMA_API_KEY (agent/models.py), maar een omgeving
 # met alleen die sleutel moet /ready halen (#675).
@@ -192,7 +211,8 @@ _ANTHROPIC = "Anthropic"
 _FOUNDRY = "Microsoft Azure AI Foundry"
 _OPENAI = "OpenAI"
 _WILLMA = "SURF Willma"
-_PROVIDER_BY_PREFIX: dict[str, str] = {"anthropic": _ANTHROPIC, "azure_ai": _FOUNDRY, "openai": _OPENAI}
+_NEP = "het nepmodel, zonder taalmodel"
+_PROVIDER_BY_PREFIX: dict[str, str] = {"anthropic": _ANTHROPIC, "azure_ai": _FOUNDRY, "openai": _OPENAI, "mock": _NEP}
 
 # (naam, omschrijving, icoon, provider) voor bekende modellen. Naam en omschrijving zijn gewone taal
 # voor de gebruiker; de provider staat alleen in het vierde veld. Een onbekend model heet naar het deel
@@ -214,6 +234,8 @@ _KNOWN_NAMES: dict[str, tuple[str, str, str, str]] = {
     "openai/openai/gpt-oss-120b": ("GPT-OSS 120B", "goed in het ophalen van data", "cpu", _WILLMA),
     "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": ("Qwen 2.5 VL 32B", "ook voor afbeeldingen", "cpu", _WILLMA),
     "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": ("Qwen 2.5 Coder 32B", "gericht op code", "cpu", _WILLMA),
+    "mock/default": ("Nepmodel", "lokaal testen: zoekt en laadt data", "cpu", _NEP),
+    "mock/tekst": ("Nepmodel, alleen tekst", "lokaal testen zonder tools", "cpu", _NEP),
 }
 
 
@@ -268,8 +290,13 @@ def _models_from_ids(model_ids: list[str]) -> list[tuple[str, str, str, str, str
 
 
 def get_available_models() -> list[tuple[str, str, str, str, str]] | None:
-    """Return list of (model_id, name, description, icon, provider), or None if no picker."""
+    """Return list of (model_id, name, description, icon, provider), or None if no picker.
+
+    Met het nepmodel als MODEL en zonder AVAILABLE_MODELS biedt de kiezer de nepscenario's aan (#1065).
+    """
     if not _AVAILABLE_MODELS_RAW:
+        if is_nepmodel(MODEL):
+            return _models_from_ids([f"{NEP_PREFIX}{s}" for s in NEP_SCENARIOS])
         return None
     result = _models_from_ids([m.strip() for m in _AVAILABLE_MODELS_RAW.split(",") if m.strip()])
     return result or None
@@ -280,6 +307,12 @@ def get_available_models_for_user(username: str | None) -> list[tuple[str, str, 
     if username and username in _USER_MODELS:
         return _models_from_ids(_USER_MODELS[username]) or None
     return get_available_models()
+
+
+def geconfigureerde_modellen() -> list[str]:
+    """Elk model dat de configuratie noemt: MODEL, AVAILABLE_MODELS en USER_MODELS, voor de controle bij het opstarten."""
+    ids = [MODEL, *(m.strip() for m in (_AVAILABLE_MODELS_RAW or "").split(",") if m.strip())]
+    return ids + [m for models in _USER_MODELS.values() for m in models]
 
 
 def toegestaan_model(username: str | None, gevraagd: object) -> str:

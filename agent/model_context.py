@@ -10,6 +10,7 @@ import logging
 
 import litellm
 
+from core.config import is_nepmodel
 from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,8 @@ _MODEL_CONTEXT_OVERRIDES: dict[str, int] = {
     "openai/mistralai/Devstral-Small-2-24B-Instruct-2512": 256000,
     "ollama/mistral": 32768,
 }
+# Het nepmodel (#1065) kent LiteLLM niet; het leest geen tokens, dus een ruime vaste waarde.
+_NEPMODEL_CONTEXT = 200_000
 
 
 def get_max_context(model: str) -> int:
@@ -49,6 +52,9 @@ def get_max_context(model: str) -> int:
         Maximum tokens the model can accept in a single request.
         Falls back to 4096 if model is completely unknown.
     """
+    if is_nepmodel(model):
+        return _NEPMODEL_CONTEXT
+
     # Check overrides first (models not in LiteLLM)
     if model in _MODEL_CONTEXT_OVERRIDES:
         ctx = _MODEL_CONTEXT_OVERRIDES[model]

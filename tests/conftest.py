@@ -34,6 +34,16 @@ def netwerk_dicht():
 
 
 @pytest.fixture(autouse=True)
+def geen_bronbewaking(monkeypatch):
+    """Een test die de app start (lifespan) meet de bronnen niet live (#1057); tests/test_bronstatus.py patcht zelf.
+
+    Ook in de omgeving: een test die `core.config` herlaadt leest de waarde daar opnieuw, en een patch op de oude
+    module telt dan niet meer."""
+    monkeypatch.setenv("BRONSTATUS_INTERVAL_S", "0")
+    monkeypatch.setattr("core.config.BRONSTATUS_INTERVAL_S", 0)
+
+
+@pytest.fixture(autouse=True)
 def clear_store():
     store.clear()
     recepten.wis()
@@ -103,6 +113,18 @@ def geen_fusieopvraging(monkeypatch):
 
     monkeypatch.setattr(fusies, "voorgangers", lambda code, sinds=None, peildatum=None: [])
     fusies._voorgangers.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def geen_licentieopvraging(monkeypatch):
+    """Unittests vragen RIO niet om de onderwijslicenties van een instelling (#1060): geen opvolgers.
+
+    Elke koppeling van SKDB en DUO op brin + croho met een SKDB-rij zonder DUO-rij vraagt ze op
+    (`tools/opvolger.py`); `tests/test_koppel_opvolger.py` patcht zelf."""
+    from tools import opvolger
+
+    monkeypatch.setattr(opvolger, "onderwijslicenties", lambda brin, peildatum=None: ())
+    opvolger.wis_caches()
 
 
 @pytest.fixture(autouse=True)

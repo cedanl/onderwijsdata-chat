@@ -355,12 +355,13 @@ Nieuwe tabel `beurtbewijs`, in `_SCHEMA` van `persistence/db.py` (dezelfde DDL v
 | `tekst_hash` | TEXT NOT NULL | sha256 (hex) van de UTF-8-tekst die `message_end` als `content` stuurde: de tekst na de controles, die de frontend ongewijzigd als `content` bewaart |
 | `lineage` | TEXT NOT NULL | JSON `{data_key: {name, arguments}}`: wat `record_data_key` sinds de vorige beurt van deze sessie aan `data_provenance` toevoegde |
 | `rekenbewijs` | TEXT NOT NULL | JSON-lijst van `{tool, argumenten, resultaat}`: wat `record_rekenbewijs` sinds de vorige beurt toevoegde |
-| `kaarten` | TEXT NOT NULL | JSON `{data_key: {...}}`: de kaarten die deze beurt tekende, alleen met de velden van `_KAARTREGEL_ARGUMENTEN` (geen titel en geen rijen, #211) |
 | `bronnen` | TEXT NOT NULL DEFAULT '{}' | JSON `{data_key: [{bron, dataset, regel}]}`: per nieuwe key de bronregels van de geladen tabellen erachter, zoals bij het laden (`bronvermelding.vastgelegde_bronnen`); een vervolgantwoord zonder toolaanroep leest ze na heropenen, ook als de store de data kwijt is (#987). `_migrate` voegt de kolom toe (`_voeg_kolom_toe`); een oudere rij heeft `{}` en valt terug op de store |
+| `figuren` | TEXT NOT NULL DEFAULT '[]' | JSON-lijst van `{id, tool, arguments, titel, keys}`: de stappen achter de figuren die de beurt maakte (`create_plot`, `create_choropleth_map` of een script van `run_analysis`, `agent/figuurstappen.py`), zodat het rapport een gekozen figuur opnieuw maakt uit haar stap in plaats van uit figuur-JSON van de client (#993). Geen figuur-JSON en geen rijen; het script van `run_analysis` staat ook al in `rekenbewijs`. `_migrate` voegt de kolom toe; een oudere rij heeft `[]`, dat gesprek toont geen figuren in de checklist |
 | `created_at` | TEXT NOT NULL | ISO-tijd van `message_end` |
 
-Van #876 tot #983 had de tabel ook een kolom `controle` (de meldingen van `message_end`, besluit 2); `_migrate` haalt
-haar weg (`_verwijder_kolom`).
+Van #876 tot #983 had de tabel ook een kolom `controle` (de meldingen van `message_end`, besluit 2), en van #875 tot
+#1044 een kolom `kaarten` (per data_key de velden van de kaartregel, die na #993 niets meer las: een kaart uit het
+gesprek staat als figuurstap in `figuren`); `_migrate` haalt beide weg (`_verwijder_kolom`).
 
 Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvragen: per gesprek, en per gesprek en hash.
 
@@ -388,14 +389,13 @@ Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvrage
   na het schrijven staan tot de grens haar verdringt, zoals een recept. Een 409 schrijft niets; de afsplitsing die de
   frontend daarna PUT, krijgt de rijen onder haar nieuwe id. Frame en body veranderen niet.
 - **Heropenen en herverbinden.** `_handle_history` leest de rijen van `(username, conv_id)` en de klaarstaande rijen met
-  een hash uit het frame. `_open_conversation` vult daarmee `data_provenance`, `rekenbewijs` en de kaarten van de
-  sessie, in de volgorde van de beurten. De hash gaat over de tekst zoals het frame haar brengt, vóór `_parse_history`
+  een hash uit het frame. `_open_conversation` vult daarmee `data_provenance`, `rekenbewijs`, de bronregels en de
+  figuurstappen van de sessie, in de volgorde van de beurten. De hash gaat over de tekst zoals het frame haar brengt, vóór `_parse_history`
   inkort of markeert; zo krijgen ook beurten die buiten de modelgeschiedenis vallen hun lineage terug. Het vraagnummer
   per key (`data_vraag`, #733) wordt niet bewaard: het volgt uit de plaats van de beurt in het heropende gesprek, net als
   `gebruikersvragen`. De gesprekstekst zelf blijft uit het frame komen, niet uit de database.
 - **Wat een rapport voortaan leest:** dezelfde sessievelden als live (`data_lineage`, `rekenbewijs`, `data_vraag`, de
-  kaarten). Alleen `_kaarten_in_gesprek` leest naast `turns` ook de kaarten uit de rijen. Een gesprek zonder rijen geeft
-  hetzelfde rapport als nu.
+  figuurstappen, #993). Een gesprek zonder rijen geeft hetzelfde rapport als nu.
 - **Controles.** In een live sessie verandert niets: daar zette de server de berichten zelf in `session["messages"]`. Na
   heropenen of herverbinden telt een assistentbericht alleen als bewijs in `earlier` als het een rij heeft (besluit 1):
   `zet_terug` onthoudt de hashes van de berichten zonder rij, en `eerdere_antwoorden` (`agent/beurtbewijs.py`) laat ze
@@ -420,7 +420,7 @@ app.
 - **"Verwijder al mijn gegevens"** (`persistence/verwijderen.py`): één `DELETE ... WHERE username = ?` in `DELETES`, en
   de klaarstaande rijen van de gebruiker gaan uit het geheugen, zoals bij `recepten.vergeet_gebruiker`.
 - **Export** (`persistence/export.py`): een soort `beurtbewijs` met `conv_id`, `tekst_hash`, `lineage`, `rekenbewijs`,
-  `kaarten`, `bronnen` (#987) en `created_at` (van #876 tot #983 ook `controle`), in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
+  `bronnen` (#987), `figuren` (#993) en `created_at` (van #876 tot #983 ook `controle`, van #875 tot #1044 ook `kaarten`), in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
 - **Log:** op INFO alleen aantallen en kenmerken, nooit lineage, argumenten of resultaten (#475).
 
 ### Migratie
@@ -551,8 +551,11 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 
 ## ADR-011: De eerste productie draait bewust één pod; schaalbaar maken is een vervolgepic
 
-**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677)
-**Status:** Decided
+**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677); bijgewerkt 2026-11-19 (stand #984 stap 1)
+**Status:** Decided; van #984 stap 1 zijn de tijdslimieten (login, berichten, feedback, rapport-docx, `/mcp`) naar
+Postgres verhuisd (`rate_limit_hits`, gedeeld door alle pods en bestand tegen een herstart) en migreren startende pods om
+de beurt onder een advisory lock. Nog per pod: de gelijktijdigheidstellers, de SRAM-gebruikerscache en de herlaadvlag;
+"Limieten beginnen na een herstart op nul" (Trade-offs) geldt alleen nog voor die tellers
 **Issue:** #677 (vervolgepic #984; graceful shutdown #675; productie uitrolbaar #674)
 
 ### Problem

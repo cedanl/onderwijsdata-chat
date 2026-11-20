@@ -31944,12 +31944,12 @@
   {
     "leverancier": "DUO",
     "bron": "Prognoses vo per instelling",
-    "beschrijving": "Dit document beschrijft de bestanden over leerlingen in het Primair Onderwijs die via een API (Application Programming Interface) via de website van DUO wordt aangeboden.",
-    "periode": "2024-2030",
+    "beschrijving": "Prognose van het aantal leerlingen in het voortgezet onderwijs per instelling (BRIN), onderwijsniveau (vmbo, havo, vwo, pro (praktijkonderwijs), brj (brugjaar) en het vo-totaal) en jaar, van 2024 tot en met 2043. Het bestand heeft geen leerjaar.",
+    "periode": "2024-2043",
     "onderwijstype": [
       "VO"
     ],
-    "doel": "Dit document beschrijft de bestanden over leerlingen in het Primair Onderwijs die via een API (Application Programming Interface) via de website van DUO wordt aangeboden. De prognose van het aantal leerlingen in het voortgezet onderwijs (vo) per instelling, onderwijsniveau en jaar.",
+    "doel": "De prognose van het aantal leerlingen in het voortgezet onderwijs (vo) per instelling, onderwijsniveau en jaar, tot en met 2043.",
     "frequentie": "Jaarlijks",
     "categorie": "VO",
     "sectie": "DUO Open Data",
@@ -31960,7 +31960,7 @@
     "filters": [],
     "sub_resources": [],
     "voorbeeldvragen": [
-      "Welke mbo-instellingen krimpen het sterkst richting 2030?"
+      "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030?"
     ],
     "tags": [
       "prognoses",

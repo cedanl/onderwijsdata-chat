@@ -127,7 +127,7 @@ def test_na_een_koppeling_ziet_de_vervolgbeurt_sleutels_tool_en_bronnen():
 
 def test_na_heropenen_met_lege_store_staan_de_sleutels_er_ook():
     live = _live_koppelbeurt()
-    rij = {"lineage": live["data_provenance"], "rekenbewijs": [], "kaarten": {}, "created_at": "t"}
+    rij = {"lineage": live["data_provenance"], "rekenbewijs": [], "created_at": "t"}
     store.clear()  # een nieuw proces: de store kent de tabellen niet meer
     verse: dict = {"messages": _berichten(_VRAAG_1, _ANTWOORD_1, _VRAAG_2)}
 

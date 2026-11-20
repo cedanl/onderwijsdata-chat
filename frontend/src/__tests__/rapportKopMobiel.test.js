@@ -126,12 +126,16 @@ describe('geopend dashboard (#795)', () => {
 })
 
 describe('geopend rapport op desktop (#604)', () => {
-  it('houdt Download en feedback inline in de kopbalk en het slot leeg', async () => {
+  it('houdt Downloaden en feedback inline in de kopbalk en het slot leeg', async () => {
     const slot = await renderMetSlot()
     const acties = container.querySelector('.wb-viewer-actions')
     expect(acties).not.toBeNull()
+    // De formaten staan achter één knop Downloaden (RapportExportMenu), niet als vier knoppen naast elkaar.
+    const zichtbaar = [...acties.querySelectorAll('button')].filter(b => !b.closest('[hidden]')).map(b => b.textContent)
+    expect(zichtbaar).toEqual(['Downloaden', 'Geef feedback op dit rapport'])
+    await klik(acties.querySelector('button[aria-haspopup="true"]'))
+    expect(acties.querySelector('.wb-export-paneel').hidden).toBe(false)
     expect(acties.textContent).toContain('Download als HTML')
-    expect(acties.textContent).toContain('Geef feedback op dit rapport')
     expect(slot.querySelector('button')).toBeNull()
   })
 })

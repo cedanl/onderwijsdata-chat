@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { useChat, REPORT_TIMEOUT_MS, REASON_TOAST_MS } from '../hooks/useChat'
+import { useChat, REPORT_TIMEOUT_MS, REPORT_SLOW_MS, REASON_TOAST_MS } from '../hooks/useChat'
+import ReportProgress from '../components/ReportProgress'
 import { BACKOFF_DELAYS } from '../socketHealth'
 import { FakeWebSocket } from './fakeWebSocket'
 
@@ -287,5 +288,131 @@ describe('de onderzoeksvraag gaat mee (#751)', () => {
     expect(kan).toBe(false)
     expect(toastTeksten()).toEqual(['Wacht tot het antwoord klaar is'])
     expect(rapportFrames(ws)).toEqual([])
+  })
+})
+
+// #1050: onder een bronstoring zag de gebruiker minutenlang alleen de lopende klok. Na REPORT_SLOW_MS zonder eindbericht
+// zegt de voortgang dat het langer duurt dan normaal; elk einde van het rapport haalt dat weg, met de timer.
+describe('een rapport dat langer duurt dan normaal (#1050)', () => {
+  let container
+
+  async function mountMetVoortgang() {
+    function Harness() {
+      chat = useChat()
+      return createElement(ReportProgress, {
+        busy: chat.reportBusy, progress: chat.reportProgress, slow: chat.reportSlow, onCancel: chat.cancelReport,
+      })
+    }
+    container = document.createElement('div')
+    root = createRoot(container)
+    await act(async () => { root.render(createElement(Harness)) })
+    await act(async () => { FakeWebSocket.last.open() })
+    return FakeWebSocket.last
+  }
+
+  const notitie = () => container.querySelector('.report-progress-note[role="status"]')?.textContent ?? null
+  const langer = () => /Dit duurt langer dan normaal/.test(notitie() ?? '')
+
+  async function rapportOpWeg() {
+    vi.useFakeTimers()
+    const ws = await mountMetVoortgang()
+    await vraag(ws)
+    await act(async () => { ws.emit({ type: 'report_generating' }) })
+    return ws
+  }
+
+  // Minutes pass with a live connection: the server answers every ping (PONG_TIMEOUT_MS is 10 s), as a real one does.
+  async function wacht(ms) {
+    for (let rest = ms; rest > 0; rest -= 5000) {
+      await act(async () => {
+        vi.advanceTimersByTime(Math.min(rest, 5000))
+        FakeWebSocket.last.emit({ type: 'pong' })
+      })
+    }
+  }
+
+  it('de drempel ligt ruim onder de afbreektijd van de browser', () => {
+    expect(REPORT_SLOW_MS).toBeGreaterThan(0)
+    expect(REPORT_SLOW_MS).toBeLessThan(REPORT_TIMEOUT_MS)
+  })
+
+  it('vóór de drempel staat de gewone notitie, erna de melding in de statusregel', async () => {
+    await rapportOpWeg()
+    await wacht(REPORT_SLOW_MS - 1)
+    expect(chat.reportSlow).toBe(false)
+    expect(langer()).toBe(false)
+    expect(notitie()).toMatch(/paar minuten/)
+
+    await wacht(1)
+
+    expect(chat.reportSlow).toBe(true)
+    expect(notitie()).toBe('Dit duurt langer dan normaal. Je kunt blijven wachten of het rapport annuleren.')
+  })
+
+  it.each([
+    ['report_ready', { type: 'report_ready', spec: { titel: 'R' } }],
+    ['report_error', { type: 'report_error', message: 'De data van dit gesprek is niet meer beschikbaar.' }],
+    ['report_cancelled', { type: 'report_cancelled' }],
+  ])('%s haalt de melding weg', async (_naam, einde) => {
+    const ws = await rapportOpWeg()
+    await wacht(REPORT_SLOW_MS)
+    expect(langer()).toBe(true)
+
+    await act(async () => { ws.emit(einde) })
+
+    expect(chat.reportSlow).toBe(false)
+    expect(notitie()).toBeNull()
+  })
+
+  it.each([
+    ['report_ready', { type: 'report_ready', spec: { titel: 'R' } }],
+    ['report_error', { type: 'report_error', message: 'DUO gaf een serverfout.' }],
+    ['report_cancelled', { type: 'report_cancelled' }],
+  ])('na een %s vóór de drempel vuurt de timer niet meer, ook niet bij het volgende rapport', async (_naam, einde) => {
+    const ws = await rapportOpWeg()
+    await act(async () => { ws.emit(einde) })
+    await wacht(REPORT_SLOW_MS)
+    expect(chat.reportSlow).toBe(false)
+
+    // Het volgende rapport begint zonder melding en krijgt haar pas na zijn eigen drempel.
+    await vraag(ws)
+    expect(langer()).toBe(false)
+    await wacht(REPORT_SLOW_MS - 1)
+    expect(langer()).toBe(false)
+    await wacht(1)
+    expect(langer()).toBe(true)
+  })
+
+  it('annuleren haalt de melding weg en zet de timer stil', async () => {
+    await rapportOpWeg()
+    await wacht(REPORT_SLOW_MS)
+    const knop = [...container.querySelectorAll('button')].find(b => b.textContent === 'Annuleer')
+    await act(async () => { knop.click() })
+
+    expect(chat.reportSlow).toBe(false)
+    expect(notitie()).toBeNull()
+
+    await act(async () => { chat.generateReport('tester') })
+    expect(langer()).toBe(false)
+  })
+
+  it('de afbreking na 10 minuten haalt de melding weg', async () => {
+    await rapportOpWeg()
+    await wacht(REPORT_SLOW_MS)
+    expect(langer()).toBe(true)
+
+    await wacht(REPORT_TIMEOUT_MS - REPORT_SLOW_MS)
+
+    expect(chat.reportSlow).toBe(false)
+    expect(notitie()).toBeNull()
+    expect(chat.messages.at(-1).content).toMatch(/10 minuten nog niet klaar/)
+  })
+
+  it('na unmount staat geen van beide rapporttimers nog klaar', async () => {
+    await rapportOpWeg()
+    act(() => root.unmount())
+    root = null
+
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

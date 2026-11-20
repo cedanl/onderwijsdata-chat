@@ -40,8 +40,9 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
-| Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de kolommen van kaarten en de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
+| Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987) en de stappen achter de figuren (tool, argumenten, het script van een analyse en de titel van de figuur, #993), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
+| Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder de accountnaam als hash; geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget) |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
 Een oordeel op een antwoord (👍/👎 met toelichting en een kopie van vraag, antwoord en stappen) bewaart de server sinds
@@ -72,7 +73,8 @@ dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen bui
   eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
   inloggen. Tijdens het inloggen met SRAM staan er kort drie cookies met eenmalige waarden van die login (OIDC-state,
-  nonce en PKCE-verifier, hoogstens 10 minuten); verder gebruikt de app geen cookies en geen analytics.
+  nonce en PKCE-verifier, hoogstens 10 minuten); daarna worden ze verwijderd, ook als het inloggen misgaat. Verder
+  gebruikt de app geen cookies en geen analytics.
 
 ## Het logboek
 
@@ -119,7 +121,8 @@ is een open punt.
 openEDUdata+ is een project van CEDA (Npuls). De verwerkingsverantwoordelijke is de deelnemende instelling
 (besluit 19-10-2026, #553). Met een privacyvraag kan een gebruiker terecht bij die instelling: bij de
 privacycontactpersoon of de functionaris gegevensbescherming (FG) van de instelling. Het projectteam van CEDA is er
-alleen voor vragen over de demo zelf.
+alleen voor vragen over de demo zelf. De indeling onder de EU-verordening voor kunstmatige intelligentie staat in
+[AI-verordening](ai-act.md).
 
 ## Open punten
 

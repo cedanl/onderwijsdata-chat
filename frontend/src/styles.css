@@ -431,6 +431,14 @@ html.dark .login-melding { color: var(--accent-text); }
   font: inherit; font-weight: 600; color: var(--accent-text);
   background: none; border: none; text-decoration: underline; cursor: pointer;
 }
+/* Welke bronnen nu niet live zijn (#1057): alleen als er een is. Geen foutrood: de app werkt, de bron niet, en de
+   melding staat boven de pagina zodat ze bij het openen opvalt zonder te blokkeren. Leeg: geen ruimte. */
+.bronstatus:empty { display: none; }
+.bronstatus { display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 0; }
+.bronstatus-melding {
+  margin: 0; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px;
+  border: 1px solid rgba(217, 119, 6, .45); background: rgba(217, 119, 6, .09); color: var(--gray-700);
+}
 .chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 /* Bovenaan de rij, niet gecentreerd (#599): de wachtregel komt er tijdens het antwoord onder, en gecentreerd
    schoof de pil dan 8px omhoog. Pil plus regel (44px) passen in de 50px, dus de rij groeit niet. */
@@ -1475,6 +1483,10 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 .rapport-keuze-lijst input[type="checkbox"] { flex: none; width: 20px; height: 20px; margin: 2px 0 0; }
 .rapport-keuze-vraag { display: block; font-size: .9rem; overflow-wrap: anywhere; }
 .rapport-keuze-bron { display: block; margin-top: 2px; font-size: .78rem; color: var(--muted-text); overflow-wrap: anywhere; }
+/* The figures of a turn (#993), indented under its question so they read as part of it. */
+.rapport-keuze-figuren { list-style: none; margin: 0; padding: 0 0 0 30px; }
+.rapport-keuze-figuren label { padding: 4px 0; }
+.rapport-keuze-figuur { display: block; font-size: .85rem; overflow-wrap: anywhere; }
 .rapport-keuze-fout { margin: 0; padding-left: 8px; border-left: 3px solid #DC2626; font-size: .85rem; font-weight: 600; }
 .export-conversation-btn {
   display: block; padding: 4px 10px;
@@ -1508,6 +1520,24 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 /* Gelukt, maar met een kanttekening ("Download als Word" zonder elke grafiek, #1038): geen foutkleur. */
 .wb-download-notice { font-size: .8rem; color: var(--gray-600); }
 .wb-download-btn[aria-disabled="true"] { cursor: progress; opacity: .7; }
+/* De exportformaten achter één knop Downloaden (RapportExportMenu): een paneel onder de knop, rechts uitgelijnd met
+   de kopbalk, in dezelfde vorm als het ⋯-menu op een telefoon. */
+.wb-export { position: relative; }
+.wb-export-knop { display: inline-flex; align-items: center; gap: 6px; }
+.wb-export-knop svg { width: 14px; height: 14px; flex-shrink: 0; transition: transform .15s; }
+.wb-export-knop[aria-expanded="true"] svg { transform: rotate(180deg); }
+.wb-export-paneel {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 60; min-width: 220px;
+  display: flex; flex-direction: column; padding: 6px;
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+.wb-export-paneel[hidden] { display: none; }
+.wb-export-paneel .wb-download-btn {
+  display: flex; align-items: center; width: 100%; text-align: left;
+  border: none; border-radius: var(--radius-sm); padding: 8px 12px; color: var(--gray-800);
+}
+.wb-export-paneel .wb-download-btn:hover, .wb-export-paneel .wb-download-btn:focus-visible { background: var(--gray-100); }
+.wb-export-paneel .wb-download-error, .wb-export-paneel .wb-download-notice { padding: 4px 12px; max-width: 320px; }
 .wb-feedback-btn, .wb-feedback-given {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);

@@ -190,6 +190,10 @@ def push_url(env: Mapping[str, str]) -> str:
 
 # Git vraagt de helper om gebruiker en wachtwoord; de helper leest het token uit de omgeving van het git-proces.
 CREDENTIAL_HELPER = f'!f() {{ echo username=oauth2; echo "password=${{{TOKEN_VAR}}}"; }}; f'
+# De runner (19.x) zet zelf een credential helper met het job-token in de git-config, en git vraagt de helpers op
+# volgorde: die van de runner antwoordde eerst, en een job-token mag niet pushen ("You are not allowed to push code",
+# #974). Een lege credential.helper maakt de lijst leeg, zodat alleen de bothelper overblijft.
+CREDENTIAL_CONFIG = ("-c", "credential.helper=", "-c", f"credential.helper={CREDENTIAL_HELPER}")
 
 
 def commit_en_push(
@@ -203,8 +207,7 @@ def commit_en_push(
     git_env = {**os.environ, **env, "GIT_TERMINAL_PROMPT": "0"}
     _git(
         run,
-        "-c",
-        f"credential.helper={CREDENTIAL_HELPER}",
+        *CREDENTIAL_CONFIG,
         "push",
         "--force",
         "--quiet",

@@ -44,6 +44,11 @@ _AFKORTINGEN = frozenset(
 _GESLACHT = {"MAN": "Man", "VROUW": "Vrouw", "ONBEKEND": "Onbekend"}
 
 
+def is_labelkolom(kop: str) -> bool:
+    """Is dit de labelkolom naast een code (STUDIEJAAR_LABEL, Perioden_label), niet de bronkolom zelf?"""
+    return _LABELKOLOM.fullmatch(kop) is not None
+
+
 def kolomlabel(kop: str, titels: Mapping[str, str] | None = None) -> str:
     titels = titels or {}
     if kop in titels:

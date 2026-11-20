@@ -34,6 +34,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MAX_GESPREKKEN_PER_GEBRUIKER` | `1000` | Bewaarde gesprekken per gebruiker; een nieuw gesprek daarboven krijgt een 507 met de vraag oude gesprekken of rapporten te verwijderen, een bestaand gesprek bijwerken mag. `0` zet het uit (#682) |
 | `MAX_WERKBOEKEN_PER_GEBRUIKER` | `500` | Hetzelfde voor rapporten en dashboards (#682) |
 | `MAX_OPSLAG_PER_GEBRUIKER_MB` | `100` | De samen bewaarde grootte van gesprekken en werkboeken per gebruiker; bijwerken telt alleen het verschil. `0` zet het uit (#682) |
+| `TOKENBUDGET_DAG` | `1500000` | Tokenbudget per gebruiker per dag (UTC), in invoertoken-equivalenten: nieuwe invoer x1, uit de cache gelezen x0,1, cache geschreven x1,25, uitvoer x5 (`core/tokenbudget.py`). Een typische vraag kost rond de 20.000, dus de standaard is zo'n 75 vragen per dag. Daarboven een melding en geen modelaanroep; `0` zet het uit. Zonder login geen budget (#678) |
+| `TOKENBUDGET_MAAND` | `15000000` | Hetzelfde per kalendermaand; `0` zet het uit (#678) |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
 | `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
 | `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, rapport). Een volgende wacht op een plaats (#688) |
@@ -45,6 +47,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 | `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
+| `BRONSTATUS_INTERVAL_S` | `120` | Seconden tussen twee metingen of CBS, DUO, RIO, UWV en de inspectie antwoorden (#1057); een bron die niet antwoordt staat dan bij het openen van de app als niet live. `0` zet de meting uit |
 | `LITELLM_REQUEST_TIMEOUT` | `1200` | Seconden per leesoperatie van een modelaanroep (#431): de wachttijd tot de headers en daarna de langste stilte in de stream, geen totale duur; een lang, doorlopend antwoord raakt hem niet. Ligt boven `RUN_TIMEOUT_S`, dus een nieuwe poging na een time-out past nu niet in een run. Alleen een time-out vóór de headers wordt opnieuw geprobeerd. De waarde volgt uit de hermeting van #800 (logregel `MODELAANROEP`; 04-11: langste stilte 19,7 s) |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
@@ -71,6 +74,29 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MCP_WACHT_S` | `1` | Seconden dat een verzoek op `/mcp` op een plaats wacht; daarna HTTP 503 met `Retry-After`, geen lange wachtrij |
 | `MCP_TOOL_TIMEOUT_S` | `30` | Seconden per toolaanroep op `/mcp`; daarna een MCP-fout (`isError`). De eerste zoekactie laadt het DUO-instellingenregister (enkele seconden). De grootte van een resultaat volgt `TOOL_RESULT_MAX_CHARS`, zoals in de chat |
 | `LOG_HASH_SECRET` | *(niet ingesteld)* | Geheim voor de hash in logregels (`len=… hash=…`, #475): met geheim een HMAC, zodat wie het log heeft geen geraden vraag tegen de hash kan controleren (#502). Via SOPS/Flux, nooit in de repo; zonder geheim een kale SHA-256 |
+
+---
+
+## Nepmodel voor lokaal testen
+
+Zonder API-sleutel draait de chat met het nepmodel (#1065): `MODEL=mock/<scenario>`. De app, de toollaag (catalogus,
+CBS, DUO, RIO), de controles en de UI werken echt; alleen het model is nep en antwoordt vast en herhaalbaar
+(`agent/nepmodel.py`). Er is geen aparte vlag: het prefix `mock/` is de schakelaar.
+
+```dotenv
+MODEL=mock/default
+APP_ENV=local
+```
+
+| Scenario | Wat het doet |
+|----------|--------------|
+| `mock/default` | Zoekt in de catalogus met de vraag, laadt één vaste CBS-tabel (mbo-studenten landelijk) en antwoordt met wat de tools gaven. Het laden haalt CBS op, dus internet is nodig. |
+| `mock/tekst` | Antwoordt met een vaste tekst, zonder tools en zonder netwerk. |
+
+Een rapport geeft in beide scenario's een kort vast rapport, als er data in het gesprek geladen is. Zonder
+`AVAILABLE_MODELS` toont de model-picker de scenario's. Alleen voor `APP_ENV` `local` en `development`: elders start
+de app niet zodra `MODEL`, `AVAILABLE_MODELS` of `USER_MODELS` een `mock/`-model noemt. De modelnaam `mock/…` komt
+wel in de manifesten, logs en het tokengebruik van wat je lokaal maakt.
 
 ---
 

@@ -20,7 +20,7 @@ from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.verklaring_markers import vraagt_verklaring
 
-from . import manifest, recepten, vervolgvragen
+from . import figuurstappen, manifest, recepten, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
 from .beurtbewijs import eerdere_antwoorden
@@ -389,6 +389,8 @@ def _codeblok_bij_verzoek(tekst: str, vraag: str, session: dict) -> str:
 async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, figure) -> None:
     record_data_key(session, result, {"name": call.name, "arguments": call.args})
     record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
+    # De stap achter de figuur, zodat het rapport haar opnieuw kan maken (#993).
+    figuurstappen.leg_vast(session, call.name, call.args, result, figure)
     if figure is not None:
         # De figuur gaat met haar rijen naar de client (export, #183): herkomst in het log (#169).
         keys = [k for k in ((call.args or {}).get("data_key"),) if isinstance(k, str)]

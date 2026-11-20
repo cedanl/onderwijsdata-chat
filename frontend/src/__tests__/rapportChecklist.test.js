@@ -6,7 +6,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat, CHECKLIST_TIMEOUT_MS } from '../hooks/useChat'
-import { metKeuze, aanBeurten, voortbouwNotitie } from '../rapportKeuze'
+import {
+  GEEN_KEUZE, MAX_FIGUREN, aanBeurten, aanFiguren, beurtenVanFiguur, figuurLabels, figurenVan, metKeuze, nodigVoor,
+  voortbouwNotitie, wisselBeurt, wisselFiguur,
+} from '../rapportKeuze'
 import { FakeWebSocket } from './fakeWebSocket'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -155,6 +158,24 @@ describe('de gekozen beurten meesturen (#908)', () => {
     expect(rapportFrame(ws)).toEqual({ action: 'generate_report', author: 'tester', onderzoeksvraag: 'Mijn vraag', beurten: [1, 3] })
   })
 
+  it('de gekozen figuren gaan mee naast de beurten (#993)', async () => {
+    const ws = await mount()
+
+    await act(async () => { chat.generateReport('tester', 'Mijn vraag', [1, 3], ['f1', 'f3']) })
+
+    expect(rapportFrame(ws)).toEqual({
+      action: 'generate_report', author: 'tester', onderzoeksvraag: 'Mijn vraag', beurten: [1, 3], figuren: ['f1', 'f3'],
+    })
+  })
+
+  it('geen figuur gekozen gaat mee als een lege lijst: het rapport heeft dan geen figuren (#993)', async () => {
+    const ws = await mount()
+
+    await act(async () => { chat.generateReport('tester', 'Mijn vraag', [1], []) })
+
+    expect(rapportFrame(ws).figuren).toEqual([])
+  })
+
   it('zonder keuze gaat er niets extra mee: het frame is dat van voor de checklist', async () => {
     const ws = await mount()
 
@@ -175,9 +196,10 @@ describe('de helpers (#908)', () => {
   })
 
   it('alles staat aan tot de gebruiker iets uitzet', () => {
-    expect(aanBeurten(ITEMS, new Set())).toEqual([1, 2, 3])
-    expect(aanBeurten(ITEMS, new Set([2]))).toEqual([1, 3])
-    expect(aanBeurten(ITEMS, new Set([1, 2, 3]))).toEqual([])
+    const uit = beurten => ({ beurtenUit: new Set(beurten), figurenUit: new Set() })
+    expect(aanBeurten(ITEMS, GEEN_KEUZE)).toEqual([1, 2, 3])
+    expect(aanBeurten(ITEMS, uit([2]))).toEqual([1, 3])
+    expect(aanBeurten(ITEMS, uit([1, 2, 3]))).toEqual([])
   })
 
   it('zegt waar een beurt op voortbouwt, en dat die bron vermeld blijft', () => {
@@ -190,5 +212,144 @@ describe('de helpers (#908)', () => {
     const notitie = voortbouwNotitie({ beurt: 2, bouwt_voort_op: [1] }, [lang])
     expect(notitie).toContain('…”')
     expect(notitie.length).toBeLessThan(lang.vraag.length + 40)
+  })
+})
+
+describe('figuren in de checklist (#993)', () => {
+  const MET_FIGUREN = [
+    { ...ITEMS[0], figuren: [{ id: 'f1', titel: 'Instroom UU' }, { id: 'f2', titel: 'Als staven' }] },
+    ITEMS[1],
+    { ...ITEMS[2], figuren: [{ id: 'f3', titel: 'Vrouwen' }] },
+  ]
+
+  it('een checklist met één beurt en een figuur heeft een keuze', () => {
+    expect(metKeuze({ status: 'klaar', items: [MET_FIGUREN[0]] })).toBe(true)
+    expect(metKeuze({ status: 'klaar', items: [{ ...ITEMS[0], figuren: [] }] })).toBe(false)
+  })
+
+  it('alle figuren staan aan, in de volgorde van de checklist', () => {
+    expect(aanFiguren(MET_FIGUREN, GEEN_KEUZE)).toEqual(['f1', 'f2', 'f3'])
+  })
+
+  it('een beurt uit zet haar figuren uit, en weer aan zet ze weer aan', () => {
+    const uit = wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+    expect(aanBeurten(MET_FIGUREN, uit)).toEqual([2, 3])
+    expect(aanFiguren(MET_FIGUREN, uit)).toEqual(['f3'])
+
+    const weer = wisselBeurt(uit, MET_FIGUREN[0], true)
+    expect(aanBeurten(MET_FIGUREN, weer)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, weer)).toEqual(['f1', 'f2', 'f3'])
+  })
+
+  it('een figuur aan zet haar beurt aan; de andere figuren van die beurt blijven uit', () => {
+    const uit = wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+
+    const keuze = wisselFiguur(uit, MET_FIGUREN[0], 'f2', true)
+
+    expect(aanBeurten(MET_FIGUREN, keuze)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, keuze)).toEqual(['f2', 'f3'])
+  })
+
+  it('een figuur uit laat haar beurt aan', () => {
+    const keuze = wisselFiguur(GEEN_KEUZE, MET_FIGUREN[0], 'f1', false)
+
+    expect(aanBeurten(MET_FIGUREN, keuze)).toEqual([1, 2, 3])
+    expect(aanFiguren(MET_FIGUREN, keuze)).toEqual(['f2', 'f3'])
+  })
+
+  it('wisselen verandert de vorige keuze niet', () => {
+    wisselBeurt(GEEN_KEUZE, MET_FIGUREN[0], false)
+    wisselFiguur(GEEN_KEUZE, MET_FIGUREN[0], 'f1', false)
+
+    expect(GEEN_KEUZE.beurtenUit.size + GEEN_KEUZE.figurenUit.size).toBe(0)
+  })
+
+  it('een figuur zonder id of titel telt niet', () => {
+    expect(figurenVan({ figuren: [{ id: 'f1', titel: 'T' }, { id: 7, titel: 'T' }, { id: 'f2' }, null] })).toEqual([{ id: 'f1', titel: 'T' }])
+    expect(figurenVan({ figuren: 'geen lijst' })).toEqual([])
+    expect(figurenVan({})).toEqual([])
+  })
+
+  it('de grens is vier figuren, net als op de server', () => {
+    expect(MAX_FIGUREN).toBe(4)
+  })
+})
+
+describe('een figuur op de data van meer beurten (#1045)', () => {
+  // Het script van beurt 3 las ook de data van beurt 1: de server stuurt beide beurten mee.
+  const MEER = [
+    { ...ITEMS[0], figuren: [{ id: 'f1', titel: 'Instroom UU', beurten: [1] }] },
+    ITEMS[1],
+    { ...ITEMS[2], figuren: [{ id: 'script', titel: 'Vrouwen naast totaal', beurten: [1, 3] }] },
+  ]
+
+  it('de beurten van een figuur zijn die van de server, met haar eigen beurt', () => {
+    expect(beurtenVanFiguur(MEER[2], MEER[2].figuren[0])).toEqual([1, 3])
+    // Een ouder antwoord zonder beurten: alleen de eigen beurt.
+    expect(beurtenVanFiguur(ITEMS[2], { id: 'x', titel: 'X' })).toEqual([3])
+    expect(beurtenVanFiguur(ITEMS[2], { id: 'x', titel: 'X', beurten: 'geen lijst' })).toEqual([3])
+    expect(beurtenVanFiguur(ITEMS[2], { id: 'x', titel: 'X', beurten: [1] })).toEqual([3, 1])
+  })
+
+  it('een figuur aan zet al haar beurten aan, en die gaan mee', () => {
+    const uit = wisselBeurt(wisselBeurt(GEEN_KEUZE, MEER[0], false, MEER), MEER[2], false, MEER)
+    expect(aanBeurten(MEER, uit)).toEqual([2])
+    expect(aanFiguren(MEER, uit)).toEqual([])
+
+    const keuze = wisselFiguur(uit, MEER[2], 'script', true)
+
+    expect(aanBeurten(MEER, keuze)).toEqual([1, 2, 3])
+    // De eigen figuur van beurt 1 blijft uit: de gebruiker zette haar met haar beurt uit.
+    expect(aanFiguren(MEER, keuze)).toEqual(['script'])
+  })
+
+  it('een beurt die een figuur nodig heeft uitzetten, zet die figuur uit', () => {
+    const keuze = wisselBeurt(GEEN_KEUZE, MEER[0], false, MEER)
+
+    expect(aanBeurten(MEER, keuze)).toEqual([2, 3])
+    expect(aanFiguren(MEER, keuze)).toEqual([])
+  })
+
+  it('weer aan zet de eigen figuren aan, maar alleen als hun andere beurten aanstaan', () => {
+    const uit = wisselBeurt(wisselBeurt(GEEN_KEUZE, MEER[0], false, MEER), MEER[2], false, MEER)
+
+    const derde = wisselBeurt(uit, MEER[2], true, MEER)
+    expect(aanFiguren(MEER, derde)).toEqual([])
+
+    const ook = wisselBeurt(derde, MEER[0], true, MEER)
+    expect(aanFiguren(MEER, ook)).toEqual(['f1'])
+  })
+
+  it('een figuur staat nooit aan met een beurt uit', () => {
+    const keuze = { beurtenUit: new Set([1]), figurenUit: new Set() }
+    expect(aanFiguren(MEER, keuze)).toEqual([])
+  })
+
+  it('de extra beurt zegt voor welke figuur ze nodig is; de eigen beurt en een uitgezette figuur niet', () => {
+    const aan = aanFiguren(MEER, GEEN_KEUZE)
+    expect(nodigVoor(MEER[0], MEER, aan)).toBe('Nodig voor figuur “Vrouwen naast totaal”.')
+    expect(nodigVoor(MEER[2], MEER, aan)).toBeNull()
+    expect(nodigVoor(MEER[1], MEER, aan)).toBeNull()
+    expect(nodigVoor(MEER[0], MEER, ['f1'])).toBeNull()
+  })
+})
+
+describe('figuren met dezelfde titel (#1045)', () => {
+  it('krijgen een volgnummer; een unieke titel blijft zoals hij was', () => {
+    const items = [
+      { ...ITEMS[0], figuren: [{ id: 'a', titel: 'Instroom' }, { id: 'b', titel: 'Uniek' }] },
+      { ...ITEMS[1], figuren: [{ id: 'c', titel: 'Instroom' }] },
+    ]
+
+    expect(Object.fromEntries(figuurLabels(items))).toEqual({ a: 'Instroom (1)', b: 'Uniek', c: 'Instroom (2)' })
+  })
+
+  it('de notitie bij een beurt noemt het label, niet de dubbele titel', () => {
+    const items = [
+      { ...ITEMS[0], figuren: [{ id: 'a', titel: 'Instroom' }] },
+      { ...ITEMS[1], figuren: [{ id: 'c', titel: 'Instroom', beurten: [1, 2] }] },
+    ]
+
+    expect(nodigVoor(items[0], items, ['a', 'c'])).toBe('Nodig voor figuur “Instroom (2)”.')
   })
 })

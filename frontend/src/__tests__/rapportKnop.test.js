@@ -236,7 +236,7 @@ describe('de checklist van beurten met data (#908)', () => {
     expect(chat.requestReportChecklist).toHaveBeenCalledTimes(1)
   })
 
-  it('staat boven het veld, en Genereer geeft de gekozen beurten door', async () => {
+  it('staat boven het veld, en Genereer geeft de gekozen beurten en figuren door (#993)', async () => {
     await mountChat({ messages: BIJGESTUURD, reportChecklist: KLAAR })
     await act(async () => { knop().click() })
     const vakjes = dialoog().querySelectorAll('input[type="checkbox"]')
@@ -246,7 +246,7 @@ describe('de checklist van beurten met data (#908)', () => {
     await act(async () => { vakjes[0].click() })
     await act(async () => { dialoogKnop('Genereer').click() })
 
-    expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO, [2])
+    expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO, [2], [])
   })
 
   it('zonder beurten met data is het veld alles wat er is', async () => {

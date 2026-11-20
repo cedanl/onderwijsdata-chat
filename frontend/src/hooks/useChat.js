@@ -10,8 +10,11 @@ import { reportBlockReason } from '../reportBlockReason'
 import { markeerWeggegaan } from '../weggegaan'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
-// around five minutes (#417); the server has no limit of its own, so the wait ends here.
+// a few minutes (#417); the server ends a report itself after GENEREER_TIMEOUT_S (8 min, #759), which
+// tests/test_rapport_bronstoring.py keeps below this value, so its reason arrives before this cut-off.
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
+// After this long without an end event the report progress says it takes longer than normal (#1050).
+export const REPORT_SLOW_MS = 2 * 60 * 1000
 // How long the toast with the reason a report cannot start stays up (#648).
 export const REASON_TOAST_MS = 4000
 // How long the dialog waits for the checklist of turns with data before it goes on without (#908).
@@ -59,6 +62,8 @@ export function useChat({ maxHistory } = {}) {
   const [reportSpec, setReportSpec] = useState(null)
   // Steps of the report run, shown while the report is being made (#339).
   const [reportProgress, setReportProgress] = useState(NO_REPORT_PROGRESS)
+  // The report is past REPORT_SLOW_MS without an end event (#1050).
+  const [reportSlow, setReportSlow] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [rejectedDraft, setRejectedDraft] = useState(null)
   // How many data keys the server restored for a reopened conversation (#472): its report can be made then.
@@ -84,6 +89,12 @@ export function useChat({ maxHistory } = {}) {
   const currentHasTextRef = useRef(false)
   const resettingRef = useRef(false)
   const reportTimeoutRef = useRef(null)
+  const reportSlowRef = useRef(null)
+  // Unmounted while a report runs: neither report timer may fire into a hook that is gone (#1050).
+  useEffect(() => () => {
+    clearTimeout(reportTimeoutRef.current)
+    clearTimeout(reportSlowRef.current)
+  }, [])
   // text_delta's per animation frame bundelen (#510): 100+ fragmenten per seconde werden
   // 100+ renders, en react-markdown parset dan elke keer het hele groeiende antwoord.
   const deltaBufferRef = useRef('')
@@ -112,12 +123,17 @@ export function useChat({ maxHistory } = {}) {
   const runVerlatenRef = useRef(false)
   // Per reason, until when its toast shows: quick taps during an outage stacked identical toasts (#648).
   const reasonToastUntilRef = useRef({})
+  // De lopende sluittimers van toasts (#1052): bij unmount opgeruimd, anders doet er een nog setToasts.
+  const toastTimersRef = useRef(new Set())
   const nextId = () => ++idRef.current
 
   // The report is over, with or without a result: no more waiting, button free again.
   const endReport = useCallback(() => {
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = null
+    clearTimeout(reportSlowRef.current)
+    reportSlowRef.current = null
+    setReportSlow(false)
     reportingRef.current = false
     reportRequestedRef.current = false
     setReportBusy(false)
@@ -147,11 +163,29 @@ export function useChat({ maxHistory } = {}) {
   // voor de ToastStack. Geeft een functie terug die de toast eerder weghaalt.
   const addToast = useCallback((message, level = 'info', opties = {}) => {
     const id = nextId()
-    const weg = () => setToasts(t => t.filter(x => x.id !== id))
+    let timer = null
+    const weg = () => {
+      clearTimeout(timer)
+      toastTimersRef.current.delete(timer)
+      setToasts(t => t.filter(x => x.id !== id))
+    }
     const { focus = false, pauzeer = null, hervat = null, verlaat = null } = opties
     setToasts(t => [...t, { id, message, level, actie: opties.actie || null, focus, pauzeer, hervat, verlaat }])
-    if (opties.duur !== null) setTimeout(weg, opties.duur || 4000)
+    if (opties.duur !== null) {
+      timer = setTimeout(weg, opties.duur || 4000)
+      toastTimersRef.current.add(timer)
+    }
     return weg
+  }, [])
+
+  // Een eigen effect zonder deps: het grote effect hieronder draait opnieuw bij nieuwe deps en
+  // zou open toasts dan hun timer afnemen.
+  useEffect(() => {
+    const timers = toastTimersRef.current
+    return () => {
+      for (const t of timers) clearTimeout(t)
+      timers.clear()
+    }
   }, [])
 
   // The open card ends without an answer: its steps stay as the turn's trace (#398).
@@ -660,7 +694,8 @@ export function useChat({ maxHistory } = {}) {
   // The report starts, or a toast says why it cannot start now. Returns whether the request went out.
   // onderzoeksvraag: the research question the user confirmed (#751); without it the server takes the first question.
   // beurten: the numbers of the turns with data the user kept (#908); without them the report rests on the whole conversation.
-  const generateReport = useCallback((author, onderzoeksvraag, beurten) => {
+  // figuren: the ids of the figures from the conversation the user kept (#993); the report shows exactly those.
+  const generateReport = useCallback((author, onderzoeksvraag, beurten, figuren) => {
     if (!checkReportStart()) return false
     reportingRef.current = true
     reportRequestedRef.current = true
@@ -669,7 +704,11 @@ export function useChat({ maxHistory } = {}) {
     setReportProgress(NO_REPORT_PROGRESS)
     const vraag = onderzoeksvraag?.trim()
     wsRef.current.send(JSON.stringify({
-      action: 'generate_report', author, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
+      action: 'generate_report',
+      author,
+      ...(vraag && { onderzoeksvraag: vraag }),
+      ...(Array.isArray(beurten) && { beurten }),
+      ...(Array.isArray(figuren) && { figuren }),
     }))
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = setTimeout(() => {
@@ -677,6 +716,8 @@ export function useChat({ maxHistory } = {}) {
       abandonReport()
       failReport(`Het rapport is na ${REPORT_TIMEOUT_MS / 60000} minuten nog niet klaar en is afgebroken. Probeer het opnieuw.`)
     }, REPORT_TIMEOUT_MS)
+    clearTimeout(reportSlowRef.current)
+    reportSlowRef.current = setTimeout(() => setReportSlow(true), REPORT_SLOW_MS)
     return true
   }, [abandonReport, checkReportStart, failReport])
 
@@ -734,5 +775,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

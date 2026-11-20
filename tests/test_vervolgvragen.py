@@ -15,7 +15,9 @@ import pytest
 
 from agent import vervolgvragen
 from agent.budget import DEELANTWOORD
+from agent.citaties import citaties
 from agent.loop import LoopResult
+from agent.meetwaarden import eenheden
 from agent.niet_meegeteld import KOP as NIET_KOP
 from agent.niet_meegeteld import NIET_MEEGETELD
 from agent.probleem import INGEHOUDEN, Probleem, hard
@@ -440,6 +442,107 @@ def test_contextvragen_uit_een_echt_antwoord_via_de_citaties():
         [("get_cbs_data", stap)], "Er waren 248.930 vrouwelijke mbo-studenten in 2021/22."
     )
     assert vragen and all("mbo studenten" in v for v in vragen)
+
+
+# --- periodestatus, alle citaties en de eenheid van get_maat (#1080, #1081, #1082) ---
+
+_TOT_2025 = KeyMeta(
+    bron="cbs", dataset="85354NED", schooljaren=(*_JAREN, 2025), kolomtitels={"MboStudenten_1": "Mbo-studenten"}
+)
+
+
+@pytest.mark.parametrize(
+    "selectie",
+    [
+        "Perioden: 2025/'26 · Periodestatus: Voorlopig",
+        "Perioden_label: 2025/'26 · Periodestatus: Voorlopig",
+        "Perioden: 2025/'26 · Perioden_label: 2025/'26 · Periodestatus: Voorlopig",
+    ],
+)
+def test_de_periodestatus_is_geen_onderwerpdeel(selectie):
+    assert vervolgvragen._selectiedelen(selectie) == ({2025}, [])
+
+
+def test_een_voorlopig_jaar_zet_geen_status_in_de_vervolgvragen():
+    cite = _cite(selectie="Perioden: 2025/'26 · Periodestatus: Voorlopig", maat="MboStudenten_1", eenheid=None)
+    assert vervolgvragen.kandidaten_uit_context([cite], lambda key: _TOT_2025) == [
+        "Hoe hoog was mbo-studenten in 2024/25?",
+        "Hoe ontwikkelde mbo-studenten zich van 2019/20 tot en met 2025/26?",
+    ]
+
+
+def test_een_definitief_jaar_noemt_geen_periodestatus_en_een_subgroep_blijft():
+    cite = _cite(selectie="Perioden: 2024/'25 · Periodestatus: Definitief · Geslacht: Vrouwen")
+    vragen = vervolgvragen.kandidaten_uit_context([cite], lambda key: _TOT_2025)
+    assert vragen == [
+        "Hoeveel mbo-studenten (vrouwen) waren er in 2025/26?",
+        "Hoe ontwikkelde het aantal mbo-studenten (vrouwen) zich van 2019/20 tot en met 2025/26?",
+    ]
+    assert not any("voorlopig" in v.casefold() or "definitief" in v.casefold() for v in vragen)
+    assert vervolgvragen._selectiedelen("Perioden: 2025/'26 · Geslacht: Vrouwen") == ({2025}, ["Vrouwen"])
+
+
+def test_de_jaren_uit_alle_citaties_van_de_maat_tellen_als_genoemd():
+    c1 = _cite(selectie="Perioden: 2019/'20", eenheid=None)
+    c2 = _cite(selectie="Perioden: 2025/'26", eenheid=None)
+    vragen = vervolgvragen.kandidaten_uit_context([c1, c2], lambda key: _TOT_2025)
+    assert vragen[0] == "Hoe hoog was mbo-studenten in 2024/25?"
+    assert not any("in 2025/26?" in v for v in vragen)
+    # Een citatie van een andere maat of bron telt niet mee.
+    anders = [
+        c1,
+        _cite(selectie="Perioden: 2025/'26", maat="Andere_2"),
+        _cite(selectie="Perioden: 2025/'26", data_key="y"),
+    ]
+    assert (
+        vervolgvragen.kandidaten_uit_context(anders, lambda key: _TOT_2025)[0]
+        == "Hoe hoog was mbo-studenten in 2025/26?"
+    )
+
+
+def test_noemen_de_citaties_samen_alle_jaren_dan_geen_jaarvraag():
+    cites = [_cite(selectie=f"Perioden: {j}/'{(j + 1) % 100:02d}") for j in (*_JAREN, 2025)]
+    assert vervolgvragen.kandidaten_uit_context(cites, lambda key: _TOT_2025) == []
+
+
+_MAAT_STAP = json.dumps(
+    {
+        "data_key": "cbs:85354NED:m1",
+        "maat": "mbo_studenten_landelijk",
+        "periodekolom": "Perioden",
+        "waardekolom": "MboStudenten_1",
+        "rijen": [
+            {
+                "Perioden": "2025SJ00",
+                "Perioden_label": "2025/'26",
+                "Periodestatus": "Voorlopig",
+                "MboStudenten_1": 475460,
+            }
+        ],
+        "recept": {"bron": "cbs", "dataset": "85354NED", "selectie": {}},
+    }
+)
+
+
+def test_een_citatie_op_get_maat_krijgt_de_eenheid_uit_het_contract_en_vraagt_hoeveel():
+    store.put("cbs:85354NED:m1", pd.DataFrame({"Perioden": ["2025SJ00"], "MboStudenten_1": [475460]}), _TOT_2025)
+    steps = [("get_maat", _MAAT_STAP)]
+    tekst = "In 2025/'26 waren er 475.460 mbo-studenten (voorlopig)."
+    [cite] = citaties(tekst, steps)
+    assert cite["eenheid"].casefold() == "aantal"
+    assert vervolgvragen.uit_vraagcontext(steps, tekst) == [
+        "Hoeveel mbo-studenten waren er in 2024/25?",
+        "Hoe ontwikkelde het aantal mbo-studenten zich van 2019/20 tot en met 2025/26?",
+    ]
+
+
+def test_get_maat_buiten_cbs_of_zonder_bekende_eenheid_houdt_hoe_hoog():
+    duo = json.loads(_MAAT_STAP) | {"recept": {"bron": "duo", "dataset": "p01hoinges"}}
+    onbekend = json.loads(_MAAT_STAP) | {"recept": {"bron": "cbs", "dataset": "00000NED"}}
+    for stap in (duo, onbekend):
+        assert eenheden(json.dumps(stap)) == {}
+    cite = _cite(selectie="Perioden: 2025/'26", eenheid=None)
+    assert vervolgvragen.kandidaten_uit_context([cite], lambda key: _TOT_2025)[0].startswith("Hoe hoog was")
 
 
 # --- de beurt: run() met een nagebootst model ---

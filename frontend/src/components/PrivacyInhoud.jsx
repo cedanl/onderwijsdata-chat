@@ -82,7 +82,7 @@ export default function PrivacyInhoud() {
         </li>
         <li>
           <strong>Bewijs per antwoord</strong>: bij elk antwoord op data bewaart de server waar de data vandaan kwam
-          (bron en selectie), de uitkomsten van berekeningen en de kolommen van kaarten, onder een hash van de
+          (bron en selectie), de uitkomsten van berekeningen en de stappen achter de figuren, onder een hash van de
           antwoordtekst. Zo geeft een rapport op een heropend gesprek hetzelfde
           resultaat als in het gesprek zelf. Je vraag en het antwoord staan er niet in. Gaat weg met het gesprek, of na
           {gesprek} dagen als het gesprek er niet meer is, of eerder als je al je gegevens verwijdert.
@@ -116,8 +116,9 @@ export default function PrivacyInhoud() {
         </li>
         <li>
           Een sessie duurt {sessie} uur en wordt bij gebruik verlengd tot ten hoogste {sessieMax} uur na het inloggen. Tijdens het
-          inloggen met SRAM staat er kort een cookie voor de beveiliging van die stap; verder gebruikt de app geen
-          cookies en geen analytics.
+          inloggen met SRAM staan er kort drie cookies met eenmalige waarden van die login (OIDC-state, nonce en
+          PKCE-verifier, hoogstens 10 minuten); daarna worden ze verwijderd, ook als het inloggen misgaat. Verder
+          gebruikt de app geen cookies en geen analytics.
         </li>
       </ul>
 

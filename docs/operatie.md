@@ -32,10 +32,10 @@ Waarden uit `manifests/<omgeving>/values.yaml`, met de chart (`charts/onderwijsd
 | Opschonen (CronJob) | aan | aan | uit | uit |
 | `APP_ENV` | `test` | `playground` | `development` | `production` |
 
-**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de limieten (login, berichten,
-feedback, gelijktijdige verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod
-kent die niet. De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py` bewaakt per omgeving één
-replica. Wat dat betekent:
+**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de gelijktijdigheidstellers
+(verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod kent die niet. Alleen de
+tijdslimieten staan al in Postgres (#984). De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py`
+bewaakt per omgeving één replica. Wat dat betekent:
 
 - **Elke uitrol of herstart is een onderbreking.** Bij `Recreate` (test, playground) is de app weg tot de nieuwe pod
   gestart is en de startupProbe haalt; op test duurde dat op 29-10 8 minuten (harde 503). Bij RollingUpdate
@@ -102,6 +102,24 @@ EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je ku
 Korter onderbreken kan met een snellere start of een kleinere pod. Zonder onderbreking kan het pas met twee pods
 (#984).
 
+### Bronstatus in de app (#1057)
+
+De app meet vanuit de pod of de bronnen waarvoor de chat live aanroept nu antwoorden: CBS, DUO, RIO, UWV en de
+inspectie (`core/bronstatus.py`, elke `BRONSTATUS_INTERVAL_S` seconden, standaard 120). Antwoordt een bron niet, dan
+staat er bij het openen van de app (en bij herverbinden) een melding boven de pagina; antwoorden alle bronnen, dan staat
+er niets.
+
+- **Wat telt als live:** een antwoord onder de 400 binnen 5 seconden. Een mislukte probe wordt direct één keer
+  herhaald; pas als ook die mislukt, staat de bron als niet live. Een 404 of 410 telt dus niet als live (RIO v2 gaf op
+  19-10 HTTP 410).
+- **Eindpunt:** `GET /api/bronstatus` (openbaar) geeft `{"niet_live": [...]}`, per bron `bron`, `naam`, `tekst` en
+  `laatst_live`. Nooit een URL of foutklasse.
+- **Per pod en per omgeving:** elke pod meet zelf wat hij ziet. Test heeft een IP-blokkade op `data.overheid.nl`
+  (UWV) die playground niet heeft; daar staat UWV dan terecht als niet live.
+- **Niet hetzelfde als `bron:ping`:** de ping toetst ijkwaarden en draait in CI; deze meting kijkt alleen of een bron
+  antwoordt, op het moment dat een gebruiker de app opent. Een bron die niet live is blokkeert geen run: de melding
+  informeert alleen.
+
 ## Secrets
 
 SOPS-versleuteld in `manifests/<omgeving>/secret.yaml`; Flux ontsleutelt met de age-key van de tenant. Bewerken en
@@ -113,6 +131,11 @@ uitrollen: `Agents.md` (Secrets & Security) en de skill `sdp-secrets-management`
 De database is de Postgres van het platform (secret `onderwijsdata-chat-app`, key `uri`). Back-ups regelt SDP; met de
 kubeconfig van het team zijn ze **niet te zien** (`backups` en `scheduledbackups` geven *Forbidden*). Schema, retentie,
 hersteltest en RPO/RTO zijn nog niet vastgelegd: zie #683.
+
+## Incidenten
+
+Voor een storing, onjuiste antwoorden op schaal, een beveiligingsincident of een datalek (rollen, meldplicht van 72
+uur, indammen en de route van feedback naar een beheerder): zie [Incidenten en datalekken](incidenten.md).
 
 ## Runbook
 
@@ -260,7 +283,7 @@ nodig (de approval rule uit gitlab-config). Blijft een bot-MR liggen, dan schrij
 *Issues.* `cbs:discovery` en `rio:broncontrole` houden elk één open issue bij ("Discovery: nieuwe CBS-tabellen ter
 review" en "Broncontrole: review nodig (DUO CKAN en RIO)", label `data`). Bestaat het al, dan blijft het ongemoeid
 zolang de stand gelijk is; bij een andere stand wordt de beschrijving vervangen en komt de nieuwe stand als notitie.
-Sluit het issue na de beoordeling; een volgende bevinding opent een nieuw. De broncontrole vergelijkt met het
+Sluit het issue na de beoordeling; een volgende bevinding opent een nieuw. Zet bij `cbs:discovery` de afgewezen tabellen met reden in `BEOORDEELDE_TABEL_IDS` (`catalogus/cbs/discovery_diff.py`), anders meldt de volgende run ze opnieuw (#1059). De broncontrole vergelijkt met het
 manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel `rio-bronmanifest`). Is die cache leeg
 (eerste run, of een runner zonder gedeelde cache), dan legt de run de basis: de vergelijking met de catalogus werkt,
 "gewijzigd sinds vorige keer" pas vanaf de volgende run. De log zegt het als dat zo is.
