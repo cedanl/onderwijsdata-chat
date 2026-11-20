@@ -78,6 +78,7 @@ nav:
   - EduGenAI-koppeling: edugenai.md
   - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
   - Privacy: privacy.md
+  - AI-verordening: ai-act.md
   - Architectuur & ontwerp:
     - Anti-hallucinatie: anti-hallucination-architecture.md
     - Architecture Decisions: architecture-decisions.md

@@ -132,3 +132,4 @@ verwerkingsverantwoordelijke is besloten (#553, 19-10-2026; zie hierboven). Open
 - De bewaartermijn van het logplatform en van de back-ups van SDP; die van de gegevens in de app staat hierboven
   (#485).
 - Of er een DPIA nodig is.
+- Bekrachtiging van de AI-Act-classificatie door een eigenaar buiten het team (zie [AI-verordening](ai-act.md), #1025).
