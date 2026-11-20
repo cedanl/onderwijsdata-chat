@@ -31,8 +31,6 @@ export const BOUWER_WEG =
   'Dit dashboard is gemaakt met de dashboardbouwer. Die is uit de app gehaald, dus openen kan niet meer. ' +
   'Het dashboard zelf is bewaard: het staat in de export van je gegevens, en hieronder kun je het verwijderen.'
 
-// De vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
-// onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
 // Een gedeelde link draagt de instelling (#1071): `?instelling=` gaat voor het profiel, dat weer voor de standaard.
 // Alleen voor de weergave; het opgeslagen profiel verandert niet. Vrije tekst uit een URL, dus begrensd.
 export const MAX_URL_INSTELLING = 200
@@ -41,6 +39,8 @@ export function effectieveInstelling(urlInstelling, profielInstelling) {
   return uitUrl || profielInstelling?.trim() || DEFAULT_INSTELLING
 }
 
+// De vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
+// onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
 export default function DashboardPage({ settings, instellingen = GEEN_INSTELLINGEN, bronnen = GEEN_BRONNEN, feedbackEnabled = false }) {
   useDocumentTitle(pageTitle('Dashboards'))
   const [searchParams, setSearchParams] = useSearchParams()
