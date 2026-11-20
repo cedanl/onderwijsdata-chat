@@ -121,7 +121,8 @@ is een open punt.
 openEDUdata+ is een project van CEDA (Npuls). De verwerkingsverantwoordelijke is de deelnemende instelling
 (besluit 19-10-2026, #553). Met een privacyvraag kan een gebruiker terecht bij die instelling: bij de
 privacycontactpersoon of de functionaris gegevensbescherming (FG) van de instelling. Het projectteam van CEDA is er
-alleen voor vragen over de demo zelf.
+alleen voor vragen over de demo zelf. De indeling onder de EU-verordening voor kunstmatige intelligentie staat in
+[AI-verordening](ai-act.md).
 
 ## Open punten
 
