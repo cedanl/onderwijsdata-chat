@@ -112,6 +112,10 @@ make dev
 
 De app herstart automatisch bij bestandswijzigingen.
 
+Zonder API-sleutel start je met het nepmodel (#1065): `MODEL=mock/default APP_ENV=local make dev`. Vraag, toolstappen,
+antwoord en rapport werken dan met de echte app, maar het antwoord is vast en komt niet van een taalmodel. Alleen
+voor `local` en `development`; scenario's en details in [docs/configuratie](docs/configuratie/index.md#nepmodel-voor-lokaal-testen).
+
 ### Bereikbaarheid vanuit de host-browser
 
 `make dev` start de frontend op poort 5173 (`FRONTEND_PORT`) en de backend op 8000 (`BACKEND_PORT`); open de

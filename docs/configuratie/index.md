@@ -74,6 +74,29 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
+## Nepmodel voor lokaal testen
+
+Zonder API-sleutel draait de chat met het nepmodel (#1065): `MODEL=mock/<scenario>`. De app, de toollaag (catalogus,
+CBS, DUO, RIO), de controles en de UI werken echt; alleen het model is nep en antwoordt vast en herhaalbaar
+(`agent/nepmodel.py`). Er is geen aparte vlag: het prefix `mock/` is de schakelaar.
+
+```dotenv
+MODEL=mock/default
+APP_ENV=local
+```
+
+| Scenario | Wat het doet |
+|----------|--------------|
+| `mock/default` | Zoekt in de catalogus met de vraag, laadt één vaste CBS-tabel (mbo-studenten landelijk) en antwoordt met wat de tools gaven. Het laden haalt CBS op, dus internet is nodig. |
+| `mock/tekst` | Antwoordt met een vaste tekst, zonder tools en zonder netwerk. |
+
+Een rapport geeft in beide scenario's een kort vast rapport, als er data in het gesprek geladen is. Zonder
+`AVAILABLE_MODELS` toont de model-picker de scenario's. Alleen voor `APP_ENV` `local` en `development`: elders start
+de app niet zodra `MODEL`, `AVAILABLE_MODELS` of `USER_MODELS` een `mock/`-model noemt. De modelnaam `mock/…` komt
+wel in de manifesten, logs en het tokengebruik van wat je lokaal maakt.
+
+---
+
 ## Model-picker
 
 De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld. Zonder deze instelling gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze. Het aanbod is ook een grens aan de serverkant: stuurt een client een model dat niet in het aanbod van die gebruiker staat (`USER_MODELS` of anders `AVAILABLE_MODELS`), dan gebruikt de server `MODEL` (#755).

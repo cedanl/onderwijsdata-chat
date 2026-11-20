@@ -12,7 +12,12 @@ WILLMA_IDS = {
     "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
     "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
 }
-PROVIDER_BY_PREFIX = {"anthropic": "Anthropic", "azure_ai": "Microsoft Azure AI Foundry", "openai": "OpenAI"}
+PROVIDER_BY_PREFIX = {
+    "anthropic": "Anthropic",
+    "azure_ai": "Microsoft Azure AI Foundry",
+    "openai": "OpenAI",
+    "mock": "het nepmodel, zonder taalmodel",  # #1065
+}
 # Woorden die in het bijschrift horen, niet in naam of omschrijving van het model.
 JARGON = ("foundry", "azure", "willma", "surf", "tool calling")
 

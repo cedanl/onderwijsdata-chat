@@ -6,6 +6,7 @@ Runtime-instellingen (model, limieten, vlaggen) staan in core/config.py (#234).
 import logging
 import os
 
+from core import config as runtime
 from core.config import MODEL
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,9 @@ class Config:
         if fout := cls._login_ontbreekt():
             errors.append(fout)
 
+        if fout := cls._nepmodel_ongeldig():
+            errors.append(fout)
+
         if ongeldig := cls._ongeldige_cors_origins():
             errors.append(
                 f"CORS_ORIGINS mag geen '*' bevatten, ook niet als patroon ({', '.join(ongeldig)}); "
@@ -111,6 +115,28 @@ class Config:
             "(controleer ook of de waarde in het secret niet leeg is), of zet ALLOW_ANONYMOUS=true voor een "
             "bewust openbare demo"
         )
+
+    @classmethod
+    def _nepmodel_ongeldig(cls) -> str | None:
+        """De foutmelding als de configuratie het nepmodel (`mock/…`, #1065) noemt waar het niet mag, anders None.
+
+        Het nepmodel geeft vaste antwoorden zonder taalmodel: alleen voor lokaal testen en development. Ook via
+        AVAILABLE_MODELS of USER_MODELS mag het een andere omgeving niet in. Een onbekend scenario is overal een fout.
+        """
+        modellen = [cls.MODEL, *runtime.geconfigureerde_modellen()[1:]]
+        nep = sorted({m for m in modellen if runtime.is_nepmodel(m)})
+        if not nep:
+            return None
+        if cls.APP_ENV not in runtime.NEP_OMGEVINGEN:
+            return (
+                f"APP_ENV={cls.APP_ENV} start niet met het nepmodel ({', '.join(nep)}): dat is alleen voor "
+                f"{' en '.join(runtime.NEP_OMGEVINGEN)}; kies een echt model in MODEL, AVAILABLE_MODELS en USER_MODELS"
+            )
+        bekend = {f"{runtime.NEP_PREFIX}{s}" for s in runtime.NEP_SCENARIOS}
+        if onbekend := [m for m in nep if m.lower() not in bekend]:
+            return f"Onbekend scenario voor het nepmodel: {', '.join(onbekend)}; kies uit {', '.join(sorted(bekend))}"
+        logger.warning("Nepmodel actief (%s): antwoorden komen niet van een taalmodel", ", ".join(nep))
+        return None
 
     @classmethod
     def get_parsed_cors_origins(cls) -> list[str]:
