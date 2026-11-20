@@ -85,10 +85,10 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
         <RegioBadges instelling={instelling} provincie={data?.provincie} herkomst={data?.provincie_herkomst} arbeidsmarktregio={data?.arbeidsmarktregio} bron={bronBadge(bronnen)} />
         <NietGeladen onderdelen={gaten} onOpnieuw={allesOpnieuw} />
 
-        <KaartSection figureJson={data?.kaart_figure_json} />
-
-        {/* ── Kerncijfers ── */}
+        {/* ── Kerncijfers ── eerst, zodat ze op het eerste scherm en vooraan op papier staan (#1078) */}
         <Kerncijfers data={data} instelling={instelling} c={c} />
+
+        <KaartSection figureJson={data?.kaart_figure_json} />
 
         {/* ── Instroom & demografie ── */}
         <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
