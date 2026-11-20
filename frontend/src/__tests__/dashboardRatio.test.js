@@ -186,7 +186,7 @@ describe('Mijn instelling met hbo/wo-data (diploma\'s 2024, inschrijvingen 2025)
     expect(tegel.querySelector('.kpi-value').textContent).toBe('18%')
     expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2024 en ingeschrevenen 2024/25')
     expect(tegel.textContent).not.toContain('2025/26')
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 
   it('de gediplomeerden-KPI en de kerncijfers-tegel zeggen tot en met welk jaar DUO publiceert', async () => {
     await dashboard(HBO)

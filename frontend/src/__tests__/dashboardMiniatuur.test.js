@@ -306,7 +306,7 @@ describe('het dashboard na de miniatuur (#933)', () => {
     await act(async () => { klaar() })
     expect(container.querySelector('.dashboard-content').textContent).toContain('Kerncijfers')
     expect(aanroepen().filter(e => e === '/api/dashboard/regio')).toHaveLength(1)
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 
   it('Arbeidsmarkt hergebruikt de lading van beide miniaturen: geen enkele nieuwe aanroep', async () => {
     await pagina()

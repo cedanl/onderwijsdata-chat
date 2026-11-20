@@ -122,7 +122,7 @@ describe('grafiekFormulier', () => {
     expect(grafiekFormulier([dataUrl(MAX_GRAFIEK_BYTES + 1), dataUrl(10)]).mee).toBe(1)
     expect(grafiekFormulier(Array.from({ length: 3 }, () => dataUrl(1.5 * 1024 * 1024))).mee).toBe(2)
     expect(grafiekFormulier(['data:image/png;base64,%%%']).mee).toBe(0)
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 })
 
 describe('het rapport voor het grafiekframe (useReportFrame)', () => {

@@ -49,7 +49,7 @@ describe('the probe in the frame', () => {
     ['a table without text', '<html><body><table><tr><td></td></tr></table></body></html>', true],
   ])('posts zichtbaar for %s', async (_, html, zichtbaar) => {
     expect(await probeerIn(html)).toEqual({ bron: FRAME_BRON, zichtbaar })
-  })
+  }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 })
 
 describe('frameSignaal', () => {
