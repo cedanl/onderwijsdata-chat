@@ -10,6 +10,7 @@ import os
 import re
 import sqlite3
 from contextlib import contextmanager
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -791,7 +792,8 @@ def _ouder_met_bronfout(_key):
     return {"laad": [TOOL_GET_DUO_DATA, {"dataset_id": "p01hoinges", "resource": 0}]}
 
 
-_MELDINGPADEN = {
+# Any: "onbruikbaar recept" geeft bewust een str i.p.v. een dict mee.
+_MELDINGPADEN: dict[str, tuple[str, Any, herlaad.Receptbron]] = {
     "onherhaalbaar": (_ANALYSE_KEY, {"stap": "analyse", "herlaadbaar": False}, _geen_ouder),
     "onherhaalbaar met ouder": (
         _ANALYSE_KEY,

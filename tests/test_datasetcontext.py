@@ -183,7 +183,7 @@ class TestHerstelData:
         store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
         assert self._herstel({"username": "alice", "data_keys": ["cbs:85423NED"]}) == []
 
-    def test_een_eigen_berekening_noemt_de_stap_en_de_key(self):
+    def test_een_eigen_berekening_noemt_de_stap_maar_niet_de_key(self):
         recept = {"afgeleid_van": "duo:x:0", "stap": "eigen berekening (run_analysis)", "herlaadbaar": False}
         recepten.onthoud("alice", "analysis:abc", recept)
         session = {"username": "alice", "data_keys": ["analysis:abc"], "chat_settings": {}}
@@ -191,7 +191,8 @@ class TestHerstelData:
         with pytest.raises(Gebruikersfout) as fout:
             self._herstel(session)
         assert "eigen berekening (run_analysis)" in str(fout.value)
-        assert "analysis:abc" in str(fout.value)
+        # De key is intern: hij staat in de log, niet in de melding aan de gebruiker (#1063).
+        assert "analysis:abc" not in str(fout.value)
         assert "Stel je vraag opnieuw" in str(fout.value)
 
     def test_het_recept_van_een_ander_telt_niet(self, _db):
