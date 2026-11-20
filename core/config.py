@@ -49,6 +49,10 @@ BRONSTATUS_INTERVAL_S = float(os.getenv("BRONSTATUS_INTERVAL_S", "120"))
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
 CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
 CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
+# Tokenbudget per gebruiker (#678, S24), in invoertoken-equivalenten (core/tokenbudget.py); 0 zet een grens uit. Een
+# typische vraag kost na #1027 rond de 20k (71k invoer waarvan 69k uit de cache, 2k uitvoer): de dag dus rond de 75 vragen.
+TOKENBUDGET_DAG = int(os.getenv("TOKENBUDGET_DAG", "1500000"))
+TOKENBUDGET_MAAND = int(os.getenv("TOKENBUDGET_MAAND", "15000000"))
 # Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))
