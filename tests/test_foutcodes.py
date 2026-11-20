@@ -58,6 +58,45 @@ def test_cbs_geeft_een_code_en_geen_ruwe_providertekst(fout, code):
     assert "secret-host" not in result
 
 
+_VERZOEK = httpx.Request("GET", "https://bron.example/x")
+
+
+@pytest.mark.parametrize(
+    ("fout", "code", "omschrijving"),
+    [
+        (
+            httpx.ConnectError(_GEHEIM, request=_VERZOEK),
+            "bron_onbereikbaar",
+            "DUO is nu niet bereikbaar (verbinding mislukt).",
+        ),
+        (httpx.ReadTimeout(_GEHEIM, request=_VERZOEK), "bron_onbereikbaar", "DUO is nu niet bereikbaar (time-out)."),
+        # Een ConnectTimeout is een TimeoutException, geen ConnectError: de volgorde van de tabel telt.
+        (httpx.ConnectTimeout(_GEHEIM, request=_VERZOEK), "bron_onbereikbaar", "DUO is nu niet bereikbaar (time-out)."),
+        (httpx.PoolTimeout(_GEHEIM, request=_VERZOEK), "bron_onbereikbaar", "DUO is nu niet bereikbaar (time-out)."),
+        (_http(429), "bron_weigert", "DUO weigerde de aanvraag: te veel verzoeken (HTTP 429)."),
+        (_http(404), "bron_weigert", "DUO weigerde de aanvraag (HTTP 404)."),
+        (_http(503), "bron_onbereikbaar", "DUO gaf een serverfout (HTTP 503)."),
+        (
+            httpx.RemoteProtocolError(_GEHEIM, request=_VERZOEK),
+            "bron_onbereikbaar",
+            "DUO is nu niet bereikbaar (onbekende fout).",
+        ),
+        (RuntimeError(_GEHEIM), "bron_fout", "Laden uit DUO mislukte (onbekende fout)."),
+    ],
+    ids=["connect", "read-timeout", "connect-timeout", "pool-timeout", "429", "404", "503", "protocol", "runtime"],
+)
+def test_bronfout_noemt_een_omschrijving_en_geen_klassenaam(fout, code, omschrijving, caplog):
+    """#1053: de tekst bereikt de gebruiker (report_error); de klassenaam staat alleen in het DEBUG-log."""
+    with caplog.at_level("DEBUG", logger="tools.fouten"):
+        tekst = fouten.bronfout("DUO", fout)
+
+    assert fouten.code(tekst) == code
+    assert tekst == fouten.melding(fouten.Fout(code), omschrijving)
+    assert type(fout).__name__ not in tekst and "Error" not in tekst and "Timeout" not in tekst
+    assert "secret-host" not in tekst
+    assert any(r.levelname == "DEBUG" and type(fout).__name__ in r.getMessage() for r in caplog.records)
+
+
 def test_cbs_dimensie_geeft_een_code_en_geen_ruwe_providertekst():
     with patch("tools.cbs.get", side_effect=_http(404)), patch("tools.cbs.definitions", return_value={}):
         result = get_cbs_dimension("85423NED", "Status")

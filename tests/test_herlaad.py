@@ -20,8 +20,9 @@ from agent import recepten
 from agent.datasetcontext import herstel_data
 from agent.session_data import herstel_data_keys, record_data_key
 from routes import chat
-from tools import herlaad, store
+from tools import bronretry, herlaad, store
 from tools.analysis import run_analysis
+from tools.catalog import bron_titel
 from tools.cbs import get_cbs_data
 from tools.duo import get_duo_data
 from tools.query import query_data
@@ -392,8 +393,34 @@ def test_een_bronfout_bij_herladen_noemt_de_bron_en_is_geen_500(client):
 
     assert resp.status_code == 502
     detail = resp.json()["detail"]
-    assert "CBS" in detail and key in detail
+    assert "CBS" in detail and f"'{bron_titel('85423NED')}'" in detail
     assert "HTTP 503" in detail
+    assert key not in detail  # de titel, niet de interne key (#1053)
+
+
+def test_een_rio_lading_zonder_catalogustitel_noemt_alleen_de_bron(monkeypatch):
+    """Zonder dataset in de catalogus noemt de melding de bron, nooit de key of het kale ID (#1053)."""
+    monkeypatch.setattr(bronretry, "STANDAARD", bronretry.Beleid(slaap=lambda _s: None))
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+    store.clear()
+    with patch("tools.rio.fetch", side_effect=httpx.ConnectError("geen route")):
+        uitkomst = herlaad.herlaad(key, {"laad": list(_ROOTS["rio"])})
+
+    assert not uitkomst.gelukt and uitkomst.bronfout
+    assert uitkomst.melding.startswith("RIO gaf de data niet opnieuw: "), uitkomst.melding
+    assert key not in uitkomst.melding and "erkenningen" not in uitkomst.melding
+    assert "RIO is nu niet bereikbaar (verbinding mislukt)." in uitkomst.melding
+    assert "ConnectError" not in uitkomst.melding
+
+
+def test_een_bron_zonder_cijfers_in_deze_omgeving_noemt_de_titel(monkeypatch):
+    monkeypatch.setattr(herlaad.beschikbaarheid, "tool", lambda _tool: False)
+
+    uitkomst = herlaad.herlaad("duo:p01hoinges:0", {"laad": list(_ROOTS["duo"])})
+
+    titel = bron_titel("p01hoinges")
+    assert uitkomst.melding == f"DUO geeft in deze omgeving geen cijfers, dus de data van '{titel}' komt niet terug."
 
 
 def test_een_dataset_buiten_de_scope_wordt_niet_herladen(client):

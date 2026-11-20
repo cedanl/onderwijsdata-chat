@@ -41,7 +41,7 @@ def _geladen(key="duo:p01hoinges:0"):
 
 
 _LEEG = json.dumps({"data_key": "duo:p01hoinges:0:ab", "totaal_rijen": 0, "rijen": []})
-_ONBEREIKBAAR = fouten.melding(fouten.Fout.BRON_ONBEREIKBAAR, "CBS is nu niet bereikbaar (ConnectTimeout).")
+_ONBEREIKBAAR = fouten.melding(fouten.Fout.BRON_ONBEREIKBAAR, "CBS is nu niet bereikbaar (time-out).")
 
 
 def test_noemt_wat_wel_is_opgehaald():

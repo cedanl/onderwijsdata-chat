@@ -21,7 +21,7 @@ from core.logging_util import foutkenmerk
 
 from . import beschikbaarheid, store
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
-from .catalog import catalogus_laatste_update
+from .catalog import bron_titel, catalogus_laatste_update
 from .cbs import laad_cbs_data
 from .duo import get_duo_data
 from .financien import get_bestuursfinancien
@@ -210,7 +210,7 @@ def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} noemt geen bekende laadstap.")
     functie, bron = _LADERS[tool]
     if not beschikbaarheid.tool(tool):
-        melding = f"{bron} geeft in deze omgeving geen cijfers, dus key {key} komt niet terug."
+        melding = f"{bron} geeft in deze omgeving geen cijfers, dus {_de_data(args)} komt niet terug."
         return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
     try:
         uitkomst = functie(**args)
@@ -220,11 +220,23 @@ def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
         uitkomst = ""
     if store.get(key) is None:
         reden = _reden(uitkomst) or "geen data."
-        return Herlaadresultaat(
-            key, gelukt=False, bronfout=True, melding=f"{bron} gaf de data voor key {key} niet opnieuw: {reden}"
-        )
+        melding = f"{bron} gaf {_de_data(args)} niet opnieuw: {reden}"
+        return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
     markeer(username, key)
     return _terug(key, username)
+
+
+def _de_data(args: dict) -> str:
+    """De data in de melding van een laadstap: "de data van '<titel>'", zonder bekende dataset alleen "de data".
+
+    Sinds #1050 leest de gebruiker deze melding in de report_error: hij kent de dataset aan haar catalogustitel, niet
+    aan de interne key `duo:p01hoinges:0` of het kale ID (#1053). De key blijft intern, in `Herlaadresultaat.key`.
+    """
+    dataset_id = args.get("dataset_id")
+    if not isinstance(dataset_id, str) or not dataset_id:
+        return "de data"
+    titel = bron_titel(dataset_id, vo_context=bool(args.get("vo_context")))
+    return "de data" if titel == dataset_id else f"de data van '{titel}'"
 
 
 def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int, username: str | None) -> Herlaadresultaat:
