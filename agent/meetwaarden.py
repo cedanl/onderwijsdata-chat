@@ -16,7 +16,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from onderwijsbronnen.duo.financien import KENGETALLEN
 
-from tools import TOOL_RUN_ANALYSIS, collegegeld, financien, mbo_indicatoren, studiekeuze, wo_personeel
+from tools import TOOL_RUN_ANALYSIS, cbs_meta, collegegeld, financien, mbo_indicatoren, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
 from tools.kolomlabel import kolomlabel
@@ -514,14 +514,30 @@ def identificaties(result: str) -> set[str]:
 
 
 def eenheden(result: str) -> dict[str, str]:
-    """Kolom → eenheid uit het schema van een laadstap (CBS geeft die per meetkolom)."""
+    """Kolom → eenheid uit het schema van een laadstap (CBS geeft die per meetkolom).
+
+    Het resultaat van get_maat heeft geen schema; over een CBS-tabel komt de eenheid van zijn waardekolom dan uit het
+    contract (`cbs_meta.eenheden`, #1082), zodat een aantal ook daar "aantal" heet.
+    """
     try:
         parsed = json.loads(result)
     except (TypeError, ValueError):
         return {}
-    kolommen = parsed.get("kolommen") if isinstance(parsed, dict) else None
-    return {
+    if not isinstance(parsed, dict):
+        return {}
+    uit = {
         k["kolom"]: k["eenheid"]
-        for k in kolommen or ()
+        for k in parsed.get("kolommen") or ()
         if isinstance(k, dict) and isinstance(k.get("kolom"), str) and isinstance(k.get("eenheid"), str)
     }
+    return uit or _maateenheid(parsed)
+
+
+def _maateenheid(parsed: dict) -> dict[str, str]:
+    """De eenheid van de waardekolom van een get_maat-resultaat over een CBS-tabel; leeg bij een andere bron."""
+    recept, kolom = parsed.get("recept"), parsed.get("waardekolom")
+    if not (isinstance(recept, dict) and recept.get("bron") == "cbs" and isinstance(kolom, str)):
+        return {}
+    dataset = recept.get("dataset")
+    eenheid = cbs_meta.eenheden(dataset).get(kolom) if isinstance(dataset, str) else None
+    return {kolom: eenheid} if eenheid else {}

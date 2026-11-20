@@ -119,7 +119,9 @@ def _vorm(vraag: str) -> str:
 
 # Een schooljaar in een selectie uit de citaties: CBS "2021/'22", DUO "2021/2022", of een los jaar.
 _SCHOOLJAAR = re.compile(r"\b(20\d{2})(?:/'?\d{2,4})?\b")
-_TIJDDIMENSIE = re.compile(r"^(?:perioden|periode|studiejaar|jaar)$", re.IGNORECASE)
+# De periode en wat erbij hoort (Perioden_label, Periodestatus): geen onderwerp. De status ("Voorlopig") hoort bij het
+# geciteerde jaar, niet bij het jaar of de reeks waar de vervolgvraag over gaat (#1080).
+_TIJDDIMENSIE = re.compile(r"^(?:period\w*|studiejaar|jaar)$", re.IGNORECASE)
 
 
 def _selectiedelen(selectie: str) -> tuple[set[int], list[str]]:
@@ -150,34 +152,41 @@ def kandidaten_uit_context(cites: list[dict], meta_van) -> list[str]:
 
     `meta_van(data_key)` geeft de KeyMeta van de bron (store.meta op de laadkey); de kolomtitels daarin maken
     van MboStudenten_1 "Mbo studenten". Zonder titel uit de bron (DUO, RIO) of zonder schooljaren: geen
-    contextvragen, dan komen alle knoppen uit de dataset zoals voorheen.
+    contextvragen, dan komen alle knoppen uit de dataset zoals voorheen. Genoemd zijn de jaren uit alle citaties
+    van die maat en bron, niet alleen uit de eerste (#1081).
     """
+    eerste: tuple[dict, tuple[int, ...], str] | None = None
+    genoemd: set[int] = set()
     for c in cites:
         if not (c.get("vastgesteld") and c.get("maat") and c.get("data_key")):
+            continue
+        if eerste:
+            if (c["maat"], c["data_key"]) == (eerste[0]["maat"], eerste[0]["data_key"]):
+                genoemd |= _selectiedelen(c.get("selectie") or "")[0]
             continue
         meta = meta_van(c["data_key"])
         jaren = tuple(meta.schooljaren or ()) if meta else ()
         # Alleen een titel uit de bron (CBS DataProperties) is een onderwerp; een kolomnaam als AANTAL niet.
         maat = (meta.kolomtitels or {}).get(c["maat"]) if meta else None
-        if len(jaren) < 2 or not maat:
-            continue
-        genoemd, delen = _selectiedelen(c.get("selectie") or "")
-        onderwerp, aantal = _onderwerp(maat, delen, c.get("eenheid"))
-        vragen: list[str] = []
-        if nieuw := [j for j in jaren if j not in genoemd]:
-            jaar = periode.label(max(nieuw))
-            vragen.append(
-                f"Hoeveel {onderwerp} waren er in {jaar}?" if aantal else f"Hoe hoog was {onderwerp} in {jaar}?"
-            )
-        if len(jaren) >= 3 and len(genoemd & set(jaren)) < 3:
-            span = f"{periode.label(jaren[0])} tot en met {periode.label(jaren[-1])}"
-            vragen.append(
-                f"Hoe ontwikkelde het aantal {onderwerp} zich van {span}?"
-                if aantal
-                else f"Hoe ontwikkelde {onderwerp} zich van {span}?"
-            )
-        return vragen[:UIT_VRAAGCONTEXT]
-    return []
+        if len(jaren) >= 2 and maat:
+            eerste = (c, jaren, maat)
+            genoemd |= _selectiedelen(c.get("selectie") or "")[0]
+    if not eerste:
+        return []
+    c, jaren, maat = eerste
+    onderwerp, aantal = _onderwerp(maat, _selectiedelen(c.get("selectie") or "")[1], c.get("eenheid"))
+    vragen: list[str] = []
+    if nieuw := [j for j in jaren if j not in genoemd]:
+        jaar = periode.label(max(nieuw))
+        vragen.append(f"Hoeveel {onderwerp} waren er in {jaar}?" if aantal else f"Hoe hoog was {onderwerp} in {jaar}?")
+    if len(jaren) >= 3 and len(genoemd & set(jaren)) < 3:
+        span = f"{periode.label(jaren[0])} tot en met {periode.label(jaren[-1])}"
+        vragen.append(
+            f"Hoe ontwikkelde het aantal {onderwerp} zich van {span}?"
+            if aantal
+            else f"Hoe ontwikkelde {onderwerp} zich van {span}?"
+        )
+    return vragen[:UIT_VRAAGCONTEXT]
 
 
 def uit_vraagcontext(steps: list[tuple[str, str]], tekst: str) -> list[str]:
