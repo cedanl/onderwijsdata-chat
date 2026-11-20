@@ -113,6 +113,13 @@ env:
         optional: true
   - name: LOG_LEVEL
     value: "INFO"
+  # Tokenbudget per gebruiker (#678, #1066, core/tokenbudget.py): op test ruimer dan de standaard (1,5 mln per dag, 15 mln per
+  # maand), omdat het team en de demo's samen op het account `demo` werken en live audits daar veel vragen stellen.
+  # Geldt voor elk account op test; playground en productie houden de standaard. Maand = tien keer de dag, zoals de standaard.
+  - name: TOKENBUDGET_DAG
+    value: "6000000"
+  - name: TOKENBUDGET_MAAND
+    value: "60000000"
   # Pseudoniem `gebruiker=` en HMAC in plaats van een kale SHA-256 in het log (#678, core/logging_util.py).
   # optional: zonder deze sleutel in het secret start de pod zoals nu; de waarde zetten is beheer (SOPS).
   - name: LOG_HASH_SECRET
