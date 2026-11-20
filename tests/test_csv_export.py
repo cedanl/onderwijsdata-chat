@@ -10,6 +10,7 @@ import csv
 import importlib
 import io
 import json
+import re
 
 import pandas as pd
 import pytest
@@ -486,6 +487,24 @@ def test_endpoint_meldt_verdwenen_data(client):
     resp = client.get("/api/data/csv", params={"key": "duo:weg:0"})
     assert resp.status_code == 404
     assert "niet meer beschikbaar" in resp.json()["detail"]
+
+
+def test_endpoint_noemt_bij_een_onherstelbare_key_de_stap_niet_de_key(client):
+    """De melding van herlaad komt in `detail`; de interne key staat daar niet in (#1063)."""
+    _met_token(client)
+    key = "duo:p01hoinges:0:analyse:1"
+    recepten.onthoud(
+        "testuser",
+        key,
+        {"afgeleid_van": "duo:p01hoinges:0", "stap": "eigen berekening (run_analysis)", "herlaadbaar": False},
+    )
+
+    resp = client.get("/api/data/csv", params={"key": key})
+
+    assert resp.status_code == 404
+    detail = resp.json()["detail"]
+    assert "eigen berekening (run_analysis)" in detail and "niet automatisch opnieuw uitgevoerd" in detail
+    assert not re.search(r"\w+:[\w.-]+:\d", detail), detail
 
 
 def test_endpoint_vraagt_inlog(client):

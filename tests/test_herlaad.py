@@ -7,8 +7,10 @@ is alles wat het proces wist, over blijft wat de database bewaarde.
 import asyncio
 import json
 import os
+import re
 import sqlite3
 from contextlib import contextmanager
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -127,6 +129,9 @@ def _als(username: str) -> dict:
 def _csv(client, key: str, username: str = "alice"):
     return client.get("/api/data/csv", params={"key": key}, headers=_als(username))
 
+
+# Een interne key zoals `duo:p01hoinges:0:analyse:1` (#1063): bron, dataset en een volgnummer.
+_KEY = re.compile(r"\w+:[\w.-]+:\d")
 
 _NOTITIE = "# let op: opnieuw opgehaald op "
 
@@ -309,7 +314,7 @@ def test_een_nieuwe_laadstap_haalt_de_markering_weg(client):
     assert "X-Data-Herladen" not in resp.headers and _NOTITIE not in resp.text
 
 
-def test_een_eigen_berekening_noemt_de_stap_en_de_key(client):
+def test_een_eigen_berekening_noemt_de_stap_en_de_titel_niet_de_key(client):
     session = {"username": "alice"}
     with _bronnen():
         bron = _stap(session, *_ROOTS["duo"])
@@ -322,7 +327,9 @@ def test_een_eigen_berekening_noemt_de_stap_en_de_key(client):
     assert resp.status_code == 404
     detail = resp.json()["detail"]
     assert "eigen berekening (run_analysis)" in detail
-    assert analyse in detail
+    assert f"de data van '{bron_titel('p01hoinges')}'" in detail
+    assert not _KEY.search(detail), detail  # de key alleen in de log (#1063)
+    assert analyse not in detail
     assert detail != "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
 
 
@@ -339,7 +346,7 @@ def test_een_selectie_op_een_eigen_berekening_noemt_die_berekening(client):
 
     assert resp.status_code == 404
     assert "eigen berekening (run_analysis)" in resp.json()["detail"]
-    assert analyse in resp.json()["detail"]
+    assert not _KEY.search(resp.json()["detail"]), resp.json()["detail"]
 
 
 def test_er_wordt_geen_script_bewaard(client):
@@ -444,7 +451,7 @@ def test_een_selectie_die_query_data_niet_meer_aanneemt_is_een_melding_geen_500(
     uitkomst = herlaad.herlaad("rio:t:zz", recept)
 
     assert not uitkomst.gelukt
-    assert "Stap 's' gaf key rio:t:zz niet opnieuw" in uitkomst.melding
+    assert "Stap 's' gaf de data niet opnieuw" in uitkomst.melding
 
 
 def test_alleen_tools_uit_de_lijst_worden_aangeroepen():
@@ -769,3 +776,112 @@ def test_verwijder_al_mijn_gegevens_laat_niets_van_de_gebruiker_in_het_geheugen(
     assert not [s for s in recepten._wachtend if s[0] == "alice"]
     assert not [s for s in recepten._live if s[0] == "alice"]
     assert herlaad.herladen_op("alice", key) is None
+
+
+# ── Meldingen zonder interne key (#1063) ───────────────────────────────────
+
+_ANALYSE_KEY = "duo:p01hoinges:0:analyse:1"
+_MAAT_KEY = "duo:p01hoinges:3:ab12:cd34"
+
+
+def _geen_ouder(_key):
+    return None
+
+
+def _ouder_met_bronfout(_key):
+    return {"laad": [TOOL_GET_DUO_DATA, {"dataset_id": "p01hoinges", "resource": 0}]}
+
+
+# Any: "onbruikbaar recept" geeft bewust een str i.p.v. een dict mee.
+_MELDINGPADEN: dict[str, tuple[str, Any, herlaad.Receptbron]] = {
+    "onherhaalbaar": (_ANALYSE_KEY, {"stap": "analyse", "herlaadbaar": False}, _geen_ouder),
+    "onherhaalbaar met ouder": (
+        _ANALYSE_KEY,
+        {"afgeleid_van": "duo:p01hoinges:0", "stap": "analyse", "herlaadbaar": False},
+        _geen_ouder,
+    ),
+    "onbruikbaar recept": (_ANALYSE_KEY, "geen dict", _geen_ouder),
+    "onbekende laadstap": ("duo:p01hoinges:0", {"laad": ["run_analysis", {"code": "import os"}]}, _geen_ouder),
+    "selectie onbruikbaar": (_ANALYSE_KEY, {"tool": TOOL_QUERY_DATA, "args": "x"}, _geen_ouder),
+    "selectie zonder ouder": (
+        "duo:p01hoinges:0:zz",
+        {"afgeleid_van": "duo:p01hoinges:0", "tool": TOOL_QUERY_DATA, "args": {}},
+        _geen_ouder,
+    ),
+    "selectie na bronfout van de ouder": (
+        "duo:p01hoinges:0:zz",
+        {"afgeleid_van": "duo:p01hoinges:0", "tool": TOOL_QUERY_DATA, "args": {}},
+        _ouder_met_bronfout,
+    ),
+    "selectie geeft niets": (
+        "duo:p01hoinges:0:zz",
+        {"afgeleid_van": "duo:p01hoinges:0", "tool": TOOL_QUERY_DATA, "args": {"filters": "onzin"}, "stap": "s"},
+        _geen_ouder,
+    ),
+    "maat onbruikbaar": (_MAAT_KEY, {"afgeleid_van": "duo:p01hoinges:3", "tool": "get_maat"}, _geen_ouder),
+    "maat geeft niets": (
+        _MAAT_KEY,
+        {"afgeleid_van": "duo:p01hoinges:3", "tool": "get_maat", "args": {"maat": "bestaat_niet"}},
+        _geen_ouder,
+    ),
+}
+
+
+@pytest.mark.parametrize("pad", list(_MELDINGPADEN))
+def test_geen_herlaadmelding_noemt_een_key(pad, monkeypatch, caplog):
+    """De melding bereikt de gebruiker (rapport, export); de key blijft in de log en in `.key` (#1063)."""
+    monkeypatch.setattr(bronretry, "STANDAARD", bronretry.Beleid(slaap=lambda _s: None))
+    key, recept, recept_van = _MELDINGPADEN[pad]
+    if pad == "selectie geeft niets":
+        store.put("duo:p01hoinges:0", pd.DataFrame({"a": [1]}), store.KeyMeta(bron="duo", dataset="p01hoinges"))
+    with (
+        _bronnen(),
+        patch("tools.duo._duo.load", side_effect=httpx.ConnectError("geen route")),
+        caplog.at_level("WARNING", logger="tools.herlaad"),
+    ):
+        uitkomst = herlaad.herlaad(key, recept, recept_van)
+
+    assert not uitkomst.gelukt and uitkomst.melding
+    assert uitkomst.key == key
+    assert not _KEY.search(uitkomst.melding), uitkomst.melding
+    assert key in caplog.text, "de key staat in de log"
+
+
+def test_een_onherhaalbare_stap_noemt_de_stap_en_de_titel():
+    titel = bron_titel("p01hoinges")
+    recept = {"afgeleid_van": "duo:p01hoinges:0", "stap": "analyse", "herlaadbaar": False}
+
+    assert herlaad.herlaad(_ANALYSE_KEY, recept).melding == (
+        f"Stap 'analyse' op de data van '{titel}' wordt niet automatisch opnieuw uitgevoerd."
+    )
+    # Zonder `afgeleid_van` komt de dataset uit de key zelf, zoals in de reproductie van #1063.
+    assert f"'{titel}'" in herlaad.herlaad(_ANALYSE_KEY, {"stap": "analyse", "herlaadbaar": False}).melding
+
+
+def test_een_onherhaalbare_stap_op_onbekende_data_noemt_alleen_de_stap():
+    melding = herlaad.herlaad("x:eigen:1:analyse:2", {"stap": "analyse", "herlaadbaar": False}).melding
+    assert melding == "Stap 'analyse' op de data wordt niet automatisch opnieuw uitgevoerd."
+    assert herlaad.herlaad("x:1", {"herlaadbaar": False}).melding == (
+        "Stap 'eerdere stap' op de data wordt niet automatisch opnieuw uitgevoerd."
+    )
+
+
+def test_een_key_in_een_toolmelding_bereikt_de_gebruiker_niet():
+    reden = herlaad._reden(json.dumps({"melding": "Geen data gevonden voor 'duo:p01hoinges:0:ab12'. Laad eerst."}))
+    assert reden == "Geen data gevonden voor de data."
+
+
+def test_de_rapportmelding_van_een_verlopen_eigen_berekening_noemt_geen_key(database):
+    session = {"username": "alice"}
+    with _bronnen():
+        bron = _stap(session, *_ROOTS["duo"])
+        args = {"code": "result = df.head(2).to_dict(orient='records')", "data_key": bron}
+        analyse = _stap(session, TOOL_RUN_ANALYSIS, args, _analyse(**args))
+        _opslaan("alice", "c1", analyse)
+        _herstart()
+        heropend, _events = _heropen("alice", "c1")
+        herstel = herstel_data_keys(heropend, "alice")
+
+    assert analyse in herstel.onherstelbaar
+    assert "eigen berekening (run_analysis)" in herstel.melding
+    assert not _KEY.search(herstel.melding), herstel.melding
