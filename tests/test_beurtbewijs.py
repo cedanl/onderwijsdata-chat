@@ -129,7 +129,9 @@ def _gesprek(*paren: tuple[str, str]) -> list[dict]:
 
 def _put(gebruiker: str, conv_id: str, berichten: list[dict]) -> dict:
     return put_route.upsert_conversation(
-        conv_id, {"title": "Titel", "timestamp": 1_700_000_000, "messages": berichten}, gebruiker
+        conv_id,
+        put_route.ConversationUpsert(title="Titel", timestamp=1_700_000_000, messages=berichten),
+        gebruiker,
     )
 
 

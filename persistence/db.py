@@ -822,7 +822,7 @@ def _vragen(messages: list) -> list:
     return [m.get("content") for m in messages if isinstance(m, dict) and m.get("role") == "user"]
 
 
-def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
+def upsert_conversation(username: str, conv_id: str, title: str, timestamp: float, messages: list[dict]) -> None:
     """Bewaar een gesprek; de titel alleen bij het aanmaken.
 
     Elke opslag na een antwoord stuurt de automatische titel uit de eerste vraag mee. Een bestaand gesprek houdt
