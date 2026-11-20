@@ -5,10 +5,10 @@ databaselaag is synchroon (sqlite3, psycopg2); in een `async def` zet elke aanro
 stil, en daarmee elke lopende chat-stream van alle gebruikers (#508).
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, Field, Strict, StrictInt, StrictStr, StringConstraints
 
 from agent import beurtbewijs, recepten
 from core.auth import get_current_user
@@ -24,6 +24,35 @@ GESPREK_ELDERS_GEWIJZIGD = (
 
 class ConversationTitle(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+# Een eindig getal, geen tekst ("gisteren"), geen bool en geen NaN/Infinity: die gaven een 500 in plaats van 422 (#1064).
+Tijdstempel = StrictInt | Annotated[float, Strict(), Field(allow_inf_nan=False)]
+
+
+class ConversationUpsert(BaseModel):
+    """De body van PUT /api/conversations/{id}, zoals ChatPage.jsx hem stuurt; andere velden worden genegeerd."""
+
+    title: StrictStr
+    timestamp: Tijdstempel
+    messages: list[dict]
+
+
+class WorkbookUpsert(BaseModel):
+    """De body van PUT /api/workbooks/{id} (serverFields in workbooks.js).
+
+    Alleen messages en figures zijn strenger dan voorheen: geen lijst gaf een 500 (#1064). De rest gaat
+    ongewijzigd door, zoals toen de body nog een dict was.
+    """
+
+    title: Any = ""
+    description: Any = ""
+    messages: list | None = None
+    figures: list | None = None
+    instelling: Any = None
+    html_content: Any = Field(default=None, alias="htmlContent")
+    dashboard_spec: Any = Field(default=None, alias="dashboardSpec")
+    created_at: Any = Field(default="", alias="createdAt")
 
 
 @router.get("/api/conversations")
@@ -55,23 +84,23 @@ def get_conversation(conv_id: str, username: str = Depends(get_current_user)) ->
 
 
 @router.put("/api/conversations/{conv_id}")
-def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+def upsert_conversation(conv_id: str, body: ConversationUpsert, username: str = Depends(get_current_user)) -> dict:
     # Geen BSN, e-mailadres of telefoonnummer in de titel, ook niet van een andere client (#552).
     try:
         persistence_db.upsert_conversation(
             username,
             conv_id,
-            veilige_gesprekstitel(body["title"]),
-            body["timestamp"],
-            body["messages"],
+            veilige_gesprekstitel(body.title),
+            body.timestamp,
+            body.messages,
         )
     except persistence_db.GesprekEldersGewijzigd:
         # Twee tabbladen met hetzelfde gesprek (#760): niets overschrijven; de client bewaart zijn versie apart.
         raise HTTPException(status_code=409, detail=GESPREK_ELDERS_GEWIJZIGD) from None
     # De recepten achter de tabellen van dit gesprek: zo overleven ze een herstart (#472).
-    recepten.bewaar(username, conv_id, body["messages"])
+    recepten.bewaar(username, conv_id, body.messages)
     # Het bewijs achter de antwoorden in dit gesprek: lineage, rekenbewijs en kaarten (ADR-009, #875). Na de 409 hierboven.
-    beurtbewijs.bewaar(username, conv_id, body["messages"])
+    beurtbewijs.bewaar(username, conv_id, body.messages)
     return {"ok": True}
 
 
@@ -111,18 +140,18 @@ def get_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
 
 
 @router.put("/api/workbooks/{wb_id}")
-def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+def upsert_workbook(wb_id: str, body: WorkbookUpsert, username: str = Depends(get_current_user)) -> dict:
     persistence_db.upsert_workbook(
         username,
         wb_id,
-        body.get("title", ""),
-        body.get("description", ""),
-        messages=body.get("messages"),
-        figures=body.get("figures"),
-        instelling=body.get("instelling"),
-        html_content=body.get("htmlContent"),
-        dashboard_spec=body.get("dashboardSpec"),
-        created_at=body.get("createdAt", ""),
+        body.title,
+        body.description,
+        messages=body.messages,
+        figures=body.figures,
+        instelling=body.instelling,
+        html_content=body.html_content,
+        dashboard_spec=body.dashboard_spec,
+        created_at=body.created_at,
     )
     return {"ok": True}
 

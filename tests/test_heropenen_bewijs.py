@@ -125,7 +125,9 @@ def _herhaal_met_andere_data(monkeypatch, sessie: dict) -> dict:
 
 def test_heropend_met_een_rij_telt_het_getal_als_gedekt(db, monkeypatch):
     _levend_gesprek(monkeypatch)
-    put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": _frame()}, "alice")
+    put_route.upsert_conversation(
+        "c1", put_route.ConversationUpsert(title="HU", timestamp=1, messages=_frame()), "alice"
+    )
     beurtbewijs.wis()  # een herstart: de rij komt nu uit de database
 
     sessie = _heropen(_frame())
@@ -153,7 +155,9 @@ def zonder_rij(request, db, monkeypatch) -> list[dict]:
     """Een frame met 28.355 in een assistentbericht zonder rij."""
     if request.param == "veranderd door de client":
         _levend_gesprek(monkeypatch)
-        put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": _frame()}, "alice")
+        put_route.upsert_conversation(
+            "c1", put_route.ConversationUpsert(title="HU", timestamp=1, messages=_frame()), "alice"
+        )
         return _frame(_ANTWOORD.replace("personen", "personen (bron: DUO)"))
     db.upsert_conversation("alice", "c1", "HU", 1, _frame())
     return _frame()
@@ -231,7 +235,9 @@ def test_een_antwoord_met_een_melding_krijgt_een_rij_zonder_controle(db, monkeyp
         {"id": 1, "role": "user", "content": vraag, "done": True},
         {"id": 2, "role": "assistant", "content": eind["content"], "done": True, "controle": []},
     ]
-    put_route.upsert_conversation("c1", {"title": "HU", "timestamp": 1, "messages": berichten}, "alice")
+    put_route.upsert_conversation(
+        "c1", put_route.ConversationUpsert(title="HU", timestamp=1, messages=berichten), "alice"
+    )
 
     rij = db.beurtbewijs_voor("alice", "c1")[beurtbewijs.tekst_hash(eind["content"])]
     assert set(rij) == {"lineage", "rekenbewijs", "kaarten", "bronnen", "figuren", "created_at"}
