@@ -188,6 +188,48 @@ frontend:
     # De e2e-evals draaien niet in CI, hun poort en scores wel: zonder app en zonder LLM (CH-28, #36).
     - cd .. && node --test tests/e2e/score-unit.mjs tests/e2e/refusal-unit.mjs tests/e2e/rapport-unit.mjs
 
+# De hele chat in een browser met het nepmodel (#1065): vraag, toolstappen, antwoord en rapport tegen de echte app
+# (uvicorn met de gebouwde frontend, SQLite), zonder providersleutel en zonder secrets. MODEL=mock/default zet
+# playwright.mock.config.js zelf. Het scenario laadt één kleine CBS-tabel, dus de runner heeft internet naar CBS nodig.
+# Het image van Playwright heeft Node en Chromium; uv haalt Python zelf.
+e2e:nepmodel:
+  stage: .pre
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
+    - if: $CI_MERGE_REQUEST_IID
+  needs: []
+  image:
+    # Dezelfde Playwright-versie als package.json; bij een update beide aanpassen, met de digest van de nieuwe tag.
+    name: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+  variables:
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
+    UV_PYTHON_INSTALL_DIR: $CI_PROJECT_DIR/.uv-python
+  cache:
+    - key:
+        files:
+          - uv.lock
+      paths:
+        - .uv-cache
+        - .uv-python
+    - key:
+        files:
+          - frontend/package-lock.json
+      paths:
+        - frontend/.npm
+  before_script:
+    # Het image heeft geen Python of pip; de installer van uv op een vaste versie.
+    - curl -LsSf https://astral.sh/uv/0.13.9/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+  script:
+    - uv sync --frozen
+    - (cd frontend && npm ci --cache .npm --prefer-offline && npm run build)
+    - npm ci --cache frontend/.npm --prefer-offline --ignore-scripts
+    - npx playwright test --config=playwright.mock.config.js
+  artifacts:
+    when: on_failure
+    expire_in: 14 days
+    paths:
+      - test-results/
+
 # Synthetische controle van de antwoordketen tegen de testomgeving (#169): de bronwaarheid-evals
 # (tests/e2e/real-questions.spec.js, ijkwaarden uit #190) als buitenstaander, los van /health en
 # /ready. Alleen gepland of met de hand: elke beurt kost een modelaanroep op de testomgeving.

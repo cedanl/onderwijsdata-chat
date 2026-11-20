@@ -124,6 +124,18 @@ BEWAARTERMIJN_RAPPORTEN_DAGEN = os.getenv("BEWAARTERMIJN_RAPPORTEN_DAGEN", "365"
 WILLMA_API_KEY = os.getenv("WILLMA_API_KEY")
 WILLMA_BASE_URL = os.getenv("WILLMA_BASE_URL", "")
 
+# Het nepmodel voor lokaal testen zonder providersleutel (#1065, agent/nepmodel.py): `MODEL=mock/<scenario>`. Het prefix is
+# de schakelaar; config.py weigert het buiten NEP_OMGEVINGEN.
+NEP_PREFIX = "mock/"
+NEP_SCENARIOS = ("default", "tekst")
+NEP_OMGEVINGEN = ("local", "development")
+
+
+def is_nepmodel(model_id: object) -> bool:
+    """Is dit het nepmodel (`mock/…`)?"""
+    return isinstance(model_id, str) and model_id.lower().startswith(NEP_PREFIX)
+
+
 # Kommagescheiden lijst van LiteLLM model-IDs voor de model-picker in de UI.
 # Niet ingesteld → geen model-picker, de app gebruikt altijd MODEL.
 _AVAILABLE_MODELS_RAW = os.getenv("AVAILABLE_MODELS")
@@ -142,6 +154,7 @@ _PROVIDER_API_KEYS: dict[str, str] = {
     "gemini": "GEMINI_API_KEY",
     "ollama": None,  # Ollama doesn't require API key
     "ollama_chat": None,
+    "mock": None,  # het nepmodel (#1065) roept geen provider aan
 }
 # Sleutels zonder eigen prefix (#829): Willma loopt via openai/ met WILLMA_API_KEY (agent/models.py), maar een omgeving
 # met alleen die sleutel moet /ready halen (#675).
@@ -193,7 +206,8 @@ _ANTHROPIC = "Anthropic"
 _FOUNDRY = "Microsoft Azure AI Foundry"
 _OPENAI = "OpenAI"
 _WILLMA = "SURF Willma"
-_PROVIDER_BY_PREFIX: dict[str, str] = {"anthropic": _ANTHROPIC, "azure_ai": _FOUNDRY, "openai": _OPENAI}
+_NEP = "het nepmodel, zonder taalmodel"
+_PROVIDER_BY_PREFIX: dict[str, str] = {"anthropic": _ANTHROPIC, "azure_ai": _FOUNDRY, "openai": _OPENAI, "mock": _NEP}
 
 # (naam, omschrijving, icoon, provider) voor bekende modellen. Naam en omschrijving zijn gewone taal
 # voor de gebruiker; de provider staat alleen in het vierde veld. Een onbekend model heet naar het deel
@@ -215,6 +229,8 @@ _KNOWN_NAMES: dict[str, tuple[str, str, str, str]] = {
     "openai/openai/gpt-oss-120b": ("GPT-OSS 120B", "goed in het ophalen van data", "cpu", _WILLMA),
     "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": ("Qwen 2.5 VL 32B", "ook voor afbeeldingen", "cpu", _WILLMA),
     "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": ("Qwen 2.5 Coder 32B", "gericht op code", "cpu", _WILLMA),
+    "mock/default": ("Nepmodel", "lokaal testen: zoekt en laadt data", "cpu", _NEP),
+    "mock/tekst": ("Nepmodel, alleen tekst", "lokaal testen zonder tools", "cpu", _NEP),
 }
 
 
@@ -269,8 +285,13 @@ def _models_from_ids(model_ids: list[str]) -> list[tuple[str, str, str, str, str
 
 
 def get_available_models() -> list[tuple[str, str, str, str, str]] | None:
-    """Return list of (model_id, name, description, icon, provider), or None if no picker."""
+    """Return list of (model_id, name, description, icon, provider), or None if no picker.
+
+    Met het nepmodel als MODEL en zonder AVAILABLE_MODELS biedt de kiezer de nepscenario's aan (#1065).
+    """
     if not _AVAILABLE_MODELS_RAW:
+        if is_nepmodel(MODEL):
+            return _models_from_ids([f"{NEP_PREFIX}{s}" for s in NEP_SCENARIOS])
         return None
     result = _models_from_ids([m.strip() for m in _AVAILABLE_MODELS_RAW.split(",") if m.strip()])
     return result or None
@@ -281,6 +302,12 @@ def get_available_models_for_user(username: str | None) -> list[tuple[str, str, 
     if username and username in _USER_MODELS:
         return _models_from_ids(_USER_MODELS[username]) or None
     return get_available_models()
+
+
+def geconfigureerde_modellen() -> list[str]:
+    """Elk model dat de configuratie noemt: MODEL, AVAILABLE_MODELS en USER_MODELS, voor de controle bij het opstarten."""
+    ids = [MODEL, *(m.strip() for m in (_AVAILABLE_MODELS_RAW or "").split(",") if m.strip())]
+    return ids + [m for models in _USER_MODELS.values() for m in models]
 
 
 def toegestaan_model(username: str | None, gevraagd: object) -> str:
