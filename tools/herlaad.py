@@ -11,6 +11,7 @@ stap wordt geen script bewaard. Een koppeling (koppel_data) ook niet: ze rust op
 
 import json
 import logging
+import re
 import threading
 from collections import OrderedDict
 from collections.abc import Callable
@@ -67,6 +68,8 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
 }
 _MAX_STAPPEN = 10  # een keten van selecties; meer is een kapot of rondlopend recept
 _MAX_REDEN = 300
+# Een interne key in een toolmelding, met of zonder aanhalingstekens: bron, dataset en minstens één deel meer.
+_KEY_IN_TEKST = re.compile(r"'?\b[a-z][\w]*:[\w.-]+(?::[\w.-]+)+\b'?")
 
 Receptbron = Callable[[str], dict | None]
 
@@ -83,7 +86,7 @@ _markeringen_slot = threading.Lock()
 class Herlaadresultaat:
     key: str
     gelukt: bool
-    melding: str = ""  # waarom niet: de stap of de bron, met de key
+    melding: str = ""  # waarom niet: de stap of de bron, met de catalogustitel; de key staat alleen in de log
     bronfout: bool = False  # de bron faalde, niet het recept
     herladen: bool = False  # de data komt van een nieuwe ophaalslag bij de bron, niet van het eerste antwoord
 
@@ -189,25 +192,35 @@ def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int, usern
     if store.get(key) is not None:
         return _terug(key, username)
     if stappen > _MAX_STAPPEN or not isinstance(recept, dict):
-        return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
+        return _niet(key, "onbruikbaar recept", f"Het recept voor {_de_data_van(key)} is onbruikbaar.")
     if "laad" in recept:
         return _laad(key, recept["laad"], username)
     if recept.get("tool") == TOOL_QUERY_DATA and recept.get("herlaadbaar", True):
         return _selecteer(key, recept, recept_van, stappen, username)
     if recept.get("tool") == TOOL_GET_MAAT:
         return _hermaat(key, recept, username)
-    return Herlaadresultaat(key, gelukt=False, melding=_onherhaalbaar(key, recept.get("stap")))
+    return _niet(key, "stap zonder herlaadrecept", _onherhaalbaar(key, recept))
 
 
-def _onherhaalbaar(key: str, stap: object) -> str:
+def _onherhaalbaar(key: str, recept: dict) -> str:
+    """De stap en de dataset waarop ze rekende (`afgeleid_van`, anders de key zelf); nooit de key (#1063)."""
+    stap = recept.get("stap")
     stap = stap if isinstance(stap, str) and stap else "eerdere stap"
-    return f"Stap '{stap}' van key {key} wordt niet automatisch opnieuw uitgevoerd."
+    ouder = recept.get("afgeleid_van")
+    data = _de_data_van(ouder if isinstance(ouder, str) and ouder else key)
+    return f"Stap '{stap}' op {data} wordt niet automatisch opnieuw uitgevoerd."
+
+
+def _niet(key: str, soort: str, melding: str, bronfout: bool = False) -> Herlaadresultaat:
+    """Een mislukt herladen: de melding is voor de gebruiker en zonder key, de log houdt de key (#1063)."""
+    logger.warning("herladen %s mislukt: %s", key, soort)
+    return Herlaadresultaat(key, gelukt=False, melding=melding, bronfout=bronfout)
 
 
 def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
     tool, args = laad if isinstance(laad, list | tuple) and len(laad) == 2 else (None, None)
     if not isinstance(tool, str) or tool not in _LADERS or not isinstance(args, dict):
-        return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} noemt geen bekende laadstap.")
+        return _niet(key, "onbekende laadstap", f"Het recept voor {_de_data_van(key)} noemt geen bekende laadstap.")
     functie, bron = _LADERS[tool]
     if not beschikbaarheid.tool(tool):
         melding = f"{bron} geeft in deze omgeving geen cijfers, dus {_de_data(args)} komt niet terug."
@@ -239,18 +252,26 @@ def _de_data(args: dict) -> str:
     return "de data" if titel == dataset_id else f"de data van '{titel}'"
 
 
+def _de_data_van(key: str) -> str:
+    """Als `_de_data`, voor een key: de store kent haar ouder na een herstart niet meer, dus de dataset komt uit de
+    eerste twee delen van de key (`duo:p01hoinges` uit `duo:p01hoinges:0:analyse:1`, #1063)."""
+    delen = key.split(":")
+    return _de_data({"dataset_id": ":".join(delen[:2])}) if len(delen) >= 2 else "de data"
+
+
 def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int, username: str | None) -> Herlaadresultaat:
     ouder, args = recept.get("afgeleid_van"), recept.get("args")
     if not isinstance(ouder, str) or not isinstance(args, dict):
-        return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
+        return _niet(key, "onbruikbaar recept", f"Het recept voor {_de_data_van(key)} is onbruikbaar.")
     if store.get(ouder) is None:
         ouder_recept = recept_van(ouder)
         if ouder_recept is None:
-            return Herlaadresultaat(
-                key, gelukt=False, melding=f"Key {key} rust op key {ouder}, en die is niet bewaard."
-            )
+            logger.warning("herladen %s mislukt: ouder %s is niet bewaard", key, ouder)
+            melding = f"{_de_data_van(key)} rust op een eerdere stap die niet is bewaard."
+            return Herlaadresultaat(key, gelukt=False, melding=melding[0].upper() + melding[1:])
         eerst = _herlaad(ouder, ouder_recept, recept_van, stappen + 1, username)
         if not eerst.gelukt:
+            logger.warning("herladen %s mislukt: ouder %s kwam niet terug", key, ouder)
             return Herlaadresultaat(key, gelukt=False, melding=eerst.melding, bronfout=eerst.bronfout)
     try:
         uitkomst = query_data(**{**args, "data_key": ouder})
@@ -261,7 +282,7 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int, use
     if store.get(key) is None:
         stap = recept.get("stap") or "selectie"
         reden = _reden(uitkomst) or "geen data."
-        return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
+        return _niet(key, "selectie gaf niets", f"Stap '{stap}' gaf {_de_data_van(key)} niet opnieuw: {reden}")
     # Ook op een ouder die live werd geladen: die is van ná het antwoord waar deze selectie onder stond.
     markeer(username, key)
     return _terug(key, username)
@@ -271,7 +292,7 @@ def _hermaat(key: str, recept: dict, username: str | None) -> Herlaadresultaat:
     """Een vaste maat (#188) opnieuw: get_maat laadt de bron en selecteert zelf, met dezelfde key als uitkomst."""
     args = recept.get("args")
     if not isinstance(args, dict):
-        return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
+        return _niet(key, "onbruikbaar recept", f"Het recept voor {_de_data_van(key)} is onbruikbaar.")
     try:
         uitkomst = get_maat(**args)
     except Exception as e:  # argumenten die get_maat niet (meer) aanneemt
@@ -280,9 +301,8 @@ def _hermaat(key: str, recept: dict, username: str | None) -> Herlaadresultaat:
         uitkomst = ""
     if store.get(key) is None:
         stap = recept.get("stap") or "vaste maat"
-        return Herlaadresultaat(
-            key, gelukt=False, bronfout=True, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {_reden(uitkomst)}"
-        )
+        melding = f"Stap '{stap}' gaf {_de_data_van(key)} niet opnieuw: {_reden(uitkomst) or 'geen data.'}"
+        return _niet(key, "vaste maat gaf niets", melding, bronfout=True)
     markeer(username, key)
     return _terug(key, username)
 
@@ -304,6 +324,8 @@ def _reden(uitkomst: str) -> str:
     if tekst.startswith("Fout ("):
         tekst = tekst.split("): ", 1)[-1]
     zin = tekst.split(". ", 1)[0].strip()
+    # Een toolmelding kan een key noemen ("Geen data gevonden voor 'duo:x:0'"); de gebruiker leest de data (#1063).
+    zin = _KEY_IN_TEKST.sub("de data", zin)
     if zin and not zin.endswith("."):
         zin += "."
     return zin[:_MAX_REDEN]

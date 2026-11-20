@@ -328,6 +328,7 @@ def test_een_eigen_berekening_noemt_de_stap_en_de_titel_niet_de_key(client):
     assert "eigen berekening (run_analysis)" in detail
     assert f"de data van '{bron_titel('p01hoinges')}'" in detail
     assert not _KEY.search(detail), detail  # de key alleen in de log (#1063)
+    assert analyse not in detail
     assert detail != "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
 
 
