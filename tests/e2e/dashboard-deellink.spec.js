@@ -33,6 +33,7 @@ const kaart = naam => JSON.stringify({
 
 // Een regiolading zoals /api/dashboard/regio die geeft, ingekort tot wat de bovenkant van de pagina gebruikt.
 const regio = (naam, type) => ({
+  gevonden: true,
   instelling: naam,
   type,
   provincie: 'Utrecht',
@@ -53,6 +54,11 @@ const regio = (naam, type) => ({
 })
 
 async function nabootsen(page) {
+  // De dashboards staan lokaal standaard uit (ENABLE_DASHBOARDS); hun ladingen zijn hier toch nagebootst.
+  await page.route(/\/api\/config(\?|$)/, async route => {
+    const antwoord = await route.fetch()
+    route.fulfill({ response: antwoord, json: { ...(await antwoord.json()), dashboards_enabled: true } })
+  })
   await page.route(/\/api\/instellingen(\?|$)/, route => route.fulfill({ json: INSTELLINGEN }))
   await page.route(/\/api\/dashboard\/[a-z_]+\?/, route => {
     const url = new URL(route.request().url())
