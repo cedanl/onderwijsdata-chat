@@ -19,7 +19,6 @@ from fastapi import HTTPException
 from agent import beurtbewijs, figuurstappen, rapportselectie, report
 from agent.bronvermelding import vastgelegde_bronnen
 from agent.datasetcontext import build_dataset_context
-from agent.kaarten import kaarten_in_gesprek
 from agent.loop import LoopResult
 from agent.session_data import (
     data_lineage,
@@ -219,7 +218,9 @@ def test_een_rij_draagt_wat_de_beurt_opleverde(monkeypatch):
     [rij] = beurtbewijs._klaar.values()
     assert rij["lineage"] == {_KEY: _LAAD}
     assert [r["tool"] for r in rij["rekenbewijs"]] == ["compute_kpi"]
-    assert rij["kaarten"] == {_KEY: {"data_key": _KEY, "location_col": "PROVINCIE", "value_col": "AANTAL"}}
+    # De kaart gaat als figuurstap mee; de kaartregels per data_key (`kaarten`) zijn weg sinds #1044.
+    assert [(s["tool"], s["keys"]) for s in rij["figuren"]] == [(TOOL_CREATE_CHOROPLETH_MAP, [_KEY])]
+    assert "kaarten" not in rij
     assert rij["created_at"].endswith("+00:00")
 
 
@@ -240,7 +241,6 @@ def test_een_rij_draagt_geen_controle_ook_als_message_end_er_een_had(monkeypatch
         assert set(beurtbewijs._klaar["alice", beurtbewijs.tekst_hash(tekst)]) == {
             "lineage",
             "rekenbewijs",
-            "kaarten",
             "bronnen",
             "figuren",
             "created_at",
@@ -310,7 +310,6 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
     a = {
         "lineage": {"k": 1},
         "rekenbewijs": [{"r": 1}],
-        "kaarten": {"k": {"v": 1}},
         "bronnen": {"k": [{"regel": "eerst"}]},
         "figuren": [{"id": "f1", "titel": "eerst"}],
         "created_at": "eerst",
@@ -318,7 +317,6 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
     b = {
         "lineage": {"k": 2, "l": 3},
         "rekenbewijs": [{"r": 1}, {"r": 2}],
-        "kaarten": {"k": {"v": 2}},
         "bronnen": {"k": [{"regel": "laat"}], "l": [{"regel": "l"}]},
         "figuren": [{"id": "f1", "titel": "laat"}, {"id": "f2", "titel": "f2"}],
         "created_at": "laat",
@@ -329,7 +327,6 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
     assert samen == {
         "lineage": {"k": 1, "l": 3},  # de eerste maker wint
         "rekenbewijs": [{"r": 1}, {"r": 2}],
-        "kaarten": {"k": {"v": 2}},  # de latere kaart wint
         "bronnen": {"k": [{"regel": "eerst"}], "l": [{"regel": "l"}]},  # de eerste maker wint, als bij de lineage
         "figuren": [{"id": "f1", "titel": "eerst"}, {"id": "f2", "titel": "f2"}],  # per id één, de eerste blijft
         "created_at": "eerst",
@@ -338,7 +335,7 @@ def test_samenvoegen_kan_zo_vaak_als_je_wilt():
 
 
 def test_samenvoegen_met_een_rij_zonder_bronnen_van_voor_987():
-    oud = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "eerst"}
+    oud = {"lineage": {}, "rekenbewijs": [], "created_at": "eerst"}
     nieuw = {**oud, "bronnen": {"k": [{"regel": "r"}]}, "created_at": "laat"}
 
     assert beurtbewijs.voeg_samen(oud, nieuw)["bronnen"] == {"k": [{"regel": "r"}]}
@@ -347,7 +344,7 @@ def test_samenvoegen_met_een_rij_zonder_bronnen_van_voor_987():
 
 
 def test_samenvoegen_met_een_rij_zonder_figuren_van_voor_993():
-    oud = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "bronnen": {}, "created_at": "eerst"}
+    oud = {"lineage": {}, "rekenbewijs": [], "bronnen": {}, "created_at": "eerst"}
     nieuw = {**oud, "figuren": [{"id": "f1"}], "created_at": "laat"}
 
     assert beurtbewijs.voeg_samen(oud, nieuw)["figuren"] == [{"id": "f1"}]
@@ -396,7 +393,7 @@ def test_zonder_gebruikersnaam_houdt_de_levende_sessie_de_bronregels(_bronkey):
     sessie = {"username": "", "messages": [{"role": "user", "content": "Vraag?"}]}
     record_data_key(sessie, json.dumps({"data_key": _bronkey}), _LAAD)
 
-    beurtbewijs.zet_klaar(sessie, {}, "tekst")
+    beurtbewijs.zet_klaar(sessie, "tekst")
 
     assert beurtbewijs._klaar == {}
     assert list(sessie["data_bronnen"]) == [_bronkey]
@@ -414,7 +411,6 @@ def test_heropenen_zet_de_bronregels_terug_en_nummert_ook_een_key_zonder_aanroep
     rij = {
         "lineage": {"cbs:a": _LAAD},
         "rekenbewijs": [],
-        "kaarten": {},
         "bronnen": {"cbs:a": bron, "duo:b": bron},
         "created_at": "t",
     }
@@ -428,7 +424,7 @@ def test_heropenen_zet_de_bronregels_terug_en_nummert_ook_een_key_zonder_aanroep
 
 
 def test_heropenen_met_een_rij_zonder_bronnen_van_voor_987():
-    rij = {"lineage": {"cbs:a": _LAAD}, "rekenbewijs": [], "kaarten": {}, "created_at": "t"}
+    rij = {"lineage": {"cbs:a": _LAAD}, "rekenbewijs": [], "created_at": "t"}
     sessie = _sessie()
     sessie["messages"] = [{"role": "user", "content": "Vraag?"}, {"role": "assistant", "content": "Antwoord."}]
 
@@ -447,7 +443,7 @@ def test_het_geheugen_is_begrensd(monkeypatch):
 
 
 def test_zonder_gebruikersnaam_staat_er_niets_klaar():
-    beurtbewijs.zet_klaar({"username": ""}, {}, "tekst")
+    beurtbewijs.zet_klaar({"username": ""}, "tekst")
 
     assert beurtbewijs._klaar == {}
 
@@ -544,7 +540,7 @@ def test_een_heropend_gesprek_geeft_hetzelfde_bewijs_als_de_levende_sessie(db, m
 
     assert data_lineage(heropend, _KEY) == data_lineage(live, _KEY) == [_LAAD]
     assert rekenbewijs(heropend) == rekenbewijs(live) and len(rekenbewijs(live)) == 2
-    assert kaarten_in_gesprek(heropend) == kaarten_in_gesprek(live) and _KEY in kaarten_in_gesprek(live)
+    assert figuurstappen.stappen(heropend) == figuurstappen.stappen(live) and figuurstappen.stappen(live)
     assert heropend["data_vraag"] == live["data_vraag"] == {_KEY: 1}
     assert gebruikersvragen(heropend) == gebruikersvragen(live)
     assert build_dataset_context(heropend) == build_dataset_context(live)
@@ -575,7 +571,7 @@ def test_een_heropend_gesprek_toont_dezelfde_figuren_in_de_checklist(db, monkeyp
     heropend["data_keys"] = [_KEY]
 
     [item] = rapportselectie.beurten_met_data(live)
-    assert item["figuren"] == [{"id": figuurstappen.stappen(live)[0]["id"], "titel": _KAART["title"]}]
+    assert item["figuren"] == [{"id": figuurstappen.stappen(live)[0]["id"], "titel": _KAART["title"], "beurten": [1]}]
     assert rapportselectie.beurten_met_data(heropend) == rapportselectie.beurten_met_data(live)
     assert figuurstappen.stappen(heropend) == figuurstappen.stappen(live)
 
@@ -608,7 +604,7 @@ def test_herverbinden_voor_de_eerste_put_herstelt_uit_het_geheugen(db, monkeypat
     assert db.beurtbewijs_voor("alice", "c1") == {}
     assert data_lineage(heropend, _KEY) == data_lineage(live, _KEY) == [_LAAD]
     assert rekenbewijs(heropend) == rekenbewijs(live)
-    assert kaarten_in_gesprek(heropend) == kaarten_in_gesprek(live)
+    assert figuurstappen.stappen(heropend) == figuurstappen.stappen(live)
 
 
 def test_herverbinden_zonder_gesprek_id_herstelt_ook_uit_het_geheugen(db, monkeypatch):
@@ -627,7 +623,7 @@ def test_een_gesprek_zonder_rijen_heropent_zoals_nu(db):
         {"role": "user", "content": "Oude vraag?"},
         {"role": "assistant", "content": "Oud antwoord."},
     ]
-    assert sessie.get("data_provenance") == {} and not rekenbewijs(sessie) and kaarten_in_gesprek(sessie) == {}
+    assert sessie.get("data_provenance") == {} and not rekenbewijs(sessie) and figuurstappen.stappen(sessie) == []
     assert sessie.get("data_vraag") is None
 
 
@@ -647,7 +643,7 @@ def test_alleen_de_antwoorden_in_het_frame_herstellen(db, monkeypatch):
 
     sessie = _heropen("alice", berichten[2:], "c1")  # alleen het tweede antwoord: dat had een berekening, geen data
 
-    assert sessie["data_provenance"] == {} and len(rekenbewijs(sessie)) == 1 and kaarten_in_gesprek(sessie) == {}
+    assert sessie["data_provenance"] == {} and len(rekenbewijs(sessie)) == 1 and figuurstappen.stappen(sessie) == []
 
 
 def test_het_rekenbewijs_na_heropenen_kent_dezelfde_grens_als_live(db, monkeypatch):

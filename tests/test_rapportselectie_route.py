@@ -82,7 +82,10 @@ def test_de_checklist_komt_als_frame_uit_het_gesprek(sessie):
     assert frame["type"] == "report_checklist"
     assert [(i["beurt"], i["vraag"]) for i in frame["items"]] == [(1, _VRAAG_1), (2, _VRAAG_2)]
     assert "p01hoinges" in frame["items"][0]["bronnen"][0]
-    assert [i["figuren"] for i in frame["items"]] == [[], [{"id": _STAP["id"], "titel": "Rendement per startjaar"}]]
+    assert [i["figuren"] for i in frame["items"]] == [
+        [],
+        [{"id": _STAP["id"], "titel": "Rendement per startjaar", "beurten": [2]}],
+    ]
 
 
 def test_zonder_data_is_de_checklist_leeg():

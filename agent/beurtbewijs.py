@@ -1,4 +1,4 @@
-"""Het bewijs per afgerond antwoord: lineage, rekenbewijs, kaarten en bronregels, zodat een heropend gesprek hetzelfde
+"""Het bewijs per afgerond antwoord: lineage, rekenbewijs, bronregels en figuurstappen, zodat een heropend gesprek hetzelfde
 rapport en dezelfde bronvermelding geeft als het levende (ADR-009, #875, #987).
 
 De client blijft de bron van de gesprekstekst: zij PUT het gesprek en stuurt het als `history`-frame terug. De server
@@ -23,6 +23,9 @@ de data niet meer heeft. Een rij van vóór #987 heeft er geen; dan blijft de st
 De figuurstappen (`figuren`, #993) zijn de stappen achter de figuren van de beurt (`agent.figuurstappen`): het rapport
 maakt een gekozen figuur daaruit opnieuw. Een rij van vóór #993 heeft er geen; dat gesprek toont dan geen figuren in de
 checklist.
+
+De kolom `kaarten` (de kaartregels per data_key, #648) is weg sinds #1044: een kaart uit het gesprek gaat als figuur
+mee (`figuren`), en niets las haar nog.
 """
 
 import hashlib
@@ -33,7 +36,6 @@ from datetime import UTC, datetime
 from persistence import db
 
 from . import figuurstappen
-from .kaarten import kaarten_van_beurt
 from .session_data import begrens_rekenbewijs, neem_beurtbewijs, voeg_rekenbewijs_toe
 
 logger = logging.getLogger(__name__)
@@ -53,7 +55,7 @@ def tekst_hash(tekst: str) -> str:
     return hashlib.sha256(tekst.encode("utf-8", errors="replace")).hexdigest()
 
 
-def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
+def zet_klaar(session: dict, tekst: str) -> None:
     """Zet de rij van een net afgeronde beurt klaar tot het gesprek wordt opgeslagen.
 
     `tekst` is de `content` van haar `message_end`. Dezelfde tekst twee keer geeft één rij: de tweede beurt voegt haar
@@ -66,7 +68,6 @@ def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
     rij = {
         "lineage": lineage,
         "rekenbewijs": rekenbewijs,
-        "kaarten": kaarten_van_beurt(turn),
         "bronnen": bronnen,
         "figuren": figuurstappen.neem_nieuwe(session),
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -77,10 +78,9 @@ def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
     while len(_klaar) > _MAX_KLAAR:
         _klaar.popitem(last=False)
     logger.info(
-        "BEURTBEWIJS klaar  lineage=%d  rekenbewijs=%d  kaarten=%d  bronnen=%d  figuren=%d",
+        "BEURTBEWIJS klaar  lineage=%d  rekenbewijs=%d  bronnen=%d  figuren=%d",
         len(rij["lineage"]),
         len(rij["rekenbewijs"]),
-        len(rij["kaarten"]),
         len(rij["bronnen"]),
         len(rij["figuren"]),
     )
@@ -89,8 +89,7 @@ def zet_klaar(session: dict, turn: dict, tekst: str) -> None:
 def voeg_samen(oud: dict, nieuw: dict) -> dict:
     """Twee rijen met dezelfde tekst als één, en zo vaak als je wilt: opnieuw samenvoegen verandert niets.
 
-    Voor de lineage en de bronregels wint de eerste maker, zoals in `data_provenance`; een kaart die later kwam
-    vervangt de oudere van dezelfde key, zoals in het levende gesprek; het rekenbewijs krijgt de items die er nog niet
+    Voor de lineage en de bronregels wint de eerste maker, zoals in `data_provenance`; het rekenbewijs krijgt de items die er nog niet
     in staan, tot de grens van de sessie; het antwoord behoudt zijn eerste tijd. Een rij zonder bronregels (van vóór
     #987) of zonder figuurstappen (van vóór #993) telt als een rij met lege; de figuurstappen gaan als het rekenbewijs.
     """
@@ -98,7 +97,6 @@ def voeg_samen(oud: dict, nieuw: dict) -> dict:
     return {
         "lineage": {**nieuw["lineage"], **oud["lineage"]},
         "rekenbewijs": begrens_rekenbewijs(rekenbewijs),
-        "kaarten": {**oud["kaarten"], **nieuw["kaarten"]},
         "bronnen": {**_bronnen(nieuw), **_bronnen(oud)},
         "figuren": figuurstappen.samen(_figuren(oud), _figuren(nieuw)),
         "created_at": oud["created_at"],
@@ -165,8 +163,8 @@ def rijen_voor(username: str, conv_id: object, messages: object) -> dict[str, di
 def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
     """Vul een verse, net geopende sessie met het bewijs van haar antwoorden, in de volgorde van het gesprek.
 
-    `session["messages"]` is al de (ingekorte) modelgeschiedenis. Lineage, rekenbewijs, kaarten, bronregels en
-    figuurstappen komen van elk antwoord uit `rijen`, ook van beurten die buiten die geschiedenis vielen. Het
+    `session["messages"]` is al de (ingekorte) modelgeschiedenis. Lineage, rekenbewijs, bronregels en figuurstappen
+    komen van elk antwoord uit `rijen`, ook van beurten die buiten die geschiedenis vielen. Het
     vraagnummer per key (`data_vraag`, #733) volgt uit de plaats van het antwoord in de geschiedenis, zoals
     `gebruikersvragen`: een antwoord dat de geschiedenis niet meer haalt, heeft geen nummer. Ook een key met alleen
     bronregels (zonder aanroep) krijgt er een: die beurt las data, dus een vervolgantwoord vindt haar
@@ -179,7 +177,6 @@ def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
         for key, call in rij["lineage"].items():
             session.setdefault("data_provenance", {}).setdefault(key, call)
         voeg_rekenbewijs_toe(session, rij["rekenbewijs"])
-        session.setdefault("kaarten", {}).update(rij["kaarten"])
         for key, bronnen in _bronnen(rij).items():
             session.setdefault("data_bronnen", {}).setdefault(key, bronnen)
         figuurstappen.voeg_toe(session, _figuren(rij))

@@ -98,7 +98,6 @@ def _vul_anna() -> None:
             "hash-extra": {
                 "lineage": {},
                 "rekenbewijs": [],
-                "kaarten": {},
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
         },

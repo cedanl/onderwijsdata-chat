@@ -26,7 +26,9 @@ checklist zegt waar een beurt op voortbouwt (`bouwt_voort_op`), zodat de gebruik
 titel van de figuur die de server maakte. Een figuur hoort bij de beurt waarin de data van haar `data_key` ontstond,
 of anders de key die ze maakte: een latere beurt als "maak hem horizontaal" zonder nieuwe data heeft geen eigen regel,
 haar figuur staat bij de beurt van de data. Het rapport bevat alleen de figuren die de gebruiker koos (hoogstens
-`MAX_FIGUREN`); een gekozen figuur trekt de beurten van haar keys mee in de selectie.
+`MAX_FIGUREN`); een gekozen figuur trekt de beurten van haar keys mee in de selectie. Welke beurten dat zijn, staat
+per figuur in de checklist (`beurten`, #1045), zodat de app ze aanvinkt en het rapport niet stil rust op een beurt die
+in de checklist uit staat.
 """
 
 from __future__ import annotations
@@ -64,7 +66,8 @@ def beurten_met_data(session: dict) -> list[dict]:
     """De checklist van een gesprek: per beurt met data `beurt`, `vraag`, `bronnen`, `bouwt_voort_op` en `figuren`.
 
     `bronnen` zijn de bronregels van de data van die beurt, zoals het rapport ze noemt (catalogustitel en dataset-ID,
-    uit code). `figuren` zijn de figuren van die beurt als `{id, titel}`, in de volgorde waarin ze ontstonden. Leeg als
+    uit code). `figuren` zijn de figuren van die beurt als `{id, titel, beurten}`, in de volgorde waarin ze ontstonden;
+    `beurten` zijn de gesorteerde nummers van de beurten van al haar keys, haar eigen beurt inbegrepen (#1045). Leeg als
     het gesprek geen beurten met data heeft, of als niet elke key bij een beurt te plaatsen is.
     """
     nummers = _vraagnummers(session)
@@ -74,7 +77,13 @@ def beurten_met_data(session: dict) -> list[dict]:
     figuren: dict[int, list[dict]] = {}
     for stap in figuurstappen.stappen(session):
         if (thuis := _thuisbeurt(stap, nummers)) is not None:
-            figuren.setdefault(thuis, []).append({"id": stap["id"], "titel": stap.get("titel") or ZONDER_TITEL})
+            figuren.setdefault(thuis, []).append(
+                {
+                    "id": stap["id"],
+                    "titel": stap.get("titel") or ZONDER_TITEL,
+                    "beurten": sorted(_beurten_van(stap, nummers)),
+                }
+            )
     vragen = gebruikersvragen(session)
     return [
         {

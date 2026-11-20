@@ -1,7 +1,7 @@
 """De tabel beurtbewijs: per gebruiker, per gesprek en per tekst-hash, en weg met het gesprek (ADR-009, #875).
 
 Sinds #987 draagt een rij ook de bronregels per key (`bronnen`), voor een vervolgantwoord na heropenen, en sinds #993
-de stappen achter de figuren van de beurt (`figuren`), voor het rapport."""
+de stappen achter de figuren van de beurt (`figuren`), voor het rapport. De kolom `kaarten` is weg sinds #1044."""
 
 import importlib
 import sqlite3
@@ -13,7 +13,6 @@ import pytest
 
 _LINEAGE = {"cbs:85423NED": {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED"}}}
 _REKEN = [{"tool": "compute_kpi", "argumenten": {"data_key": "cbs:85423NED"}, "resultaat": '{"waarde": 12.5}'}]
-_KAARTEN = {"cbs:85423NED": {"data_key": "cbs:85423NED", "location_col": "PROVINCIE", "value_col": "AANTAL"}}
 _BRONNEN = {
     "cbs:85423NED": [
         {
@@ -39,7 +38,6 @@ def _rij(**anders):
     return {
         "lineage": _LINEAGE,
         "rekenbewijs": _REKEN,
-        "kaarten": _KAARTEN,
         "bronnen": _BRONNEN,
         "figuren": _FIGUREN,
         "created_at": _NU,
@@ -205,12 +203,55 @@ def test_een_bestaande_tabel_met_controle_verliest_de_kolom_en_houdt_de_rij(tmp_
         "h1": {
             "lineage": {},
             "rekenbewijs": [],
-            "kaarten": {},
             "bronnen": {},
             "figuren": [],
             "created_at": "2026-11-03T10:00:00+00:00",
         }
     }
+
+
+def test_een_bestaande_tabel_met_kaarten_verliest_de_kolom_en_houdt_de_rijen(tmp_path, monkeypatch):
+    """#1044: niets las `kaarten` na #993 (een kaart gaat als figuur mee). De kolom gaat weg met haar waarden; de rijen,
+    hun andere kolommen en de figuurstappen blijven. Een tweede start is een no-op, en een nieuwe rij past zonder kolom."""
+    pad = tmp_path / "oud.db"
+    oud = sqlite3.connect(pad)
+    oud.executescript("""
+        CREATE TABLE beurtbewijs (
+            username TEXT NOT NULL, conv_id TEXT NOT NULL, tekst_hash TEXT NOT NULL, lineage TEXT NOT NULL,
+            rekenbewijs TEXT NOT NULL, kaarten TEXT NOT NULL, bronnen TEXT NOT NULL DEFAULT '{}',
+            figuren TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, PRIMARY KEY (username, conv_id, tekst_hash)
+        );
+        INSERT INTO beurtbewijs VALUES ('alice', 'c1', 'h1', '{"k": {"name": "get_cbs_data"}}', '[{"r": 1}]',
+            '{"k": {"data_key": "k", "location_col": "L", "value_col": "V"}}', '{"k": [{"regel": "r"}]}',
+            '[{"id": "f1", "keys": ["k"]}]', '2026-11-03T10:00:00+00:00');
+        INSERT INTO beurtbewijs VALUES ('bob', 'c2', 'h2', '{}', '[]', '{}', '{}', '[]', '2026-11-04T10:00:00+00:00');
+    """)
+    oud.close()
+    monkeypatch.setenv("DATABASE_PATH", str(pad))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    with sqlite3.connect(pad) as conn:
+        na_eerste = list(conn.execute("SELECT * FROM beurtbewijs ORDER BY username"))
+    db.init_db()
+
+    with sqlite3.connect(pad) as conn:
+        kolommen = [r[1] for r in conn.execute("PRAGMA table_info(beurtbewijs)")]
+        na_tweede = list(conn.execute("SELECT * FROM beurtbewijs ORDER BY username"))
+    assert "kaarten" not in kolommen
+    assert na_tweede == na_eerste and len(na_tweede) == 2
+    assert db.beurtbewijs_voor("alice", "c1") == {
+        "h1": {
+            "lineage": {"k": {"name": "get_cbs_data"}},
+            "rekenbewijs": [{"r": 1}],
+            "bronnen": {"k": [{"regel": "r"}]},
+            "figuren": [{"id": "f1", "keys": ["k"]}],
+            "created_at": "2026-11-03T10:00:00+00:00",
+        }
+    }
+    db.save_beurtbewijs("alice", "c1", {"h3": _rij()})
+    assert db.beurtbewijs_voor("alice", "c1")["h3"] == _rij()
 
 
 def test_een_bestaande_tabel_zonder_bronnen_krijgt_de_kolom_en_houdt_de_rij(tmp_path, monkeypatch):
@@ -334,6 +375,17 @@ def test_postgres_haalt_de_kolom_controle_weg(postgres):
     assert "controle" not in db._BEURTBEWIJS_TABLE
 
 
+def test_postgres_haalt_de_kolom_kaarten_weg(postgres):
+    """#1044: net als `controle`, met `IF EXISTS`, dus veilig bij elke start en met twee replica's tegelijk."""
+    import persistence.db as db
+
+    db.init_db()
+
+    statements = [" ".join(sql.split()) for sql, _ in postgres.log]
+    assert "ALTER TABLE beurtbewijs DROP COLUMN IF EXISTS kaarten" in statements
+    assert "kaarten" not in db._BEURTBEWIJS_TABLE
+
+
 def test_postgres_voegt_de_kolom_bronnen_toe(postgres):
     """De kolom van #987; `IF NOT EXISTS` met een standaardwaarde, dus veilig bij elke start en met twee replica's."""
     import persistence.db as db
@@ -370,6 +422,6 @@ def test_postgres_schrijft_met_parameters_en_een_upsert(postgres, monkeypatch):
 
     sql, params = postgres.log[0]
     assert sql.startswith("INSERT INTO beurtbewijs") and "ON CONFLICT (username, conv_id, tekst_hash)" in sql
-    assert "?" not in sql and sql.count("%s") == 9
+    assert "?" not in sql and sql.count("%s") == 8
     assert "bronnen=excluded.bronnen" in sql and "figuren=excluded.figuren" in sql
     assert params[:3] == ("alice", "c1", "h1")
