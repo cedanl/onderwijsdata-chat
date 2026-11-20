@@ -15,7 +15,9 @@ from tests.test_persistence_beurtbewijs import postgres  # noqa: F401  (fixture)
 
 @pytest.mark.parametrize("methode", ["GET", "POST"])
 def test_er_is_geen_eindpunt_voor_feedback_per_antwoord(methode):
-    client = TestClient(server.app)
+    # Een app zonder SPA: `server.app` mount frontend/dist als die gebouwd is, en dan vangt de GET-catch-all onder /api
+    # een POST af met 405 in plaats van 404. De uitkomst mag niet afhangen van een build in de werkmap.
+    client = TestClient(server.create_app())
     # Vroeger: GET gaf de oordelen (200), POST zonder geldige body een 422.
     assert client.request(methode, "/api/answer-feedback", params={"conversation_id": "c1"}, json={}).status_code == 404
     # De vragenlijst op rapporten en de link Feedback blijven: daar bestaat de route, dus geen 404.
