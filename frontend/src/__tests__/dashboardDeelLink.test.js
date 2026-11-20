@@ -24,11 +24,10 @@ const MIJN = '__builtin_mijn_instelling__'
 
 let root
 let container
-let locatie
 
+// De zoekregel van de router, zichtbaar in de DOM zodat de test haar kan lezen.
 function Locatie() {
-  locatie = useLocation()
-  return null
+  return createElement('output', { className: 'locatie' }, useLocation().search)
 }
 
 async function render(pad, settings = {}) {
@@ -49,11 +48,13 @@ async function band() {
   })
   return container.querySelector('.meta-badge.instelling').textContent
 }
-const params = () => new URLSearchParams(locatie.search)
+const params = () => new URLSearchParams(container.querySelector('output.locatie').textContent)
 
 afterEach(() => {
-  act(() => root.unmount())
-  container.remove()
+  if (root) act(() => root.unmount())
+  container?.remove()
+  root = null
+  container = null
   localStorage.clear()
 })
 
