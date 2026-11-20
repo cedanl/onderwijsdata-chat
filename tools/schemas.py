@@ -279,8 +279,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "kanten) koppelt de tool nooit: de melding noemt per kant korrel_kolommen en de route (ook op een "
                 "gedeelde sleutel koppelen, of eerst een kant aggregeren met query_data); volg die, herhaal de "
                 "koppeling niet. Staat een sleutel in een kolom en haar labelkolom met dezelfde waarden (STUDIEJAAR, "
-                "STUDIEJAAR_LABEL), dan kiest de tool de bronkolom. Schrijf geen eigen merge in run_analysis en filter "
-                "vóór de koppeling niet op een lege waarde."
+                "STUDIEJAAR_LABEL), dan kiest de tool de bronkolom. Bij SKDB naast DUO op brin en croho noemt "
+                "opvolgers (kolom koppelreden) een SKDB-rij die volgens RIO pas na de DUO-peildatum begint: noem haar "
+                "nieuw, met haar voorgangers en hun eigen aantal, en tel die niet op. Schrijf geen eigen merge in "
+                "run_analysis en filter vóór de koppeling niet op een lege waarde."
             ),
             "parameters": {
                 "type": "object",

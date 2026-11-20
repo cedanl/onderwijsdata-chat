@@ -13,14 +13,14 @@ waar ze vandaan komt. Het resultaat is een afgeleide key met de herkomst van bei
 import hashlib
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import combinations, islice
 
 import numpy as np
 import pandas as pd
 from onderwijsbronnen import sleutels as kern
 
-from . import dekking, fouten, relaties, store
+from . import dekking, fouten, opvolger, relaties, store
 from .analysis import modelrijen, rijmaximum
 from .kolomlabel import is_labelkolom
 
@@ -575,6 +575,23 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     )
 
 
+def _opvolgers(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst) -> tuple[_Uitkomst, dict]:
+    """SKDB naast DUO op brin + croho: per SKDB-rij zonder DUO-rij de reden uit RIO (#1060, `tools/opvolger.py`).
+
+    Een andere koppeling (andere bronnen, andere sleutels, of een kant die zelf een koppeling is) raakt RIO niet aan.
+    """
+    if set(sleutels) != {"brin", "croho"}:
+        return uitkomst, {}
+    bron = {k.key: m.bron.lower() for k in (links, rechts) if (m := store.meta(k.key)) and not _is_koppeling(k.key)}
+    skdb = next((k for k in (links, rechts) if bron.get(k.key) == "skdb"), None)
+    duo = next((k for k in (links, rechts) if bron.get(k.key) == "duo"), None)
+    tabel = opvolger.DuoTabel.van(duo.df, duo.kolommen, store.meta(duo.key)) if skdb and duo else None
+    if skdb is None or tabel is None:
+        return uitkomst, {}
+    df, extra = opvolger.bij_koppeling(uitkomst.df, KOPPELSTATUS, skdb.alleen, tabel)
+    return replace(uitkomst, df=df), extra
+
+
 def _koppelkey(links: _Kant, rechts: _Kant) -> str:
     """Deterministisch: dezelfde twee tabellen, sleutels en kolommen geven dezelfde key.
 
@@ -653,7 +670,9 @@ def _telling(df: pd.DataFrame) -> dict[str, int]:
     return {str(k): int(v) for k, v in df[KOPPELSTATUS].value_counts(sort=False).items()}
 
 
-def _tekst(key: str, links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst, volledig: bool) -> str:
+def _tekst(
+    key: str, links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst, volledig: bool, extra: dict
+) -> str:
     df = uitkomst.df
     telling = _telling(df)
     # Alleen de rijen die het model ziet worden dicts; modelrijen krijgt het echte aantal apart.
@@ -669,10 +688,15 @@ def _tekst(key: str, links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst:
         "telling": telling,
         "toelichting": _toelichting(links, rechts, sleutels, telling),
     }
+    for status, aanvulling in extra.get("toelichting", {}).items():
+        uit["toelichting"][status] = f"{uit['toelichting'].get(status, '')} {aanvulling}".strip()
+    if opvolgers := extra.get("opvolgers"):
+        uit["opvolgers"] = opvolgers
     if uitkomst.zonder_sleutel:
         uit["zonder_sleutel"] = uitkomst.zonder_sleutel
     waarschuwingen: list[str] = [w for w in (uit.pop("waarschuwing", None),) if isinstance(w, str)]
     waarschuwingen += _waarschuwingen(links, rechts, sleutels, uitkomst)
+    waarschuwingen += [w for w in (extra.get("waarschuwing"),) if w]
     if waarschuwingen:
         uit["waarschuwing"] = " ".join(waarschuwingen)
     return json.dumps(uit, ensure_ascii=False, default=str)
@@ -694,6 +718,7 @@ def koppel_data(
         uitkomst = _koppel(links, rechts, namen)
     except _Melding as melding:
         return str(melding)
+    uitkomst, opvolging = _opvolgers(links, rechts, namen, uitkomst)
     key = _koppelkey(links, rechts)
     volledig = _bewaar(key, uitkomst.df, links, rechts, _stap(links, rechts, namen, uitkomst.koppeling))
     # Wat er gekoppeld is, zonder waarden (#475): de sleutels, de korrel en de telling per status.
@@ -706,4 +731,4 @@ def koppel_data(
         telling.get(links.alleen, 0),
         telling.get(rechts.alleen, 0),
     )
-    return _tekst(key, links, rechts, namen, uitkomst, volledig)
+    return _tekst(key, links, rechts, namen, uitkomst, volledig, opvolging)

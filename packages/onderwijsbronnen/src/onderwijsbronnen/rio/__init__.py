@@ -3,12 +3,14 @@
     from onderwijsbronnen.rio import fetch, get, related, filtercontract, opvolgers, voorgangers
 
 `client` praat met de API, `_filtercontract` kent de filters per resource uit de OpenAPI-spec, `overgangen` volgt
-fusies en overgangen van instellingen, `aanbieders` de onderwijsaanbieders van een erkenning (#744).
+fusies en overgangen van instellingen, `aanbieders` de onderwijsaanbieders van een erkenning (#744), `licenties` de
+onderwijslicenties van een instelling op een peildatum (#1060).
 """
 
 from .._kern import broncontract, sleutels, verrijking
-from . import aanbieders, client, overgangen
+from . import aanbieders, client, licenties, overgangen
 from .aanbieders import onderwijsaanbieders
+from .licenties import Licentie, met_erkenning, onderwijslicenties
 from ._filtercontract import filtercontract, typewaarden, valideer_filters
 from .client import fetch, get, related
 from .overgangen import Stap, opvolgers, voorgangers
@@ -51,4 +53,5 @@ def metadata(record: dict) -> dict:
 
 
 __all__ = ["fetch", "get", "related", "client", "overgangen", "filtercontract", "typewaarden", "valideer_filters",
-           "Stap", "opvolgers", "voorgangers", "aanbieders", "onderwijsaanbieders", "BRON", "catalogusrecords", "laad", "metadata"]
+           "Stap", "opvolgers", "voorgangers", "aanbieders", "onderwijsaanbieders", "licenties", "Licentie",
+           "onderwijslicenties", "met_erkenning", "BRON", "catalogusrecords", "laad", "metadata"]
