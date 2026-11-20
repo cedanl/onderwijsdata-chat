@@ -240,4 +240,4 @@ def test_een_antwoord_met_een_melding_krijgt_een_rij_zonder_controle(db, monkeyp
     )
 
     rij = db.beurtbewijs_voor("alice", "c1")[beurtbewijs.tekst_hash(eind["content"])]
-    assert set(rij) == {"lineage", "rekenbewijs", "kaarten", "bronnen", "figuren", "created_at"}
+    assert set(rij) == {"lineage", "rekenbewijs", "bronnen", "figuren", "created_at"}

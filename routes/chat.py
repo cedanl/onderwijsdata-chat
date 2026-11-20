@@ -161,7 +161,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         )
         session["turns"] = turns
         # Het bewijs van dit antwoord wacht tot de client het gesprek opslaat (ADR-009, #875).
-        beurtbewijs.zet_klaar(session, turns[-1], response_text)
+        beurtbewijs.zet_klaar(session, response_text)
     session["messages"] = messages
 
 

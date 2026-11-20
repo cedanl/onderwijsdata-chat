@@ -69,7 +69,6 @@ def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: f
     rij = {
         "lineage": {},
         "rekenbewijs": [],
-        "kaarten": {},
         "bronnen": bronnen,
         "figuren": figuren,
         "created_at": _iso(dagen_geleden),

@@ -439,7 +439,7 @@ def test_een_figuur_van_een_latere_beurt_zonder_data_staat_bij_de_databeurt_en_t
 
     [item] = beurten_met_data(sessie)
     assert item["beurt"] == 1 and item["figuren"] == [
-        {"id": figuur_id, "titel": "Doorstroom mbo-verpleegkundigen naar hbo"}
+        {"id": figuur_id, "titel": "Doorstroom mbo-verpleegkundigen naar hbo", "beurten": [1]}
     ]
     keuze = kies(sessie, [], [figuur_id])
     spec, _ = _rapport(sessie, monkeypatch, figuren=keuze.figuren)

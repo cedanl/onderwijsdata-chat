@@ -2,7 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import {
-  GEEN_KEUZE, MAX_FIGUREN, aanBeurten, aanFiguren, figurenVan, metKeuze, voortbouwNotitie, wisselBeurt, wisselFiguur,
+  GEEN_KEUZE, MAX_FIGUREN, aanBeurten, aanFiguren, figuurLabels, figurenVan, metKeuze, nodigVoor, voortbouwNotitie,
+  wisselBeurt, wisselFiguur,
 } from '../rapportKeuze'
 
 // Before a report (#751): the research question it answers, filled in and open to change (#732). Genereer, or Enter
@@ -17,7 +18,9 @@ import {
 // Under each turn, its figures from the conversation (#993), also on to begin with: the report shows exactly the
 // figures that are on, recreated on the server, and draws none of its own. A turn off switches its figures off; a figure
 // on switches its turn on. More than MAX_FIGUREN on cannot be sent, and the dialog says so; on a phone the list then
-// opens, so the figures to switch off are in view.
+// opens, so the figures to switch off are in view, and it stays open as the user switches them off (#1045): it never
+// collapses by itself under the finger. A figure that also reads the data of another turn switches that turn on too,
+// and that turn says which figure needs it (#1045).
 
 // On a phone the list starts collapsed, so the field is not pushed off the screen (keep in step with styles.css).
 const KLEIN_SCHERM = '(max-width: 600px)'
@@ -49,11 +52,18 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
   const aan = aanBeurten(items, gekozen)
   const figurenAan = aanFiguren(items, gekozen)
   const aantalFiguren = items.reduce((n, i) => n + figurenVan(i).length, 0)
+  const labels = figuurLabels(items)
   const nietsGekozen = keuze && aan.length === 0
   const teVeel = keuze && figurenAan.length > MAX_FIGUREN
+  const [open, setOpen] = useState(!klein || teVeel)
   const fout = nietsGekozen ? NIETS_GEKOZEN : teVeel ? teVeelFiguren(figurenAan.length) : null
   // Until the list is in, Genereer would send the whole conversation: it comes in a moment, or the request fails.
   const wacht = checklist?.status === 'laden'
+
+  // Too many figures on opens the list, so the figures to switch off are in view; nothing closes it but the user.
+  useEffect(() => {
+    if (teVeel) setOpen(true)
+  }, [teVeel])
 
   // The focus goes to the field, below the checklist; the cursor goes to the end, where a narrowing gets added.
   useEffect(() => {
@@ -79,7 +89,7 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
       <form className="confirm-dialog onderzoeksvraag-dialoog" ref={dialogRef} role="dialog" aria-modal="true"
         aria-labelledby={labelId} tabIndex={-1} onSubmit={genereer}>
         {keuze && (
-          <details className="rapport-keuze" open={!klein || teVeel}>
+          <details className="rapport-keuze" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
             <summary className="rapport-keuze-samenvatting">
               Vragen in het rapport: {aan.length} van {items.length}
               {aantalFiguren > 0 && ` · figuren: ${figurenAan.length} van ${aantalFiguren}`}
@@ -88,13 +98,14 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
               <legend className="rapport-keuze-legend">Welke vragen met data horen in het rapport?</legend>
               <ul className="rapport-keuze-lijst">
                 {items.map(item => {
-                  const bron = [...(item.bronnen ?? []), voortbouwNotitie(item, items)].filter(Boolean).join(' · ')
+                  const bron = [...(item.bronnen ?? []), voortbouwNotitie(item, items), nodigVoor(item, items, figurenAan)]
+                    .filter(Boolean).join(' · ')
                   const figuren = figurenVan(item)
                   return (
                     <li key={item.beurt}>
                       <label>
                         <input type="checkbox" checked={!gekozen.beurtenUit.has(item.beurt)}
-                          onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselBeurt(k, item, aangevinkt)) }}
+                          onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselBeurt(k, item, aangevinkt, items)) }}
                           aria-describedby={bron ? `${keuzeId}-${item.beurt}` : undefined} />
                         <span>
                           <span className="rapport-keuze-vraag">{item.vraag}</span>
@@ -108,7 +119,7 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
                               <label>
                                 <input type="checkbox" checked={figurenAan.includes(f.id)}
                                   onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselFiguur(k, item, f.id, aangevinkt)) }} />
-                                <span className="rapport-keuze-figuur">Figuur: {f.titel}</span>
+                                <span className="rapport-keuze-figuur">Figuur: {labels.get(f.id)}</span>
                               </label>
                             </li>
                           ))}

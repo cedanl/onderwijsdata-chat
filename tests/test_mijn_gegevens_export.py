@@ -79,7 +79,6 @@ def _vul(gebruiker: str, uniek: str) -> None:
             f"hash-{uniek}": {
                 "lineage": {f"key-{uniek}": {"name": "query_data", "arguments": {"id": uniek}}},
                 "rekenbewijs": [{"tool": "compute_kpi", "argumenten": {"id": uniek}, "resultaat": f"res-{uniek}"}],
-                "kaarten": {f"key-{uniek}": {"data_key": f"key-{uniek}", "location_col": "L", "value_col": "V"}},
                 "bronnen": {f"key-{uniek}": [{"bron": "duo", "dataset": "p01hoinges", "regel": f"DUO · {uniek}"}]},
                 "figuren": [
                     {
@@ -176,7 +175,8 @@ def test_json_kolommen_zijn_ontleed(client):
     bewijs = data["beurtbewijs"][0]
     assert bewijs["lineage"] == {"key-ANNA-UNIEK": {"name": "query_data", "arguments": {"id": "ANNA-UNIEK"}}}
     assert bewijs["rekenbewijs"][0]["resultaat"] == "res-ANNA-UNIEK"
-    assert bewijs["kaarten"]["key-ANNA-UNIEK"]["value_col"] == "V"
+    # Sinds #1044 zonder `kaarten`: een kaart uit het gesprek staat als figuur in `figuren`.
+    assert set(bewijs) == {"conv_id", "tekst_hash", "lineage", "rekenbewijs", "bronnen", "figuren", "created_at"}
     # De bronregels voor een vervolgantwoord na heropenen (#987), als JSON en niet als tekst.
     assert bewijs["bronnen"] == {
         "key-ANNA-UNIEK": [{"bron": "duo", "dataset": "p01hoinges", "regel": "DUO · ANNA-UNIEK"}]

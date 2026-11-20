@@ -356,6 +356,7 @@ def _migrate(conn: Any) -> None:
     _voeg_kolom_toe(conn, "beurtbewijs", "bronnen", "TEXT NOT NULL DEFAULT '{}'")
     _voeg_kolom_toe(conn, "beurtbewijs", "figuren", "TEXT NOT NULL DEFAULT '[]'")
     _verwijder_kolom(conn, "beurtbewijs", "controle")
+    _verwijder_kolom(conn, "beurtbewijs", "kaarten")
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _verwijder_tabel(conn, "answer_feedback")
@@ -378,7 +379,8 @@ def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
 
 
 def _verwijder_kolom(conn: Any, tabel: str, kolom: str) -> None:
-    """Een kolom die niet meer bestaat, met haar waarden: `controle` bij beurtbewijs (#876, weg sinds #983, besluit 09-11).
+    """Een kolom die niet meer bestaat, met haar waarden: `controle` bij beurtbewijs (#876, weg sinds #983, besluit 09-11)
+    en `kaarten` bij beurtbewijs (#648, weg sinds #1044: niets las haar nog na #993).
 
     Idempotent, dus veilig bij elke start. PostgreSQL kent `DROP COLUMN IF EXISTS`; SQLite (vanaf 3.35) alleen
     `DROP COLUMN`, dus daar eerst kijken of de kolom er nog is.
@@ -458,11 +460,12 @@ _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipe
 
 # Wat de server zelf vastlegde bij een afgerond antwoord, zodat een heropend gesprek hetzelfde rapport geeft als het
 # levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
-# client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs, kaarten en bronnen zijn JSON;
-# de kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211); bronnen per key de bronregels van de
-# geladen tabellen, zoals onder een antwoord (labels en tekst, geen data, #987). Een rij van vóór #987 heeft '{}'.
+# client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en bronnen zijn JSON; bronnen
+# per key de bronregels van de geladen tabellen, zoals onder een antwoord (labels en tekst, geen data, #987). Een rij
+# van vóór #987 heeft '{}'.
 # figuren is de JSON-lijst van de stappen achter de figuren van de beurt (tool, argumenten, titel, keys; geen figuur-JSON),
-# zodat het rapport een gekozen figuur opnieuw kan maken (#993). Een rij van vóór #993 heeft '[]'.
+# zodat het rapport een gekozen figuur opnieuw kan maken (#993). Een rij van vóór #993 heeft '[]'. De kolom kaarten (de
+# kaartregels per data_key) is weg sinds #1044: een kaart uit het gesprek staat als figuur in figuren.
 _BEURTBEWIJS_TABLE = """
     CREATE TABLE IF NOT EXISTS beurtbewijs (
         username    TEXT NOT NULL,
@@ -470,7 +473,6 @@ _BEURTBEWIJS_TABLE = """
         tekst_hash  TEXT NOT NULL,
         lineage     TEXT NOT NULL,
         rekenbewijs TEXT NOT NULL,
-        kaarten     TEXT NOT NULL,
         bronnen     TEXT NOT NULL DEFAULT '{}',
         figuren     TEXT NOT NULL DEFAULT '[]',
         created_at  TEXT NOT NULL,
@@ -970,7 +972,7 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, bronnen, figuren, created_at FROM beurtbewijs "
+            "SELECT tekst_hash, lineage, rekenbewijs, bronnen, figuren, created_at FROM beurtbewijs "
             "WHERE username = ? AND conv_id = ?",
             (username, conv_id),
         ).fetchall()
@@ -980,7 +982,6 @@ def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
             uit[r["tekst_hash"]] = {
                 "lineage": json.loads(r["lineage"]),
                 "rekenbewijs": json.loads(r["rekenbewijs"]),
-                "kaarten": json.loads(r["kaarten"]),
                 "bronnen": json.loads(r["bronnen"]),
                 "figuren": json.loads(r["figuren"]),
                 "created_at": r["created_at"],
@@ -1010,9 +1011,9 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
             _execute(
                 conn,
                 "INSERT INTO beurtbewijs "
-                "(username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, bronnen, figuren, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
-                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten, "
+                "(username, conv_id, tekst_hash, lineage, rekenbewijs, bronnen, figuren, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
+                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, "
                 "bronnen=excluded.bronnen, figuren=excluded.figuren",
                 (
                     username,
@@ -1020,7 +1021,6 @@ def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> Non
                     tekst_hash,
                     json.dumps(rij["lineage"], ensure_ascii=False, default=str),
                     json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
-                    json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
                     json.dumps(rij.get("bronnen") or {}, ensure_ascii=False, default=str),
                     json.dumps(rij.get("figuren") or [], ensure_ascii=False, default=str),
                     rij["created_at"],

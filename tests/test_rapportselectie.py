@@ -160,7 +160,6 @@ def _rijen(sessie: dict) -> dict[str, dict]:
             rijen[beurtbewijs.tekst_hash(bericht["content"])] = {
                 "lineage": {k: sessie["data_provenance"][k] for k in keys},
                 "rekenbewijs": [],
-                "kaarten": {},
                 "created_at": "2026-11-03T10:00:00+00:00",
             }
     return rijen
@@ -249,13 +248,6 @@ def test_rekenbewijs_zonder_herleidbare_key_gaat_niet_mee_bij_een_selectie(sessi
     record_rekenbewijs(sessie, json.dumps({"raw": 7}), {"name": TOOL_COMPUTE_KPI, "arguments": {}})
 
     assert len(beperk(sessie, frozenset({1, 3}))["rekenbewijs"]) == 1
-
-
-def test_de_kaarten_van_het_gesprek_gaan_niet_mee(sessie):
-    """Het rapport leest de kaartregels niet meer: een kaart uit het gesprek komt als gekozen figuur (#993)."""
-    sessie["kaarten"] = {_CBS: {"data_key": _CBS, "location_col": "REGIO", "value_col": "AANTAL"}}
-
-    assert "kaarten" not in beperk(sessie, frozenset({1, 2}))
 
 
 def test_de_weergave_neemt_alleen_de_velden_van_het_rapport_mee(sessie):
@@ -418,10 +410,25 @@ def test_de_checklist_noemt_de_figuren_bij_de_beurt_van_hun_data(met_figuren):
     items = beurten_met_data(met_figuren)
 
     assert [i["figuren"] for i in items] == [
-        [{"id": "lijn", "titel": "Inschrijvingen UU"}, {"id": "staaf", "titel": rapportselectie.ZONDER_TITEL}],
+        [
+            {"id": "lijn", "titel": "Inschrijvingen UU", "beurten": [1]},
+            {"id": "staaf", "titel": rapportselectie.ZONDER_TITEL, "beurten": [1]},
+        ],
         [],
-        [{"id": "script", "titel": "Vrouwen en rendement"}],
+        # Het script staat bij beurt 3 (de vrouwen) en las ook het CBS-rendement van beurt 2 (#1045).
+        [{"id": "script", "titel": "Vrouwen en rendement", "beurten": [2, 3]}],
     ]
+
+
+def test_een_figuur_noemt_alle_beurten_die_ze_meetrekt(sessie):
+    """#1045: een figuur op de data van beurt 1 en 2 noemt beide, gesorteerd, zodat de app ze aanvinkt; dat zijn de
+    beurten die `kies` meetrekt."""
+    figuurstappen.voeg_toe(sessie, [_stap("samen", TOOL_RUN_ANALYSIS, [_CBS, "analysis:def", _UU], "UU naast CBS")])
+
+    [figuur] = [f for i in beurten_met_data(sessie) for f in i["figuren"]]
+
+    assert figuur == {"id": "samen", "titel": "UU naast CBS", "beurten": [1, 2]}
+    assert kies(sessie, [], ["samen"]).beurten == frozenset(figuur["beurten"])
 
 
 def test_een_figuur_zonder_beurt_staat_niet_in_de_checklist(sessie):

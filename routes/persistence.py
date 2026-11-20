@@ -99,7 +99,7 @@ def upsert_conversation(conv_id: str, body: ConversationUpsert, username: str = 
         raise HTTPException(status_code=409, detail=GESPREK_ELDERS_GEWIJZIGD) from None
     # De recepten achter de tabellen van dit gesprek: zo overleven ze een herstart (#472).
     recepten.bewaar(username, conv_id, body.messages)
-    # Het bewijs achter de antwoorden in dit gesprek: lineage, rekenbewijs en kaarten (ADR-009, #875). Na de 409 hierboven.
+    # Het bewijs achter de antwoorden in dit gesprek: lineage, rekenbewijs, bronregels en figuurstappen (ADR-009, #875). Na de 409 hierboven.
     beurtbewijs.bewaar(username, conv_id, body.messages)
     return {"ok": True}
 

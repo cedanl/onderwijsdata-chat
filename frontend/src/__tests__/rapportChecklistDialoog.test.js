@@ -320,6 +320,108 @@ describe('figuren in de checklist (#993)', () => {
   })
 })
 
+describe('restpunten van de checklist (#1045)', () => {
+  const figuurvakjes = () => [...container.querySelectorAll('.rapport-keuze-figuren input[type="checkbox"]')]
+  const vraagvakjes = () => vakjes().filter(v => !v.closest('.rapport-keuze-figuren'))
+  const beschrijving = vakje => document.getElementById(vakje.getAttribute('aria-describedby'))?.textContent ?? ''
+  const metFiguren = (aantal, eigen = {}) => ({
+    status: 'klaar',
+    items: [{ ...ITEMS[0], figuren: Array.from({ length: aantal }, (_, i) => ({ id: `f${i}`, titel: `Figuur ${i}` })), ...eigen }],
+  })
+
+  it('op een telefoon (375 px) blijft de lijst open als je van vijf naar vier figuren gaat', async () => {
+    zetSchermbreedte(true)
+    await toon(metFiguren(5))
+    expect(container.querySelector('details').open).toBe(true)
+
+    await klik(figuurvakjes()[4])
+
+    expect(figuurvakjes().filter(v => v.checked)).toHaveLength(4)
+    expect(container.querySelector('[role="alert"]')).toBeNull()
+    expect(container.querySelector('details').open).toBe(true)
+  })
+
+  it('op een telefoon met vier figuren begint de lijst nog steeds dicht, op een groot scherm open', async () => {
+    zetSchermbreedte(true)
+    await toon(metFiguren(4))
+    expect(container.querySelector('details').open).toBe(false)
+    await act(async () => root.unmount())
+    container.remove()
+
+    zetSchermbreedte(false)
+    await toon(metFiguren(4))
+    expect(container.querySelector('details').open).toBe(true)
+  })
+
+  const MEER = {
+    status: 'klaar',
+    items: [
+      ITEMS[0],
+      { ...ITEMS[1], figuren: [{ id: 'samen', titel: 'Rendement naast instroom', beurten: [1, 2] }] },
+      ITEMS[2],
+    ],
+  }
+
+  it('een figuur met data uit beurt 1 en 2 vinkt beide aan, en ze gaan allebei mee', async () => {
+    await toon(MEER)
+    await klik(vraagvakjes()[0])
+    await klik(vraagvakjes()[1])
+    expect(vraagvakjes().map(v => v.checked)).toEqual([false, false, true])
+    expect(figuurvakjes()[0].checked).toBe(false)
+
+    await klik(figuurvakjes()[0])
+
+    expect(vraagvakjes().map(v => v.checked)).toEqual([true, true, true])
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [1, 2, 3], ['samen'])
+  })
+
+  it('de meegetrokken beurt zegt voor welke figuur ze nodig is, alleen zolang die figuur aanstaat', async () => {
+    await toon(MEER)
+
+    expect(beschrijving(vraagvakjes()[0])).toContain('Nodig voor figuur “Rendement naast instroom”.')
+    expect(beschrijving(vraagvakjes()[1])).not.toContain('Nodig voor')
+    expect(beschrijving(vraagvakjes()[2])).not.toContain('Nodig voor')
+
+    await klik(figuurvakjes()[0])
+    expect(beschrijving(vraagvakjes()[0])).not.toContain('Nodig voor')
+  })
+
+  it('de meegetrokken beurt uitzetten zet de figuur uit: het rapport rust nooit op een beurt die uit staat', async () => {
+    await toon(MEER)
+
+    await klik(vraagvakjes()[0])
+
+    expect(figuurvakjes()[0].checked).toBe(false)
+    await klik(genereer())
+    expect(onGenereer).toHaveBeenCalledExactlyOnceWith(VOORSTEL, [2, 3], [])
+  })
+
+  it('een ouder antwoord zonder beurten bij de figuur valt terug op haar eigen beurt', async () => {
+    await toon({ status: 'klaar', items: [ITEMS[0], { ...ITEMS[1], figuren: [{ id: 'oud', titel: 'Oud' }] }] })
+    await klik(vraagvakjes()[0])
+    await klik(vraagvakjes()[1])
+
+    await klik(figuurvakjes()[0])
+
+    expect(vraagvakjes().map(v => v.checked)).toEqual([false, true])
+    expect(container.textContent).not.toContain('Nodig voor')
+  })
+
+  it('twee figuren met dezelfde titel hebben een ander label; een unieke titel niet', async () => {
+    await toon({
+      status: 'klaar',
+      items: [
+        { ...ITEMS[0], figuren: [{ id: 'a', titel: 'Instroom' }, { id: 'b', titel: 'Uitval' }] },
+        { ...ITEMS[1], figuren: [{ id: 'c', titel: 'Instroom' }] },
+      ],
+    })
+
+    expect(figuurvakjes().map(v => v.labels[0].textContent))
+      .toEqual(['Figuur: Instroom (1)', 'Figuur: Uitval', 'Figuur: Instroom (2)'])
+  })
+})
+
 describe('toegankelijkheid van de dialoog (#908)', () => {
   // jsdom rekent geen layout, dus axe meet hier geen contrast; wat het wel ziet (namen, rollen, labels, fieldset,
   // legend, beschrijvingen, aria) faalt op serious en critical, zoals in toegankelijkheidApp.test.js.
@@ -336,6 +438,7 @@ describe('toegankelijkheid van de dialoog (#908)', () => {
     ['met de checklist, ingeklapt op een telefoon', () => KLAAR, true],
     ['met alles uitgezet en de melding', () => KLAAR, false, true],
     ['met figuren (#993)', () => ({ status: 'klaar', items: [{ ...ITEMS[0], figuren: [{ id: 'f1', titel: 'T' }] }, ITEMS[1]] }), false],
+    ['met een meegetrokken beurt (#1045)', () => ({ status: 'klaar', items: [ITEMS[0], { ...ITEMS[1], figuren: [{ id: 'f1', titel: 'T', beurten: [1, 2] }] }] }), false],
     ['tijdens het laden', () => ({ status: 'laden', items: [] }), false],
     ['bij een fout', () => ({ status: 'fout', items: [] }), false],
     ['zonder checklist', () => ({ status: 'klaar', items: [] }), false],
