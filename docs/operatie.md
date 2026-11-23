@@ -282,7 +282,7 @@ plus `SAST_DISABLED=1` en `SECRET_DETECTION_DISABLED=1`, zoals bij `bron:ping`).
 
 | Job | Schema | Variabele | Wat | Uitkomst |
 |---|---|---|---|---|
-| `cbs:laatste-update` | wekelijks, zondag 06:00 (`0 6 * * 0`) | `LAATSTE_UPDATE=1` | `_laatste_update` per CBS-tabel uit TableInfos, dan afleiding, TableInfos/perioden, `bouw_artefact.py` en de pakkettests | MR `bot/cbs-laatste-update` met auto-merge; geen MR zonder wijziging |
+| `cbs:laatste-update` | wekelijks, zondag 06:00 (`0 6 * * 0`) | `LAATSTE_UPDATE=1` | `_laatste_update` en `periode` per CBS-tabel uit TableInfos, dan afleiding, TableInfos/perioden, `bouw_artefact.py` en de pakkettests | MR `bot/cbs-laatste-update` met auto-merge; geen MR zonder wijziging |
 | `catalogus:site` | dagelijks, 05:30 (`30 5 * * *`) | `CATALOGUS_SITE=1` | de catalogussites in `packages/onderwijsbronnen/docs/{cbs,rio}` opnieuw uit de catalogus en de voorbeelden (`scripts/catalogussite.py`) | MR `bot/catalogus-site` met auto-merge |
 | `cbs:discovery` en `rio:broncontrole` | wekelijks, maandag 05:17 (`17 5 * * 1`) | `BRONCONTROLE=1` | nieuwe CBS-tabellen onder onderwijsthema's; DUO CKAN en de RIO-spec tegen de catalogus | één open issue per controle; rood als een bron niet antwoordt |
 
