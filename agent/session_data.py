@@ -120,6 +120,7 @@ def data_lineage(session: dict, key: str) -> list[dict]:
 
 # De store leeft in het geheugen: na een herstart is de data van een gesprek weg (CH-44).
 _OPNIEUW = "Stel je vraag opnieuw om de data op te halen; daarna kun je het rapport maken."
+_OPNIEUW_BEURT = "Stel je vraag opnieuw om de data op te halen."
 DATA_WEG = f"De data van dit gesprek is niet meer beschikbaar: de server is intussen herstart. {_OPNIEUW}"
 
 
@@ -149,6 +150,11 @@ class Herstel:
         if not redenen:
             return DATA_WEG
         return f"De data van dit gesprek is niet meer beschikbaar. {' '.join(redenen)} {_OPNIEUW}"
+
+    @property
+    def melding_voor_beurt(self) -> str:
+        """Dezelfde melding voor een chatbeurt, zonder de verwijzing naar het rapport (#1086)."""
+        return self.melding.replace(_OPNIEUW, _OPNIEUW_BEURT)
 
     @property
     def notitie(self) -> str | None:

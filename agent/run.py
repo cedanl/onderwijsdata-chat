@@ -30,12 +30,13 @@ from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .codeverzoek import codeblok, is_codeverzoek, met_code, onthoud
 from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalcontrole
+from .datasetcontext import herstel_data_voor_beurt
 from .genoemde_bronnen import genoemde_bronnen
 from .getalnotatie import heeft_tabel, nl_notatie, versienummers
 from .history import afgeronde_stappen, trim
 from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import interpretatie_bij, is_vervolgvraag
-from .loop import LoopResult, ToolCall, tool_loop
+from .loop import LoopResult, ToolCall, tenzij_gestopt, tool_loop
 from .metatekst import zonder_toolnamen
 from .models import build_system
 from .niet_meegeteld import met_niet_meegeteld
@@ -204,6 +205,15 @@ def _optie_in_je_vorm(optie):
     if isinstance(optie, dict):
         return {k: je_vorm(v) if k in ("label", "beschrijving") and isinstance(v, str) else v for k, v in optie.items()}
     return optie
+
+
+async def _herstel_vooraf(session: dict, emit: Emit, stop: asyncio.Event) -> None:
+    """De data van een heropend gesprek terug in de store vóór de beurt (#1086). Een extra: lukt het niet door een fout,
+    dan gaat de beurt door zoals vóór deze stap. Een stop tijdens het herladen telt meteen."""
+    try:
+        await tenzij_gestopt(herstel_data_voor_beurt(session, emit), stop)
+    except Exception as exc:
+        log_interne_fout(exc, "herstel vooraf")
 
 
 def _veilige_citaties(text: str, steps: list[tuple[str, str]]) -> list[dict]:
@@ -672,6 +682,7 @@ async def run(
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
                 async with harde_grens(box.afbreken_s):
+                    await _herstel_vooraf(session, emit, stop)
                     result = await tool_loop(
                         history,
                         model=chosen_model,

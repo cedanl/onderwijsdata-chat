@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 _OPRUIMEN_S = 0.5
 
 
-async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | None) -> tuple[bool, Any]:
+async def tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | None) -> tuple[bool, Any]:
     """`aanroep`, tenzij er eerst een stop komt: (gestopt, uitkomst) (#759).
 
     Het stopsignaal werd pas gezien tussen rondes en per ontvangen chunk. Tot de eerste byte van het model (tot
@@ -271,7 +271,7 @@ class _Loop:
             _log_aanroep(self.model, meting)
 
     async def _ask_gemeten(self, meting: _Aanroepmeting, **extra: Any) -> StreamResult | None:
-        gestopt, stream = await _tenzij_gestopt(
+        gestopt, stream = await tenzij_gestopt(
             acompletion_with_backoff(
                 self.emit,
                 model=self.model,

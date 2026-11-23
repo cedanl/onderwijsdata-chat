@@ -10,6 +10,7 @@ import json
 
 from agent.session_data import (
     DATA_WEG,
+    Herstel,
     data_lineage,
     gebruikersvragen,
     herstel_data_keys,
@@ -107,6 +108,16 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
     }
 
 
+async def _herstel(session: dict) -> Herstel:
+    """De keys van dit gesprek die de store kwijt is, terug uit hun recept; in een thread, want het gaat naar de bron."""
+    return await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
+
+
+async def _meld_notitie(herstel: Herstel, emit: Emit) -> None:
+    if herstel.notitie:
+        await emit({"type": "toast", "message": herstel.notitie, "level": "info"})
+
+
 async def herstel_data(session: dict, emit: Emit) -> None:
     """Haal terug wat een herstart uit de store wiste, vóór build_dataset_context (#472).
 
@@ -114,11 +125,25 @@ async def herstel_data(session: dict, emit: Emit) -> None:
     recepten die bij het gesprek zijn bewaard. Herladen gaat naar de bron: in een thread, niet
     op de event loop. Herladen data krijgt een melding, want de bron kan intussen zijn gewijzigd.
     """
-    herstel = await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
+    herstel = await _herstel(session)
     if herstel.onherstelbaar:
         raise Gebruikersfout(herstel.melding)
-    if herstel.notitie:
-        await emit({"type": "toast", "message": herstel.notitie, "level": "info"})
+    await _meld_notitie(herstel, emit)
+
+
+async def herstel_data_voor_beurt(session: dict, emit: Emit) -> None:
+    """Hetzelfde vóór een chatbeurt (#1086): een vervolgvraag in een heropend gesprek mag `query_data` doen op een key
+    uit het gesprek, ook als de server intussen herstartte. Zonder terughalen kreeg die tool `onbekende_data_key` en
+    stond het antwoord er kaal: zonder Bronnen, Telling en citaties, en dus ook zonder bronregel in het beurtbewijs.
+
+    Anders dan bij een rapport stopt een key die niet terugkomt de beurt niet: de vraag kan andere data nodig hebben,
+    en een gesprek dat er nooit meer uit komt is erger. De gebruiker krijgt wel de melding dat de data weg is."""
+    if not ontbrekende_data_keys(session):
+        return
+    herstel = await _herstel(session)
+    if herstel.onherstelbaar:
+        await emit({"type": "toast", "message": herstel.melding_voor_beurt, "level": "warning"})
+    await _meld_notitie(herstel, emit)
 
 
 def build_dataset_context(session: dict) -> dict:
