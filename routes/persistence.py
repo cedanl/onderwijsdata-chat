@@ -26,8 +26,14 @@ class ConversationTitle(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-# Een eindig getal, geen tekst ("gisteren"), geen bool en geen NaN/Infinity: die gaven een 500 in plaats van 422 (#1064).
-Tijdstempel = StrictInt | Annotated[float, Strict(), Field(allow_inf_nan=False)]
+# Wat de database bewaart: een geheel getal van 64 bit. Daarbuiten geeft de binding een OverflowError (#1129).
+_INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
+
+# Een eindig getal binnen dat bereik, geen tekst ("gisteren"), geen bool en geen NaN/Infinity: die gaven een 500 in plaats van 422 (#1064).
+Tijdstempel = Annotated[
+    StrictInt | Annotated[float, Strict(), Field(allow_inf_nan=False)],
+    Field(ge=_INT64_MIN, le=_INT64_MAX),
+]
 
 
 class ConversationUpsert(BaseModel):
@@ -59,7 +65,7 @@ class WorkbookUpsert(BaseModel):
 def list_conversations(
     username: str = Depends(get_current_user),
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
-    before_ts: int | None = None,
+    before_ts: Annotated[int, Query(ge=_INT64_MIN, le=_INT64_MAX)] | None = None,
     before_id: str | None = None,
     q: str = "",
 ) -> list[dict]:

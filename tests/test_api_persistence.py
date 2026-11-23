@@ -422,6 +422,36 @@ def test_put_conversation_met_niet_eindige_timestamp_geeft_422(los_client, tekst
 
 
 @pytest.mark.parametrize(
+    "tijdstempel", ["-99999999999999999999", "99999999999999999999", "9223372036854775808", "1e30"]
+)
+def test_put_conversation_met_een_timestamp_buiten_64_bit_geeft_422(los_client, caplog, tijdstempel):
+    """#1129: SQLite en PostgreSQL bewaren een 64-bits geheel getal; daarbuiten gaf de binding een OverflowError (500)."""
+    body = f'{{"title": "Vraag", "timestamp": {tijdstempel}, "messages": []}}'
+    resp = los_client.put("/api/conversations/c1", content=body, headers={"Content-Type": "application/json"})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert los_client.get("/api/conversations").json() == []
+
+
+@pytest.mark.parametrize("before_ts", ["99999999999999999999999", "-99999999999999999999999", "9223372036854775808"])
+def test_list_conversations_met_before_ts_buiten_64_bit_geeft_422(los_client, caplog, before_ts):
+    resp = los_client.get("/api/conversations", params={"before_ts": before_ts, "before_id": "x"})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_de_uiterste_64_bit_tijdstempels_blijven_geldig(los_client):
+    for tijdstempel in (-(2**63), 2**63 - 1):
+        body = {**_GELDIG_GESPREK, "timestamp": tijdstempel}
+        assert los_client.put("/api/conversations/c1", json=body).status_code == 200
+        assert (
+            los_client.get("/api/conversations", params={"before_ts": tijdstempel, "before_id": "x"}).status_code == 200
+        )
+
+
+@pytest.mark.parametrize(
     "inhoud",
     ["[]", "geen json", ""],
     ids=["lijst", "geen-json", "leeg"],
