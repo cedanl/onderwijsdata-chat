@@ -122,10 +122,14 @@ def test_een_andere_sqlitefout_heeft_geen_categorie(monkeypatch):
 # --- het opstartlog ---
 
 
-def _start(tmp_path, **env) -> subprocess.CompletedProcess:
+# `sys.modules["psycopg2"] = None` laat elke `import psycopg2` falen, ook waar de driver wel geïnstalleerd is (CI).
+_IMPORT_ZONDER_DRIVER = "import sys; sys.modules['psycopg2'] = None; import server"
+
+
+def _start(tmp_path, code: str = "import server", **env) -> subprocess.CompletedProcess:
     basis = {k: v for k, v in os.environ.items() if k not in ("POSTGRES_URI", "DATABASE_PATH", "LOG_LEVEL")}
     return subprocess.run(
-        [sys.executable, "-c", "import server"],
+        [sys.executable, "-c", code],
         cwd=_ROOT,
         env={**basis, "APP_ENV": "test", "ALLOW_ANONYMOUS": "true", **env},
         capture_output=True,
@@ -140,7 +144,9 @@ def _fout_regel(uitslag: subprocess.CompletedProcess) -> dict:
 
 
 def test_postgres_zonder_driver_logt_op_error_dat_de_driver_ontbreekt(tmp_path):
-    uitslag = _start(tmp_path, POSTGRES_URI=f"postgresql://{GEBRUIKER}:{WACHTWOORD}@{HOST}:1/{DATABASE}")
+    uitslag = _start(
+        tmp_path, _IMPORT_ZONDER_DRIVER, POSTGRES_URI=f"postgresql://{GEBRUIKER}:{WACHTWOORD}@{HOST}:1/{DATABASE}"
+    )
 
     assert uitslag.returncode == 1
     regel = _fout_regel(uitslag)
