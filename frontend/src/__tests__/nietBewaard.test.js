@@ -97,6 +97,14 @@ describe('een gesprek dat de server niet kreeg (#785)', () => {
     expect(knop('Opnieuw proberen')).toBeUndefined()
   })
 
+  it('zegt bij een 507 dat de opslag vol is, met opnieuw proberen na het opruimen (#682)', async () => {
+    api.putConversation.mockRejectedValueOnce(fout(507))
+    await mount()
+
+    expect(melding().textContent).toContain('Verwijder oude gesprekken of rapporten')
+    expect(knop('Opnieuw proberen')).toBeDefined()
+  })
+
   it('zegt niets als de opslag lukt', async () => {
     await mount()
     expect(api.putConversation).toHaveBeenCalledOnce()
@@ -131,6 +139,16 @@ describe('een rapport dat de server niet kreeg (#785)', () => {
     expect(api.putWorkbook.mock.calls[1][0]).toBe(api.putWorkbook.mock.calls[0][0])
     expect(openRapport).toHaveBeenCalledWith(expect.objectContaining({ title: 'Instroom hbo' }))
     expect(melding()).toBeNull()
+  })
+
+  it('zegt bij een 507 dat de opslag vol is, met opnieuw proberen en downloaden (#682)', async () => {
+    api.putWorkbook.mockRejectedValueOnce(fout(507))
+    chatState.reportSpec = spec
+    await mount()
+
+    expect(melding().textContent).toContain('Verwijder oude gesprekken of rapporten')
+    expect(knop('Opnieuw proberen')).toBeDefined()
+    expect(knop('Download als HTML')).toBeDefined()
   })
 
   it('biedt bij een 413 alleen downloaden', async () => {

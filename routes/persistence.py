@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, Strict, StrictInt, StrictStr, StringConstraints
 
 from agent import beurtbewijs, recepten
+from core import opslagquotum
 from core.auth import get_current_user
 from core.persoonsgegevens import veilige_gesprekstitel
 from persistence import db as persistence_db
@@ -20,6 +21,12 @@ router = APIRouter(tags=["persistence"])
 GESPREK_ELDERS_GEWIJZIGD = (
     "Dit gesprek is intussen in een ander tabblad of op een ander apparaat bijgewerkt. Het is niet overschreven."
 )
+
+
+def _binnen_quotum(username: str, soort: str, item_id: str, grootte: int) -> None:
+    """Het opslagquotum van de gebruiker (#682, S24): erboven een 507 met de melding; er wordt niets bewaard."""
+    if melding := opslagquotum.toets(username, soort, item_id, grootte):
+        raise HTTPException(status_code=opslagquotum.STATUS, detail=melding)
 
 
 class ConversationTitle(BaseModel):
@@ -91,6 +98,7 @@ def get_conversation(conv_id: str, username: str = Depends(get_current_user)) ->
 
 @router.put("/api/conversations/{conv_id}")
 def upsert_conversation(conv_id: str, body: ConversationUpsert, username: str = Depends(get_current_user)) -> dict:
+    _binnen_quotum(username, "gesprek", conv_id, opslagquotum.grootte_gesprek(body.messages))
     # Geen BSN, e-mailadres of telefoonnummer in de titel, ook niet van een andere client (#552).
     try:
         persistence_db.upsert_conversation(
@@ -147,6 +155,7 @@ def get_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
 
 @router.put("/api/workbooks/{wb_id}")
 def upsert_workbook(wb_id: str, body: WorkbookUpsert, username: str = Depends(get_current_user)) -> dict:
+    _binnen_quotum(username, "werkboek", wb_id, opslagquotum.grootte_werkboek(body.model_dump(by_alias=True)))
     persistence_db.upsert_workbook(
         username,
         wb_id,

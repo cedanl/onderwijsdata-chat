@@ -58,6 +58,11 @@ BRONSTATUS_INTERVAL_S = float(os.getenv("BRONSTATUS_INTERVAL_S", "120"))
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
 CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
 CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
+# Opslagquotum per gebruiker (#682, S24): gesprekken, werkboeken en hun samen bewaarde grootte; 0 zet een grens uit.
+# Gemeten 23-10: het grootste gesprek 163 kB, het grootste werkboek 85 kB; gesprekken vervallen na 90 dagen.
+MAX_GESPREKKEN_PER_GEBRUIKER = int(os.getenv("MAX_GESPREKKEN_PER_GEBRUIKER", "1000"))
+MAX_WERKBOEKEN_PER_GEBRUIKER = int(os.getenv("MAX_WERKBOEKEN_PER_GEBRUIKER", "500"))
+MAX_OPSLAG_PER_GEBRUIKER_MB = int(os.getenv("MAX_OPSLAG_PER_GEBRUIKER_MB", "100"))
 # Tokenbudget per gebruiker (#678, S24), in invoertoken-equivalenten (core/tokenbudget.py); 0 zet een grens uit. Een
 # typische vraag kost na #1027 rond de 20k (71k invoer waarvan 69k uit de cache, 2k uitvoer): de dag dus rond de 75 vragen.
 TOKENBUDGET_DAG = int(os.getenv("TOKENBUDGET_DAG", "1500000"))
