@@ -1,4 +1,4 @@
-"""docs/api.md noemt elk eindpunt van de API (#1168)."""
+"""docs/api.md noemt elk eindpunt van de API en zegt wat een client van de chatverbinding ziet (#1165, #1168)."""
 
 import re
 from pathlib import Path
@@ -28,3 +28,16 @@ def test_de_bronstatus_staat_met_zijn_antwoordvorm_in_de_referentie():
 
     assert "niet_live" in rij
     assert "operatie.md" in rij
+
+
+def test_de_referentie_zegt_dat_een_geweigerde_handshake_een_403_is():
+    # routes/chat.py sluit met 4003 (origin) of 4001 (token) voor accept(): uvicorn maakt daar een HTTP 403 van de
+    # handshake van, dus de client ziet nooit een sluitcode; een browser ziet een kale 1006.
+    alinea = next(a for a in API_MD.split("\n\n") if a.startswith("**Een geweigerde handshake"))
+    sluitcodes = next(a for a in API_MD.split("\n\n") if a.startswith("**Sluitcodes"))
+
+    assert "HTTP 403" in alinea
+    assert "1006" in alinea
+    assert "`Origin`" in alinea
+    assert "bij het verbinden" not in sluitcodes
+    assert "`4003`" not in sluitcodes

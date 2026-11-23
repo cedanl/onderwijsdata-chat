@@ -114,7 +114,9 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `reset_done`, `pong` | Antwoord op `reset` en op `ping` |
 | `system_message` | Een melding over de serverconfiguratie, zoals een ontbrekende API-sleutel |
 
-**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig, verlopen of ingetrokken: bij het verbinden, en vóór elke actie die een run start (`message`, `clarification_choice`, `generate_report`; #786), dan zonder run. De andere acties, ook `ping`, toetsen het token niet opnieuw; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
+**Een geweigerde handshake** sluit de server vóór het accepteren, dus de client krijgt geen sluitcode: een `Origin` die niet is toegestaan (`SECURITY.md`, S24) of bij het verbinden een token dat ontbreekt, ongeldig, verlopen of ingetrokken is, geeft een HTTP 403 op de handshake (een Python-client: `InvalidStatus`; een browser: een kale `1006`). Wacht in een eigen client dus niet op een sluitcode, maar lees de statuscode van de handshake.
+
+**Sluitcodes van de verbinding** (ná het verbinden): `4001` het token is verlopen of ingetrokken, of ontbreekt, vóór een actie die een run start (`message`, `clarification_choice`, `generate_report`; #786), dan zonder run. De andere acties, ook `ping`, toetsen het token niet opnieuw; `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
 
 ---
 
