@@ -1460,7 +1460,8 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 .export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
 .export-option:last-of-type { margin-bottom: 20px; }
 /* De onderzoeksvraag vóór een rapport (#751): breder dan een bevestiging, want de vraag beslaat vaak twee regels. */
-.onderzoeksvraag-dialoog { max-width: 480px; display: flex; flex-direction: column; gap: 8px; }
+.onderzoeksvraag-dialoog { max-width: 480px; }
+.onderzoeksvraag-form { display: flex; flex-direction: column; gap: 8px; }
 .onderzoeksvraag-label { font-weight: 600; font-size: .95rem; }
 .onderzoeksvraag-veld {
   width: 100%; max-height: 40vh; padding: 8px 12px; resize: none; line-height: 1.5; font-size: .9rem;
