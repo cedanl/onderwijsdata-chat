@@ -347,3 +347,22 @@ describe('noten zonder interne codes en afkortingen (#1134)', () => {
     }
   })
 })
+
+// #1146: de spatie tussen "ten minste" en het getal staat in de tekst, niet alleen als marge.
+describe('"ten minste" staat los van het getal in de tekst (#1146)', () => {
+  it('elke KPI met een ondergrens zegt "ten minste" met een spatie voor het getal', async () => {
+    await mijnInstelling({ ...HBO, onderdrukt: { ingeschrevenen: { 2025: 2 } }, benchmark: { ...HBO.benchmark, onderdrukt: { ingeschrevenen: { 2025: 1 } } } })
+    const waarden = [...container.querySelectorAll('.kpi-value, .kpi-trend')].map(e => e.textContent).filter(t => t.includes('ten minste'))
+    expect(waarden.length).toBeGreaterThanOrEqual(2)
+    for (const tekst of waarden) expect(tekst).toMatch(/ten minste \d/)
+    expect(container.textContent).not.toMatch(/ten minste\d/)
+  })
+
+  it('de ruimte komt niet dubbel: geen marge naast de spatie', () => {
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+    expect(css).toMatch(/\.kpi-ondergrens\s*{[^}]*white-space:\s*pre-wrap/)
+    expect(css).toMatch(/\.kpi-trend \.kpi-ondergrens\s*{[^}]*white-space:\s*normal/)
+    const bron = readFileSync(join(__dirname, '..', 'components/dashboards/shared/ondergrens.jsx'), 'utf8')
+    expect(bron).not.toMatch(/marginRight/)
+  })
+})

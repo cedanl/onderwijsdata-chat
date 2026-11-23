@@ -15,9 +15,11 @@ export function isOndergrens(onderdrukt, jaar) {
   return perJaar(onderdrukt, jaar) > 0
 }
 
+// De spatie na "ten minste" staat in de tekst, niet als marge (#1146): kopiëren, voorlezen, zoeken en afdrukken krijgen
+// "ten minste 35.058". styles.css laat haar zien (pre-wrap), behalve in een flexregel, waar de gap de ruimte geeft.
 export function TenMinste({ actief }) {
   if (!actief) return null
-  return <span className="kpi-ondergrens" style={{ fontSize: '12.5px', fontWeight: 500, marginRight: 4 }}>ten minste</span>
+  return <span className="kpi-ondergrens" style={{ fontSize: '12.5px', fontWeight: 500 }}>ten minste{' '}</span>
 }
 
 const heeftLegeCellen = onderdrukt => Object.values(onderdrukt || {}).some(n => n > 0)
