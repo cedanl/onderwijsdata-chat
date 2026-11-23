@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, fmtProcent, darkColors } from '../shared/index'
+import { datumsInTekst } from '../shared/datum'
 
 // Personeel van een universiteit (#936): de payload van /api/dashboard/personeel, met de uitkomst van
 // tools/wo_personeel.py (`reeks_van`): fte zonder GEZO per jaar (peildatum 31 december). Alleen voor wo; een hbo- of
@@ -10,7 +11,7 @@ const NOOT = { fontSize: '12.5px', color: 'var(--muted-text)' }
 const TITEL = 'Personeel (wo)'
 
 // De bronregel van de server zonder het staartje over het gebied Gezondheid: de subtitel zegt dat zelf in woorden.
-const bronTekst = regel => (regel || 'WOPI, Universiteiten van Nederland').replace(/,\s*(excl|incl)\.?\s*sector Gezondheid\s*$/i, '')
+const bronTekst = regel => datumsInTekst(regel || 'WOPI, Universiteiten van Nederland').replace(/,\s*(excl|incl)\.?\s*sector Gezondheid\s*$/i, '')
 
 function Kpis({ laatste }) {
   const tegels = [

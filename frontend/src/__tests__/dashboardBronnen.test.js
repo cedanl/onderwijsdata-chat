@@ -9,7 +9,8 @@ import { InlineDashboardArbeidsmarkt } from '../components/dashboards/arbeidsmar
 import { InlineDashboardMijnInstelling } from '../components/dashboards/mijn-instelling'
 import { InlineDashboardNationaal } from '../components/dashboards/nationaal'
 import { PrognoseSection, RoaSection } from '../components/dashboards/shared/charts-arbeidsmarkt'
-import { bronBadge, bronDetails, bronLabel, bronnenVan, POPULATIE_NATIONAAL } from '../components/dashboards/shared/shell'
+import { bronBadge, bronDetails, bronLabel, bronnenVan, bronVersiecode, DashboardSources, POPULATIE_NATIONAAL } from '../components/dashboards/shared/shell'
+import { langeDatum, datumsInTekst } from '../components/dashboards/shared/datum'
 
 vi.mock('react-chartjs-2', () => ({ Bar: () => null, Line: () => null }))
 vi.mock('react-plotly.js', () => ({ default: () => null }))
@@ -74,12 +75,32 @@ describe('bronregel (#904)', () => {
 
   it('noemt versie, peildatum, voorlopige jaren en het ophaalmoment', () => {
     expect(bronDetails(MBO_DIPL)).toEqual([
-      'versie van 08-04-2026', 'peildatum 1 oktober van het studiejaar', 'cijfers 2025 voorlopig', 'opgehaald 5 nov 2026',
+      'versie van 8 april 2026', 'peildatum 1 oktober van het studiejaar', 'cijfers 2025 voorlopig', 'opgehaald 5 november 2026',
     ])
   })
 
   it('herhaalt de peildatum van UWV niet', () => {
-    expect(bronDetails(UWV)).toEqual(['peildatum 2023-05-16', 'opgehaald 5 nov 2026'])
+    expect(bronDetails(UWV)).toEqual(['peildatum 16 mei 2023', 'opgehaald 5 november 2026'])
+  })
+
+  // #1143: elke datum als "16 mei 2023"; een technische versiecode staat in een tooltip, niet in de tekst.
+  it('schrijft elke datum met de maand voluit, uit ISO of dd-mm-jjjj', () => {
+    expect(langeDatum('2023-05-16')).toBe('16 mei 2023')
+    expect(langeDatum('08-04-2026')).toBe('8 april 2026')
+    expect(langeDatum('2026-11-20T10:15:00+00:00')).toBe('20 november 2026')
+    expect(langeDatum('1 oktober')).toBe('1 oktober')
+    expect(datumsInTekst('versie van 08-04-2026 en peildatum 2023-05-16')).toBe('versie van 8 april 2026 en peildatum 16 mei 2023')
+  })
+
+  it('laat de versiecode van ROA uit de tekst en zet haar in een tooltip bij de bronlink', async () => {
+    expect(bronDetails(ROA)).toEqual(['editie 2025', 'opgehaald 5 november 2026'])
+    expect(bronVersiecode(ROA)).toBe('v20251218')
+    expect(bronVersiecode(UWV)).toBeNull()
+    expect(bronVersiecode(MBO_DIPL)).toBeNull() // "versie van 8 april 2026" is een datum, geen code
+    await render(createElement(DashboardSources, { sources: [ROA] }))
+    const link = container.querySelector('.dashboard-sources-list a')
+    expect(link.getAttribute('title')).toBe('Versiecode v20251218')
+    expect(container.textContent).not.toMatch(/v20251218/)
   })
 
   it('laat weg wat de bron niet geeft, zoals de versie van een datastore-dump', () => {
@@ -114,7 +135,7 @@ describe('arbeidsmarkt: bronnen uit de payload (#904, #917)', () => {
     ])
     expect(links[0].href).toBe('https://onderwijsdata.duo.nl/dataset/gediplomeerde-mbo-studenten')
     expect(links[2].href).toBe('https://doi.org/10.34894/DVQTOG')
-    expect(details()[2]).toContain('editie 2025, versie v20251218')
+    expect(details()[2]).toContain('editie 2025')
     expect(details()[0]).toContain('cijfers 2025 voorlopig')
     expect(badge()).toBe('Bron: DUO, UWV & ROA')
   })
@@ -137,8 +158,8 @@ describe('arbeidsmarkt: bronnen uit de payload (#904, #917)', () => {
       createElement(PrognoseSection, { data: { arbeidsmarkt_prognose: prognose, bronnen: [ROA] } }),
     )))
 
-    expect(container.textContent).toContain('ROA, SIS 2024, editie 2025, versie v20251218')
-    expect(container.textContent).toContain('ROA, AIS tot 2030, editie 2025, versie v20251218')
+    expect(container.textContent).toContain('ROA, SIS 2024, editie 2025')
+    expect(container.textContent).toContain('ROA, AIS tot 2030, editie 2025')
     expect(container.textContent).not.toContain('AIS2030')
   })
 

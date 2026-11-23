@@ -3,16 +3,12 @@
 // de jaren en de herkomst van de sectorindeling komen uit `match_duiding` (data/dashboard.py, _match_duiding).
 
 import { fmt } from './getal'
-
-const DATUM = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+import { langeDatum } from './datum'
 
 // "2023-05-16" → "16 mei 2023"; meer peildata (komma's, zoals de server ze geeft) elk; iets anders ongewijzigd.
 export function peildatumTekst(peildatum) {
   if (!peildatum) return null
-  return String(peildatum).split(',').map(d => {
-    const iso = d.trim()
-    return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? DATUM.format(new Date(`${iso}T00:00:00Z`)) : iso
-  }).join(', ')
+  return String(peildatum).split(',').map(d => langeDatum(d)).join(', ')
 }
 
 function peildatumOfOnbekend(peildatum) {

@@ -107,12 +107,12 @@ describe('personeel van een universiteit (#936)', () => {
     const tekst = render(createElement(PersoneelSection, { data: PERS, dark: false }))
 
     expect(tekst).toContain('Personeel (wo)')
-    expect(tekst).toContain('In fte, zonder het gebied Gezondheid (geneeskunde, diergeneeskunde en tandheelkunde); WOPI 2025, Universiteiten van Nederland, peildatum 31-12-2025')
+    expect(tekst).toContain('In fte, zonder het gebied Gezondheid (geneeskunde, diergeneeskunde en tandheelkunde); WOPI 2025, Universiteiten van Nederland, peildatum 31 december 2025')
     expect(tekst).toContain('6.184,36 fte')
     expect(tekst).toContain('3.584,05 fte')
     expect(tekst).toContain('2.600,31 fte')
     expect(tekst).toContain('36,6%')
-    expect(tekst).toContain('peildatum 31-12-2025')
+    expect(tekst).toContain('peildatum 31 december 2025')
     expect(tekst).not.toMatch(/medewerkers|mensen/)
   })
 
