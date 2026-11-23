@@ -111,12 +111,12 @@ describe('de knop "Download als Word" (#1038)', () => {
 
   it('toont een fout als het document niet lukt', async () => {
     const save = vi.fn()
-    const verstuur = vi.fn().mockRejectedValue(Object.assign(new Error('Werkboek niet gevonden'), { status: 404 }))
+    const verstuur = vi.fn().mockRejectedValue(Object.assign(new Error('Rapport niet gevonden'), { status: 404 }))
     await render(createElement(WorkbookWord, { workbook: rapport, verstuur, save }))
     await klik(wordKnop())
     expect(save).not.toHaveBeenCalled()
     expect(verstuur).toHaveBeenCalledTimes(1)
-    expect(container.querySelector('[role="alert"]').textContent).toBe('Het Word-document kon niet worden gemaakt: Werkboek niet gevonden')
+    expect(container.querySelector('[role="alert"]').textContent).toBe('Het Word-document kon niet worden gemaakt: Rapport niet gevonden')
     expect(wordKnop().getAttribute('aria-disabled')).toBeNull()
   })
 
@@ -172,7 +172,7 @@ describe('downloadRapportDocx', () => {
   })
 
   it('geeft de melding van de server door', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Werkboek niet gevonden' }), { status: 404 })))
-    await expect(downloadRapportDocx('x', new FormData())).rejects.toMatchObject({ message: 'Werkboek niet gevonden', status: 404 })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'Rapport niet gevonden' }), { status: 404 })))
+    await expect(downloadRapportDocx('x', new FormData())).rejects.toMatchObject({ message: 'Rapport niet gevonden', status: 404 })
   })
 })

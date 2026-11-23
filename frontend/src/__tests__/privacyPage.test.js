@@ -140,6 +140,18 @@ describe('PrivacyPage', () => {
   })
 })
 
+// #1140: de pagina en docs/privacy.md noemen wat er in de browser staat met de namen van de app. Een "werkboek" heet
+// in de app een rapport, en de dashboardchat bestaat sinds #765 niet meer: de app schrijft haar niet meer, ze wist
+// alleen wat een eerdere versie achterliet (SESSION_DATA_KEYS).
+describe('de namen van de app in de privacytekst (#1140)', () => {
+  it('noemt geen werkboek en geen dashboardchat, wel de rapporten in de browser', async () => {
+    await render(createElement(PrivacyPage))
+    for (const tekst of [container.textContent, readDocs()]) expect(tekst).not.toMatch(/werkboek|dashboardchat|dashboard-chat/i)
+    expect(sectionText('Wat in je browser staat')).toMatch(/je rapporten/)
+    expect(oneLine(docsSection('Wat in je browser staat'))).toMatch(/de rapporten/)
+  })
+})
+
 // #1144: JSX knipt een regelovergang weg, dus "na" en {gesprek} plakten aan elkaar ("na90 dagen"). Geen cijfer direct na
 // een letter in de tekst van de pagina, en de termijn uit de configuratie staat er met een spatie.
 describe('de spaties in de tekst (#1144)', () => {

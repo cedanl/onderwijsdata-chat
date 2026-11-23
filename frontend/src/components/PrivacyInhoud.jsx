@@ -110,8 +110,8 @@ export default function PrivacyInhoud() {
       <h2>{PRIVACY_KOPJES[2]}</h2>
       <ul>
         <li>
-          In de opslag van je browser staan een kopie van je gesprekken en het lopende gesprek, je werkboeken, de
-          dashboardchat, je profiel (instelling, functie, weergave) en je sessie. Uitloggen wist dit allemaal uit
+          In de opslag van je browser staan een kopie van je gesprekken en het lopende gesprek, je rapporten, je
+          profiel (instelling, functie, weergave) en je sessie. Uitloggen wist dit allemaal uit
           deze browser, en al je gegevens verwijderen ook.
         </li>
         <li>

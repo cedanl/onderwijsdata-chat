@@ -208,7 +208,7 @@ export async function syncWorkbook(workbook) {
 // cache. A workbook missing from that cache is still saved (#176).
 export async function updateWorkbook(workbook, changes) {
   // The PUT replaces the whole row: a summary would save the report without its HTML.
-  if (!isVolledig(workbook)) throw new Error('Werkboek is nog niet geladen')
+  if (!isVolledig(workbook)) throw new Error('Rapport is nog niet geladen')
   const updated = { ...workbook, ...changes }
   const cached = getWorkbooks()
   if (cached.some(w => w.id === updated.id)) {

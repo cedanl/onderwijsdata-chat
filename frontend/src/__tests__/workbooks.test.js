@@ -253,4 +253,10 @@ describe('updateWorkbook with a summary', () => {
     await expect(updateWorkbook({ id: 'r1', title: 'R', samenvatting: true }, { title: 'Nieuw' })).rejects.toThrow()
     expect(api.putWorkbook).not.toHaveBeenCalled()
   })
+
+  // #1140: de gebruiker ziet deze tekst in de melding; "werkboek" kent de app niet, de pagina heet Rapporten.
+  it('explains the refusal in the words of the app, not as a "werkboek"', async () => {
+    const fout = await updateWorkbook({ id: 'r1', title: 'R', samenvatting: true }, { title: 'Nieuw' }).catch(e => e)
+    expect(fout.message).toBe('Rapport is nog niet geladen')
+  })
 })

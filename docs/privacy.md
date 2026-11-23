@@ -36,7 +36,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Gegevens | Tabel | Tot wanneer |
 |---|---|---|
 | Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
-| Rapporten en dashboards (werkboeken) | `workbooks` | 365 dagen nadat het werkboek voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
+| Rapporten en dashboards | `workbooks` | 365 dagen nadat het rapport of dashboard voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
@@ -70,7 +70,7 @@ de back-ups hierboven.
 
 ## Wat in je browser staat
 
-- `localStorage`: een kopie van de gesprekken en het lopende gesprek, de werkboeken, de dashboardchat, het profiel
+- `localStorage`: een kopie van de gesprekken en het lopende gesprek, de rapporten, het profiel
   (instelling, functie, weergave) en het sessietoken. Uitloggen wist dit alles (`SESSION_DATA_KEYS` en het profiel,
   `frontend/src/App.jsx`), en "Verwijder al mijn gegevens" ook.
 - `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
