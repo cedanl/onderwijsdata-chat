@@ -1249,6 +1249,8 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
   margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-sm);
   border: 1px solid rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .12); color: var(--gray-700); font-size: .85rem;
 }
+/* De melding "voorbeeld" boven een vast dashboard (#1098) staat in het scherm van het dashboard: dezelfde rand als de inhoud. */
+.wb-viewer-content > .db-voorbeeld { margin: 16px 24px 0; }
 /* "Opnieuw proberen" in de melding van een mislukte verwijdering (#778): een tekstknop met een tikvlak van AA. */
 .wb-gallery-notice-actie {
   min-height: var(--tap-min-aa); margin-left: 8px; padding: 0 4px;
@@ -1367,6 +1369,7 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
   .db-printkop { display: block; }
   .db-printkop svg { width: 28px; height: 28px; flex-shrink: 0; }
   .dashboard-content button, .db-afdrukbalk { display: none !important; }
+  .db-voorbeeld button { display: none !important; }
   .dashboard-content .chart-card, .dashboard-content .kpi-card, .dashboard-sources { break-inside: avoid; }
   .dashboard-sources a[href]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; }
   /* Een brede tabel scrolt op het scherm zijwaarts; op papier kan dat niet, dus hij past in de breedte (#973): geen
