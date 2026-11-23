@@ -6,7 +6,7 @@ import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
 import { veiligeBronUrl } from './bronLink'
 import { manifestRegels } from './manifestRegels'
-import { NPULS, NPULS_LETTER, NPULS_LOGO_SVG } from './npulsHuisstijl'
+import { NPULS, NPULS_LETTER, NPULS_LOGO_SVG, NPULS_PRODUCTNAAM } from './npulsHuisstijl'
 
 export function escapeHtml(str) {
   return String(str)
@@ -343,7 +343,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
 </style>
 </head><body>
 <div class="header">
-  <div class="print-merk">${NPULS_LOGO_SVG}<span>EDUdata</span></div>
+  <div class="print-merk">${NPULS_LOGO_SVG}<span>${NPULS_PRODUCTNAAM}</span></div>
   <div class="header-top">
     <div>
       <div class="header-label">Rapport</div>

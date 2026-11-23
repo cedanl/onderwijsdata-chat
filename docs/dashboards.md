@@ -345,8 +345,10 @@ twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 /
   provincie gaan.
 - **Afdrukken** (besluit B op #904): elk dashboard heeft een knop "Afdrukken of als pdf bewaren" (`AfdrukKnop` in de
   `DashboardShell`). De print-CSS in `styles.css` toont alleen het dashboard over zijn volle lengte, zonder knoppen, met
-  het bronblok onderaan en de links ervan uitgeschreven. Er is geen CSV-export: wie verder wil rekenen, gebruikt chat of
-  rapport.
+  het bronblok onderaan en de links ervan uitgeschreven. Bovenaan staat dezelfde Npuls-printkop als in de rapport-PDF
+  (`DashboardPrintkop`, #1127; logo, productnaam en kleuren uit `npulsHuisstijl.js`): de naam van het dashboard, de
+  instelling en de datum van afdrukken. Op het scherm staat die kop uit. Er is geen CSV-export: wie verder wil rekenen,
+  gebruikt chat of rapport.
 
 ### Opleidingen: Studiekeuzedatabase
 

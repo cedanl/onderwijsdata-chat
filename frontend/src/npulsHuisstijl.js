@@ -10,6 +10,9 @@ export const NPULS = {
   blauw: '#3D68EC',
 }
 
+// De naam naast het logo in de kop van de PDF van een rapport (reportHtml.js) en van een dashboard (DashboardPrintkop.jsx).
+export const NPULS_PRODUCTNAAM = 'EDUdata'
+
 export const NPULS_LETTER = '"General Sans",Inter,Arial,sans-serif'
 
 // Het beeldmerk, zwart. De cirkels zoals in het bronbestand; op het svg-element zelf is xmlns weg (een inline svg
