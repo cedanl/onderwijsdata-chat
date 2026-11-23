@@ -77,6 +77,8 @@ def _connect() -> Any:
         conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
+        # Verwijderde en overschreven tekst gaat uit de pagina zelf, niet pas als er iets overheen komt (#1116).
+        conn.execute("PRAGMA secure_delete=ON")
         return conn
 
 
@@ -193,7 +195,23 @@ def _connection() -> Generator[Any]:
     try:
         yield conn
     finally:
+        if conn.total_changes:
+            _leeg_wal(conn)
         conn.close()
+
+
+def _leeg_wal(conn: sqlite3.Connection) -> None:
+    """Na een wijziging het WAL-bestand leegmaken, zodat verwijderde tekst daar niet in achterblijft (#1116).
+
+    `secure_delete` maakt de pagina in het databasebestand leeg, maar een eerdere versie van die pagina staat nog in
+    het `-wal`-bestand tot het is leeggemaakt. Sluit de laatste verbinding, dan doet SQLite dat zelf; staat er nog een
+    andere open, dan blijft de tekst in het WAL tot het wordt overschreven. Best effort en zonder te wachten
+    (`busy_timeout=0`): een lezer die nog bezig is, houdt de aanroep niet op, en de volgende wijziging probeert het
+    opnieuw.
+    """
+    with contextlib.suppress(sqlite3.Error):
+        conn.execute("PRAGMA busy_timeout=0")
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
 
 
 def close() -> None:

@@ -61,6 +61,11 @@ omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te s
 `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7
 dagen verwijdert niets. Dezelfde taak ruimt ook de korte staat op: tokengebruik na 62 dagen, ingetrokken sessies en accounts als hun sessie is verlopen, en pogingen in `rate_limit_hits` als ze uit het venster van de limiet zijn gevallen (#1113); dat gebeurt dus ook op een pod die weken niet herstart. De serverlogs en de back-ups van de beheerder vallen buiten deze opschoning.
 
+Verwijderen is ook op schijf definitief. Op de lokale SQLite-terugval maakt de app verwijderde en overschreven tekst leeg in het
+databasebestand (`PRAGMA secure_delete`) en leegt zij het `-wal`-bestand na elke wijziging (#1116); anders bleef een
+verwijderd gesprek leesbaar in de vrijgekomen pagina's. Op PostgreSQL ruimt de database dat zelf op, met de beperking van
+de back-ups hierboven.
+
 ## Wat in je browser staat
 
 - `localStorage`: een kopie van de gesprekken en het lopende gesprek, de werkboeken, de dashboardchat, het profiel
