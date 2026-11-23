@@ -81,12 +81,10 @@ def test_de_validatieschemas_van_fastapi_zijn_weg(schema):
 
 
 def test_de_422_van_het_schema_is_wat_de_api_geeft():
-    from core.auth import get_current_user
+    # Het inlogeindpunt is openbaar: geen authenticatie die een andere test in dezelfde run aan of uit zette.
     from server import create_app
 
-    app = create_app(api_docs=True)
-    app.dependency_overrides[get_current_user] = lambda: "demo"
-    resp = TestClient(app).put("/api/conversations/x", json={"title": {"a": 1}})
+    resp = TestClient(create_app(api_docs=True)).post("/api/auth/login", json={"username": {"a": 1}})
 
     assert resp.status_code == 422
     assert resp.json() == {"detail": ONGELDIGE_INVOER}
