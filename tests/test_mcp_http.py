@@ -15,6 +15,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 import mcp_server
 import server
+from core.appversie import app_versie
 from core.foutmeldingen import NIET_GEVONDEN
 from routes import mcp_http
 
@@ -68,7 +69,7 @@ def via_mcp(app, actie, *, koppen=None):
 def test_initialize_noemt_naam_versie_en_instructies(maak_app):
     init, _ = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools())
     assert init.server_info.name == mcp_server.NAAM
-    assert init.server_info.version == mcp_server._versie()
+    assert init.server_info.version == app_versie()
     assert init.instructions == mcp_server.INSTRUCTIES
 
 

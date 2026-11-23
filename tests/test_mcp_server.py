@@ -11,6 +11,7 @@ import pytest
 
 import mcp_server
 import tools
+from core.appversie import app_versie
 from tools.schemas import TOOL_SCHEMAS
 
 
@@ -230,7 +231,7 @@ def _via_protocol(actie):
 def test_protocol_noemt_naam_versie_en_instructies():
     init, _ = _via_protocol(lambda sessie: sessie.list_tools())
     assert init.server_info.name == "onderwijscatalogus"
-    assert init.server_info.version == mcp_server._versie()
+    assert init.server_info.version == app_versie()
     assert "search_catalog" in (init.instructions or "")
 
 
