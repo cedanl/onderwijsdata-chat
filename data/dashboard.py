@@ -17,7 +17,7 @@ from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
 from tools import periode
 
-from . import arbeidsmarkt, bronblok
+from . import arbeidsmarkt, bronblok, kaart_regio
 from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
@@ -646,9 +646,10 @@ def _benchmark_kop(ctx: RegioContext, n: int) -> dict:
 def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
     """Return Plotly Scattergeo figure JSON for instelling locations in the benchmark regio.
 
-    De punten staan op benaderde stadscoördinaten (_CITY_COORDS). Wie in een plaats buiten die lijst zit, valt van de
-    kaart; layout.meta noemt die instellingen (zonder_locatie) en geeft de punten als rijen (data), zodat de app ze
-    kan melden en de kaart als tabel kan tonen als ze niet tekent (#906).
+    De punten staan op benaderde stadscoördinaten (_CITY_COORDS), op een ondergrond met provinciegrenzen. Instellingen
+    in dezelfde plaats delen één punt met hun aantal (data/kaart_regio.py, #1079). Wie in een plaats buiten die lijst
+    zit, valt van de kaart; layout.meta noemt die instellingen (zonder_locatie) en geeft de punten als rijen (data),
+    zodat de app ze kan melden en de kaart als tabel kan tonen als ze niet tekent (#906).
     """
     try:
         import plotly.graph_objects as go
@@ -667,81 +668,59 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
         def _rij(code: str, naam: str, rol: str) -> dict[str, str]:
             return {"Instelling": naam, "Plaats": _plaats(code).title(), "Rol": rol}
 
-        fig = go.Figure()
         rijen: list[dict[str, str]] = []
         zonder_locatie: list[str] = []
-
-        peer_lons, peer_lats, peer_texts = [], [], []
+        peers: list[tuple[tuple[float, float], str, str]] = []
         for code in sorted(ctx.peer_codes, key=lambda c: code_to_naam.get(c, c)):
             naam = code_to_naam.get(code, code)
             c = _coords(code)
             if c:
-                peer_lats.append(c[0])
-                peer_lons.append(c[1])
-                peer_texts.append(naam)
+                peers.append((c, _plaats(code).title(), naam))
                 rijen.append(_rij(code, naam, "concurrent"))
             else:
                 zonder_locatie.append(naam)
-
-        if peer_lons:
-            fig.add_trace(
-                go.Scattergeo(
-                    lon=peer_lons,
-                    lat=peer_lats,
-                    text=peer_texts,
-                    mode="markers",
-                    # 3:1 tegen het land in beide thema's (#905); #94A3B8 haalde 2,5:1.
-                    marker={"size": 10, "color": "#64748B", "line": {"width": 1, "color": "white"}},
-                    hovertemplate="%{text}<extra></extra>",
-                    name="Concurrenten",
-                )
-            )
 
         own = _coords(ctx.self_code)
         if not own:
             zonder_locatie.insert(0, instelling_naam)
         else:
             rijen.insert(0, _rij(ctx.self_code, instelling_naam, "eigen instelling"))
+
+        lat_range, lon_range = kaart_regio.bereik([c for c, _, _ in peers] + ([own] if own else []))
+
+        fig = go.Figure()
+        grond = kaart_regio.ondergrond(lat_range, lon_range)
+        if grond is not None:
+            fig.add_trace(grond)
+        if peers:
+            fig.add_trace(kaart_regio.concurrenten(kaart_regio.groepeer(peers)))
+        if own:
+            buren = tuple(naam for c, _, naam in peers if c == own)
             fig.add_trace(
-                go.Scattergeo(
-                    lon=[own[1]],
-                    lat=[own[0]],
-                    text=[instelling_naam],
-                    mode="markers+text",
-                    textposition="top right",
-                    textfont={"size": 12, "color": "#1E40AF"},
-                    marker={"size": 16, "color": "#2563EB", "symbol": "star", "line": {"width": 1.5, "color": "white"}},
-                    hovertemplate="%{text}<extra></extra>",
-                    name=instelling_naam,
+                kaart_regio.eigen_instelling(
+                    own,
+                    instelling_naam,
+                    _plaats(ctx.self_code).title(),
+                    buren,
+                    kaart_regio.labelpositie(own[1], lon_range),
                 )
             )
-
-        # Dynamic bounding box: zoom to the actual cluster of locations
-        all_lats = peer_lats + ([own[0]] if own else [])
-        all_lons = peer_lons + ([own[1]] if own else [])
-        if all_lats:
-            lat_min, lat_max = min(all_lats), max(all_lats)
-            lon_min, lon_max = min(all_lons), max(all_lons)
-            lat_spread = max(lat_max - lat_min, 0.25)
-            lon_spread = max(lon_max - lon_min, 0.35)
-            lat_range = [lat_min - lat_spread * 0.65, lat_max + lat_spread * 0.65]
-            lon_range = [lon_min - lon_spread * 0.65, lon_max + lon_spread * 0.65]
-        else:
-            lat_range = [50.3, 53.9]
-            lon_range = [3.0, 7.8]
 
         fig.update_layout(
             meta={"data": rijen, "zonder_locatie": zonder_locatie},
             showlegend=True,
+            # Onder de kaart, niet erop: bovenin links viel het label van de eigen instelling onder de legenda (#1079).
             legend={
+                "orientation": "h",
                 "x": 0,
-                "y": 1,
+                "y": 0,
+                "yanchor": "top",
                 "bgcolor": "rgba(255,255,255,0.9)",
                 "bordercolor": "#E2E8F0",
                 "borderwidth": 1,
                 "font": {"size": 11},
             },
-            margin={"t": 10, "b": 10, "l": 10, "r": 10},
+            margin={"t": 10, "b": 56, "l": 10, "r": 10},
             paper_bgcolor="rgba(0,0,0,0)",
             height=340,
             geo={

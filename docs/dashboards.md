@@ -333,7 +333,9 @@ twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 /
   `data/dashboard.py`, gespeld zoals de DUO-adressen: "HENGELO OV", "VELP GLD"). Elke plaats uit `adressen_ho` en
   `adressen_mbo` staat erin; `tests/test_dashboard_kaart.py` legt dat vast tegen de bevroren bestanden. Tot #951
   ontbrak Etten-Leur, en daarmee stond Curio niet op haar eigen kaart. Een instelling zonder bekende plaats noemt de
-  kaart onder `zonder_locatie` (#906).
+  kaart onder `zonder_locatie` (#906). Onder de punten liggen de provinciegrenzen (`data/provincies.geojson`, CBS en
+  Kadaster via cartomap, vereenvoudigd; in de figuur zelf, dus zonder verzoek naar buiten). Instellingen in dezelfde
+  plaats delen één punt met hun aantal; de tooltip en de tekst voor schermlezers noemen ze (#1079).
 
 - **Regio en provincie** komen uit één adres per instelling: de hoofdvestiging in het DUO-adressenbestand
   (`adressen_ho`, `adressen_mbo`; `get_adres_lookup` in `data/instellingen.py`). Vestigingen elders tellen niet mee

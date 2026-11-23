@@ -17,14 +17,15 @@ vi.mock('react-plotly.js', () => ({
 }))
 
 import { KaartSection } from '../components/dashboards/shared/charts-kaart'
-import { KAART_HOOGTE } from '../components/dashboards/shared/kaart-figuur'
+import { KAART_HOOGTE, kaartBeschrijving, kaartData } from '../components/dashboards/shared/kaart-figuur'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 const figuur = (zonder = []) => JSON.stringify({
   data: [
-    { type: 'scattergeo', mode: 'markers', name: 'Concurrenten', lon: [4.9], lat: [52.37], text: ['Hogeschool van Amsterdam'] },
-    { type: 'scattergeo', mode: 'markers+text', name: 'Hogeschool Utrecht', lon: [5.11], lat: [52.09], text: ['Hogeschool Utrecht'], textfont: { size: 12, color: '#1E40AF' } },
+    { type: 'choropleth', name: 'Provincies', locations: ['PV26'], z: [0], colorscale: [[0, '#F8FAFC'], [1, '#F8FAFC']], marker: { line: { color: '#94A3B8', width: 1 } } },
+    { type: 'scattergeo', mode: 'markers+text', meta: 'aantal', name: 'Concurrenten', lon: [4.9], lat: [52.37], text: [''], textfont: { size: 13, color: '#1F2937' } },
+    { type: 'scattergeo', mode: 'markers+text', meta: 'eigen', name: 'Hogeschool Utrecht', lon: [5.11], lat: [52.09], text: ['Hogeschool Utrecht'], textfont: { size: 12, color: '#1E40AF' } },
   ],
   layout: {
     height: 340,
@@ -90,11 +91,38 @@ describe('KaartSection (#906)', () => {
     await render(figuur())
     const beeld = container.querySelector('[role="img"]')
     expect(beeld.getAttribute('aria-label')).toBe(
-      'Kaart met 2 instellingen in de regio, op benaderde plaatscoördinaten: Hogeschool Utrecht (eigen instelling), Hogeschool van Amsterdam.',
+      'Kaart met 2 instellingen in de regio, op benaderde plaatscoördinaten. Utrecht: Hogeschool Utrecht (eigen instelling). Amsterdam: Hogeschool van Amsterdam.',
     )
     const tabel = container.querySelector('details.waarden-details table')
     expect([...tabel.querySelectorAll('th')].map(th => th.textContent)).toEqual(['Instelling', 'Plaats', 'Rol'])
     expect(tabel.querySelectorAll('tbody tr')).toHaveLength(2)
+  })
+
+  // #1079: instellingen in dezelfde plaats liggen op één punt; de naam van de kaart telt ze per plaats.
+  it('noemt in de beschrijving hoeveel instellingen er in een plaats zitten', () => {
+    const rijen = [
+      { Instelling: 'ROC Midden Nederland', Plaats: 'Utrecht', Rol: 'eigen instelling' },
+      { Instelling: 'Grafisch Lyceum', Plaats: 'Utrecht', Rol: 'concurrent' },
+      { Instelling: 'Nimeto', Plaats: 'Utrecht', Rol: 'concurrent' },
+      { Instelling: 'SVO', Plaats: 'Houten', Rol: 'concurrent' },
+    ]
+    expect(kaartBeschrijving({ layout: { meta: { data: rijen } } }, false)).toBe(
+      'Kaart met 4 instellingen in de regio, op benaderde plaatscoördinaten. ' +
+      'Utrecht (3 instellingen): ROC Midden Nederland (eigen instelling), Grafisch Lyceum, Nimeto. Houten: SVO.',
+    )
+  })
+
+  it('geeft de ondergrond, de ster en het aantal de kleuren van het thema', () => {
+    const [grond, aantal, eigen] = JSON.parse(figuur()).data
+    const donker = kaartData([grond, aantal, eigen], true)
+    expect(donker[0].colorscale[0][1]).not.toBe('#F8FAFC')
+    expect(donker[0].marker.line.color).not.toBe('#94A3B8')
+    expect(donker[1].textfont.color).toBe('#E5E7EB')
+    expect(donker[2].textfont.color).toBe('#93C5FD')
+    const licht = kaartData([grond, aantal, eigen], false)
+    expect(licht[0].colorscale[0][1]).toBe('#F8FAFC')
+    expect(licht[1].textfont.color).toBe('#1F2937')
+    expect(licht[2].textfont.color).toBe('#1E40AF')
   })
 
   it('noemt de instellingen die niet op de kaart staan', async () => {
