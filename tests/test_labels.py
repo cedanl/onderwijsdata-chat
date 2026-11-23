@@ -121,6 +121,33 @@ def test_een_echt_id_met_een_streepje_in_de_bronnensectie_is_het_echte_id():
         assert ongebruikte_bronnen(tekst, _beurt("duo:p01hoinges:3")) == []
 
 
+_NIET_GEVONDEN = json.dumps({"fout": "Dataset '99999NED' staat niet in de catalogus. Zoek met search_catalog."})
+
+
+def test_een_id_uit_de_vraag_geeft_geen_melding():
+    """#1088: het antwoord zegt terecht dat de tabel van de gebruiker niet bestaat."""
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", "Wat staat in tabel 99999NED?") == []
+
+
+def test_een_id_uit_een_toolresultaat_geeft_geen_melding():
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", _NIET_GEVONDEN) == []
+
+
+def test_een_id_in_andere_hoofdletters_uit_de_vraag_geeft_geen_melding():
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("Tabel 99999NED bestaat niet.", "wat staat er in 99999ned?") == []
+
+
+def test_een_verzonnen_id_buiten_vraag_en_toolresultaat_wordt_nog_steeds_gemeld():
+    with _ALLEEN_ECHTE:
+        [probleem] = onbekende_datasets(
+            "Volgens CBS-tabel 85999NED telde het mbo 475.550 studenten.", "Hoeveel mbo-studenten?\n" + _NIET_GEVONDEN
+        )
+    assert "85999NED" in probleem.melding
+
+
 def test_bron_die_bestaat_maar_niet_gebruikt_is_wordt_gemeld():
     """Audit 9: het antwoord noemde een bestaand ID dat niets met de bewering te maken had (#213)."""
     tekst = "In 2025 waren het 26.370 personen.\n\n**Bronnen**\n- DUO (**p03hoinschr**)\n"

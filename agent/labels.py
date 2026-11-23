@@ -68,12 +68,17 @@ def _dataset_ids(tekst: str) -> list[str]:
     return sorted(set(ids))
 
 
-def onbekende_datasets(tekst: str) -> list[str]:
-    """Dataset-ID's in de tekst die niet in de catalogus staan, zoals een typfout in de bron."""
+def onbekende_datasets(tekst: str, genoemd: str = "") -> list[str]:
+    """Dataset-ID's in de tekst die niet in de catalogus staan, zoals een typfout in de bron.
+
+    `genoemd` is wat de beurt zelf noemde: de vraag van de gebruiker en de toolresultaten. Een ID dat daar staat is niet
+    verzonnen door het model: een antwoord dat terecht zegt dat tabel 99999NED niet bestaat, krijgt geen melding (#1088).
+    """
+    genoemd = genoemd.lower()
     return [
         Probleem(f"Dataset {dataset_id} bestaat niet in de catalogus.", "Noem de dataset-ID zoals de tool hem gaf.")
         for dataset_id in _dataset_ids(tekst)
-        if catalogus_titel(dataset_id) == dataset_id
+        if catalogus_titel(dataset_id) == dataset_id and dataset_id.lower() not in genoemd
     ]
 
 

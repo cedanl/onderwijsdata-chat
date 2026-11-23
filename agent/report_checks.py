@@ -170,7 +170,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += veilig(resource_verwijzing, text)
     problems += veilig(verkeerde_opleidingsvormen, text, sources)
     problems += veilig(verkeerde_dimensielabels, text, sources)
-    problems += veilig(onbekende_datasets, text)
+    problems += veilig(onbekende_datasets, text, "\n".join(sources))
     problems += veilig(ongebruikte_bronnen, text, sources)
     problems += veilig(verkeerd_gebonden, text, sources)
     problems += hard(veilig(verkeerde_kenmerken, text, sources))

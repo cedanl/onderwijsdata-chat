@@ -132,6 +132,7 @@ def antwoordcontrole(
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         gelezen = leestekst(text)
+        genoemd = "\n".join([vraag, *said_by_user, *tool_results])
         # Een herziene tabel gaat naar de redeneerkaart (#982): de binding toetst de tabellen die de gebruiker leest.
         zichtbaar = lezingen(zonder_zelfcorrectie(text)[0])
         # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
@@ -143,7 +144,9 @@ def antwoordcontrole(
             (onvolledige_selecties, (text, tool_results), True),
             (verkeerde_opleidingsvormen, (text, tool_results), False),
             (verkeerde_dimensielabels, (text, tool_results), False),
-            (onbekende_datasets, (text,), False),
+            # Een bron die niet bestaat is een feit dat niet bij de data hoort (#1084), tenzij de vraag of een tool het ID
+            # zelf noemde: dan zegt het antwoord misschien juist dat het niet bestaat (#1088).
+            (onbekende_datasets, (text, genoemd), True),
             (ongebruikte_bronnen, (text, tool_results), False),
             (verkeerd_gebonden, (text, tool_results), False),
             (verkeerde_tabeljaren, (zichtbaar, tool_results), False),
