@@ -183,7 +183,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
 }
 
 // Parsing markdown is the costly part of a message; props are stable while a message is unchanged.
-const Markdown = memo(function Markdown({ text, citaties }) {
+export const Markdown = memo(function Markdown({ text, citaties }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
