@@ -68,7 +68,8 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
 - **Logs**: JSON op elke SDP-omgeving (`APP_ENV`, #676); vraag- en antwoordtekst alleen als lengte en hash
   (`Agents.md`, "Logs"). Ook de start-, stop- en foutregels van uvicorn zijn JSON, met de traceback in het veld
   `exception`, en de tijdstempel heeft een zone (`+00:00`). Er is geen toegangslog: dat schreef per verzoek het
-  client-adres en het pad met gespreks- en rapport-ID's (#1114).
+  client-adres en het pad met gespreks- en rapport-ID's (#1114). Start de pod niet op de database, dan noemt de ERROR-regel `Failed to
+  initialize database` de oorzaak (driver, verbinding, authenticatie, pad), zonder host of gebruiker (#1155).
 
 ## Beschikbaarheid
 

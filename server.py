@@ -61,8 +61,10 @@ try:
     persistence_db.init_db()
     logger.info("Database initialized successfully")
 except Exception as e:
-    # Een driverfout kan host en databasenaam citeren: op ERROR alleen type en kenmerk, de tekst op DEBUG (#817).
-    logger.error("Failed to initialize database: %s", foutkenmerk(e))
+    # Een driverfout kan host en databasenaam citeren: op ERROR alleen een veilige oorzaak (als er een is) met type en
+    # kenmerk, de tekst op DEBUG (#817, #1155).
+    oorzaak = persistence_db.startfout_oorzaak(e)
+    logger.error("Failed to initialize database: %s", f"{oorzaak} [{foutkenmerk(e)}]" if oorzaak else foutkenmerk(e))
     logger.debug("Failed to initialize database", exc_info=True)
     sys.exit(1)
 
