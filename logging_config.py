@@ -6,7 +6,7 @@ Provides JSON logging for Kubernetes log aggregation.
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 
 from core.logging_context import GEEN, VerbindingFilter
 
@@ -19,7 +19,8 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_obj = {
-            "timestamp": datetime.utcnow().isoformat(),
+            # Het moment van de regel, met zone (+00:00): een logplatform leest een naïeve tijd als lokale tijd (#1153).
+            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
