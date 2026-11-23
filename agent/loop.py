@@ -76,6 +76,9 @@ async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | N
 # What a tool_end event carries of the output; the full result stays in the loop.
 _EVENT_OUTPUT_CHARS = 2000
 
+# Een stap met deze uitkomst leverde geen data en krijgt geen codefragment (#1072); een leeg filter wel: het toont hoe.
+_ZONDER_SNIPPET = frozenset({"error", "buiten_scope"})
+
 
 @dataclass
 class ToolCall:
@@ -186,9 +189,15 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
         "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
     )
 
+    uitkomst = outcome(call.name, result)
+    # Een stap zonder data heeft niets om te herhalen: een snippet zou de mislukte aanroep als geslaagd laten zien (#1072).
     # Het recept van een key kan alleen nog in de database staan (#763); to_thread neemt de context mee, dus
     # store.gesprek ziet in de thread dezelfde keys.
-    snippet = await asyncio.to_thread(_generate_snippet, call.name, call.args, result, recept_van=recept_van)
+    snippet = (
+        None
+        if uitkomst.get("status") in _ZONDER_SNIPPET
+        else await asyncio.to_thread(_generate_snippet, call.name, call.args, result, recept_van=recept_van)
+    )
     if snippet:
         # De snippet bevat de toolargumenten, dus tekst uit de vraag: alleen op DEBUG (#475).
         logger.info("REPRODUCEER %-28s %s", call.name, tekst_kenmerk(snippet))
@@ -197,7 +206,7 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
         "type": "tool_end",
         "name": call.name,
         "output": result[:_EVENT_OUTPUT_CHARS],
-        **outcome(call.name, result),
+        **uitkomst,
     }
     if snippet:
         end_event["snippet"] = snippet

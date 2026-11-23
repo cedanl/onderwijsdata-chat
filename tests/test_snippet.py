@@ -898,7 +898,9 @@ def test_zonder_bewerking_blijft_de_snippet_gelijk(result):
 def test_tool_end_snippet_draagt_de_databewerking(monkeypatch):
     """Naad: de loop geeft de response door aan de snippet."""
     noot = "2 cellen met DUO-sentinel -1 in 'AANTAL' uitgesloten"
-    result = json.dumps({"data_key": "duo:abc:resource:ab12", "totaal_rijen": 1, "databewerking": [noot]})
+    result = json.dumps(
+        {"data_key": "duo:abc:resource:ab12", "totaal_rijen": 1, "rijen": [{"N": 1}], "databewerking": [noot]}
+    )
     monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (result, None))
     events: list[dict] = []
 

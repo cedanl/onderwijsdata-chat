@@ -15,12 +15,16 @@ from agent import loop as loop_module
 from tools import TOOL_QUERY_DATA, catalog, outcome, scopeprofiel, store
 from tools.query import query_data
 from tools.schemas import (
+    TOOL_COMPUTE_KPI,
     TOOL_DATASET_DETAILS,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_RUN_ANALYSIS,
+    TOOL_SEARCH_CATALOG,
 )
 
 
@@ -102,11 +106,10 @@ def test_een_stap_op_de_scopegrens_heet_geweigerd(naam, resultaat, label):
         json.dumps({"bron": "CBS", "buiten_scope": False}),
         json.dumps({"bron": "CBS", "buiten_scope": "ja"}),
         json.dumps([{"buiten_scope": True}]),
-        "Dataset 'X' staat niet in de catalogus.",
     ],
 )
-def test_een_gewoon_resultaat_van_een_laadtool_heeft_geen_uitkomst(resultaat):
-    assert outcome(TOOL_GET_CBS_DATA, resultaat) == {}
+def test_een_buiten_scope_vlag_die_geen_weigering_is_geeft_geen_weigering(resultaat):
+    assert outcome(TOOL_GET_CBS_DATA, resultaat).get("status") != "buiten_scope"
 
 
 def test_tool_end_van_een_po_tabel_heet_geweigerd(monkeypatch):
@@ -139,3 +142,96 @@ def test_tool_end_van_een_po_tabel_heet_geweigerd(monkeypatch):
     assert end["status_label"] == "CBS-opvraag geweigerd (buiten scope)"
     assert "data_key" not in end
     assert "export_key" not in end
+
+
+# Een stap die geen data opleverde staat niet groen in de kaart (#1072).
+_GELADEN = json.dumps({"data_key": "cbs:85354NED:ab", "totaal_rijen": 3, "preview": [{"N": 1}]})
+_KPI = json.dumps({"waarde": "5.943", "label": "Eerstejaars"})
+_ANALYSE = json.dumps({"gelezen": ["cbs:85354NED:ab"], "resultaat": 5943})
+
+_MISLUKT = [
+    (TOOL_GET_CBS_DATA, "Dataset '99999NED' staat niet in de catalogus.", "CBS-opvraag mislukt"),
+    (TOOL_GET_CBS_DATA, "Geen rijen gevonden in dataset '85354NED' met filters {}.", "CBS-opvraag mislukt"),
+    (TOOL_GET_DUO_DATA, "Dataset 'bestaat-niet-xyz' staat niet in de catalogus.", "DUO-opvraag mislukt"),
+    (TOOL_GET_DUO_DATA, "Fout (bron_onbereikbaar): DUO is nu niet bereikbaar.", "DUO-opvraag mislukt"),
+    (TOOL_GET_MAAT, "Onbekende instelling 'Hogeschool Atlantis'.", "Vaste maat niet opgehaald"),
+    (TOOL_COMPUTE_KPI, json.dumps({"fout": "Kolom 'BestaatNiet_9' niet gevonden."}), "KPI-berekening mislukt"),
+    (TOOL_COMPUTE_KPI, "Fout bij uitvoeren van compute_kpi: boem", "KPI-berekening mislukt"),
+    (
+        TOOL_RUN_ANALYSIS,
+        "Fout in script: Script duurde langer dan 10 seconden en is afgebroken.",
+        "Analyse mislukt",
+    ),
+    (TOOL_RUN_ANALYSIS, "Fout bij uitvoeren van run_analysis: boem", "Analyse mislukt"),
+    (TOOL_SEARCH_CATALOG, "Fout (bron_onbereikbaar): de catalogus is nu niet bereikbaar.", "Stap mislukt"),
+]
+
+
+@pytest.mark.parametrize(("naam", "resultaat", "label"), _MISLUKT)
+def test_een_stap_zonder_data_heet_mislukt_met_een_nederlands_label(naam, resultaat, label):
+    assert outcome(naam, resultaat) == {"status": "error", "status_label": label}
+
+
+@pytest.mark.parametrize(
+    ("naam", "resultaat"),
+    [
+        (TOOL_GET_CBS_DATA, _GELADEN),
+        (TOOL_GET_DUO_DATA, _GELADEN),
+        (TOOL_GET_MAAT, _GELADEN),
+        (TOOL_COMPUTE_KPI, _KPI),
+        (TOOL_RUN_ANALYSIS, _ANALYSE),
+        (TOOL_SEARCH_CATALOG, json.dumps({"status": "candidates", "kandidaten": [{"id": "x"}]})),
+    ],
+)
+def test_een_geslaagde_stap_blijft_zonder_uitkomst(naam, resultaat):
+    assert outcome(naam, resultaat) == {}
+
+
+def _tool_end(monkeypatch, naam: str, args: dict, resultaat: str) -> dict:
+    """Het tool_end-event van één stap, met een tool die `resultaat` geeft; de snippet is die van de echte generator."""
+    monkeypatch.setattr(loop_module, "dispatch", lambda name, tool_args: (resultaat, None))
+    events: list[dict] = []
+
+    async def emit(ev):
+        events.append(ev)
+
+    call = loop_module.ToolCall(id="t1", name=naam, arguments=json.dumps(args), args=args)
+    asyncio.run(loop_module._execute_tool(call, emit))
+    return next(e for e in events if e["type"] == "tool_end")
+
+
+@pytest.mark.parametrize(
+    ("naam", "args", "resultaat"),
+    [
+        (TOOL_GET_CBS_DATA, {"dataset_id": "99999NED"}, "Dataset '99999NED' staat niet in de catalogus."),
+        (TOOL_GET_DUO_DATA, {"dataset_id": "bestaat-niet-xyz"}, "Dataset 'bestaat-niet-xyz' onbekend."),
+        (TOOL_GET_MAAT, {"maat": "studenten", "instelling": "Hogeschool Atlantis"}, "Onbekende instelling."),
+        (
+            TOOL_COMPUTE_KPI,
+            {"data_key": "cbs:85354NED:ab", "value_column": "BestaatNiet_9", "metric": "last"},
+            json.dumps({"fout": "Kolom 'BestaatNiet_9' niet gevonden."}),
+        ),
+        (
+            TOOL_RUN_ANALYSIS,
+            {"code": "while True: pass"},
+            "Fout in script: Script duurde langer dan 10 seconden en is afgebroken.",
+        ),
+    ],
+)
+def test_tool_end_van_een_mislukte_stap_heeft_een_fout_en_geen_codefragment(monkeypatch, naam, args, resultaat):
+    end = _tool_end(monkeypatch, naam, args, resultaat)
+
+    assert end["status"] == "error" and end["status_label"]
+    assert "snippet" not in end
+
+
+def test_tool_end_van_een_geslaagde_laadstap_heeft_geen_status_en_wel_een_codefragment(monkeypatch):
+    key = "duo:p01hoinges:0"
+    resultaat = json.dumps({"data_key": key, "totaal_rijen": 1, "preview": [{"AANTAL": 1}]})
+    store.put(key, pd.DataFrame({"AANTAL": [1]}), store.KeyMeta(bron="duo", dataset="p01hoinges", resource=0))
+    try:
+        end = _tool_end(monkeypatch, TOOL_GET_DUO_DATA, {"dataset_id": "p01hoinges", "resource": 0}, resultaat)
+    finally:
+        store.clear()
+
+    assert "status" not in end and end["snippet"]
