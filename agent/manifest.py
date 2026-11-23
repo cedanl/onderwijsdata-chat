@@ -17,7 +17,6 @@ een mislukte lookup is daarom None (onbekend), geen gok.
 
 import hashlib
 import logging
-import tomllib
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -25,6 +24,7 @@ from pathlib import Path
 from litellm import get_supported_openai_params
 
 from config import Config
+from core.appversie import app_versie as versielabel
 from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
 from core.pakketherkomst import korte_commit
@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 _WORTEL = Path(__file__).resolve().parent.parent
 _PROMPT = _WORTEL / "prompts" / "system.md"
-_PYPROJECT = _WORTEL / "pyproject.toml"
 _PERIODESTATUS = "Periodestatus"
 
 
@@ -49,11 +48,8 @@ def prompt_hash() -> str:
 
 @lru_cache(maxsize=1)
 def app_versie() -> str:
-    """De release uit het chart (APP_VERSION), anders pyproject.toml — zoals /version."""
-    if Config.APP_VERSION:
-        return Config.APP_VERSION
-    with open(_PYPROJECT, "rb") as bestand:
-        return tomllib.load(bestand)["project"]["version"]
+    """Het versielabel van /version: de release uit het chart (APP_VERSION), anders het ontwikkellabel (#1105)."""
+    return versielabel(Config.APP_VERSION)
 
 
 def _sampling(model: str) -> dict:

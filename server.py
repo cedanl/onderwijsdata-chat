@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import logging
 import sys
-import tomllib
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -19,6 +18,7 @@ load_dotenv()
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
 from core import bronstatus, config, foutmeldingen
+from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
@@ -154,21 +154,14 @@ async def ready_endpoint() -> JSONResponse:
     return JSONResponse(content=result, status_code=status_code)
 
 
-_PYPROJECT = Path(__file__).parent / "pyproject.toml"
-
-
 @_routes.get("/version", tags=["info"])
 @_routes.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
-    """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
+    """Release uit het chart (APP_VERSION), anders het ontwikkellabel `<pyproject>+dev[.<commit>]` (#1105); de commit waaruit het image is gebouwd (#231), de catalogus (#361)
     met de digest uit het manifest (#1029) en de dataversie van UWV en ROA (CH-46)."""
 
-    def _read() -> str:
-        with open(_PYPROJECT, "rb") as f:
-            return tomllib.load(f)["project"]["version"]
-
     return {
-        "version": Config.APP_VERSION or await asyncio.to_thread(_read),
+        "version": await asyncio.to_thread(app_versie, Config.APP_VERSION),
         # GIT_COMMIT is volledig (de installatieregel van een snippet heeft dat nodig, #888); hier de korte vorm.
         "commit": korte_commit(Config.GIT_COMMIT) or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).

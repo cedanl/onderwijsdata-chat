@@ -25,13 +25,12 @@ import json
 import logging
 import os
 import sys
-import tomllib
 import urllib.parse
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Any
 
 import tools
+from core.appversie import app_versie
 from tools import catalog, fouten, kernvragen
 from tools.schemas import TOOL_DATASET_COUNTS, TOOL_DATASET_DETAILS, TOOL_SCHEMAS, TOOL_SEARCH_CATALOG
 
@@ -67,16 +66,11 @@ CATALOGUS_TOOLS = (TOOL_SEARCH_CATALOG, TOOL_DATASET_DETAILS, TOOL_DATASET_COUNT
 MCP_TOOLS = (*CATALOGUS_TOOLS, *kernvragen.TOOLS)
 BEWIJS_SLEUTELS = ("bron", "dataset_id", "selectie", "maat", "waarde", "peildatum", "versie", "verwijzing")
 
-_PYPROJECT = Path(__file__).resolve().parent / "pyproject.toml"
-
 
 def _versie() -> str:
-    """De release uit het chart (APP_VERSION), anders pyproject.toml; zoals agent.manifest.app_versie,
-    maar zonder die module te laden (die trekt litellm mee, seconden opstarttijd voor een catalogus)."""
-    if versie := os.getenv("APP_VERSION"):
-        return versie
-    with open(_PYPROJECT, "rb") as bestand:
-        return tomllib.load(bestand)["project"]["version"]
+    """Hetzelfde label als `/version` (core.appversie), zonder de config en agent.manifest te laden
+    (die trekken litellm mee, seconden opstarttijd voor een catalogus)."""
+    return app_versie(os.getenv("APP_VERSION"))
 
 
 def _functies() -> dict[str, dict[str, Any]]:
