@@ -251,6 +251,8 @@ class _Loop:
     locked: dict[str, str] = field(default_factory=dict)
     figure_shown: set[str] = field(default_factory=set)
     trace: SearchTrace = field(default_factory=SearchTrace)
+    # Modelrondes met tools tot nu toe, over de eerste ronde en de herkansing samen: het budget geldt per vraag (#1090).
+    rondes: int = 0
 
     def _stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
@@ -307,18 +309,25 @@ class _Loop:
         return sr
 
     async def rounds(self) -> None:
-        """Call the model until it answers, a tool halts the turn, or a stop lands."""
+        """Call the model until it answers, a tool halts the turn, or a stop lands.
+
+        Het stappenbudget geldt voor de hele vraag: een herkansing na een mislukte controle krijgt hooguit wat er van
+        het budget over is, en geen tools als het op is (#1090)."""
         result = self.result
-        for iteration in range(self.max_iterations):
+        if self.rondes >= self.max_iterations:
+            await self._herkansing_zonder_tools()
+            return
+        for _ in range(self.max_iterations - self.rondes):
             if self._stopped():
                 result.aborted = "tools"
                 return
-            logger.debug("ITERATIE   %d", iteration + 1)
+            self.rondes += 1
+            logger.debug("ITERATIE   %d", self.rondes)
             sr = await self._ask()
             if sr is None:
                 return
             if sr.text:
-                logger.debug("LLM TEKST  iter=%d  %r", iteration + 1, sr.text[:500])
+                logger.debug("LLM TEKST  iter=%d  %r", self.rondes, sr.text[:500])
             if not sr.tool_calls:
                 return
 
@@ -345,6 +354,17 @@ class _Loop:
                 result.halted_on = halt
                 return
         await self._wrap_up()
+
+    async def _herkansing_zonder_tools(self) -> None:
+        """De herkansing na een op budget: één ronde zonder tools, op wat al is opgehaald (#1090).
+
+        Een model dat toch een toolaanroep levert of niets schrijft, is zoals bij de afrondronde: `exhausted`."""
+        if self._stopped():
+            self.result.aborted = "tools"
+            return
+        sr = await self._ask(tool_choice="none")
+        if sr is not None and (sr.tool_calls or not sr.text.strip()):
+            self.result.exhausted = True
 
     async def _wrap_up(self) -> None:
         """The budget is spent: one last call without tools, for an answer from what was fetched (#381)."""
