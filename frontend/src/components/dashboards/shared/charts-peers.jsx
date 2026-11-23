@@ -16,7 +16,7 @@ export function BenchmarkLineChart({ title, subtitle, data, indexOpts }) {
   const { startjaar, ...lineData } = data
   return (
     <ChartCard title={title} subtitle={subtitle(startjaar)}>
-      <Grafiek soort="line" data={lineData} options={indexOpts} hoogte={220} />
+      <Grafiek soort="line" data={lineData} options={indexOpts} hoogte={220} eenheidInKop />
     </ChartCard>
   )
 }
@@ -26,7 +26,7 @@ export function PeerLinesChart({ title, subtitle, data, opts }) {
   const { startjaar, ...lineData } = data
   return (
     <ChartCard title={title} subtitle={subtitle(startjaar)}>
-      <Grafiek soort="line" data={lineData} options={opts} hoogte={240} />
+      <Grafiek soort="line" data={lineData} options={opts} hoogte={240} eenheidInKop />
     </ChartCard>
   )
 }
