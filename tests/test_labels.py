@@ -16,6 +16,7 @@ from agent.labels import (
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
 )
+from agent.probleem import Probleem
 from tools import store
 from tools.store import KeyMeta
 
@@ -101,6 +102,7 @@ def test_melding_noemt_een_id_met_streepje_zoals_het_in_de_tekst_staat():
     """#1085: de regex stopte bij het streepje en meldde "p09mbo" in plaats van "p09mbo-fantasie"."""
     with _ALLEEN_ECHTE:
         [probleem] = onbekende_datasets("Zie ook DUO-bestand p09mbo-fantasie.")
+    assert isinstance(probleem, Probleem)
     assert probleem.melding == "Dataset p09mbo-fantasie bestaat niet in de catalogus."
 
 
@@ -147,6 +149,7 @@ def test_een_verzonnen_id_buiten_vraag_en_toolresultaat_wordt_nog_steeds_gemeld(
         [probleem] = onbekende_datasets(
             "Volgens CBS-tabel 85999NED telde het mbo 475.550 studenten.", "Hoeveel mbo-studenten?\n" + _NIET_GEVONDEN
         )
+    assert isinstance(probleem, Probleem)
     assert "85999NED" in probleem.melding
 
 

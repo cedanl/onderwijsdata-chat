@@ -20,6 +20,12 @@ def _resultaat(tekst: str) -> LoopResult:
     return LoopResult(text=tekst, steps=[("query_data", _DATA[0])], problems=problemen)
 
 
+def _melding(resultaat: LoopResult) -> str:
+    laatste = resultaat.problems[-1]
+    assert isinstance(laatste, Probleem)
+    return laatste.melding
+
+
 def _schrap(tekst: str) -> LoopResult:
     getalcontrole = maak_getalcontrole([], [])
     return zonder_ongedekte_zinnen(
@@ -73,7 +79,7 @@ def test_de_melding_noemt_de_weggelaten_tabelrij_met_haar_eerste_cel():
 
     resultaat = _schrap(tekst)
 
-    assert resultaat.problems[-1].melding == (
+    assert _melding(resultaat) == (
         "Tabelrijen met een getal dat niet in de opgehaalde data staat, zijn weggelaten (rij: 2025/26). "
         "Stel de vraag opnieuw, of preciezer, voor die cijfers."
     )
@@ -89,8 +95,8 @@ def test_de_melding_noemt_zinnen_en_tabelrijen_als_beide_wegvallen():
 
     resultaat = _schrap(tekst)
 
-    assert resultaat.problems[-1].melding.startswith("Zinnen en tabelrijen met een getal")
-    assert "(rij: 2025)" in resultaat.problems[-1].melding
+    assert _melding(resultaat).startswith("Zinnen en tabelrijen met een getal")
+    assert "(rij: 2025)" in _melding(resultaat)
 
 
 def test_de_melding_noemt_hoogstens_vijf_rijen_en_telt_de_rest():
@@ -100,7 +106,7 @@ def test_de_melding_noemt_hoogstens_vijf_rijen_en_telt_de_rest():
 
     resultaat = _schrap(tekst)
 
-    assert "(rij: 1990, 1991, 1992, 1993, 1994 en 2 andere)" in resultaat.problems[-1].melding
+    assert "(rij: 1990, 1991, 1992, 1993, 1994 en 2 andere)" in _melding(resultaat)
 
 
 def test_een_tabel_die_meer_rijen_verliest_dan_ze_houdt_houdt_het_antwoord_in():
