@@ -467,6 +467,36 @@ def test_put_workbook_met_ongeldige_lijsten_geeft_422(los_client, caplog, body):
     assert los_client.get("/api/workbooks").json() == []
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"title": {"a": 1}},
+        {"title": ["x"]},
+        {"title": 5},
+        {"title": None},
+        {"description": ["a"]},
+        {"description": {"a": 1}},
+        {"instelling": {"naam": "HU"}},
+        {"instelling": ["HU"]},
+        {"htmlContent": ["x"]},
+        {"htmlContent": {"a": 1}},
+        {"createdAt": {"a": 1}},
+        {"createdAt": ["2024-01-01"]},
+        {"createdAt": 20240101},
+        {"dashboardSpec": "tekst"},
+        {"dashboardSpec": ["lijst"]},
+    ],
+    ids=lambda body: next(iter(body)) + "-" + type(next(iter(body.values()))).__name__,
+)
+def test_put_workbook_met_een_ongetypt_veld_geeft_422_zonder_traceback(los_client, caplog, body):
+    """#1128: een object of lijst in een tekstveld ging tot de databasebinding en gaf een 500."""
+    resp = los_client.put("/api/workbooks/wb1", json={"title": "X", **body})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert los_client.get("/api/workbooks").json() == []
+
+
 def test_put_workbook_zonder_object_blijft_422(los_client):
     assert los_client.put("/api/workbooks/wb1", json=[]).status_code == 422
 

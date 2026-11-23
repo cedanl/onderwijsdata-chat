@@ -5,7 +5,7 @@ databaselaag is synchroon (sqlite3, psycopg2); in een `async def` zet elke aanro
 stil, en daarmee elke lopende chat-stream van alle gebruikers (#508).
 """
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, Strict, StrictInt, StrictStr, StringConstraints
@@ -41,18 +41,18 @@ class ConversationUpsert(BaseModel):
 class WorkbookUpsert(BaseModel):
     """De body van PUT /api/workbooks/{id} (serverFields in workbooks.js).
 
-    Alleen messages en figures zijn strenger dan voorheen: geen lijst gaf een 500 (#1064). De rest gaat
-    ongewijzigd door, zoals toen de body nog een dict was.
+    Elk veld heeft het type dat de databaselaag bindt: een object of lijst in een tekstveld gaf anders een 500 bij
+    de binding (#1128). Zo'n lijst of object krijgt de 422 van #637; `type` van de frontend wordt genegeerd.
     """
 
-    title: Any = ""
-    description: Any = ""
+    title: StrictStr = ""
+    description: StrictStr = ""
     messages: list | None = None
     figures: list | None = None
-    instelling: Any = None
-    html_content: Any = Field(default=None, alias="htmlContent")
-    dashboard_spec: Any = Field(default=None, alias="dashboardSpec")
-    created_at: Any = Field(default="", alias="createdAt")
+    instelling: StrictStr | None = None
+    html_content: StrictStr | None = Field(default=None, alias="htmlContent")
+    dashboard_spec: dict | None = Field(default=None, alias="dashboardSpec")
+    created_at: StrictStr = Field(default="", alias="createdAt")
 
 
 @router.get("/api/conversations")
