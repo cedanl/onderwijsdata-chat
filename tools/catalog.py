@@ -1427,6 +1427,28 @@ def bron_titel(dataset_id: str, *, vo_context: bool = False) -> str:
     return f"{titel}, {etiket}" if etiket else titel
 
 
+# Het onderwijstype van de catalogus in sectoren van de chat: DUO's "HO" is hbo en wo samen.
+_TYPE_SECTOREN = {"MBO": ("mbo",), "HBO": ("hbo",), "WO": ("wo",), "HO": ("hbo", "wo")}
+_SECTOREN = ("mbo", "hbo", "wo")
+
+
+def sectoren(dataset_id: str) -> tuple[str, ...]:
+    """De sectoren (mbo, hbo, wo) waarover een dataset gaat, in die volgorde; leeg als de catalogus ze niet noemt (#1089).
+
+    Uit het onderwijstype van het record; een CBS-tabel over alle onderwijssoorten ('Allen') heeft de sector van het deel
+    dat de chat ervan laadt. Vo, po en 'Allen' zijn geen sector van de chat.
+    """
+    try:
+        kaal = bron_id(dataset_id)
+    except onderwijsbronnen.AmbigueBronId:
+        return ()
+    typen = (_ruw_record(kaal) or {}).get("onderwijstype") or []
+    gevonden = {sector for type_ in typen for sector in _TYPE_SECTOREN.get(type_, ())}
+    if not gevonden and (deel := scopeprofiel.cbs_sectordeel(kaal)):
+        gevonden = set(re.findall(r"\b(?:mbo|hbo|wo)\b", deel))
+    return tuple(sector for sector in _SECTOREN if sector in gevonden)
+
+
 def bron_naam(dataset_id: str) -> str:
     """'85368NED (<titel>, alleen mbo)'; het kale ID als de catalogus de dataset niet kent."""
     titel = bron_titel(dataset_id)
