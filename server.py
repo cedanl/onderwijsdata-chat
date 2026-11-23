@@ -17,7 +17,7 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import bronstatus, config, foutmeldingen
+from core import bronstatus, config, foutmeldingen, openapi_schema
 from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
@@ -266,6 +266,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     )
     # Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
     foutmeldingen.registreer(app)
+    openapi_schema.registreer(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=Config.get_parsed_cors_origins(),
