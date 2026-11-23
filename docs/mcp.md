@@ -54,7 +54,8 @@ sessieloze tools voor de kernvragen van SURF AI Chat. Elke aanroep haalt op en r
 - Het verloop is `compute_kpi` (`delta` en `pct_change`) op dezelfde selectie, van het eerste tot het laatste jaar.
 - De volgorde in `vergelijk_instellingen` is die in het laatste schooljaar waarin elke instelling een aantal heeft.
 
-**Uitvoer.** `telling`, `teldefinitie`, `vorm`, en per instelling `instelling` (naam, instellingscode, sector),
+**Uitvoer.** `telling`, `teldefinitie`, `vorm`, en per instelling `instelling` (naam, instellingscode, sector, en
+bij een instelling met meer codes ook `instellingscodes`: de reeks telt over elke code, #1069),
 eventueel `opleiding` (code, naam), `reeks` (`schooljaar`, `aantal`; `null` als DUO alles onderdrukte) en `verloop`
 (`van`, `tot`, `verschil`, `procentuele_verandering`), plus de noten van `get_maat` (`noot`, `databewerking`,
 `publicatieregels`, `ontbrekende_schooljaren`) en `fusies`. Bij een vergelijking staat een noot die elke instelling

@@ -215,6 +215,76 @@ def test_dezelfde_vraag_geeft_dezelfde_uitkomst():
     assert mcp_server.voer_uit("vergelijk_instellingen", argumenten) == eerste
 
 
+# ── Een mbo-instelling met meer codes (#1069) ───────────────────────────────────────────────────────────────────────
+# Curio staat in DUO mbo-studenten-per-instelling onder 21CY en 25LX. Het gouden bestand heeft Curio niet; de bevroren
+# DUO-fixture van het dashboard (#766, tests/fixtures/duo) wel. Nagerekend met pandas, BBL + BOLDT + BOLVT + EX per jaar:
+#   JAAR   21CY   25LX   samen
+#   2021   1074  14840   15914
+#   2022   1047  14306   15353
+#   2023    978  14015   14993
+#   2024    929  14239   15168
+#   2025    901  14387   15288   (901 was de uitkomst met alleen 21CY; het dashboard Mijn instelling zegt 15.288)
+_CURIO = {"2021/22": 15914, "2022/23": 15353, "2023/24": 14993, "2024/25": 15168, "2025/26": 15288}
+
+
+@pytest.fixture
+def _mbo_met_curio(monkeypatch):
+    """Het mbo-bestand per instelling uit de DUO-fixture van het dashboard, de rest zoals de fixture `gouden`."""
+    from onderwijsbronnen import duo
+
+    from scripts.duo_testfixtures import MAP, bestandsnaam
+
+    eerder = duo.load
+    naam = bestandsnaam("mbo-studenten-per-instelling", 0)
+    tekst = json.loads((MAP / "tekstkolommen.json").read_text())[naam]
+
+    def load(dataset_id: str, resource: int = 0, **kwargs) -> pd.DataFrame:
+        if (dataset_id, resource) != ("mbo-studenten-per-instelling", 0):
+            return eerder(dataset_id, resource, **kwargs)
+        df = pd.read_csv(MAP / naam, dtype=dict.fromkeys(tekst, str))
+        df.attrs["bron"] = {"dataset_id": dataset_id, "last_modified": "2026-02-02T09:00:00"}
+        return df
+
+    monkeypatch.setattr(duo, "load", load)
+
+
+@pytest.mark.usefixtures("_mbo_met_curio")
+@pytest.mark.parametrize("instelling", ["Curio", "21CY", "25LX"])
+def test_een_instelling_met_twee_codes_telt_over_beide_codes(instelling):
+    uit = _mcp("aantallen_per_jaar", {"instelling": instelling})
+    per_jaar, verloop = _chat_maat(maat="mbo_studenten_instelling", instelling=instelling)
+
+    assert _per_jaar(uit["reeks"]) == per_jaar == _CURIO
+    assert uit["verloop"] == verloop
+    assert uit["verloop"] == {"van": "2021/22", "tot": "2025/26", "verschil": -626, "procentuele_verandering": "-3,9%"}
+    assert uit["instelling"]["naam"] == "Curio" and uit["instelling"]["instellingscodes"] == ["21CY", "25LX"]
+    assert uit["bewijs"]["selectie"]["filters"] == {"INSTELLINGSCODE": ["21CY", "25LX"]}
+
+
+@pytest.mark.usefixtures("_mbo_met_curio")
+def test_de_reeks_van_een_instelling_met_twee_codes_is_die_van_het_dashboard():
+    import data.dashboard
+
+    regio = data.dashboard.load_dashboard_regio("Curio")
+    uit = _mcp("aantallen_per_jaar", {"instelling": "Curio"})
+
+    assert {int(r["schooljaar"][:4]): r["aantal"] for r in uit["reeks"]} == regio["ingeschrevenen"]
+
+
+@pytest.mark.usefixtures("_mbo_met_curio")
+def test_vergelijken_met_een_instelling_met_twee_codes():
+    uit = _mcp("vergelijk_instellingen", {"instellingen": ["25LX", ROC]})
+    curio, roc = uit["instellingen"]
+
+    assert curio["instelling"]["naam"] == "Curio" and _per_jaar(curio["reeks"]) == _CURIO
+    assert curio["verloop"]["procentuele_verandering"] == "-3,9%"
+    assert "instellingscodes" not in roc["instelling"], "één code: de uitkomst blijft zoals hij was"
+    per_instelling = uit["bewijs"]["selectie"]["per_instelling"]
+    assert per_instelling["21CY"]["filters"] == {"INSTELLINGSCODE": ["21CY", "25LX"]}
+    assert per_instelling["27GZ"]["filters"] == {"INSTELLINGSCODE": "27GZ"}
+    assert {r["naam"]: r["aantal"] for r in uit["volgorde"]["instellingen"]}["Curio"] == 15288
+
+
 # ── Envelope: bewijs, vervolg, geen data_key ────────────────────────────────────────────────────────────────────────
 
 

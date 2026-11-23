@@ -440,7 +440,10 @@ sleutel) en `frontend/src/__tests__/dashboardOpleidingen.test.js`, met een fixtu
 `mbo-studenten-per-instelling` kent een instelling onder meer codes (Curio: 21CY en 25LX); de instroom- en
 diplomabestanden tellen per code. Elke mbo-telling per instelling loopt daarom over de naam die
 `mbo-studenten-per-instelling` bij de code geeft: eigen eerstejaars, de peers (ingeschrevenen, eerstejaars,
-gediplomeerden) en het rendement (#923). Een peer met twee codes is één peer.
+gediplomeerden) en het rendement (#923). Een peer met twee codes is één peer. De chat (`get_maat`
+`mbo_studenten_instelling`) en de MCP-tools `aantallen_per_jaar` en `vergelijk_instellingen` tellen ook over alle codes
+uit `instellingscodes` van het register, met beide codes als filter in het recept en het bewijs (#1069): Curio heeft
+in 2025/26 15.288 studenten, niet de 901 van 21CY alleen.
 
 De mbo-eerstejaars komen uit de bestanden "met soorten instroom" van `instromende-mbo-studenten`, één per jaar, in de
 vaste lijst `_INSTROMENDE_MBO_HISTORISCH` (`data/dashboard.py`). De ingeschrevenen per hoofdgroep komen uit het

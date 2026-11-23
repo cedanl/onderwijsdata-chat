@@ -70,6 +70,7 @@ def test_sector_provincie_en_arbeidsmarktregio(naam, sector, provincie, arbeidsm
         "provincie": provincie,
         "arbeidsmarktregio": arbeidsmarktregio,
         "instellingscode": code,
+        "instellingscodes": [code],
     }
 
 
@@ -155,6 +156,17 @@ def test_een_instelling_met_twee_codes_is_onder_beide_te_vinden(monkeypatch):
     assert inst["instellingscode"] == "21CY"
     assert inst["instellingscodes"] == ["21CY", "25LX"]
     assert instellingen.resolve_alias("21cy") == instellingen.resolve_alias("25LX") == "Curio"
+
+
+@pytest.mark.parametrize("invoer", ["Curio", "21CY", "25lx"])
+def test_het_profiel_noemt_alle_codes_en_de_eerste_blijft_de_instellingscode(monkeypatch, invoer):
+    # #1069: get_maat en de MCP-tools tellen over alle codes; het adres en de regio blijven die van de eerste code.
+    curio = pd.DataFrame({"INSTELLINGSCODE": ["21CY", "25LX"], "INSTELLINGSNAAM": ["Curio"] * 2})
+    monkeypatch.setitem(_DUO, ("mbo-studenten-per-instelling", 0), curio)
+
+    profiel = instellingsprofiel(invoer)
+    assert profiel is not None
+    assert (profiel["instellingscode"], profiel["instellingscodes"]) == ("21CY", ["21CY", "25LX"])
 
 
 def test_een_naam_of_alias_gaat_voor_een_code_en_een_onbekende_code_blijft_onbekend():
