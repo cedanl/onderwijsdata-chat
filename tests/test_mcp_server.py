@@ -39,6 +39,25 @@ def test_definities_volgen_het_toolschema_van_de_chat():
         assert definitie["input_schema"] == functie["parameters"]
 
 
+def test_toolbeschrijvingen_zijn_goed_nederlands_en_zonder_chat():
+    """Een MCP-client toont de beschrijvingen aan gebruikers en geeft ze aan een extern model: geen "specifiek dataset",
+    geen cijfer en woord door elkaar ("twee tot 8") en geen verwijzing naar "deze chat" in een koppeling zonder chat."""
+    beschrijvingen = {d["name"]: d["description"] for d in mcp_server.tooldefinities()}
+
+    assert "één specifieke dataset" in beschrijvingen["dataset_details"]
+    assert "Vergelijk 2 tot 8 instellingen" in beschrijvingen["vergelijk_instellingen"]
+    for naam, tekst in beschrijvingen.items():
+        assert "specifiek dataset" not in tekst, naam
+        assert "twee tot 8" not in tekst, naam
+        assert "deze chat" not in tekst, naam
+
+
+def test_telling_verwijst_niet_naar_een_chat():
+    tekst, _ = mcp_server.voer_uit("dataset_counts", None)
+
+    assert "deze chat" not in tekst
+
+
 def test_instructies_noemen_de_regel_voor_getallen():
     assert mcp_server.REGEL_GETALLEN in mcp_server.INSTRUCTIES
     assert "bewijs" in mcp_server.INSTRUCTIES and "vervolg" in mcp_server.INSTRUCTIES

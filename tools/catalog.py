@@ -574,7 +574,7 @@ def catalogus_telling() -> str:
             "via_eigen_tool": via_tool_aantallen(),
             "cbs_gearchiveerd": sum(1 for e in _cbs() if e.get("_archief")),
             "toelichting": (
-                "Datasets die deze chat kan opvragen met een datatool; via_eigen_tool: bronnen met een eigen tool "
+                "Datasets die hier met een datatool te raadplegen zijn; via_eigen_tool: bronnen met een eigen tool "
                 "die hier antwoord geeft. CBS telt gearchiveerde tabellen mee."
             ),
         },
