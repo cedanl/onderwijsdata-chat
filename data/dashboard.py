@@ -5,7 +5,7 @@ import difflib
 import functools
 import logging
 import numbers
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 
 import httpx
@@ -166,6 +166,10 @@ def _poging(laad: Callable[..., dict | None], *args) -> dict | None:
 
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 5  # zoveel toont het dashboard
+# Een suggestie hoort bij een tikfout (#1102): "ROC Mondrian" lijkt voor 0,96 op "ROC Mondriaan", maar "Horizon College"
+# lijkt voor 0,73 op "Deltion College" alleen door het woord "college". Een instelling die niet in het DUO-bestand staat
+# krijgt dan geen suggestie, in plaats van namen uit een ander deel van het land.
+_TIKFOUT_GRENS = 0.85
 # Waarom een onbekende instelling geen suggesties heeft, en waar ze wel op te vinden is (#929).
 _GEEN_SUGGESTIES = "Geen instellingsnaam lijkt hierop. Zoek op de naam, een afkorting of de instellingscode (BRIN)."
 # De leerwegkolommen van mbo-studenten-per-instelling met hun naam in het dashboard. Samen zijn ze het totaal
@@ -1269,16 +1273,22 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     return result
 
 
+def tikfout_suggesties(instelling: str, namen: Iterable[str]) -> list[str]:
+    """De namen die zo veel op de ingetikte naam lijken dat het een tikfout kan zijn, hooguit _MAX_SUGGESTIONS,
+    hoofdletterongevoelig. Met difflib, zoals de bronpakketten bij een onbekende waarde; eerder waren het de eerste
+    namen van het alfabet (#901), en met een lage grens namen die alleen een woord delen (#1102)."""
+    per_kleine_letters = {str(n).lower(): str(n) for n in namen}
+    dichtst = difflib.get_close_matches(
+        instelling.lower(), list(per_kleine_letters), n=_MAX_SUGGESTIONS, cutoff=_TIKFOUT_GRENS
+    )
+    return [per_kleine_letters[n] for n in dichtst]
+
+
 def _beschikbare_instellingen(instelling: str, df_ho: pd.DataFrame, df_mbo: pd.DataFrame) -> list[str]:
-    """De suggesties bij een onbekende instelling: de ho- en mbo-namen die er het dichtst bij liggen, hooguit
-    _MAX_SUGGESTIONS, hoofdletterongevoelig. Met difflib, zoals de bronpakketten bij een onbekende waarde; eerder
-    waren het de eerste namen van het alfabet (#901)."""
-    namen = {
-        str(n).lower(): str(n)
-        for n in (*df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna(), *df_mbo["INSTELLINGSNAAM"].dropna())
-    }
-    dichtst = difflib.get_close_matches(instelling.lower(), list(namen), n=_MAX_SUGGESTIONS, cutoff=0.5)
-    return [namen[n] for n in dichtst]
+    """De suggesties bij een onbekende instelling: de ho- en mbo-namen uit de bestanden die op de naam lijken."""
+    return tikfout_suggesties(
+        instelling, (*df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna(), *df_mbo["INSTELLINGSNAAM"].dropna())
+    )
 
 
 @_dashboardlading

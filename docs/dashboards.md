@@ -52,8 +52,10 @@ De parameter is een van deze sleutels, exact en hoofdletterongevoelig (`resolve_
   die zo heet als een code, gaat voor.
 
 Het antwoord noemt in `instelling` de registernaam. Is de instelling onbekend, dan is `gevonden` `false`. Bij
-`/api/dashboard/regio` staan dan in `beschikbare_instellingen` de vijf namen die erop lijken; lijkt er geen op, dan is
-die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron die niet laadde, geeft 503, geen
+`/api/dashboard/regio` staan dan in `beschikbare_instellingen` hooguit vijf namen die er sterk op lijken (een tikfout,
+gelijkenis vanaf 0,85); lijkt er geen op, dan is die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929,
+#1102). Het DUO-bestand heeft niet elke instelling (Horizon College en ROC Friese Poort ontbreken): de melding zegt dat
+de instelling niet in het bestand staat, niet dat de naam fout is. Een bron die niet laadde, geeft 503, geen
 `gevonden: false`.
 
 ### Bronvermeldingen: het bronblok

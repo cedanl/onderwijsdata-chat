@@ -107,6 +107,22 @@ def test_een_onbekende_naam_is_niet_gevonden_met_de_dichtstbijzijnde_namen(stori
     assert "niet_beschikbaar" not in uit
 
 
+def test_een_naam_die_op_geen_andere_lijkt_krijgt_geen_suggesties(storing_bij):
+    # #1102: Horizon College is een roc die niet in het DUO-bestand staat. Namen als "Deltion College" lijken er alleen
+    # door het woord "college" op en horen er niet bij: een suggestie hoort bij een tikfout.
+    uit = dashboard.load_dashboard_regio("Horizon College")
+
+    assert uit["gevonden"] is False
+    assert uit["beschikbare_instellingen"] == []
+    assert uit["geen_suggesties"]
+
+
+def test_een_tikfout_in_een_mbo_naam_geeft_de_juiste_suggestie(storing_bij):
+    uit = dashboard.load_dashboard_regio("ROC Mondrian")
+
+    assert uit["beschikbare_instellingen"][0] == "ROC Mondriaan"
+
+
 # ── Een onderdeel dat niet laadde ──
 
 

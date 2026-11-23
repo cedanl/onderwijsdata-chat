@@ -25,7 +25,7 @@ function Melding({ children }) {
 function Bovenkant({ instelling, data, error, leeg, schaal, children }) {
   if (error) return <Melding>De cijfers konden nu niet worden geladen. Open het dashboard om het opnieuw te proberen.</Melding>
   if (!data) return <div className="wb-preview-shimmer" />
-  if (!data.gevonden) return <Melding>&ldquo;{instelling}&rdquo; niet gevonden in DUO-data. Pas de naam aan via Instellingen.</Melding>
+  if (!data.gevonden) return <Melding>&ldquo;{instelling}&rdquo; staat niet in het DUO-bestand van dit dashboard. Pas de naam aan of kies een andere instelling via Instellingen.</Melding>
   // Een vaste melding van het dashboard zelf (Opleidingen bij een mbo-instelling, #957) zegt meer dan "geen cijfers".
   if (data.melding && leeg) return <Melding>{data.melding}</Melding>
   if (leeg) return <Melding>Geen cijfers voor de bovenkant van dit dashboard. Open het dashboard voor de rest.</Melding>
