@@ -465,6 +465,19 @@ volgorde, dan wordt de ping `duo-instroom-mbo` van `bron:ping` rood en noemt hij
    werk de verwachte jaren en getallen in `tests/test_dashboard_mbo_reeksen.py` en `tests/test_dashboard_cijfers.py`
    bij.
 
+### Laadtijd van de eerste lading (#1166)
+
+Een dashboard-eindpunt laadt zijn bronnen bij de eerste aanvraag na een start: gemeten op 23-11-2026 (één proces, DUO
+live) duurt `regio` voor Hogeschool Utrecht 15,6 s koud en 0,7 s warm, ook voor een andere instelling; `financien` 12,5 s
+koud en daarna 0,0 s; `rendement` deelt de bestanden van `regio`. Elke lading die langer duurt dan `DASHBOARD_TRAAG_S`
+(5 s) schrijft één INFO-regel `DASHBOARD traag: eindpunt=… duur=… s`, met alleen het eindpunt: zo ziet een beheerder
+welk eindpunt traag is. Een opwarmstap na `/ready` is nog niet gebouwd. Het ontwerp: na de start de laders van
+`regio`, `rendement` en `financien` één keer aanroepen voor één vaste instelling per niveau (hbo, mbo), op de achtergrond
+en onder de plaatsenlimiet van `MAX_DASHBOARD_LOADS`, met `ENABLE_DASHBOARDS` als voorwaarde. Dat dekt alleen de eerste
+24 uur: daarna verlopen de caches (`core/actualiteit.py`) en betaalt de eerste gebruiker weer 10-23 s. Een opwarmstap die
+helpt, ververst dus ook voordat de TTL verloopt, en dat is een eigen ontwerp (moment, geheugen van zes DUO-bestanden
+naast de chat, gedrag bij een bronstoring).
+
 ---
 
 ## Opgeslagen dashboards uit de dashboardbouwer

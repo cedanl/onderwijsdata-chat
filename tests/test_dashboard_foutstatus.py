@@ -7,10 +7,14 @@ eindpunt had geen tijdsgrens en geen gelijktijdigheidslimiet (#901).
 
 import asyncio
 import json
+import logging
+import re
 import threading
+import time
 
 import pandas as pd
 import pytest
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from onderwijsbronnen import duo
 
@@ -231,6 +235,55 @@ def test_een_lading_over_de_tijdsgrens_geeft_504_en_houdt_haar_plaats_tot_ze_kla
     assert json.loads(tweede.body) == {"error": DRUK}
     assert klaar.is_set()
     assert not routes.instellingen._uitlopend
+
+
+# ── #1166: een trage lading staat met eindpunt en duur in het log ──
+
+
+def _traag_regio(instelling):
+    time.sleep(0.03)
+    return {"gevonden": True}
+
+
+_traag_regio.__name__ = "load_dashboard_regio"
+
+
+def _meldingen(caplog):
+    return [r for r in caplog.records if r.getMessage().startswith("DASHBOARD traag")]
+
+
+def test_een_lading_boven_de_drempel_schrijft_een_info_regel_met_eindpunt_en_duur(dashboards_aan, monkeypatch, caplog):
+    monkeypatch.setattr(routes.instellingen, "DASHBOARD_TRAAG_S", 0.01)
+
+    with caplog.at_level(logging.INFO, logger="routes.instellingen"):
+        asyncio.run(routes.instellingen._laad_dashboard(_traag_regio, "Instelling Die Niet In Het Log Hoort"))
+
+    [regel] = _meldingen(caplog)
+    assert regel.levelno == logging.INFO
+    assert re.fullmatch(r"DASHBOARD traag: eindpunt=load_dashboard_regio duur=\d+\.\d s", regel.getMessage())
+    # De gevraagde instelling is gebruikerstekst en komt niet in het log.
+    assert "Niet In Het Log" not in caplog.text
+
+
+def test_een_snelle_lading_schrijft_niets(dashboards_aan, caplog):
+    with caplog.at_level(logging.INFO, logger="routes.instellingen"):
+        asyncio.run(routes.instellingen._laad_dashboard(_traag_regio, "HU"))
+
+    assert _meldingen(caplog) == []
+
+
+def test_een_trage_lading_die_faalt_staat_ook_in_het_log(dashboards_aan, monkeypatch, caplog):
+    monkeypatch.setattr(routes.instellingen, "DASHBOARD_TRAAG_S", 0.01)
+
+    def faalt(instelling):
+        time.sleep(0.03)
+        raise dashboard.BronNietBeschikbaar
+
+    with caplog.at_level(logging.INFO, logger="routes.instellingen"):
+        resp = asyncio.run(routes.instellingen._laad_dashboard(faalt, "HU"))
+
+    assert isinstance(resp, JSONResponse) and resp.status_code == 503
+    assert len(_meldingen(caplog)) == 1
 
 
 def test_geen_plaats_binnen_de_wachttijd_geeft_503_druk(dashboards_aan, monkeypatch):
