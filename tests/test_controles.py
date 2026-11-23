@@ -4,6 +4,7 @@ import ast
 import inspect
 import json
 import logging
+from unittest.mock import patch
 
 import pytest
 
@@ -109,3 +110,38 @@ def test_een_fout_in_de_tabelcontrole_wordt_niet_gecontroleerd(monkeypatch, capl
     [probleem] = _tabelbeweringen(problemen)
     assert getattr(probleem, "niet_gecontroleerd", False) and not getattr(probleem, "hard", False)
     assert "onjuiste_tabelbeweringen=niet gecontroleerd" in caplog.text
+
+
+# --- onbekende dataset-ID's (#1084, #1088) ---
+
+
+def _onbekend(tekst: str, vraag: str = _VRAAG, tool_results: list[str] | None = None, eerder: list[str] | None = None):
+    with patch("agent.labels.catalogus_titel", side_effect=lambda d: f"titel {d}" if d == "85354NED" else d):
+        problemen = antwoordcontrole(vraag, [], eerder or [], [], [])(tekst, tool_results or _DATA)
+    return [p for p in problemen if getattr(p, "controle", None) == "onbekende_datasets"]
+
+
+def test_een_verzonnen_bron_in_de_lopende_tekst_is_een_hard_probleem():
+    """#1084: na een mislukte herkansing bleef de verzonnen tabel staan, met alleen een "Let op"."""
+    [probleem] = _onbekend("Volgens CBS-tabel 85999NED telde het mbo 5943 studenten.")
+
+    assert getattr(probleem, "hard", False)
+    assert probleem.melding == "Dataset 85999NED bestaat niet in de catalogus."
+
+
+def test_een_id_uit_de_vraag_of_een_eerder_bericht_van_de_gebruiker_geeft_geen_probleem():
+    tekst = "CBS-tabel 99999NED staat niet in de catalogus."
+
+    assert _onbekend(tekst, vraag="Wat staat in tabel 99999NED?") == []
+    assert _onbekend(tekst, eerder=["Wat staat in tabel 99999NED?"]) == []
+
+
+def test_een_id_dat_een_tool_als_onbekend_teruggaf_geeft_geen_probleem():
+    """#1088: het antwoord zegt terecht dat de tabel niet bestaat."""
+    tool = json.dumps({"fout": "Dataset '99999NED' staat niet in de catalogus."})
+
+    assert _onbekend("CBS-tabel 99999NED staat niet in de catalogus.", tool_results=[*_DATA, tool]) == []
+
+
+def test_een_bestaand_id_geeft_geen_probleem():
+    assert _onbekend("Volgens CBS-tabel 85354NED telde het mbo 5943 studenten.") == []

@@ -16,6 +16,7 @@ from agent.labels import (
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
 )
+from agent.probleem import Probleem
 from tools import store
 from tools.store import KeyMeta
 
@@ -91,6 +92,65 @@ def test_bekende_dataset_ids_zijn_goed():
 
 
 _BEKEND = patch("agent.labels.catalogus_titel", side_effect=lambda d: f"titel {d}")
+# Alleen p01hoinges en 85354NED staan in de catalogus: wat daarbuiten staat, bestaat niet.
+_ALLEEN_ECHTE = patch(
+    "agent.labels.catalogus_titel", side_effect=lambda d: f"titel {d}" if d in {"p01hoinges", "85354NED"} else d
+)
+
+
+def test_melding_noemt_een_id_met_streepje_zoals_het_in_de_tekst_staat():
+    """#1085: de regex stopte bij het streepje en meldde "p09mbo" in plaats van "p09mbo-fantasie"."""
+    with _ALLEEN_ECHTE:
+        [probleem] = onbekende_datasets("Zie ook DUO-bestand p09mbo-fantasie.")
+    assert isinstance(probleem, Probleem)
+    assert probleem.melding == "Dataset p09mbo-fantasie bestaat niet in de catalogus."
+
+
+@pytest.mark.parametrize("tekst", ["Bron: p01hoinges, resource 3.", "(zie p01hoinges).", "Bron: p01hoinges."])
+def test_een_echt_id_met_leesteken_erachter_geeft_geen_melding(tekst):
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets(tekst) == []
+
+
+def test_een_echt_id_met_een_streepje_en_een_woord_erachter_is_het_echte_id():
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("Het p01hoinges-bestand van DUO.") == []
+
+
+def test_een_echt_id_met_een_streepje_in_de_bronnensectie_is_het_echte_id():
+    tekst = "**Bronnen**\n- DUO (p01hoinges-bestand)"
+    with _ALLEEN_ECHTE:
+        assert ongebruikte_bronnen(tekst, _beurt("duo:p01hoinges:3")) == []
+
+
+_NIET_GEVONDEN = json.dumps({"fout": "Dataset '99999NED' staat niet in de catalogus. Zoek met search_catalog."})
+
+
+def test_een_id_uit_de_vraag_geeft_geen_melding():
+    """#1088: het antwoord zegt terecht dat de tabel van de gebruiker niet bestaat."""
+    with _ALLEEN_ECHTE:
+        assert (
+            onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", "Wat staat in tabel 99999NED?") == []
+        )
+
+
+def test_een_id_uit_een_toolresultaat_geeft_geen_melding():
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", _NIET_GEVONDEN) == []
+
+
+def test_een_id_in_andere_hoofdletters_uit_de_vraag_geeft_geen_melding():
+    with _ALLEEN_ECHTE:
+        assert onbekende_datasets("Tabel 99999NED bestaat niet.", "wat staat er in 99999ned?") == []
+
+
+def test_een_verzonnen_id_buiten_vraag_en_toolresultaat_wordt_nog_steeds_gemeld():
+    with _ALLEEN_ECHTE:
+        [probleem] = onbekende_datasets(
+            "Volgens CBS-tabel 85999NED telde het mbo 475.550 studenten.", "Hoeveel mbo-studenten?\n" + _NIET_GEVONDEN
+        )
+    assert isinstance(probleem, Probleem)
+    assert "85999NED" in probleem.melding
 
 
 def test_bron_die_bestaat_maar_niet_gebruikt_is_wordt_gemeld():

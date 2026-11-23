@@ -2,6 +2,7 @@
 
 import json
 
+from agent.controles import maak_getalcontrole
 from agent.grounding import afgeleide_verschillen, unsourced_numbers, unsourced_percentages, unverified
 
 _CBS_RESULT = json.dumps(
@@ -143,3 +144,32 @@ def test_verschil_met_een_verzonnen_getal_is_niet_afgeleid():
 def test_verschil_van_getallen_die_de_tekst_niet_noemt_is_niet_afgeleid():
     # 10.530 is het verschil van twee cellen, maar het antwoord noemt die cellen niet: niet na te rekenen.
     assert afgeleide_verschillen("Het aantal daalde met 10.530.", [_CBS_RESULT]) == set()
+
+
+def test_schooljaarsuffix_plakt_niet_aan_het_volgende_getal():
+    """#1068: "in 2025/'26 475.550" is 475.550, niet "26 475.550" (spatie als duizendtalscheiding, #236)."""
+    for tekst, verwacht in (
+        ("was in 2025/'26 475.550", "475550"),
+        ("was in 2025/’26 475.550", "475550"),
+        ("in 2024/25 475.460", "475460"),
+        ("in 2024/'25 1.234", "1234"),
+        ("in 2024/25 475 460", "475460"),
+        ("in 2023/2024 478.660", "478660"),
+    ):
+        assert unsourced_numbers(tekst, []) == {verwacht}, tekst
+
+
+def test_antwoord_met_schooljaar_en_getal_uit_de_data_haalt_de_controle():
+    data = json.dumps({"rijen": [{"jaar": "2025/26", "aantal": 475550}, {"jaar": "2024/25", "aantal": 475460}]})
+    tekst = "Het aantal was in 2025/'26 475.550 (voorlopig). In 2024/25 475.460."
+    assert unsourced_numbers(tekst, [data]) == set()
+
+
+def test_getal_na_een_schuine_streep_zonder_schooljaar_blijft_gecontroleerd():
+    assert unsourced_numbers("De verhouding was 3.000/4.000.", []) == {"3000", "4000"}
+
+
+def test_getalcontrole_van_het_antwoord_vindt_niets_bij_schooljaar_met_getal():
+    data = json.dumps({"rijen": [{"jaar": "2025/26", "aantal": 475550}, {"jaar": "2024/25", "aantal": 475460}]})
+    tekst = "Het aantal mbo-studenten was in 2025/'26 475.550 (voorlopig). In 2024/25 475.460 en in 2023/2024 478.660."
+    assert [str(p) for p in maak_getalcontrole([], [])(tekst, [data])] == ["478.660 staat niet in de opgehaalde data."]
