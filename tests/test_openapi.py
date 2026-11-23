@@ -12,13 +12,18 @@ from core.foutmeldingen import ONGELDIGE_INVOER
 from routes.rapport_docx import DOCX_TYPE
 
 
+def _frontend(dist, html="<html></html>"):
+    """Een minimale gebouwde frontend: de SPA-route en /assets hangen eraan."""
+    (dist / "index.html").write_text(html)
+    (dist / "assets").mkdir()
+    return dist
+
+
 @pytest.fixture(scope="module")
 def schema(tmp_path_factory):
     from server import create_app
 
-    dist = tmp_path_factory.mktemp("dist")
-    (dist / "index.html").write_text("<html></html>")
-    (dist / "assets").mkdir()
+    dist = _frontend(tmp_path_factory.mktemp("dist"))
     return create_app(api_docs=True, frontend_dist=dist).openapi()
 
 
@@ -111,3 +116,21 @@ def test_een_bestandseindpunt_noemt_zijn_echte_mediatype_als_bijlage(schema, pad
     assert list(antwoord["content"]) == [media_type]
     assert antwoord["content"][media_type]["schema"] == {"type": "string", "format": "binary"}
     assert "Content-Disposition" in antwoord["headers"]
+
+
+# ── Geen SPA-route (#1160) ───────────────────────────────────────────────────
+
+
+def test_de_spa_catch_all_staat_niet_in_het_schema(schema):
+    assert not [pad for pad in schema["paths"] if "full_path" in pad]
+    assert "Serve Spa" not in str(schema)
+
+
+def test_de_spa_geeft_nog_index_html_op_een_onbekend_pad(tmp_path):
+    from server import create_app
+
+    dist = _frontend(tmp_path, "<html>shell</html>")
+    resp = TestClient(create_app(api_docs=True, frontend_dist=dist)).get("/ergens/anders")
+
+    assert resp.status_code == 200
+    assert resp.text == "<html>shell</html>"
