@@ -31,7 +31,7 @@ export function JaarNoot({ noot, testid }) {
 }
 
 // Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918). Het totaal telt de
-// eigen instelling mee (`totaal_regio`, #951): "Regio totaal" was de som van de peers alleen, naast "6 instellingen in
+// eigen instelling mee (`totaal_regio`, #951): het regiototaal was de som van de peers alleen, naast "6 instellingen in
 // regio" terwijl de tabel er 8 toonde. `nPeers`: de andere instellingen in het totaal van dat jaar; `populatie` de groep
 // in woorden ("mbo-instellingen in provincie Noord-Brabant"). `onderdrukt`/`bmOnderdrukt`: de lege cellen van de eigen
 // reeks en van de peers (#902), voor "ten minste".
@@ -57,7 +57,7 @@ export function DemografieKpis({ instelling, lastInges, ingesDelta, ingesEntries
       {totaalRegio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">{landelijk ? 'Landelijk totaal' : 'Regio totaal'} {jaar(totaalRegioJaar)}</span>
+            <span className="kpi-label">{landelijk ? 'Landelijk totaal' : 'Regiototaal'} {jaar(totaalRegioJaar)}</span>
             <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>

@@ -155,7 +155,7 @@ describe('de totaal-KPI volgt het benchmarktype (#918) en telt de eigen instelli
     await dashboard(WO)
     expect(tekst()).toContain('Landelijk totaal 2025')
     expect(tekst()).toContain('330.765')
-    expect(tekst()).not.toContain('Regio totaal')
+    expect(tekst()).not.toContain('Regiototaal')
     expect(tekst()).toContain('Universiteit Utrecht en 16 andere universiteiten in heel Nederland')
   })
 
@@ -164,9 +164,9 @@ describe('de totaal-KPI volgt het benchmarktype (#918) en telt de eigen instelli
   it.each([
     ['hbo', HBO, 'Hogeschool Utrecht en 6 andere hogescholen in arbeidsmarktregio Midden-Utrecht'],
     ['mbo', MBO, 'ROC van Amsterdam en 6 andere mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
-  ])('%s: "Regio totaal" noemt de eigen instelling en de andere', async (_niveau, regio, groep) => {
+  ])('%s: "Regiototaal" noemt de eigen instelling en de andere', async (_niveau, regio, groep) => {
     await dashboard(regio)
-    expect(tekst()).toContain('Regio totaal 2025')
+    expect(tekst()).toContain('Regiototaal 2025')
     expect(tekst()).toContain('78.311')
     expect(tekst()).not.toContain('Landelijk totaal')
     expect(tekst()).toContain(groep)

@@ -112,7 +112,7 @@ export function SectorTrendChart({ data, dark }) {
   const displayData = proportional ? _normalizeProportional(data) : data
   return (
     <ChartCard
-      title="Inschrijvingen per sector over tijd"
+      title="Ingeschrevenen per sector over tijd"
       subtitle="Stacked — welke faculteiten groeien of krimpen?"
       actions={<AandeelKnop aan={proportional} onWissel={() => setProportional(p => !p)} />}
     >

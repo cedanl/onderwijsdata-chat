@@ -283,7 +283,7 @@ export function UwvSection({ data, provincie, dark }) {
         title="Vacatureaanbod in de provincie"
         subtitle={gefilterdOp.length > 0
           ? `Clusters passend bij opleidingssectoren — ${uwvBron(vac.peildatum)} (momentopname)`
-          : `Openstaande vacatures per beroepscluster — ${uwvBron(vac.peildatum)} (momentopname)`}
+          : `Openstaande vacatures per beroepencluster — ${uwvBron(vac.peildatum)} (momentopname)`}
       />
       <MomentopnameBanner peildatum={vac.peildatum} />
       <div className="kpi-grid" style={{ marginBottom: 12 }}>

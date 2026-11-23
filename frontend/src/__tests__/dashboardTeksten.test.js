@@ -5,6 +5,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import dashboards from './fixtures/dashboards.json'
 
 // De grafiekstub toont wat Chart.js zou tekenen als tekst: de naam van het canvas, de reeksen en de astitels.
@@ -25,6 +27,8 @@ vi.mock('../api', async importOriginal => ({
 }))
 
 import { InlineDashboardMijnInstelling } from '../components/dashboards/mijn-instelling/index'
+import { InlineDashboardNationaal } from '../components/dashboards/nationaal/index'
+import { InlineDashboardArbeidsmarkt } from '../components/dashboards/arbeidsmarkt-consolidated/index'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -41,6 +45,17 @@ const LANDELIJK = {
     regio_naam: 'Nederland',
   },
 }
+
+// De bronbestanden van de app, zonder tests en fixtures.
+function bestanden(map) {
+  return readdirSync(map, { withFileTypes: true }).flatMap(e => {
+    const pad = `${map}${e.name}`
+    if (e.isDirectory()) return e.name.startsWith('__') ? [] : bestanden(`${pad}/`)
+    return /\.(js|jsx)$/.test(e.name) ? [pad] : []
+  })
+}
+// Commentaarregels en commentaar achter code vallen weg; een URL (`://`) blijft staan.
+const zonderCommentaar = tekst => tekst.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '')
 
 let root
 let container
@@ -65,6 +80,19 @@ async function mijnInstelling(regio, rendement = dashboards.rendement) {
   payloads['/api/dashboard/regio'] = regio
   payloads['/api/dashboard/rendement'] = rendement
   await renderIn(createElement(InlineDashboardMijnInstelling, { instelling: regio.instelling }))
+}
+
+async function nationaal(payload = dashboards.nationaal) {
+  payloads['/api/dashboard/nationaal'] = payload
+  await renderIn(createElement(InlineDashboardNationaal, { instelling: payload.instelling }))
+}
+
+const MATCH_DUIDING = { drempel: 1.2, vacatures_peildatum: '2023-05-16', diplomajaren: [2023, 2024, 2025], sectormapping: {} }
+
+async function arbeidsmarkt(regio = HBO) {
+  payloads['/api/dashboard/arbeidsmarktmatch'] = { ...dashboards.arbeidsmarktmatch, match_duiding: MATCH_DUIDING }
+  payloads['/api/dashboard/regio'] = regio
+  await renderIn(createElement(InlineDashboardArbeidsmarkt, { instelling: dashboards.arbeidsmarktmatch.instelling }))
 }
 
 // Alles wat een gebruiker of schermlezer van de pagina krijgt, per stuk: de tekst van elk blad van de pagina en de
@@ -120,5 +148,52 @@ describe('de gebiedsteksten volgen de vergelijkingsgroep (#1130)', () => {
     await mijnInstelling(regio)
     expect(sectieKop('Diplomering').parentElement.textContent).toContain(`vergeleken met ${groep}`)
     expect(kaartMetTitel('Gediplomeerden per jaar').textContent).toContain(groep)
+  })
+})
+
+// #1136: dezelfde DUO-telling van personen heet overal "Ingeschrevenen"; "Inschrijvingen" is een telling van inschrijvingen.
+describe('één woord voor de telling van personen (#1136)', () => {
+  const sectorTitels = () => [...container.querySelectorAll('.chart-title, h2')].map(k => k.textContent).filter(t => /per sector over tijd/.test(t))
+
+  it('Mijn instelling en Landelijk noemen de sectortrend "Ingeschrevenen per sector over tijd"', async () => {
+    await mijnInstelling(HBO)
+    expect(sectorTitels()).toEqual(['Ingeschrevenen per sector over tijd'])
+    act(() => root.unmount())
+    container.remove()
+    await nationaal()
+    expect(container.querySelector('h2:not(:empty)') && [...container.querySelectorAll('.db-sectie-sub')].map(e => e.textContent)).toContain('Ingeschrevenen per sector over tijd')
+  })
+
+  it.each([
+    ['Mijn instelling', () => mijnInstelling(HBO)],
+    ['Landelijk', () => nationaal()],
+    ['Arbeidsmarkt', () => arbeidsmarkt()],
+  ])('%s: geen tekst over "inschrijvingen" bij een telling van personen', async (_naam, laad) => {
+    await laad()
+    expect(alles()).not.toMatch(/inschrijvingen/i)
+  })
+})
+
+// #1137: één spelling per begrip.
+describe('één spelling per begrip (#1137)', () => {
+  it('de arbeidsmarkt schrijft "beroepencluster" en Mijn instelling "Regiototaal"', async () => {
+    await arbeidsmarkt()
+    expect(alles()).not.toMatch(/beroepscluster/i)
+    act(() => root.unmount())
+    container.remove()
+    await mijnInstelling(HBO)
+    const labels = [...container.querySelectorAll('.kpi-label')].map(e => e.textContent)
+    expect(labels).toContain('Regiototaal 2025/26')
+    expect(alles()).not.toMatch(/regio totaal/i)
+  })
+
+  // De afgekeurde varianten staan nergens in de broncode van de app (tests en commentaar niet meegeteld).
+  it('geen afgekeurde variant in frontend/src', () => {
+    const afgekeurd = /beroepscluster|Regio totaal|regio-totaal/i
+    const root = `${join(__dirname, '..')}/`
+    const overtreders = bestanden(root)
+      .filter(pad => afgekeurd.test(zonderCommentaar(readFileSync(pad, 'utf8'))))
+      .map(pad => pad.slice(root.length))
+    expect(overtreders).toEqual([])
   })
 })
