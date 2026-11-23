@@ -123,7 +123,7 @@ describe('PrivacyPage', () => {
     await render(createElement(PrivacyPage))
     const app = sectionText('Wat de server bewaart')
     expect(app).toContain('Tellers')
-    expect(app).toMatch(/pseudoniem dat de server met een eigen geheim maakt/)
+    expect(app).toMatch(/pseudoniem \(een code[^)]*\)\. De server maakt dat pseudoniem met een eigen geheim/)
     const docs = oneLine(docsSection('Wat de server bewaart'))
     for (const tabel of ['`tokengebruik`', '`rate_limit_hits`']) expect(docs).toContain(tabel)
     expect(docs).toMatch(/HMAC met een geheim van de server/)
@@ -140,6 +140,86 @@ describe('PrivacyPage', () => {
   })
 })
 
+// #1139: de pagina is voor elke gebruiker, dus op B1: korte zinnen, geen onverklaard jargon, één datumnotatie, en elk
+// kopje begint met één korte zin die zegt wat er gebeurt.
+describe('de privacytekst op B1 (#1139)', () => {
+  const woorden = zin => zin.split(/\s+/).filter(Boolean).length
+  // De zinnen van een blok (alinea, opsommingspunt), gesplitst op . ! ? gevolgd door een spatie.
+  const zinnen = tekst => oneLine(tekst).trim().split(/(?<=[.!?])\s+/).filter(Boolean)
+  const blokken = () => [...container.querySelectorAll('p, li')].filter(el => !el.querySelector('p, li'))
+
+  it('heeft geen zin van meer dan 25 woorden en een gemiddelde onder de 15', async () => {
+    await render(createElement(PrivacyPage))
+    const alle = blokken().flatMap(el => zinnen(el.textContent))
+    const tekort = alle.filter(zin => woorden(zin) > 25)
+    expect(tekort, tekort.join('\n')).toEqual([])
+    const gemiddeld = alle.reduce((som, zin) => som + woorden(zin), 0) / alle.length
+    expect(gemiddeld).toBeLessThan(15)
+  })
+
+  it('begint elk kopje met één korte zin', async () => {
+    await render(createElement(PrivacyPage))
+    for (const kop of PRIVACY_KOPJES) {
+      const [eerste] = sectionElements(kop)
+      expect(eerste.tagName, kop).toBe('P')
+      expect(eerste.className, kop).toBe('privacy-kern')
+      expect(zinnen(eerste.textContent), kop).toHaveLength(1)
+      expect(woorden(eerste.textContent), kop).toBeLessThanOrEqual(15)
+    }
+  })
+
+  it('noemt de bewaartermijn van gesprekken en rapporten in de eerste zin onder "Wat de server bewaart"', async () => {
+    zetTermijnen({ bewaartermijn_gesprekken_dagen: 30, bewaartermijn_rapporten_dagen: 180 })
+    try {
+      await render(createElement(PrivacyPage))
+      const [eerste] = sectionElements('Wat de server bewaart')
+      expect(eerste.textContent).toContain('30 dagen')
+      expect(eerste.textContent).toContain('180 dagen')
+    } finally {
+      zetTermijnen({})
+    }
+  })
+
+  it('heeft geen vaktaal zonder uitleg', async () => {
+    await render(createElement(PrivacyPage))
+    const tekst = container.textContent
+    // Weg: wat een gebruiker niet kent en wat de uitleg niet nodig heeft.
+    expect(tekst).not.toMatch(/\bhash\b|OIDC|\bnonce\b|PKCE|verifier|toolstap|toolnaam|toolargument|datarecept|analytics|foutzoekniveau/i)
+    // Blijft, met een uitleg in dezelfde zin of in de zin erna.
+    expect(tekst).toMatch(/SRAM[^.]*inlogsysteem/)
+    expect(tekst).toMatch(/DPIA[^.]*onderzoek naar de privacyrisico/)
+    expect(tekst).toMatch(/verwerkingsverantwoordelijke \(/)
+    expect(tekst).toMatch(/functionaris gegevensbescherming \(FG\)/)
+    expect(tekst).toMatch(/pseudoniem \(een code/)
+    expect(tekst).toMatch(/controlecode[^.]*niet uit terug te halen/)
+  })
+
+  it('schrijft elke datum op dezelfde manier uit, zonder streepjes', async () => {
+    await render(createElement(PrivacyPage))
+    const tekst = container.textContent
+    expect(tekst).not.toMatch(/\d{1,2}-\d{1,2}-\d{4}/)
+    expect(tekst).toContain('19 oktober 2026')
+    expect(tekst).toContain('9 november 2026')
+  })
+
+  // #1119, #1139: wat de tekst over het logboek zegt klopt met de app: geen toegangslog (#1114).
+  it('zegt dat de app geen toegangslog met IP-adressen schrijft', async () => {
+    await render(createElement(PrivacyPage))
+    expect(sectionText('Het logboek')).toMatch(/geen toegangslog/)
+    expect(oneLine(docsSection('Het logboek'))).toMatch(/geen toegangslog/)
+  })
+
+  // De wijzigingen van #1112 en #1117: tellers onder een pseudoniem blijven na "Verwijder al mijn gegevens", want ze
+  // hebben geen accountnaam om op te verwijderen (persistence/verwijderen.py). Dat moet de tekst zeggen.
+  it('zegt dat de tellers na "Verwijder al mijn gegevens" blijven staan, in de app en in docs/privacy.md', async () => {
+    await render(createElement(PrivacyPage))
+    for (const tekst of [sectionText('Wat je zelf kunt doen'), oneLine(docsSection('Wat je zelf kunt doen'))]) {
+      expect(tekst).toMatch(/tellers/)
+      expect(tekst).toMatch(/62 dagen/)
+    }
+  })
+})
+
 // #1140: de pagina en docs/privacy.md noemen wat er in de browser staat met de namen van de app. Een "werkboek" heet
 // in de app een rapport, en de dashboardchat bestaat sinds #765 niet meer: de app schrijft haar niet meer, ze wist
 // alleen wat een eerdere versie achterliet (SESSION_DATA_KEYS).
@@ -147,7 +227,7 @@ describe('de namen van de app in de privacytekst (#1140)', () => {
   it('noemt geen werkboek en geen dashboardchat, wel de rapporten in de browser', async () => {
     await render(createElement(PrivacyPage))
     for (const tekst of [container.textContent, readDocs()]) expect(tekst).not.toMatch(/werkboek|dashboardchat|dashboard-chat/i)
-    expect(sectionText('Wat in je browser staat')).toMatch(/je rapporten/)
+    expect(sectionText('Wat in je browser staat')).toMatch(/gesprekken en rapporten/)
     expect(oneLine(docsSection('Wat in je browser staat'))).toMatch(/de rapporten/)
   })
 })

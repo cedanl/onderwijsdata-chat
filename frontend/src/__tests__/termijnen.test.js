@@ -42,7 +42,7 @@ describe('termijnen in de teksten (#835)', () => {
 
   it('noemt de drie login-cookies van SRAM, zoals docs/privacy.md (#1041)', async () => {
     await render(createElement(PrivacyInhoud))
-    expect(tekst()).toContain('drie cookies met eenmalige waarden van die login (OIDC-state, nonce en PKCE-verifier, hoogstens 10 minuten)')
+    expect(tekst()).toContain('kort drie cookies in je browser. Ze horen bij die ene login en blijven hoogstens 10 minuten staan')
     expect(tekst()).not.toContain('kort een cookie')
   })
 
@@ -53,8 +53,9 @@ describe('termijnen in de teksten (#835)', () => {
     expect(t).toContain('tot 30 dagen na je laatste bericht')
     expect(t).toContain('dat je 180 dagen niet hebt geopend')
     expect(t).toContain('Feedback wordt 30 dagen nadat je hem gaf verwijderd')
-    expect(t).toContain('je gesprekken 30 dagen na je laatste bericht erin, je feedback 30 dagen nadat je hem gaf')
-    expect(t).toContain('rapporten en dashboards 180 dagen nadat')
+    expect(t).toContain('Je gesprekken verdwijnen 30 dagen na je laatste bericht erin. Je feedback verdwijnt 30 dagen nadat je hem gaf')
+    expect(t).toContain('Rapporten en dashboards verdwijnen 180 dagen nadat')
+    expect(t).toContain('Na 30 dagen zonder gebruik verwijderen we een gesprek, na 180 dagen een rapport')
     expect(t).toContain('Een sessie duurt 2 uur en wordt bij gebruik verlengd tot ten hoogste 12,5 uur')
     expect(t).toContain('(ten hoogste 12,5 uur)')
     expect(t).not.toMatch(/\b(90|365) dagen|\b(8|24) uur/)
