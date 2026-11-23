@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 from agent import report
 from agent.report import ReportSpec
+from agent.report_bronnen import bewijsbronnen
 from agent.report_checks import report_problems
 from agent.session_data import record_rekenbewijs, rekenbewijs
 
@@ -75,6 +76,105 @@ def test_het_bewijs_blijft_begrensd():
     bewijs = rekenbewijs(session)
     assert len(bewijs) < 100
     assert json.loads(bewijs[-1]["resultaat"]) == {"raw": 99}
+
+
+# ── De mbo-indicatoren: een toolresultaat zonder tabel in de store is zelf het bewijs (#1077) ──────────────────────
+
+_MBO = json.dumps(
+    {
+        "dataset": "duo:mbo_indicatoren",
+        "instelling": {"naam": "ROC Midden Nederland", "instellingscode": "25LH"},
+        "jaarresultaat": [
+            {"schooljaar": "2024/25", "instelling": 70.1, "vergelijkingsgroep": 71.8, "verschil_procentpunt": -1.7}
+        ],
+        "toelichting": "Een lange tekst vóór het diplomaresultaat. " * 50,
+        "diplomaresultaat": [
+            {"schooljaar": "2024/25", "instelling": 70.6, "vergelijkingsgroep": 72.4, "verschil_procentpunt": -1.8}
+        ],
+        "bron": {
+            "naam": "DUO, Indicatoren per instelling (jaardocument mbo)",
+            "url": "https://duo.nl/open_onderwijsdata/images/2026-indicatoren-per-instelling.xlsx",
+            "editie": 2026,
+            "peildatum": "1 oktober 2025",
+        },
+    }
+)
+_MBO_CALL = {"name": "get_mbo_indicatoren", "arguments": {"instelling": "ROC Midden Nederland"}}
+
+
+def test_get_mbo_indicatoren_is_bewijs_met_het_nummer_van_de_vraag():
+    session: dict = {"messages": [{"role": "user", "content": "Hoe doen wij het?"}]}
+    record_rekenbewijs(session, _MBO, _MBO_CALL)
+
+    assert rekenbewijs(session) == [
+        {"tool": "get_mbo_indicatoren", "argumenten": _MBO_CALL["arguments"], "resultaat": _MBO, "vraag": 1}
+    ]
+
+
+def test_een_melding_van_get_mbo_indicatoren_is_geen_bewijs():
+    session: dict = {"messages": [{"role": "user", "content": "Hoe doen wij het?"}]}
+    record_rekenbewijs(session, "Onbekende instelling 'X': het register kent deze naam niet.", _MBO_CALL)
+    record_rekenbewijs(session, json.dumps({"fout": "E_BRON: onbereikbaar"}), _MBO_CALL)
+
+    assert rekenbewijs(session) == []
+
+
+def test_een_rapport_mag_de_percentages_uit_get_mbo_indicatoren_noemen():
+    conclusie = "Het diplomaresultaat is 70,6% tegen 72,4% bij de roc's; het jaarresultaat 70,1% tegen 71,8%."
+
+    assert report_problems(_spec(conclusie), [], [_MBO]) == []
+
+
+def test_een_percentage_dat_niet_in_get_mbo_indicatoren_staat_blijft_geweigerd():
+    [probleem] = report_problems(_spec("Het diplomaresultaat is 71,6%."), [], [_MBO])
+
+    assert "71,6" in probleem
+
+
+def test_de_rapportfase_krijgt_de_uitvoer_van_get_mbo_indicatoren_als_bewijs_en_in_de_prompt(monkeypatch):
+    session: dict = {"messages": [{"role": "user", "content": "Hoe doen wij het?"}]}
+    record_rekenbewijs(session, _MBO, _MBO_CALL)
+    gezien: dict = {}
+
+    def bronnen_vastleggen(spec, figures, sources):
+        gezien["sources"] = sources
+        return []
+
+    async def eenmaal_controleren(messages, *, check, **_):
+        gezien["prompt"] = messages[0]["content"]
+        check("{}", [])
+        return SimpleNamespace(aborted=None, exhausted=False, partial_error=None, problems=[], text="{}")
+
+    async def emit(_):
+        pass
+
+    monkeypatch.setattr(
+        report, "build_dataset_context", lambda s: {"datasets": [{"data_key": "k", "row_count": 1, "columns": []}]}
+    )
+    monkeypatch.setattr(report, "report_problems", bronnen_vastleggen)
+    monkeypatch.setattr(report, "tool_loop", eenmaal_controleren)
+    monkeypatch.setattr(report, "_parse_spec_from_response", lambda *a, **kw: _spec(""))
+
+    asyncio.run(report.generate(session, emit))
+
+    assert _MBO in gezien["sources"]
+    # Ook het diplomaresultaat, dat na de eerste 1.500 tekens van de uitvoer staat.
+    assert "70.6" in gezien["prompt"] and "get_mbo_indicatoren" in gezien["prompt"]
+
+
+def test_een_rapport_noemt_de_bron_van_de_mbo_indicatoren_als_het_er_een_getal_uit_citeert():
+    citeert = bewijsbronnen(rekenbewijs_van(_MBO), "Het diplomaresultaat is 70,6%.")
+
+    assert citeert == [
+        "DUO · Indicatoren per instelling (jaardocument mbo), editie 2026, peildatum 1 oktober 2025",
+    ]
+    assert bewijsbronnen(rekenbewijs_van(_MBO), "Het rapport noemt geen getal.") == []
+
+
+def rekenbewijs_van(resultaat: str) -> list[dict]:
+    session: dict = {"messages": [{"role": "user", "content": "Hoe doen wij het?"}]}
+    record_rekenbewijs(session, resultaat, _MBO_CALL)
+    return rekenbewijs(session)
 
 
 def test_rapport_mag_de_kpi_uit_het_gesprek_noemen():
