@@ -138,7 +138,7 @@ Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` i
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `CHAT_SECRET` | *(niet ingesteld)* | HMAC-secret voor de tokens. Verplicht zodra `CHAT_USERS` of `OIDC_PROVIDER` is ingesteld: zonder start de app dan niet, met één melding in het log (`Config.validate()`, #1164). Zonder login gebruikt de app een vaste ontwikkelsleutel |
+| `CHAT_SECRET` | *(niet ingesteld)* | HMAC-secret voor de tokens, en de basis van de pseudoniemen van accountnamen en adressen in `tokengebruik` en `rate_limit_hits` (`core/pseudoniem.py`, #1112); roteren verloopt de sessies en zet die tellers op nul. Verplicht zodra `CHAT_USERS` of `OIDC_PROVIDER` is ingesteld: zonder start de app dan niet, met één melding in het log (`Config.validate()`, #1164). Zonder login gebruikt de app een vaste ontwikkelsleutel; buiten `local` waarschuwt de start daarvoor |
 | `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
 | `SESSION_TTL_HOURS` | `8` | Geldigheid van een token in uren (decimaal mag, bv. `0.5`). Bij wachtwoord-login (geen verversing) moet de gebruiker na deze tijd opnieuw inloggen. |
 | `SESSION_MAX_HOURS` | `24` | Maximale sessieduur in uren vanaf het inloggen: verversen (SRAM) geeft nooit een token dat later verloopt. |

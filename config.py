@@ -89,6 +89,9 @@ class Config:
             # Eén foutregel, door server.py gelogd: wie de melding hier ook logt, zet haar dubbel in het log.
             raise ConfigError("; ".join(errors))
 
+        # Pas na de foutcontrole: een ongeldige configuratie geeft één regel, niet ook nog een waarschuwing (#1164).
+        cls._waarschuw_zonder_pseudoniemgeheim()
+
         logger.info(
             f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}"
         )
@@ -131,6 +134,19 @@ class Config:
             "(controleer ook of de waarde in het secret niet leeg is), of zet ALLOW_ANONYMOUS=true voor een "
             "bewust openbare demo"
         )
+
+    @classmethod
+    def _waarschuw_zonder_pseudoniemgeheim(cls) -> None:
+        """Waarschuwt buiten lokaal zonder `CHAT_SECRET` (#1112): de pseudoniemen in `tokengebruik` en
+        `rate_limit_hits` (core/pseudoniem.py) zijn dan met een bekende sleutel te berekenen. Alleen een bewust
+        openbare demo zonder login komt hier; met een login eist core/auth.py het geheim al.
+        """
+        if cls.APP_ENV != "local" and not os.getenv("CHAT_SECRET"):
+            logger.warning(
+                "CHAT_SECRET is leeg in APP_ENV=%s: de pseudoniemen van accountnamen en adressen in de database zijn "
+                "dan terug te rekenen; stel CHAT_SECRET in",
+                cls.APP_ENV,
+            )
 
     @classmethod
     def _nepmodel_ongeldig(cls) -> str | None:

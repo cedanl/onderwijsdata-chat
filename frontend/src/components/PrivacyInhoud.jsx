@@ -94,6 +94,12 @@ export default function PrivacyInhoud() {
           hoogste {sessieMax} uur). Een ingetrokken sessie wordt als hash bewaard tot zij verloopt.
         </li>
         <li>
+          <strong>Tellers</strong>: de server telt hoeveel een account het model kostte (één getal per dag, 62 dagen)
+          en hoe vaak een account of IP-adres in korte tijd inlogt, een bericht stuurt of de koppeling aanroept (één
+          rij per poging, hoogstens tien minuten; bij het inloggen samen met je IP-adres). Ze staan onder een
+          pseudoniem dat de server met een eigen geheim maakt, niet onder je accountnaam of adres.
+        </li>
+        <li>
           <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is: je
           gesprekken {gesprek} dagen na je laatste bericht erin, je feedback {gesprek} dagen nadat je hem gaf, en
           rapporten en dashboards {rapport} dagen nadat je ze voor het laatst opende of wijzigde. Eerder verwijderen
@@ -112,7 +118,7 @@ export default function PrivacyInhoud() {
           Welke gesprekken en rapporten je hier het laatst opende en welke rapporten je als favoriet markeerde, staan
           er als nummers, zonder titel of inhoud. Die blijven na uitloggen staan, zodat je ze een volgende keer
           terugvindt; ze verschijnen alleen bij een gesprek of rapport van het account waarmee je inlogt. Anderen met
-          hetzelfde account zien ze niet.
+          hetzelfde account zien ze niet. Verwijder je al je gegevens, dan gaan ook deze nummers weg.
         </li>
         <li>
           Een sessie duurt {sessie} uur en wordt bij gebruik verlengd tot ten hoogste {sessieMax} uur na het inloggen. Tijdens het

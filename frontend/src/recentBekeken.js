@@ -3,7 +3,8 @@ import { STORAGE_RECENT } from './constants'
 
 // What this browser opened last and which reports it marked as favourite (#603). Only IDs, no titles: a
 // list shows an ID only when it matches a conversation or report of the account that is logged in, so
-// on a shared device or in a shared account nothing of someone else shows. Kept on logout for that reason.
+// on a shared device or in a shared account nothing of someone else shows. Kept on logout for that reason, but gone
+// after "Verwijder al mijn gegevens" (wisRecent, #1115): those IDs point to conversations that no longer exist.
 const MAX = 10
 const LEEG = { gesprekken: [], rapporten: [], favorieten: [] }
 
@@ -45,6 +46,18 @@ export function wisselFavoriet(id) {
   const { favorieten } = lees()
   const aan = favorieten.includes(String(id))
   schrijf({ ...lees(), favorieten: aan ? favorieten.filter(x => x !== String(id)) : [String(id), ...favorieten] })
+}
+
+// "Verwijder al mijn gegevens" (#1115): the server erased what the IDs point to, and on a shared device they would
+// show that this account worked here. Not on logout: there they are filtered to the account that logs in.
+export function wisRecent() {
+  cache = null
+  try {
+    localStorage.removeItem(STORAGE_RECENT)
+  } catch {
+    // Blocked storage: nothing was written there either.
+  }
+  luisteraars.forEach(f => f())
 }
 
 // The items of `lijst` (conversations or reports of this account) in the order of `ids`; unknown IDs drop out.

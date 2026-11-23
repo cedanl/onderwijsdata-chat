@@ -5,7 +5,7 @@ import { createElement, act, Fragment } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { STORAGE_RECENT, NOT_SESSION_DATA_KEYS, SESSION_DATA_KEYS } from '../constants'
-import { inVolgorde, noteerGesprek, noteerRapport, vergeetCache, wisselFavoriet } from '../recentBekeken'
+import { inVolgorde, noteerGesprek, noteerRapport, vergeetCache, wisRecent, wisselFavoriet } from '../recentBekeken'
 
 const server = vi.hoisted(() => ({ resolve: null, local: [], load: () => new Promise(() => {}) }))
 vi.mock('../workbooks', () => ({
@@ -62,6 +62,29 @@ describe('de lijsten in de browser', () => {
   it('blijft na uitloggen staan: alleen ID\'s, gefilterd op het account', () => {
     expect(NOT_SESSION_DATA_KEYS).toContain(STORAGE_RECENT)
     expect(SESSION_DATA_KEYS).not.toContain(STORAGE_RECENT)
+  })
+
+  // #1115: na "Verwijder al mijn gegevens" verwijzen de ID's naar gesprekken die niet meer bestaan.
+  it('wist alle drie de lijsten na het verwijderen van al je gegevens, ook in het geheugen', () => {
+    noteerGesprek('c1')
+    noteerRapport('r1')
+    wisselFavoriet('r1')
+
+    wisRecent()
+
+    expect(localStorage.getItem(STORAGE_RECENT)).toBeNull()
+    noteerGesprek('c2')
+    expect(opgeslagen()).toEqual({ gesprekken: ['c2'], rapporten: [], favorieten: [] })
+  })
+
+  it('wist ook als de opslag geblokkeerd is zonder te falen', () => {
+    noteerGesprek('c1')
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('geblokkeerd') })
+    try {
+      expect(() => wisRecent()).not.toThrow()
+    } finally {
+      vi.restoreAllMocks()
+    }
   })
 
   it('overleeft een kapotte opslag', () => {

@@ -13,6 +13,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.pseudoniem import VERSIE
+
 logger = logging.getLogger(__name__)
 
 _MAX_CONVERSATIONS = 15
@@ -120,6 +122,8 @@ def _connect() -> Any:
         conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
+        # Verwijderde en overschreven tekst gaat uit de pagina zelf, niet pas als er iets overheen komt (#1116).
+        conn.execute("PRAGMA secure_delete=ON")
         return conn
 
 
@@ -236,7 +240,23 @@ def _connection() -> Generator[Any]:
     try:
         yield conn
     finally:
+        if conn.total_changes:
+            _leeg_wal(conn)
         conn.close()
+
+
+def _leeg_wal(conn: sqlite3.Connection) -> None:
+    """Na een wijziging het WAL-bestand leegmaken, zodat verwijderde tekst daar niet in achterblijft (#1116).
+
+    `secure_delete` maakt de pagina in het databasebestand leeg, maar een eerdere versie van die pagina staat nog in
+    het `-wal`-bestand tot het is leeggemaakt. Sluit de laatste verbinding, dan doet SQLite dat zelf; staat er nog een
+    andere open, dan blijft de tekst in het WAL tot het wordt overschreven. Best effort en zonder te wachten
+    (`busy_timeout=0`): een lezer die nog bezig is, houdt de aanroep niet op, en de volgende wijziging probeert het
+    opnieuw.
+    """
+    with contextlib.suppress(sqlite3.Error):
+        conn.execute("PRAGMA busy_timeout=0")
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
 
 
 def close() -> None:
@@ -405,6 +425,7 @@ def _migrate(conn: Any) -> None:
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _verwijder_tabel(conn, "answer_feedback")
+    _verwijder_kale_hashes_tokengebruik(conn)
 
 
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
@@ -447,6 +468,19 @@ def _verwijder_tabel(conn: Any, tabel: str) -> None:
     Idempotent, dus veilig bij elke start en bij twee replica's tegelijk: `IF EXISTS` kennen SQLite en PostgreSQL allebei.
     """
     _execute(conn, f"DROP TABLE IF EXISTS {tabel}")
+    conn.commit()
+
+
+def _verwijder_kale_hashes_tokengebruik(conn: Any) -> None:
+    """Een rij van vóór #1112 draagt een kale sha256 van de accountnaam als sleutel: met één hash van een bekend
+    e-mailadres is het account terug te vinden. Ze gaat weg; de rijen onder de HMAC (`h1:`, core/pseudoniem.py) blijven.
+
+    De tellers van de lopende dag en maand beginnen daarmee eenmalig opnieuw: de oude sleutel is zonder de accountnamen
+    niet naar de nieuwe om te zetten, en meenemen betekent de kale hash laten staan. Idempotent, dus veilig bij elke
+    start en bij twee replica's tegelijk; een pod van de vorige versie die tijdens de uitrol nog onder de oude sleutel
+    schrijft, laat rijen achter die na `TOKENGEBRUIK_DAGEN` verlopen.
+    """
+    _execute(conn, "DELETE FROM tokengebruik WHERE sleutel NOT LIKE ?", (f"{VERSIE}%",))
     conn.commit()
 
 
@@ -550,8 +584,9 @@ _REVOKED_USERS_TABLE = """
 
 
 # Tellers van de limieten (core/rate_limit.py), gedeeld door alle pods (#984). Eén rij per meegetelde poging; `verloopt`
-# (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als sha256: de
-# gebruikersnaam of het adres uit de limiet staat zo nergens leesbaar, en "verwijder al mijn gegevens" hoeft er niets mee.
+# (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als HMAC met een
+# servergeheim (core/pseudoniem.py, #1117): de gebruikersnaam of het adres uit de limiet staat zo nergens leesbaar of
+# terug te rekenen, en "verwijder al mijn gegevens" hoeft er niets mee.
 _RATE_LIMIT_TABLE = """
     CREATE TABLE IF NOT EXISTS rate_limit_hits (
         bucket   TEXT   NOT NULL,
@@ -561,8 +596,8 @@ _RATE_LIMIT_TABLE = """
 """
 _RATE_LIMIT_INDEX = "CREATE INDEX IF NOT EXISTS idx_rate_limit ON rate_limit_hits(bucket, sleutel, verloopt)"
 
-# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een sha256
-# van de gebruikersnaam, zoals bij de limieten; `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
+# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een HMAC
+# van de gebruikersnaam met een servergeheim (core/pseudoniem.py, #1112); `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
 # bij het opruimen: genoeg voor deze en de vorige maand.
 _TOKENGEBRUIK_TABLE = """
     CREATE TABLE IF NOT EXISTS tokengebruik (
@@ -696,14 +731,28 @@ def init_db() -> None:
         conn.commit()
 
 
+def verlopen_staat(nu: datetime) -> dict[str, tuple[str, tuple]]:
+    """Per tabel met korte staat wat op `nu` verlopen is, als WHERE met parameters (#1113).
+
+    Ingetrokken sessies en accounts verlopen met hun token (verificatie weigert zo'n token zelf), een poging in
+    `rate_limit_hits` als zij uit het venster van de limiet valt, en tokengebruik na `TOKENGEBRUIK_DAGEN`. Eén plek voor
+    twee gebruikers: `purge_expired_revocations` bij de start en bij intrekken, en de nachtelijke opschoning
+    (persistence/opschonen.py), die ook een pod bereikt die weken niet herstart.
+    """
+    seconden = int(nu.timestamp())
+    grens = (nu.astimezone(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
+    return {
+        "revoked_tokens": ("expires_at < ?", (seconden,)),
+        "revoked_users": ("expires_at < ?", (seconden,)),
+        "rate_limit_hits": ("verloopt <= ?", (seconden * 1000,)),
+        "tokengebruik": ("dag < ?", (grens,)),
+    }
+
+
 def purge_expired_revocations(conn: Any) -> None:
-    """Drop denylist rows whose token has expired: verification rejects such a token on its own."""
-    nu = int(time.time())
-    _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
-    _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
-    _execute(conn, "DELETE FROM rate_limit_hits WHERE verloopt <= ?", (nu * 1000,))
-    grens = (datetime.now(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
-    _execute(conn, "DELETE FROM tokengebruik WHERE dag < ?", (grens,))
+    """Drop the short-lived state that has expired: denylist rows, rate-limit attempts and old token usage."""
+    for tabel, (waar, params) in verlopen_staat(datetime.now(UTC)).items():
+        _execute(conn, f"DELETE FROM {tabel} WHERE {waar}", params)
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
