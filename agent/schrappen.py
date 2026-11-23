@@ -22,10 +22,10 @@ from .binding import segmenten_met_scheiding
 from .loop import LoopResult
 from .probleem import Probleem, harde
 
-GESCHRAPT = (
-    "Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten. "
-    "Stel de vraag opnieuw, of preciezer, voor die cijfers."
-)
+_OPNIEUW = "Stel de vraag opnieuw, of preciezer, voor die cijfers."
+GESCHRAPT = f"Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten. {_OPNIEUW}"
+# Hoeveel rijen de melding bij naam noemt; daarna "en N andere".
+_MAX_GENOEMD = 5
 # Er blijft minstens zoveel over als er wegvalt: anders is het geen antwoord meer maar een restant.
 _MAX_WEG = 0.5
 # De scheidingsrij onder de kop van een markdowntabel: |---|:--:|.
@@ -80,6 +80,30 @@ def _tabelrestant(delen: Sequence[tuple[str, str]], weg: Sequence[bool]) -> bool
     return any(sum(rijen) > len(rijen) * _MAX_WEG for rijen in tabellen)
 
 
+def _rijnaam(rij: str) -> str:
+    """De eerste cel van een tabelrij ("2025/26" bij `| 2025/26 | 7.530 |`): waaraan de lezer de rij herkent."""
+    return rij.strip().strip("|").split("|")[0].strip()
+
+
+def _geschrapt(delen: Sequence[tuple[str, str]], weg: Sequence[bool]) -> Probleem:
+    """De melding dat er iets is weggelaten: zinnen, of ook tabelrijen, en welke rijen (#1099).
+
+    Een rij die stil verdwijnt, laat bij een jaartabel het nieuwste jaar ontbreken terwijl de tekst erboven dat jaar
+    nog noemt. Alleen zinnen: de melding blijft de vaste tekst.
+    """
+    valt = [zin for (zin, _), is_weg in zip(delen, weg, strict=True) if is_weg]
+    rijen = [_rijnaam(zin) for zin in valt if zin.strip().startswith("|")]
+    if not rijen:
+        return Probleem(GESCHRAPT)
+    genoemd = [naam or "?" for naam in rijen[:_MAX_GENOEMD]]
+    rest = len(rijen) - len(genoemd)
+    rijtekst = ", ".join(genoemd) + (f" en {rest} andere" if rest else "")
+    soort = "Tabelrijen" if len(rijen) == len(valt) else "Zinnen en tabelrijen"
+    return Probleem(
+        f"{soort} met een getal dat niet in de opgehaalde data staat, zijn weggelaten (rij: {rijtekst}). {_OPNIEUW}"
+    )
+
+
 def zonder_ongedekte_zinnen(
     result: LoopResult,
     check: Callable[[str, list[str]], list[str]],
@@ -112,6 +136,6 @@ def zonder_ongedekte_zinnen(
     problemen = check(rest, result.tool_results)
     if harde(problemen):
         return result
-    geschrapt = Probleem(GESCHRAPT)
+    geschrapt = _geschrapt(delen, weg)
     geschrapt.controle = "zinnen_schrappen"
     return replace(result, text=rest, problems=[*problemen, geschrapt])

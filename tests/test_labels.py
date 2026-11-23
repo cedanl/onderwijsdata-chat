@@ -127,7 +127,9 @@ _NIET_GEVONDEN = json.dumps({"fout": "Dataset '99999NED' staat niet in de catalo
 def test_een_id_uit_de_vraag_geeft_geen_melding():
     """#1088: het antwoord zegt terecht dat de tabel van de gebruiker niet bestaat."""
     with _ALLEEN_ECHTE:
-        assert onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", "Wat staat in tabel 99999NED?") == []
+        assert (
+            onbekende_datasets("CBS-tabel 99999NED staat niet in de catalogus.", "Wat staat in tabel 99999NED?") == []
+        )
 
 
 def test_een_id_uit_een_toolresultaat_geeft_geen_melding():

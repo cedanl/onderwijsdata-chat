@@ -64,6 +64,45 @@ def test_een_tabelrij_met_een_ongedekt_getal_vervalt_met_zijn_regel():
     assert "| 2024 | 5.943 |\n| 2026 | 6.100 |" in resultaat.text
 
 
+def test_de_melding_noemt_de_weggelaten_tabelrij_met_haar_eerste_cel():
+    """#1099: bij een jaartabel viel stil het nieuwste jaar weg, met de melding over "zinnen"."""
+    tekst = (
+        "Er zijn 5.943 eerstejaars en 6.100 in het jaar erna. Meer detail:\n\n"
+        "| jaar | aantal |\n|---|---|\n| 2024 | 5.943 |\n| 2025/26 | 7.777 |\n| 2026 | 6.100 |\n| 2027 | 5.943 |"
+    )
+
+    resultaat = _schrap(tekst)
+
+    assert resultaat.problems[-1].melding == (
+        "Tabelrijen met een getal dat niet in de opgehaalde data staat, zijn weggelaten (rij: 2025/26). "
+        "Stel de vraag opnieuw, of preciezer, voor die cijfers."
+    )
+    assert resultaat.problems[-1] != GESCHRAPT
+    assert getattr(resultaat.problems[-1], "controle", None) == "zinnen_schrappen"
+
+
+def test_de_melding_noemt_zinnen_en_tabelrijen_als_beide_wegvallen():
+    tekst = (
+        "In 2024 waren er 5.943 eerstejaars. Dat is 70.812 minder dan een jaar eerder. Het verschil zit bij het hbo.\n\n"
+        "| jaar | aantal |\n|---|---|\n| 2024 | 5.943 |\n| 2025 | 7.777 |\n| 2026 | 6.100 |\n| 2027 | 5.943 |"
+    )
+
+    resultaat = _schrap(tekst)
+
+    assert resultaat.problems[-1].melding.startswith("Zinnen en tabelrijen met een getal")
+    assert "(rij: 2025)" in resultaat.problems[-1].melding
+
+
+def test_de_melding_noemt_hoogstens_vijf_rijen_en_telt_de_rest():
+    fout = "".join(f"| {1990 + n} | 7.{n:03d} |\n" for n in range(7))
+    goed = "".join(f"| {2010 + n} | 5.943 |\n" for n in range(8))
+    tekst = f"Er zijn 5.943 eerstejaars in 2024.\n\n| jaar | aantal |\n|---|---|\n{fout}{goed}"
+
+    resultaat = _schrap(tekst)
+
+    assert "(rij: 1990, 1991, 1992, 1993, 1994 en 2 andere)" in resultaat.problems[-1].melding
+
+
 def test_een_tabel_die_meer_rijen_verliest_dan_ze_houdt_houdt_het_antwoord_in():
     """C1 (#976): elf van twaalf rijen vielen weg onder een conclusie "bij 12 hogescholen". Een restant van een tabel
     spreekt de rest van het antwoord tegen; dan inhouden, met de meldingen."""
