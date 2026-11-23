@@ -138,14 +138,30 @@ describe('een som over onderdrukte cellen is een ondergrens (#902)', () => {
     expect(isOndergrens(undefined, 2024)).toBe(false)
   })
 
-  it('zegt "ten minste" met de jaren per reeks, en niets zonder lege cellen', () => {
+  it('begint met de boodschap en noemt alleen de reeksen met lege cellen (#1145)', () => {
     const el = render(createElement(OndergrensNoot, { reeksen: [
       { label: 'Ingeschrevenen', onderdrukt: { 2024: 1, 2022: 3 } },
       { label: 'Eerstejaars', onderdrukt: {} },
     ] }))
 
-    expect(el.textContent).toContain('Ingeschrevenen in 2022, 2024: ten minste')
+    expect(el.textContent).toBe('Sommige totalen zijn een ondergrens: DUO publiceert aantallen van 1 tot en met 4 niet; die cellen tellen niet mee. Het gaat om Ingeschrevenen.')
     expect(el.textContent).not.toContain('Eerstejaars')
+  })
+
+  it('blijft kort bij vier reeksen over vijf jaren: hoogstens twee zinnen (#1145)', () => {
+    const jaren = { 2021: 1, 2022: 2, 2023: 1, 2024: 3, 2025: 1 }
+    const el = render(createElement(OndergrensNoot, { reeksen: [
+      { label: 'Landelijk Economie', onderdrukt: jaren },
+      { label: 'Landelijk Gedrag & Maatschappij', onderdrukt: jaren },
+      { label: 'Eigen Onderwijs', onderdrukt: jaren },
+      { label: 'Eigen Techniek', onderdrukt: jaren },
+    ] }))
+
+    const tekst = el.textContent
+    expect(tekst.split(/(?<=\.)\s/)).toHaveLength(2)
+    expect(tekst.split(/\s+/).length).toBeLessThan(40)
+    expect(tekst).toContain('Het gaat om Landelijk Economie, Landelijk Gedrag & Maatschappij, Eigen Onderwijs en 1 andere.')
+    expect(tekst).not.toMatch(/20\d\d/)
   })
 
   it('toont geen noot zonder onderdrukte cellen', () => {

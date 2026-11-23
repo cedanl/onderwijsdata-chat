@@ -192,9 +192,9 @@ function CohortenTable({ data, dark }) {
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Cohort</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 3 jaar</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 4 jaar</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 5 jaar</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 3 jaar"}</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 4 jaar"}</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 5 jaar"}</th>
           </tr>
         </thead>
         <tbody>

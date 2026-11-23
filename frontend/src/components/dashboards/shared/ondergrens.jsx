@@ -3,9 +3,7 @@
 // ondergrens: "ten minste". Een ontbrekend jaar of een ontbrekende sector is een gat, geen 0, en een categorie die
 // een grafiek weglaat, wordt genoemd.
 
-import { asJaar } from '../../../schooljaar'
-
-export const ONDERDRUKT_UITLEG = 'DUO publiceert kleine aantallen niet; die cellen tellen niet mee'
+export const ONDERDRUKT_UITLEG = 'DUO publiceert aantallen van 1 tot en met 4 niet; die cellen tellen niet mee'
 
 // Waarde uit een {jaar: n}-dict, met de jaarsleutel als getal of als tekst.
 export function perJaar(dict, jaar) {
@@ -22,29 +20,27 @@ export function TenMinste({ actief }) {
   return <span className="kpi-ondergrens" style={{ fontSize: '12.5px', fontWeight: 500, marginRight: 4 }}>ten minste</span>
 }
 
-function jarenMetLegeCellen(onderdrukt) {
-  return Object.entries(onderdrukt || {})
-    .filter(([, n]) => n > 0)
-    .map(([jaar]) => jaar)
-    .sort((a, b) => Number(a) - Number(b))
+const heeftLegeCellen = onderdrukt => Object.values(onderdrukt || {}).some(n => n > 0)
+
+// De namen van de reeksen in een zin: hoogstens MAX_NAMEN, de rest als aantal. Zo blijft de noot kort, ook bij veel reeksen.
+const MAX_NAMEN = 3
+
+export function namenTekst(namen) {
+  const uniek = [...new Set(namen)]
+  const getoond = uniek.slice(0, MAX_NAMEN)
+  const rest = uniek.length - getoond.length
+  if (rest > 0) return `${getoond.join(', ')} en ${rest} andere`
+  return getoond.length > 1 ? `${getoond.slice(0, -1).join(', ')} en ${getoond.at(-1)}` : getoond.join('')
 }
 
-// De jaren van een reeks naar hun soort (#904): "2022/23, 2023/24" of "diplomajaar 2022, 2023".
-function jarenTekst(jaren, soort) {
-  const tekst = jaren.map(j => asJaar(j, soort)).join(', ')
-  return soort && soort !== 'schooljaar' ? `${soort} ${tekst}` : tekst
-}
-
-// Eén regel per reeks met lege cellen: "Ingeschrevenen in 2022/23, 2023/24: ten minste (…)". `soort` per reeks is
-// het soort jaar uit de payload.
+// Eén noot voor alle reeksen met lege cellen (#1145): eerst de boodschap, dan waar het om gaat, in hoogstens twee zinnen
+// ongeacht het aantal reeksen en jaren. Per cel staat "ten minste" bij de tegels (TenMinste).
 export function OndergrensNoot({ reeksen }) {
-  const regels = (reeksen || [])
-    .map(({ label, onderdrukt, soort }) => ({ label, soort, jaren: jarenMetLegeCellen(onderdrukt) }))
-    .filter(r => r.jaren.length > 0)
-  if (!regels.length) return null
+  const namen = (reeksen || []).filter(r => heeftLegeCellen(r.onderdrukt)).map(r => r.label)
+  if (!namen.length) return null
   return (
     <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '4px 0 16px' }}>
-      {regels.map(r => `${r.label} in ${jarenTekst(r.jaren, r.soort)}`).join('; ')}: ten minste ({ONDERDRUKT_UITLEG}).
+      Sommige totalen zijn een ondergrens: {ONDERDRUKT_UITLEG}. Het gaat om {namenTekst(namen)}.
     </p>
   )
 }

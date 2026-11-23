@@ -71,10 +71,10 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
   // Het startjaar van de groei als schooljaar of diplomajaar, naar de reeks (#904).
   const vanaf = sleutel => startjaar => (startjaar != null ? `% verandering ten opzichte van ${jaarLabel(startjaar, perioden[sleutel])}` : '% verandering')
   const noot = (sleutel, label) => [
-    { label, onderdrukt: od[sleutel], soort: perioden[sleutel] },
-    { label: `${label} ${c.bmZin}`, onderdrukt: bmOd[sleutel], soort: perioden[sleutel] },
+    { label, onderdrukt: od[sleutel] },
+    { label: `${label} ${c.bmZin}`, onderdrukt: bmOd[sleutel] },
   ]
-  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: SECTOR_LABELS[s] || s, onderdrukt, soort: perioden.ingeschrevenen }))
+  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: SECTOR_LABELS[s] || s, onderdrukt }))
   // Een grafiek belooft de vergelijking met het gemiddelde alleen als dat er is (#951: bij het mbo stond bij
   // "Gediplomeerden per jaar" alleen de eigen lijn).
   const tegen = sleutel => (bm[sleutel] && Object.keys(bm[sleutel]).length ? `eigen instelling tegenover ${c.bmZin}` : 'eigen instelling; geen gemiddelde van de vergelijkingsgroep')
