@@ -227,7 +227,7 @@ def _check_sector(sector: str | None) -> None:
 def _tableinfo() -> dict[str, dict]:
     """Methodiek/periodecontext uit officiële TableInfos (cbs_tableinfo.json); leeg als afwezig."""
     from importlib.resources import files
-    pad = files("onderwijsbronnen.cbs.data").joinpath("cbs_tableinfo.json")
+    pad = files("onderwijsbronnen.cbs.catalogusdata").joinpath("cbs_tableinfo.json")
     try:
         return {r["_cbs_id"]: r for r in json.loads(pad.read_text(encoding="utf-8"))}
     except FileNotFoundError:
@@ -285,7 +285,7 @@ def get_dataset(dataset_id: str, schema_version: int = SCHEMA_VERSION) -> dict:
 def _bouwmanifest() -> dict | None:
     """Manifest van het gepubliceerde artefact (cbs_manifest.json), of None als het ontbreekt."""
     from importlib.resources import files
-    pad = files("onderwijsbronnen.cbs.data").joinpath("cbs_manifest.json")
+    pad = files("onderwijsbronnen.cbs.catalogusdata").joinpath("cbs_manifest.json")
     try:
         return json.loads(pad.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -295,7 +295,7 @@ def _bouwmanifest() -> dict | None:
 @lru_cache(maxsize=1)
 def _geleverde_hashes() -> dict[str, str]:
     from importlib.resources import files
-    data_dir = files("onderwijsbronnen.cbs.data")
+    data_dir = files("onderwijsbronnen.cbs.catalogusdata")
     hashes = {}
     for naam in (_bouwmanifest() or {}).get("bestanden", {}):
         hashes[naam] = hashlib.sha256(data_dir.joinpath(naam).read_bytes()).hexdigest()

@@ -76,7 +76,7 @@ def test_de_wekelijkse_laatste_update_doorloopt_de_hele_keten_voor_de_mr(ci):
     assert posities == sorted(posities)
     for pad in (
         "packages/onderwijsbronnen/data/02-prepared",
-        "packages/onderwijsbronnen/src/onderwijsbronnen/cbs/data",
+        "packages/onderwijsbronnen/src/onderwijsbronnen/cbs/catalogusdata",
         "packages/onderwijsbronnen/docs/cbs/catalogus_manifest.json",
     ):
         assert pad in script

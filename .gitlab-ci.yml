@@ -363,8 +363,8 @@ cbs:laatste-update:
       uv run python scripts/pakketbot.py mr --branch bot/cbs-laatste-update \
         --titel "chore(onderwijsbronnen): _laatste_update van ${GEWIJZIGD} CBS-tabellen ($(date +%Y-%m-%d))" \
         --toelichting "Wekelijkse controle van _laatste_update per CBS-tabel, met de afgeleide catalogus, het manifest en de site." \
-        packages/onderwijsbronnen/data/02-prepared packages/onderwijsbronnen/src/onderwijsbronnen/cbs/data \
-        packages/onderwijsbronnen/docs/cbs/data.json packages/onderwijsbronnen/docs/cbs/catalogus_manifest.json
+        packages/onderwijsbronnen/data/02-prepared packages/onderwijsbronnen/src/onderwijsbronnen/cbs/catalogusdata \
+        packages/onderwijsbronnen/docs/cbs/catalogusdata.json packages/onderwijsbronnen/docs/cbs/catalogus_manifest.json
 
 # De catalogussites (packages/onderwijsbronnen/docs/{cbs,rio}, op de Pages-site van de GitHub-mirror als /catalogus/cbs/ en
 # /catalogus/rio/): opnieuw uit de catalogus van elke site en uit de voorbeelden. Vroeger bij elke push die de catalogus raakte; hier
@@ -383,7 +383,7 @@ catalogus:site:
       uv run python scripts/pakketbot.py mr --branch bot/catalogus-site
       --titel "chore(pakketten): catalogussites bijgewerkt"
       --toelichting "De catalogussites van onderwijsbronnen (cbs en rio), opnieuw uit de catalogus en de voorbeelden."
-      packages/onderwijsbronnen/docs/cbs packages/onderwijsbronnen/src/onderwijsbronnen/cbs/data
+      packages/onderwijsbronnen/docs/cbs packages/onderwijsbronnen/src/onderwijsbronnen/cbs/catalogusdata
       packages/onderwijsbronnen/data/02-prepared/cbs_manifest.json packages/onderwijsbronnen/docs/rio
 
 # Wekelijks (maandag): nieuwe CBS-tabellen onder onderwijsthema's die niet in de catalogus staan. Niets wordt

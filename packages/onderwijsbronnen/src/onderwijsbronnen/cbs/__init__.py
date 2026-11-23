@@ -2,9 +2,9 @@
 
     from onderwijsbronnen.cbs import data, dimension, properties
 
-Let op: `data` is de functie, en `cbs.data` is ook de naam van de datamap met de catalogus. Na de eerste catalogus-
-aanroep in een proces wijst het attribuut `cbs.data` naar die map; `from onderwijsbronnen.cbs import data` vóór die
-aanroep (zoals in een snippet) en `cbs.client.data` geven altijd de functie (tests/test_bron_id_vormen.py in de chat).
+`data` is de functie, en de catalogusbestanden staan bewust onder een andere naam (`catalogusdata/`): een map `data/`
+zou na de eerste catalogusaanroep het attribuut `cbs.data` overschrijven en `from onderwijsbronnen.cbs import data`
+zou dan de module geven (#1104; tests/test_cbs_data_naam.py).
 """
 
 from .._kern import broncontract, sleutels
@@ -19,7 +19,7 @@ BRON = "cbs"
 def catalog(ai=True):
     import json
     from importlib.resources import files
-    data_dir = files("onderwijsbronnen.cbs.data")
+    data_dir = files("onderwijsbronnen.cbs.catalogusdata")
     if ai:
         try:
             records = json.loads(data_dir.joinpath("cbs_datasets_enriched.json").read_text(encoding="utf-8"))

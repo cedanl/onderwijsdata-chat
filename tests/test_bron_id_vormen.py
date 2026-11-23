@@ -265,12 +265,7 @@ def test_een_oude_snippet_draait_tegen_zijn_eigen_installatie(module, spec, tmp_
 
 
 def _in_een_schoon_proces(regels: list[str]) -> subprocess.CompletedProcess:
-    """Zoals iemand een snippet draait: een eigen interpreter, de importregel bovenaan.
-
-    Niet in dit proces: daar heeft de catalogus het subpakket `onderwijsbronnen.cbs.data` (de datamap) al
-    geïmporteerd, en dat overschrijft het attribuut `data` van `onderwijsbronnen.cbs`. In een snippet staat de import
-    vóór elke catalogusaanroep, dus daar is `data` de functie.
-    """
+    """Zoals iemand een snippet draait: een eigen interpreter, de importregel bovenaan."""
     return subprocess.run([sys.executable, "-c", "\n".join(regels)], capture_output=True, text=True, timeout=60)
 
 
@@ -288,10 +283,10 @@ def test_de_importregels_van_een_nieuwe_snippet_werken_in_een_schoon_proces(rege
     assert uit.returncode == 0, uit.stderr
 
 
-def test_in_een_proces_met_catalogus_is_cbs_data_de_datamap():
-    """De naambotsing hierboven, vastgelegd: `cbs.client.data` is altijd de functie."""
+def test_in_een_proces_met_catalogus_is_cbs_data_de_functie():
+    """De catalogusbestanden staan onder `cbs.catalogusdata`, dus de catalogus overschrijft `cbs.data` niet (#1104)."""
     from onderwijsbronnen import cbs
 
     catalog._cbs_alles()
-    assert not callable(cbs.data)
-    assert callable(cbs.client.data)
+    assert callable(cbs.data)
+    assert cbs.data is cbs.client.data
