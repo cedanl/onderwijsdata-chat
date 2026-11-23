@@ -11,6 +11,7 @@ De Jinja-code staat alleen in het sjabloon; niets uit het rapport wordt als sjab
 
 import re
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from html import escape
 from io import BytesIO
 from pathlib import Path
@@ -177,12 +178,20 @@ def omgeving() -> Environment:
     return Environment(autoescape=True, finalize=_letterlijk, undefined=StrictUndefined)
 
 
+def eigenschappen(props, rapport: Rapport) -> None:
+    """De documenteigenschappen zijn die van het rapport, niet van het sjabloon (#1121): titel, het moment van
+    renderen (UTC) en de opsteller uit het rapport, leeg zonder opsteller (nooit de toolnaam van het sjabloon)."""
+    props.title = schoon(rapport.titel or "Rapport")[:MAX_EIGENSCHAP]
+    props.created = props.modified = datetime.now(UTC).replace(microsecond=0)
+    props.author = props.last_modified_by = schoon(rapport.opsteller)[:MAX_EIGENSCHAP]
+
+
 def render_docx(rapport: Rapport, grafieken: Mapping[int, Grafiek], sjabloon: Path = SJABLOON) -> bytes:
     tpl = DocxTemplate(sjabloon)
     tpl.render(context(tpl, rapport, grafieken), omgeving(), autoescape=True)
     # tpl.docx, niet tpl.get_docx(): dat laadt na het renderen het lege sjabloon opnieuw.
     if (document := tpl.docx) is not None:
-        document.core_properties.title = schoon(rapport.titel or "Rapport")[:MAX_EIGENSCHAP]
+        eigenschappen(document.core_properties, rapport)
     uit = BytesIO()
     tpl.save(uit)
     return uit.getvalue()

@@ -1353,14 +1353,19 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 .db-afdrukbalk { display: flex; justify-content: flex-end; padding: 12px 24px 0; }
 .db-afdrukbalk + .dashboard-content { padding-top: 12px !important; }
 .db-regionoot { font-size: 12.5px; color: var(--muted-text); margin: 6px 0 0; }
+/* De printkop van een vast dashboard (#1127): op het scherm uit, alleen in de afdruk (hieronder). */
+.db-printkop { display: none; }
 /* Een dashboard afgedrukt of als pdf (#904, besluit B): alleen de inhoud, over de volle lengte, zonder knoppen, met
-   het bronblok onderaan en de links ervan uitgeschreven. Een kaart breekt niet over twee pagina's. */
+   het bronblok onderaan en de links ervan uitgeschreven. Een kaart breekt niet over twee pagina's. Boven de inhoud
+   staat de Npuls-printkop (#1127): de viewer is de afdrukwortel, want de printkop staat naast het dashboard. */
 @media print {
   body:has(.dashboard-content) * { visibility: hidden; }
-  body:has(.dashboard-content) .dashboard-content,
-  body:has(.dashboard-content) .dashboard-content * { visibility: visible; }
-  body:has(.dashboard-content) .dashboard-content { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; overflow: visible; }
-  body:has(.dashboard-content) .wb-viewer-content { overflow: visible !important; }
+  body:has(.dashboard-content) .wb-viewer-content,
+  body:has(.dashboard-content) .wb-viewer-content * { visibility: visible; }
+  body:has(.dashboard-content) .wb-viewer-content { position: absolute; left: 0; top: 0; width: 100%; overflow: visible !important; }
+  body:has(.dashboard-content) .dashboard-content { padding: 0 !important; overflow: visible; }
+  .db-printkop { display: block; }
+  .db-printkop svg { width: 28px; height: 28px; flex-shrink: 0; }
   .dashboard-content button, .db-afdrukbalk { display: none !important; }
   .dashboard-content .chart-card, .dashboard-content .kpi-card, .dashboard-sources { break-inside: avoid; }
   .dashboard-sources a[href]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; }

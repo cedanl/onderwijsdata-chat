@@ -9,6 +9,7 @@ import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportExportMenu from './RapportExportMenu'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
+import DashboardPrintkop from './DashboardPrintkop'
 
 // De vaste dashboards (Chart.js en alle dashboardcode) laden pas als er een opent: de rapportenroute gebruikt deze
 // viewer ook en had ze anders altijd mee (#907).
@@ -186,7 +187,14 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label={rapportWoord(workbook) === 'dashboard' ? 'Dashboardinhoud' : 'Rapportinhoud'}
         aria-busy={reportFrame.loading || undefined}>
         {(() => {
-          if (BuiltinDash) return <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} sector={sector} /></Suspense>
+          if (BuiltinDash) {
+            return (
+              <>
+                <DashboardPrintkop titel={workbook.title} instelling={instelling} />
+                <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} sector={sector} /></Suspense>
+              </>
+            )
+          }
           if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>

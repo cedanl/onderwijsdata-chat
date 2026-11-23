@@ -168,6 +168,10 @@ describe('conversationMarkdown: herkomst (#713)', () => {
     expect(tekst).toContain('Dataversie: CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig) · DUO p01hoinges (herladen 11-10-2026)')
   })
 
+  it('noemt ook in de gespreksexport de commit kort na de appversie (#1123)', () => {
+    expect(export_({ ...MANIFEST, commit: '7d3488aa' })).toContain('catalogus bd4942907ddd · app 2.5.0 (commit 7d3488aa)')
+  })
+
   // #715/#717: de hashes stonden in het manifest, maar niet in de leesregel van export en rapport.
   it('noemt de inhoudshash van een CBS-tabel en de md5 van een DUO-bestand in de dataversie', () => {
     const tekst = export_({

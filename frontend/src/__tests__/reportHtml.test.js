@@ -521,6 +521,14 @@ describe('manifest (#345)', () => {
     expect(html).toContain('UWV uwv-open-match-data (peildatum 2023-05-16)')
   })
 
+  it('noemt de commit kort na de appversie, en zonder commit blijft de regel zoals ze was (#1123)', () => {
+    const met = buildReportHtml({ ...fullSpec, manifest: { ...manifest, commit: '7d3488aa' } })
+    expect(met).toContain('catalogus bd4942907ddd · app 2.2.0 (commit 7d3488aa)')
+    const zonder = buildReportHtml({ ...fullSpec, manifest })
+    expect(zonder).toContain('catalogus bd4942907ddd · app 2.2.0<')
+    expect(zonder).not.toContain('commit')
+  })
+
   it('een ouder manifest zonder model_naam toont het id zonder provider (BEV-10)', () => {
     const { model_naam: _weg, ...ouder } = manifest
     const html = buildReportHtml({ ...fullSpec, manifest: { ...ouder, model: 'azure_ai/claude-sonnet-5-5' } })

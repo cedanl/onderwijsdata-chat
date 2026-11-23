@@ -68,6 +68,8 @@ class Rapport:
     conclusie: str
     bronnen: tuple[str, ...]
     herkomst: tuple[str, ...]
+    # Alleen voor de documenteigenschappen van het Word-bestand (#1121); de JS-tweeling heeft geen Word-eigenschappen.
+    opsteller: str = ""
 
 
 def kan_docx(html: object) -> TypeGuard[str]:
@@ -250,4 +252,7 @@ def rapport_uit_html(html: str) -> Rapport:
         conclusie=_netjes(_prose_markdown(prose)) if prose is not None else "",
         bronnen=_teksten(doc, f"//*[{_klasse('bronnen')}]//li"),
         herkomst=_teksten(doc, f"//*[{_klasse('manifest')}]/div"),
+        opsteller=_tekst(
+            _eerste(doc, f"//*[{_klasse('meta-chip')}][starts-with(normalize-space(.), 'Opgesteld door')]/b")
+        ),
     )

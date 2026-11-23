@@ -75,6 +75,11 @@ describe('een rapport als Markdown', () => {
     expect(md).toMatch(/## Herkomst\n\nVerantwoording: model gpt-4\.1\n\nDataversie: CBS 85353NED \(bijgewerkt 2026-10-01\)\n$/)
   })
 
+  it('neemt de commit uit de verantwoordingsregel ongewijzigd over (#1123)', () => {
+    const met = markdownVan({ ...volledig, manifest: { ...volledig.manifest, app: '2.8.0', commit: '7d3488aa' } })
+    expect(met).toContain('Verantwoording: model gpt-4.1 · app 2.8.0 (commit 7d3488aa)\n')
+  })
+
   it('bevat geen HTML-tags', () => {
     expect(md).not.toMatch(/<\/?[a-z][^>]*>/i)
   })

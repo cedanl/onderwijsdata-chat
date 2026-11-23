@@ -40,6 +40,13 @@ def test_leest_hetzelfde_als_de_js_tweeling():
     assert _als_js(rapport_uit_html(RAPPORT_HTML)) == RAPPORT_JS
 
 
+def test_de_opsteller_staat_uit_de_meta_regel_en_is_leeg_zonder_opsteller():
+    """#1121: voor de documenteigenschappen; de gebruiker blijft eigenaar, de toolnaam is geen opsteller."""
+    assert rapport_uit_html(RAPPORT_HTML).opsteller == "jansen"
+    zonder = RAPPORT_HTML.replace("Opgesteld door <b>jansen</b> met", "Opgesteld met")
+    assert rapport_uit_html(zonder).opsteller == ""
+
+
 def test_alleen_een_rapport_kan_naar_word():
     assert kan_docx(RAPPORT_HTML)
     assert not kan_docx("<p>rapport</p>")

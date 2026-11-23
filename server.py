@@ -22,6 +22,7 @@ from core import bronstatus, config, foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
+from core.pakketherkomst import korte_commit
 from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
 from logging_config import setup_logging
@@ -169,7 +170,7 @@ async def version() -> dict:
     return {
         "version": Config.APP_VERSION or await asyncio.to_thread(_read),
         # GIT_COMMIT is volledig (de installatieregel van een snippet heeft dat nodig, #888); hier de korte vorm.
-        "commit": Config.GIT_COMMIT[:8] if Config.GIT_COMMIT else "onbekend",
+        "commit": korte_commit(Config.GIT_COMMIT) or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).
         "catalogus": catalogusversie(Config.GIT_COMMIT),
         # De geladen catalogus met bronvlaggen, gelijk aan `catalogus` in het manifest van een antwoord (#1029).
