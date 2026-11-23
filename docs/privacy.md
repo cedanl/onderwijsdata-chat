@@ -55,7 +55,9 @@ organisatie en instelling staan tijdens de sessie in het geheugen van de server 
 `SESSION_MAX_HOURS`).
 
 Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taak wat over zijn termijn is
-(`python -m persistence.opschonen`, een CronJob in de Helm-chart; aan op test en playground, niet op productie). De
+(`python -m persistence.opschonen`, een CronJob in de Helm-chart). Ze staat aan in de manifests van `test`,
+`playground`, `staging-otc` en `production-otc` (`opschonen.enabled` in `manifests/<omgeving>/values.yaml`; de
+OTC-omgevingen zijn nog niet uitgerold, #674). Op `development` en in de vervallen map `production` is ze uit. De
 termijnen staan in de tabel hierboven: gesprekken en feedback 90 dagen, rapporten en dashboards 365 dagen, langer
 omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te stellen met
 `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7

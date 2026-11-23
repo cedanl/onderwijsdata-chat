@@ -73,6 +73,25 @@ def test_opschonen_alleen_op_de_omgevingen_met_een_bewaartermijn(omgeving):
     assert aan is (omgeving.name in _OPSCHONEN_AAN)
 
 
+def test_privacy_md_noemt_de_omgevingen_waar_de_opschoning_aanstaat():
+    """docs/privacy.md zei "niet op productie" toen de OTC-omgevingen haar al aan hadden (#1119): de omgevingen in de
+    alinea over de bewaartermijn zijn precies die met `opschonen.enabled` in hun manifests."""
+    aan = {
+        omgeving.name
+        for omgeving in _OMGEVINGEN
+        if (_values(omgeving).get("opschonen") or {}).get("enabled", _CHART["opschonen"]["enabled"])
+    }
+    privacy = (_ROOT / "docs/privacy.md").read_text()
+    alinea = next(a for a in privacy.split("\n\n") if a.startswith("Bewaartermijn (#485"))
+    alinea = " ".join(alinea.split())
+    assert "niet op productie" not in privacy
+    assert aan == _OPSCHONEN_AAN
+    for naam in aan:
+        assert f"`{naam}`" in alinea
+    for naam in {omgeving.name for omgeving in _OMGEVINGEN} - aan:
+        assert f"`{naam}`" not in alinea.split("`opschonen.enabled`")[0]
+
+
 @pytest.mark.parametrize("omgeving", sorted(_OPSCHONEN_AAN))
 def test_opschonen_past_in_het_quotum_en_heeft_postgres(omgeving):
     """De CronJob-pod draait naast de app; samen mogen ze niet boven limits.cpu uit, anders start hij nooit."""
