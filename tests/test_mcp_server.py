@@ -11,6 +11,7 @@ import pytest
 
 import mcp_server
 import tools
+from core.appversie import app_versie
 from tools.schemas import TOOL_SCHEMAS
 
 
@@ -36,6 +37,25 @@ def test_definities_volgen_het_toolschema_van_de_chat():
         functie = _functie(definitie["name"])
         assert definitie["description"] == f"{functie['description']} {mcp_server.REGEL_GETALLEN}"
         assert definitie["input_schema"] == functie["parameters"]
+
+
+def test_toolbeschrijvingen_zijn_goed_nederlands_en_zonder_chat():
+    """Een MCP-client toont de beschrijvingen aan gebruikers en geeft ze aan een extern model: geen "specifiek dataset",
+    geen cijfer en woord door elkaar ("twee tot 8") en geen verwijzing naar "deze chat" in een koppeling zonder chat."""
+    beschrijvingen = {d["name"]: d["description"] for d in mcp_server.tooldefinities()}
+
+    assert "één specifieke dataset" in beschrijvingen["dataset_details"]
+    assert "Vergelijk 2 tot 8 instellingen" in beschrijvingen["vergelijk_instellingen"]
+    for naam, tekst in beschrijvingen.items():
+        assert "specifiek dataset" not in tekst, naam
+        assert "twee tot 8" not in tekst, naam
+        assert "deze chat" not in tekst, naam
+
+
+def test_telling_verwijst_niet_naar_een_chat():
+    tekst, _ = mcp_server.voer_uit("dataset_counts", None)
+
+    assert "deze chat" not in tekst
 
 
 def test_instructies_noemen_de_regel_voor_getallen():
@@ -230,7 +250,7 @@ def _via_protocol(actie):
 def test_protocol_noemt_naam_versie_en_instructies():
     init, _ = _via_protocol(lambda sessie: sessie.list_tools())
     assert init.server_info.name == "onderwijscatalogus"
-    assert init.server_info.version == mcp_server._versie()
+    assert init.server_info.version == app_versie()
     assert "search_catalog" in (init.instructions or "")
 
 

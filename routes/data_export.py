@@ -6,6 +6,7 @@ from fastapi.responses import Response
 from agent import recepten
 from agent.publicatie import CSV, log_publicatie
 from core.auth import get_current_user
+from core.openapi_schema import bijlage
 from tools import herlaad
 from tools.csv_export import bestandsnaam, naar_csv
 
@@ -15,7 +16,11 @@ _WEG = "Deze data is niet meer beschikbaar."
 _OPNIEUW = "Stel de vraag opnieuw om haar op te halen."
 
 
-@router.get("/api/data/csv")
+@router.get(
+    "/api/data/csv",
+    response_class=Response,
+    responses=bijlage("text/csv", "De tabel achter een antwoord als CSV-bijlage (UTF-8 met BOM, voor Excel)."),
+)
 async def data_csv(key: str, username: str = Depends(get_current_user)) -> Response:
     """De tabel achter een antwoord als CSV-bijlage (#269).
 

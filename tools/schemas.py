@@ -148,7 +148,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_DATASET_DETAILS,
             "description": (
-                "Haal gedetailleerde kolominformatie op voor één specifiek dataset uit de catalogus. "
+                "Haal gedetailleerde kolominformatie op voor één specifieke dataset uit de catalogus. "
                 "Gebruik dit nadat search_catalog kandidaten heeft opgeleverd, om te controleren "
                 "welke kolommen, dimensiewaarden en types beschikbaar zijn vóór het laden van data."
             ),
@@ -169,7 +169,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_DATASET_COUNTS,
             "description": (
-                "Aantal datasets per bron (CBS, DUO, RIO) dat deze chat kan opvragen. Gebruik dit voor een vraag "
+                "Aantal datasets per bron (CBS, DUO, RIO) dat hier te raadplegen is. Gebruik dit voor een vraag "
                 "naar hoeveel datasets er zijn, niet het aantal zoekresultaten."
             ),
             "parameters": {"type": "object", "properties": {}},

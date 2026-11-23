@@ -371,7 +371,7 @@ def test_onbekende_instelling_is_een_fout_die_haar_noemt():
         ("aantallen_per_jaar", {"instelling": UU, "schooljaren": ["2010"]}, "Geen van de gevraagde schooljaren"),
         ("aantallen_per_jaar", {"instelling": UU, "opleiding": "Rechtsgeleerdheid"}, "B Rechtsgeleerdheid (50400)"),
         ("vergelijk_instellingen", {"instellingen": [ROC, UU]}, "Mbo en hbo/wo vergelijk ik niet"),
-        ("vergelijk_instellingen", {"instellingen": [ROC, "roc mondriaan", "27GZ"]}, "dit zijn er 1"),
+        ("vergelijk_instellingen", {"instellingen": [ROC, "roc mondriaan", "27GZ"]}, "Vergelijk 2 tot 8 verschillende instellingen; dit zijn er 1"),
         ("vergelijk_instellingen", {"instellingen": "ROC Mondriaan"}, "als een lijst"),
     ],
     ids=["mbo-eerstejaars", "telling", "mbo-opleiding", "opleiding-met-vorm", "vorm", "schooljaar", "twee-opleidingen",

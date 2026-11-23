@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from agent import beurtbewijs, recepten
 from core import auth
 from core.auth import get_current_user
+from core.openapi_schema import bijlage
 from persistence import export, verwijderen
 
 from .auth import vergeet_oidc_gebruiker
@@ -30,7 +31,11 @@ def bestandsnaam(nu: datetime) -> str:
     return f"openedudata-mijn-gegevens-{nu:%Y-%m-%d}.json"
 
 
-@router.get("/api/mijn-gegevens/export")
+@router.get(
+    "/api/mijn-gegevens/export",
+    response_class=StreamingResponse,
+    responses=bijlage("application/json", "Alle gegevens van dit account als JSON-bijlage."),
+)
 def exporteer(username: str = Depends(get_current_user)) -> StreamingResponse:
     """Alle gesprekken, werkboeken, feedback en datarecepten van deze gebruiker als JSON-bijlage (#645).
 
