@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState, useCallback, useEffect, useRef } from 'react'
 import { fetchFeedbackGiven } from '../api'
+import { foutMelding } from '../foutMelding'
 import { useReportFrame } from '../hooks/useReportFrame'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN } from '../workbooks'
@@ -75,7 +76,7 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
     onUpdate({ ...workbook, title: trimmed })
     updateWorkbook(workbook, { title: trimmed }).catch(err => {
       onUpdate(workbook)
-      setSaveError(`Titel niet opgeslagen: ${err.message}`)
+      setSaveError(foutMelding('Titel niet opgeslagen', err))
     })
   }, [workbook, titleDraft, onUpdate])
 

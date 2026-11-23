@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { downloadRapportDocx } from '../api'
+import { foutMelding } from '../foutMelding'
 import { workbookFilename } from '../workbookHtml'
 import { kanMarkdown, rapportUitHtml } from '../rapportUitHtml'
 import { grafiekFormulier, vraagGrafieken } from '../rapportGrafieken'
@@ -40,7 +41,7 @@ export default function WorkbookWord({ workbook, grafiekDoc = null, save = saveF
       const aantal = rapportUitHtml(html).visualisaties.length
       if (zonder || mee < aantal) setMelding({ fout: false, tekst: ZONDER_ALLE_GRAFIEKEN })
     } catch (e) {
-      setMelding({ fout: true, tekst: `Het Word-document kon niet worden gemaakt: ${e.message}` })
+      setMelding({ fout: true, tekst: foutMelding('Het Word-document kon niet worden gemaakt', e) })
     } finally {
       setBezig(false)
     }

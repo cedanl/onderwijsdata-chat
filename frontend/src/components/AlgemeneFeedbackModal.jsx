@@ -3,6 +3,7 @@ import { useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDialog } from '../hooks/useDialog'
 import { postAlgemeneFeedback } from '../api'
+import { foutMelding } from '../foutMelding'
 import { MAX_FEEDBACK_CHARS } from '../constants'
 import { useTermijnen, getal } from '../termijnen'
 
@@ -40,7 +41,7 @@ export default function AlgemeneFeedbackModal({ onClose }) {
       await postAlgemeneFeedback({ tekst: tekst.trim(), soort, pagina: paginaVan(window.location.pathname) })
       setVerstuurd(true)
     } catch (err) {
-      setError(`Feedback niet verstuurd: ${err.message}`)
+      setError(foutMelding('Feedback niet verstuurd', err))
     } finally {
       setSending(false)
     }
