@@ -1,6 +1,7 @@
 import TabelScroll from './TabelScroll'
 
-const GETAL = new Intl.NumberFormat('nl-NL')
+// signDisplay 'negative': een waarde die op nul afrondt (-0, -0,0004) toont als "0", nooit als "-0" (#1101).
+const GETAL = new Intl.NumberFormat('nl-NL', { signDisplay: 'negative' })
 
 // Een waarde als getal in Nederlandse notatie; een label (x, reeks) blijft zoals het staat: 2020 is geen 2.020.
 const cel = (waarde, isLabel) => (typeof waarde === 'number' && !isLabel ? GETAL.format(waarde) : String(waarde ?? ''))

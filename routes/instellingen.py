@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Query
@@ -9,6 +10,7 @@ from core.auth import get_current_user
 from core.config import (
     DASHBOARD_QUEUE_TIMEOUT_S,
     DASHBOARD_TIMEOUT_S,
+    DASHBOARD_TRAAG_S,
     DASHBOARDS_ENABLED,
     MAX_DASHBOARD_LOADS,
     MODEL,
@@ -116,7 +118,19 @@ def _over_de_tijdsgrens() -> str:
 
 async def _in_een_plaats(loader: Callable[[str], dict], instelling: str) -> dict:
     async with _dashboardplaatsen.plaats():
-        return await asyncio.get_running_loop().run_in_executor(None, loader, instelling)
+        begin = time.monotonic()
+        try:
+            return await asyncio.get_running_loop().run_in_executor(None, loader, instelling)
+        finally:
+            _meld_traag(getattr(loader, "__name__", "dashboard"), time.monotonic() - begin)
+
+
+def _meld_traag(eindpunt: str, duur_s: float) -> None:
+    """Eén INFO-regel voor een lading die langer duurt dan DASHBOARD_TRAAG_S (#1166). Alleen het eindpunt en de duur:
+    de instelling is gebruikerstekst en hoort niet in het log (#475). De duur is die van de lading zelf, zonder de
+    wachttijd voor een plaats; ook een lading die over de tijdsgrens loopt of faalt, komt erin."""
+    if duur_s >= DASHBOARD_TRAAG_S:
+        logger.info("DASHBOARD traag: eindpunt=%s duur=%.1f s", eindpunt, duur_s)
 
 
 def _laat_uitlopen(taak: asyncio.Task) -> None:

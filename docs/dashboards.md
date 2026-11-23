@@ -52,8 +52,10 @@ De parameter is een van deze sleutels, exact en hoofdletterongevoelig (`resolve_
   die zo heet als een code, gaat voor.
 
 Het antwoord noemt in `instelling` de registernaam. Is de instelling onbekend, dan is `gevonden` `false`. Bij
-`/api/dashboard/regio` staan dan in `beschikbare_instellingen` de vijf namen die erop lijken; lijkt er geen op, dan is
-die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929). Een bron die niet laadde, geeft 503, geen
+`/api/dashboard/regio` staan dan in `beschikbare_instellingen` hooguit vijf namen die er sterk op lijken (een tikfout,
+gelijkenis vanaf 0,85); lijkt er geen op, dan is die lijst leeg en zegt `geen_suggesties` waarop te zoeken (#901, #929,
+#1102). Het DUO-bestand heeft niet elke instelling (Horizon College en ROC Friese Poort ontbreken): de melding zegt dat
+de instelling niet in het bestand staat, niet dat de naam fout is. Een bron die niet laadde, geeft 503, geen
 `gevonden: false`.
 
 ### Bronvermeldingen: het bronblok
@@ -331,7 +333,9 @@ twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 /
   `data/dashboard.py`, gespeld zoals de DUO-adressen: "HENGELO OV", "VELP GLD"). Elke plaats uit `adressen_ho` en
   `adressen_mbo` staat erin; `tests/test_dashboard_kaart.py` legt dat vast tegen de bevroren bestanden. Tot #951
   ontbrak Etten-Leur, en daarmee stond Curio niet op haar eigen kaart. Een instelling zonder bekende plaats noemt de
-  kaart onder `zonder_locatie` (#906).
+  kaart onder `zonder_locatie` (#906). Onder de punten liggen de provinciegrenzen (`data/provincies.geojson`, CBS en
+  Kadaster via cartomap, vereenvoudigd; in de figuur zelf, dus zonder verzoek naar buiten). Instellingen in dezelfde
+  plaats delen één punt met hun aantal; de tooltip en de tekst voor schermlezers noemen ze (#1079).
 
 - **Regio en provincie** komen uit één adres per instelling: de hoofdvestiging in het DUO-adressenbestand
   (`adressen_ho`, `adressen_mbo`; `get_adres_lookup` in `data/instellingen.py`). Vestigingen elders tellen niet mee
@@ -460,6 +464,19 @@ volgorde, dan wordt de ping `duo-instroom-mbo` van `bron:ping` rood en noemt hij
 3. zet dezelfde indexen in `scripts/duo_testfixtures.py` (het oude hoofdgroep-bestand eruit), ververs de fixtures en
    werk de verwachte jaren en getallen in `tests/test_dashboard_mbo_reeksen.py` en `tests/test_dashboard_cijfers.py`
    bij.
+
+### Laadtijd van de eerste lading (#1166)
+
+Een dashboard-eindpunt laadt zijn bronnen bij de eerste aanvraag na een start: gemeten op 23-11-2026 (één proces, DUO
+live) duurt `regio` voor Hogeschool Utrecht 15,6 s koud en 0,7 s warm, ook voor een andere instelling; `financien` 12,5 s
+koud en daarna 0,0 s; `rendement` deelt de bestanden van `regio`. Elke lading die langer duurt dan `DASHBOARD_TRAAG_S`
+(5 s) schrijft één INFO-regel `DASHBOARD traag: eindpunt=… duur=… s`, met alleen het eindpunt: zo ziet een beheerder
+welk eindpunt traag is. Een opwarmstap na `/ready` is nog niet gebouwd. Het ontwerp: na de start de laders van
+`regio`, `rendement` en `financien` één keer aanroepen voor één vaste instelling per niveau (hbo, mbo), op de achtergrond
+en onder de plaatsenlimiet van `MAX_DASHBOARD_LOADS`, met `ENABLE_DASHBOARDS` als voorwaarde. Dat dekt alleen de eerste
+24 uur: daarna verlopen de caches (`core/actualiteit.py`) en betaalt de eerste gebruiker weer 10-23 s. Een opwarmstap die
+helpt, ververst dus ook voordat de TTL verloopt, en dat is een eigen ontwerp (moment, geheugen van zes DUO-bestanden
+naast de chat, gedrag bij een bronstoring).
 
 ---
 
