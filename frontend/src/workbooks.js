@@ -3,6 +3,7 @@ import { fetchWorkbooks, fetchWorkbook, putWorkbook, deleteWorkbookApi } from '.
 import { getToken, sessionEndedSince } from './auth'
 import { volgOpslag } from './gesprekOpslag'
 import { terugInLijst } from './verwijderenMetUitstel'
+import { AANSLUITING_ARBEIDSMARKT } from './dashboardNamen'
 
 // Gender zit alleen in het ho-dashboard (hbo en wo); het mbo-dashboard heeft die sectie niet (#918). De diploma's
 // per eerstejaars staan alleen bij mbo: hbo en wo hebben geen cohortbron (#898). Bij een onbekend niveau (vrije tekst
@@ -25,7 +26,7 @@ export const BUILTIN_MIJN_INSTELLING = {
 export const BUILTIN_ARBEIDSMARKT = {
   id: '__builtin_arbeidsmarkt__',
   title: 'Arbeidsmarkt',
-  description: 'Match-score per sector, vacatures (UWV), ROA-indicatoren en arbeidsmarktprognose.',
+  description: `${AANSLUITING_ARBEIDSMARKT} per sector, vacatures (UWV), ROA-indicatoren en arbeidsmarktprognose.`,
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }

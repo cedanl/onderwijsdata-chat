@@ -68,7 +68,7 @@ export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) 
   const echt = ctx => ctx.dataset.waarden?.[ctx.dataIndex] ?? ctx.raw
   return (
     <ChartCard
-      title="Match per sector"
+      title="Aansluiting per sector"
       subtitle="Vacature-aandeel gedeeld door diploma-aandeel: 1 is gelijk, hoger is meer vraag dan aanbod"
     >
       <Grafiek soort="bar" data={data} categorie="Sector" hoogte={staafHoogte(data.labels, { perRij: 30, kader: 110, minimum: 0, breedte: MATCH_LABEL_BREEDTE })} plugins={[DREMPELLIJNEN]} options={{

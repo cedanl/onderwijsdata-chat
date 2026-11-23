@@ -69,7 +69,7 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
   const { perioden } = c
   const diplNoot = gediplomeerdenNoot({ diplJaar: c.lastDipl?.[0], ingesJaar: c.lastInges?.[0], perioden })
   // Het startjaar van de groei als schooljaar of diplomajaar, naar de reeks (#904).
-  const vanaf = sleutel => startjaar => (startjaar != null ? `% verandering t.o.v. ${jaarLabel(startjaar, perioden[sleutel])}` : '% verandering')
+  const vanaf = sleutel => startjaar => (startjaar != null ? `% verandering ten opzichte van ${jaarLabel(startjaar, perioden[sleutel])}` : '% verandering')
   const noot = (sleutel, label) => [
     { label, onderdrukt: od[sleutel], soort: perioden[sleutel] },
     { label: `${label} ${c.bmZin}`, onderdrukt: bmOd[sleutel], soort: perioden[sleutel] },
@@ -77,7 +77,7 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
   const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: SECTOR_LABELS[s] || s, onderdrukt, soort: perioden.ingeschrevenen }))
   // Een grafiek belooft de vergelijking met het gemiddelde alleen als dat er is (#951: bij het mbo stond bij
   // "Gediplomeerden per jaar" alleen de eigen lijn).
-  const tegen = sleutel => (bm[sleutel] && Object.keys(bm[sleutel]).length ? `eigen instelling vs. ${c.bmZin}` : 'eigen instelling; geen gemiddelde van de vergelijkingsgroep')
+  const tegen = sleutel => (bm[sleutel] && Object.keys(bm[sleutel]).length ? `eigen instelling tegenover ${c.bmZin}` : 'eigen instelling; geen gemiddelde van de vergelijkingsgroep')
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -106,7 +106,7 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
         <PeersTable data={data} instelling={instelling} dark={c.dark} />
         <PeerLinesChart
           title="Ingeschrevenen per jaar"
-          subtitle={start => (c.hasPeers ? `${vanaf('ingeschrevenen')(start)} — ${instelling} (dik) vs. de andere ${bm.populatie}` : `${vanaf('ingeschrevenen')(start)} — eigen instelling vs. ${c.bmZin}`)}
+          subtitle={start => (c.hasPeers ? `${vanaf('ingeschrevenen')(start)} — ${instelling} (dikke lijn) tegenover de andere ${bm.populatie}` : `${vanaf('ingeschrevenen')(start)} — eigen instelling tegenover ${c.bmZin}`)}
           data={c.ingesLineData}
           opts={c.hasPeers ? c.peerOpts : c.indexOpts}
         />

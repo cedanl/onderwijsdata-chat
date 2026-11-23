@@ -99,14 +99,14 @@ export function MarktaandeelTrendChart({ data, dark, landelijk = false }) {
 
 // Eén ondertitel voor mbo en ho; "(HO)" staat er alleen bij ho (#918).
 export function instroomRatioOndertitel(type) {
-  return `Eerstejaars als % van totaal ingeschrevenen — pipeline-gezondheid${type === 'mbo' ? '' : ' (HO)'}`
+  return `Eerstejaars als % van alle ingeschrevenen${type === 'mbo' ? '' : ' (hoger onderwijs)'} — komen er genoeg nieuwe studenten bij?`
 }
 
 export function InstroomRatioChart({ data, dark, type }) {
   if (!data) return null
   return (
     <ChartCard
-      title="Instroom ratio"
+      title="Aandeel eerstejaars"
       subtitle={instroomRatioOndertitel(type)}
     >
       <Grafiek soort="line" data={data} options={_ratioLineOpts(dark, '')} hoogte={200} />

@@ -51,7 +51,7 @@ export function DemografieKpis({ instelling, lastInges, ingesDelta, ingesEntries
             </div>
           </div>
           <div className="kpi-value"><TenMinste actief={isOndergrens(onderdrukt, lastInges[0])} />{fmt(lastInges[1])}</div>
-          {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
+          {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} ten opzichte van vorig jaar</div>}
           <Sparkline values={ingesEntries.map(([,v]) => v)} color={COLOR_EIGEN} />
         </div>
       )}
@@ -106,7 +106,7 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type, peri
           </div>
         </div>
         <div className="kpi-value">{fmt(lastEj[1])}</div>
-        {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+        {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} ten opzichte van vorig jaar</div>}
         <JaarNoot noot={eerstejaarsNoot({ ejJaar: lastEj[0], ingesJaar: lastInges?.[0], type, perioden })} />
         <Sparkline values={ejEntries.map(([,v]) => v)} color={COLOR_EERSTEJAARS} />
       </div>
@@ -128,7 +128,7 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot,
           </div>
         </div>
         <div className="kpi-value">{fmt(lastDipl[1])}</div>
-        {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+        {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} ten opzichte van vorig jaar</div>}
         <JaarNoot noot={noot} testid="diplomanoot" />
         <Sparkline values={diplEntries.map(([,v]) => v)} color={COLOR_DIPLOM} />
       </div>

@@ -9,6 +9,7 @@ import {
   NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst, fmt,
   MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF,
 } from '../shared/index'
+import { AANSLUITING_ARBEIDSMARKT } from '../../../dashboardNamen'
 
 // Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
 // -bronnen daarvan horen bij mijn instelling.
@@ -43,7 +44,7 @@ export function MatchScoreSection({ matchScore, verhouding, weggelaten, duiding,
   const alsGrafiek = entries.length >= MATCH_GRAFIEK_VANAF && entries.some(([s]) => typeof verhouding?.[s] === 'number')
   return (
     <>
-      <SectionHeader title="Match score" subtitle="Indicatie per sector: aandeel in de vacatures tegenover aandeel in de gediplomeerden" />
+      <SectionHeader title={AANSLUITING_ARBEIDSMARKT} subtitle="Indicatie per sector: aandeel in de vacatures tegenover aandeel in de gediplomeerden" />
       {duiding && <MomentopnameBanner peildatum={duiding.vacatures_peildatum} />}
       {alsGrafiek
         ? <MatchVerhoudingChart matchScore={matchScore} verhouding={verhouding} drempel={duiding?.drempel} dark={dark} />
@@ -69,8 +70,8 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, duidin
   const jaren = jarenTekst(duiding?.diplomajaren)
   return (
     <ChartCard
-      title="Gediplomeerden vs. vacatures per sector"
-      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) vs. gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
+      title="Gediplomeerden en vacatures per sector"
+      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) tegenover gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
     >
       <MomentopnameBanner peildatum={duiding?.vacatures_peildatum} />
       <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={staafHoogte(barData.labels, { perRij: 50, kader: 60, minimum: 200 })} options={{
@@ -137,7 +138,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
 
         <MatchScoreSection matchScore={matchData?.match_score} verhouding={matchData?.match_verhouding} weggelaten={matchData?.match_weggelaten} duiding={matchData?.match_duiding} dark={dark} />
 
-        <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
+        <SectionHeader title="Aanbod en vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart
           gediplomeerdenPerSector={matchData?.gediplomeerden_per_sector}
           vacaturesPerSector={matchData?.vacatures_per_sector}

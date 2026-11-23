@@ -251,3 +251,55 @@ describe('de verhouding gediplomeerden/ingeschrevenen heet geen rendement (#1135
     expect(labels().filter(t => /rendement/i.test(t))).toEqual([])
   })
 })
+
+// #1133: geen Engelse woorden en vakjargon in de zichtbare teksten, grafiekreeksen en alt-teksten.
+describe('geen Engelse woorden of jargon op de dashboards (#1133)', () => {
+  const VERBODEN = /\b(stacked|ratio|pipeline|score|peers?|proxy|llm|pp)\b|\bvs\.|t\.o\.v\.|\bgem\.|dipl\.|\bt\+\d/i
+  const COHORTEN = {
+    instelling: 'Hogeschool Utrecht', gevonden: true, type: 'mbo',
+    definitie: { naam: "Diploma's na 3 jaar per eerstejaars", termijn: 3, definitie: "Per cohort de diploma's 3 jaar later, gedeeld door de eerstejaars." },
+    perioden: { cohorten: 'schooljaar', gediplomeerden: 'diplomajaar' },
+    pseudo_cohorten: [
+      { instroom_jaar: 2020, instroom: 4300, gediplomeerden_t3: 3900, gediplomeerden_t4: 3800, gediplomeerden_t5: 3700 },
+      { instroom_jaar: 2021, instroom: 4459, gediplomeerden_t3: 4037, gediplomeerden_t4: 3925, gediplomeerden_t5: null },
+    ],
+    rendement_per_jaar: { 2020: 0.9, 2021: 0.9054 },
+    weggelaten: {},
+    benchmark_populatie: 'mbo-instellingen in heel Nederland',
+    benchmark_rendement: { 2020: 0.8, 2021: 0.85 },
+    benchmark_n_per_jaar: { 2020: 3, 2021: 3 },
+    peers_rendement: { 'Hogeschool A': { 2020: 0.8, 2021: 0.85 } },
+  }
+  const overtredingen = () => teksten().filter(t => VERBODEN.test(t))
+
+  it.each([
+    ['regionaal', HBO],
+    ['landelijk', LANDELIJK],
+  ])('Mijn instelling (%s, met de cohortmaat)', async (_soort, regio) => {
+    await mijnInstelling(regio, COHORTEN)
+    expect(overtredingen()).toEqual([])
+  })
+
+  it('Landelijk', async () => {
+    await nationaal()
+    expect(overtredingen()).toEqual([])
+  })
+
+  it('Arbeidsmarkt', async () => {
+    await arbeidsmarkt()
+    expect(overtredingen()).toEqual([])
+  })
+
+  it('de arbeidsmarktmatch heeft op de galerij en de pagina één naam', async () => {
+    const { BUILTIN_ARBEIDSMARKT } = await import('../workbooks')
+    await arbeidsmarkt()
+    expect(BUILTIN_ARBEIDSMARKT.description).toContain('Aansluiting op de arbeidsmarkt')
+    expect(sectieKop('Aansluiting op de arbeidsmarkt')).toBeTruthy()
+  })
+
+  it('de sectorgrafiek noemt sectoren, niet faculteiten', async () => {
+    await mijnInstelling(HBO)
+    expect(kaartMetTitel('Ingeschrevenen per sector over tijd').textContent).toContain('welke sectoren groeien of krimpen')
+    expect(alles()).not.toMatch(/faculteit/i)
+  })
+})

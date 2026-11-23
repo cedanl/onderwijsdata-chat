@@ -205,10 +205,10 @@ describe('één groeiregel voor grafiek, ranking en tabel (#903)', () => {
   })
 
   it('noemt op de as het startjaar, niet het eerste jaar van elke reeks', () => {
-    expect(buildIndexChartOpts(false).scales.y.title.text).toBe('% verandering t.o.v. het startjaar')
+    expect(buildIndexChartOpts(false).scales.y.title.text).toBe('% verandering ten opzichte van het startjaar')
   })
 
-  it('rekent eigen instelling en benchmark t.o.v. hetzelfde jaar', () => {
+  it('rekent eigen instelling en vergelijkingsgroep ten opzichte van hetzelfde jaar', () => {
     const data = buildBenchmarkLineData({ 2021: 100, 2022: 110, 2023: 121 }, { 2022: 50, 2023: 55 }, 'Eigen', 'Regio', '#000', '#999')
 
     expect(data.startjaar).toBe(2022)

@@ -113,7 +113,7 @@ export function SectorTrendChart({ data, dark }) {
   return (
     <ChartCard
       title="Ingeschrevenen per sector over tijd"
-      subtitle="Stacked — welke faculteiten groeien of krimpen?"
+      subtitle="Gestapeld per sector: welke sectoren groeien of krimpen?"
       actions={<AandeelKnop aan={proportional} onWissel={() => setProportional(p => !p)} />}
     >
       <Grafiek soort="line" data={displayData} options={_stackedAreaOpts(dark, proportional)} hoogte={260} />

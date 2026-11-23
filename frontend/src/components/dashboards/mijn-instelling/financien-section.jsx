@@ -56,7 +56,7 @@ function KengetalChart({ fin, eenheid, kengetal, dark }) {
   }, [fin, reeks, kengetal.sleutel, sector, dark, tick])
   const eenheidTekst = kengetal.procent ? '%' : ''
   return (
-    <ChartCard title={kengetal.naam} subtitle={`Per verslagjaar — bestuur vs. sectorcijfer ${sector}${kengetal.signaal ? '; stippellijn: signaleringswaarde van de Inspectie' : ''}`}>
+    <ChartCard title={kengetal.naam} subtitle={`Per verslagjaar — bestuur tegenover sectorcijfer ${sector}${kengetal.signaal ? '; stippellijn: signaleringswaarde van de Inspectie' : ''}`}>
       <Grafiek soort="line" data={data} hoogte={240} categorie="Verslagjaar" options={{
         responsive: true, maintainAspectRatio: false,
         plugins: {

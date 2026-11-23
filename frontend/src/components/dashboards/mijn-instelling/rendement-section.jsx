@@ -44,7 +44,7 @@ function RendementKpis({ data, dark }) {
           <div className="kpi-sub">
             {cohort ? `${fmt(cohort[`gediplomeerden_t${termijn}`])} diploma's in ${diplomaJaar(data, Number(latest[0]) + termijn)} / ${fmt(cohort.instroom)} eerstejaars` : `diploma's na ${termijn} jaar per eerstejaars`}
           </div>
-          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)}pp t.o.v. {cohortJaar(data, prev[0])}</div>}
+          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)} procentpunt ten opzichte van {cohortJaar(data, prev[0])}</div>}
         </div>
       )}
       {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi data={data} />}
@@ -134,7 +134,7 @@ function RendementTrendChart({ data, instelling, dark }) {
   if (!chartData) return null
   const peers = n => (n == null ? '' : ` (${n} ${n === 1 ? 'instelling' : 'instellingen'})`)
   return (
-    <ChartCard title={`${data.definitie?.naam || 'Diploma\'s per eerstejaars'} over tijd`} subtitle={`Per cohort — eigen instelling vs. ${benchmarkLabel}`}>
+    <ChartCard title={`${data.definitie?.naam || 'Diploma\'s per eerstejaars'} over tijd`} subtitle={`Per cohort — eigen instelling tegenover ${benchmarkLabel}`}>
       <Grafiek soort="line" data={chartData} hoogte={280} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
@@ -192,9 +192,9 @@ function CohortenTable({ data, dark }) {
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Cohort</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+4</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+5</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 3 jaar</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 4 jaar</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Diploma's na 5 jaar</th>
           </tr>
         </thead>
         <tbody>

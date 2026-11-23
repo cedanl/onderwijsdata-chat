@@ -62,13 +62,13 @@ export function Kerncijfers({ data, instelling, c }) {
   // Het aantal peers achter het gemiddelde van dat jaar (#903): niet elke peer heeft elk jaar data.
   const gemLabel = (sleutel, jaar) => {
     const n = perJaar(bm.n_per_jaar?.[sleutel], jaar)
-    return `Gem. ${bm.populatie || 'vergelijkingsgroep'}${n != null ? ` (${aantalInstellingen(n)})` : ''}`
+    return `Gemiddelde ${bm.populatie || 'vergelijkingsgroep'}${n != null ? ` (${aantalInstellingen(n)})` : ''}`
   }
 
   // De kop noemt de vergelijkingsgroep met regio, aantal, type en een eventuele terugval met reden (#926).
   return (
     <>
-      <SectionHeader title="Kerncijfers" subtitle={bm.label ? `${instelling} vs. ${bm.label}` : `${instelling} — in één oogopslag`} />
+      <SectionHeader title="Kerncijfers" subtitle={bm.label ? `${instelling} tegenover ${bm.label}` : `${instelling} — in één oogopslag`} />
       <div className="kpi-grid">
         {c.lastInges && (
           <SamenvattingTile
