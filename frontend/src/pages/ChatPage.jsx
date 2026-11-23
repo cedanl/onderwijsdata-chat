@@ -754,7 +754,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
         )}
 
         {/* Sidebar */}
-        <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`} inert={narrowScreen && !sidebarOpen}>
+        <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Gesprekken en suggesties" inert={narrowScreen && !sidebarOpen}>
           <button type="button" className="new-chat-btn" onClick={nieuwGesprek}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -764,12 +764,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
           {/* Op een telefoon staat de modelkeuze hier, niet in het invoerkader (#596). */}
           {narrowScreen && models.length > 0 && (
             <div className="sidebar-model">
-              <div className="sidebar-section-title">Model</div>
+              <h2 className="sidebar-section-title">Model</h2>
               <ModelPicker models={models} value={selectedModel} onChange={handleModelChange} />
             </div>
           )}
           <div style={{ marginTop: 20 }}>
-            <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
+            <h2 className="sidebar-section-title" style={{ marginBottom: 10 }}>Voorbeeldvragen</h2>
             <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} bronnen={bronnen} />
           </div>
           <ConversationHistory
@@ -1041,7 +1041,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
 
   return (
     <div style={{ marginTop: 24 }}>
-      <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Gesprek geschiedenis</div>
+      <h2 className="sidebar-section-title" style={{ marginBottom: 10 }}>Eerdere gesprekken</h2>
       {search && (
         <input
           type="search"

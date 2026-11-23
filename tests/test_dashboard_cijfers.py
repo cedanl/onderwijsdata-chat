@@ -212,8 +212,13 @@ def test_landelijk_is_de_duo_som_en_noemt_de_vaste_maat_van_de_chat():
     for instelling, sector in (("Hogeschool Utrecht", "ho"), (_MONDRIAAN, "mbo")):
         landelijk = dashboard.load_dashboard_nationaal(instelling)["landelijk"]
         assert landelijk["maat"] == "duo_som_per_instelling"
-        assert landelijk["chat_dataset"] in landelijk["verschil_met_chat"]
-        assert dashboard._LANDELIJK[sector]["dataset"] in landelijk["definitie"]
+        bron = dashboard._LANDELIJK[sector]
+        assert bron["chat_naam"] in landelijk["verschil_met_chat"]
+        assert bron["naam"] in landelijk["definitie"]
+        # De noot is voor de gebruiker: geen dataset-ID's (#1134); de velden `dataset` en `chat_dataset` houden ze.
+        for tekst in (landelijk["definitie"], landelijk["verschil_met_chat"]):
+            assert bron["dataset"] not in tekst and bron["chat_dataset"] not in tekst
+        assert landelijk["dataset"] == bron["dataset"] and landelijk["chat_dataset"] == bron["chat_dataset"]
 
 
 @pytest.mark.usefixtures("gouden")

@@ -21,7 +21,7 @@ vi.mock('../api', async importOriginal => ({
 }))
 
 import { InlineDashboardMijnInstelling } from '../components/dashboards/mijn-instelling/index'
-import { buildRendementVergelijkingData } from '../components/dashboards/shared/charts-rendement'
+import { buildDiplomaVerhoudingData } from '../components/dashboards/shared/charts-diplomaverhouding'
 import { ratioJaar, ratioPercentage, diplomaRatio } from '../components/dashboards/shared/diploma-ratio'
 import { gediplomeerdenNoot } from '../components/dashboards/shared/kpis'
 
@@ -109,7 +109,7 @@ describe('het jaar van de ratio', () => {
 
 describe('de vergelijking per instelling', () => {
   it('hbo: de eigen instelling en de peers delen 2024 door 2024', () => {
-    const data = buildRendementVergelijkingData(HBO, HBO.instelling, false)
+    const data = buildDiplomaVerhoudingData(HBO, HBO.instelling, false)
     expect(data.jaar).toBe('2024')
     const perNaam = Object.fromEntries(data.labels.map((naam, i) => [naam, data.datasets[0].data[i]]))
     expect(perNaam[HBO.instelling]).toBe(18) // 6438 / 35780
@@ -120,7 +120,7 @@ describe('de vergelijking per instelling', () => {
   })
 
   it('mbo: beide jaren zijn 2025 en de peers delen 2025 door 2025', () => {
-    const data = buildRendementVergelijkingData(MBO, MBO.instelling, false)
+    const data = buildDiplomaVerhoudingData(MBO, MBO.instelling, false)
     expect(data.jaar).toBe('2025')
     const perNaam = Object.fromEntries(data.labels.map((naam, i) => [naam, data.datasets[0].data[i]]))
     expect(perNaam['Universiteit Utrecht']).toBe(34) // 12500 / 37090
@@ -130,20 +130,20 @@ describe('de vergelijking per instelling', () => {
   it('een peer zonder cijfers in dat jaar valt weg en wordt genoemd, in plaats van een ander jaar te lenen', () => {
     const peers = structuredClone(HBO.benchmark.peers)
     delete peers.gediplomeerden['Marnix Academie']['2024']
-    const data = buildRendementVergelijkingData({ ...HBO, benchmark: { ...HBO.benchmark, peers } }, HBO.instelling, false)
+    const data = buildDiplomaVerhoudingData({ ...HBO, benchmark: { ...HBO.benchmark, peers } }, HBO.instelling, false)
     expect(data.labels).not.toContain('Marnix Academie')
     expect(data.weggelaten).toEqual(['Marnix Academie'])
   })
 
   it('sorteert aflopend', () => {
-    const waarden = buildRendementVergelijkingData(HBO, HBO.instelling, false).datasets[0].data
+    const waarden = buildDiplomaVerhoudingData(HBO, HBO.instelling, false).datasets[0].data
     expect(waarden).toEqual([...waarden].sort((a, b) => b - a))
   })
 
   it('kleurt alleen de eigen instelling anders, ook bij een peer boven de oude drempel van 70 %', () => {
     const peers = structuredClone(HBO.benchmark.peers)
     peers.gediplomeerden['Universiteit Utrecht']['2024'] = 30000 // 80 % van 37.700
-    const data = buildRendementVergelijkingData({ ...HBO, benchmark: { ...HBO.benchmark, peers } }, HBO.instelling, false)
+    const data = buildDiplomaVerhoudingData({ ...HBO, benchmark: { ...HBO.benchmark, peers } }, HBO.instelling, false)
     const kleuren = data.datasets[0].backgroundColor
     expect(data.datasets[0].data).toContain(80)
     const eigen = data.labels.indexOf(HBO.instelling)
@@ -152,7 +152,7 @@ describe('de vergelijking per instelling', () => {
   })
 
   it('geeft niets als de eigen instelling geen gemeenschappelijk jaar heeft', () => {
-    expect(buildRendementVergelijkingData({ ...HBO, gediplomeerden: { 2019: 1 } }, HBO.instelling, false)).toBeNull()
+    expect(buildDiplomaVerhoudingData({ ...HBO, gediplomeerden: { 2019: 1 } }, HBO.instelling, false)).toBeNull()
   })
 })
 
@@ -181,10 +181,10 @@ describe('de noot bij de gediplomeerden', () => {
 describe('Mijn instelling met hbo/wo-data (diploma\'s 2024, inschrijvingen 2025)', () => {
   it('de ratio-KPI noemt het jaar van beide cijfers, als diplomajaar en als schooljaar (#904)', async () => {
     await dashboard(HBO)
-    const tegel = kpiTegel('Ratio diploma/inschrijving')
+    const tegel = kpiTegel("Diploma's per 100 ingeschrevenen")
     expect(tegel).toBeTruthy()
-    expect(tegel.querySelector('.kpi-value').textContent).toBe('18%')
-    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2024 en ingeschrevenen 2024/25')
+    expect(tegel.querySelector('.kpi-value').textContent).toBe('18')
+    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2024 per 100 ingeschrevenen 2024/25')
     expect(tegel.textContent).not.toContain('2025/26')
   }, 30_000)  // eigen tijdsgrens: zwaar werk op een volle CI-runner (#1058)
 
@@ -205,7 +205,7 @@ describe('Mijn instelling met hbo/wo-data (diploma\'s 2024, inschrijvingen 2025)
 
   it('de vergelijking noemt het jaar en geen groene drempel', async () => {
     await dashboard(HBO)
-    const sub = kaart('Rendement vergelijking').querySelector('.chart-sub').textContent
+    const sub = kaart("Diploma's per 100 ingeschrevenen").querySelector('.chart-sub').textContent
     expect(sub).toContain('2024')
     expect(sub).not.toMatch(/groen|70/)
   })
@@ -214,15 +214,15 @@ describe('Mijn instelling met hbo/wo-data (diploma\'s 2024, inschrijvingen 2025)
 describe('Mijn instelling met mbo-data (beide 2025)', () => {
   it('de ratio-KPI gebruikt 2025 en er is geen diplomanoot', async () => {
     await dashboard(MBO)
-    const tegel = kpiTegel('Ratio diploma/inschrijving')
-    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2025 en ingeschrevenen 2025/26')
-    expect(tegel.querySelector('.kpi-value').textContent).toBe('18%')
+    const tegel = kpiTegel("Diploma's per 100 ingeschrevenen")
+    expect(tegel.textContent).toContain('gediplomeerden diplomajaar 2025 per 100 ingeschrevenen 2025/26')
+    expect(tegel.querySelector('.kpi-value').textContent).toBe('18')
     expect(noten()).toHaveLength(0)
     expect(kaart('Gediplomeerden per jaar').querySelector('.chart-sub').textContent).not.toContain('tot en met')
   })
 
   it('de vergelijking noemt 2025', async () => {
     await dashboard(MBO)
-    expect(kaart('Rendement vergelijking').querySelector('.chart-sub').textContent).toContain('2025')
+    expect(kaart("Diploma's per 100 ingeschrevenen").querySelector('.chart-sub').textContent).toContain('2025')
   })
 })

@@ -46,6 +46,20 @@ def test_de_route_bestaat(client):
     assert "post" in app.openapi()["paths"]["/api/workbooks/{wb_id}/docx"]
 
 
+def test_een_lange_titel_met_accent_geeft_een_korte_naam_zoals_in_de_browser(client):
+    """#1124, #1125: dezelfde regel als workbookFilename: accent weg, emoji één streepje, hoogstens 120 tekens."""
+    _als(client, "anna")
+    titel = "🎓 Commerciële opleidingen in het hoger onderwijs " * 7
+    _bewaar(client, title=titel)
+    response = client.post("/api/workbooks/r1/docx", files=_grafieken(("grafiek-0", png())))
+    assert response.status_code == 200
+    naam = response.headers["content-disposition"].split('filename="')[1].removesuffix('"')
+    assert naam.startswith("Commerciele_opleidingen_in_het_hoger_onderwijs_Commerciele_")
+    assert "__" not in naam
+    assert len(naam.encode()) < 255
+    assert len(naam.removesuffix(".docx")) <= 120
+
+
 def test_een_eigen_rapport_als_word_document(client):
     _als(client, "anna")
     _bewaar(client)

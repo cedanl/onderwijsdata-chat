@@ -2,6 +2,8 @@
 // #916 en #921: de galerijkaart van een vast dashboard zegt wat het is (geen "Voorbeeld": de cijfers zijn live), de
 // galerijtitel is een h1 die de focus houdt, en een externe bronlink meldt dat hij in een nieuw tabblad opent.
 import { describe, it, expect, afterEach, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -91,5 +93,35 @@ describe('bronlinks van een dashboard (#921)', () => {
   it('geeft niets terug zonder bronnen', async () => {
     await toon(createElement(DashboardSources, { sources: [] }))
     expect(container.querySelector('.dashboard-sources')).toBeNull()
+  })
+})
+
+// #1170: jsdom rekent geen contrast, dus de test leest de kleuren uit de CSS. Wit op Tailwind-groen haalde 2.93:1;
+// Npuls Groen met Zwart is de goedgekeurde combinatie.
+describe('contrast van badge en instellingsband (#1170)', () => {
+  const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+  const regel = kiezer => css.match(new RegExp(`\\n${kiezer.replace('.', '\\.')} \\{([^}]*)\\}`))[1]
+  const token = naam => css.match(new RegExp(`${naam}:\\s*(#[0-9A-Fa-f]{6})`))[1]
+  const luminantie = hex => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const verhouding = (a, b) => {
+    const [licht, donker] = [luminantie(a), luminantie(b)].sort((x, y) => y - x)
+    return (licht + 0.05) / (donker + 0.05)
+  }
+
+  it.each(['.wb-builtin-badge', '.wb-builtin-instelling'])('%s: zwart op één vlak Npuls-groen, zonder verloop', kiezer => {
+    const body = regel(kiezer)
+    expect(body).toContain('background: var(--npuls-groen)')
+    expect(body).toContain('color: var(--npuls-zwart)')
+    expect(body).not.toMatch(/gradient|rgba/)
+  })
+
+  it('haalt 4.5:1, in beide thema\'s (de tokens staan alleen in :root)', () => {
+    expect(token('--npuls-groen')).toBe('#00AF81')
+    expect(verhouding(token('--npuls-zwart'), token('--npuls-groen'))).toBeGreaterThanOrEqual(4.5)
+    expect(css.match(/--npuls-groen:/g)).toHaveLength(1)
   })
 })

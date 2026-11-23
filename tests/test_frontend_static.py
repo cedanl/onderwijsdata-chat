@@ -175,10 +175,7 @@ def test_head_op_een_spa_pad_antwoordt_als_get(tmp_path, pad):
     assert head.content == b""
 
 
-@pytest.mark.parametrize(
-    "pad, allow",
-    [("/api/ping", "GET"), ("/api/bewaar", "POST"), ("/api/bestaat-niet", "GET"), ("/api", "GET"), ("/health", "GET")],
-)
+@pytest.mark.parametrize("pad, allow", [("/api/ping", "GET"), ("/api/bewaar", "POST"), ("/health", "GET")])
 def test_head_op_een_pad_van_een_echte_route_blijft_405(tmp_path, pad, allow):
     # Een pad dat een andere route kent, krijgt geen app-shell: anders zou HEAD /health of
     # HEAD /api/ping met 200 en text/html antwoorden, terwijl GET JSON geeft.
@@ -203,3 +200,56 @@ def test_head_komt_niet_in_het_schema(tmp_path):
 
     assert paden["/{full_path}"].keys() == {"get"}
     assert not [pad for pad, ops in paden.items() if "head" in ops]
+
+
+# ── Een andere methode dan GET (#1156) ───────────────────────────────────────
+
+_SCHRIJVEND = ["POST", "PUT", "PATCH", "DELETE"]
+
+
+@pytest.mark.parametrize("methode", _SCHRIJVEND)
+@pytest.mark.parametrize("pad", ["/api", "/api/bestaat-niet", "/api/x/y/z", "/bestaat-niet", "/login"])
+def test_een_schrijvende_methode_op_een_onbekend_pad_is_een_404_en_geen_405(tmp_path, pad, methode):
+    """De catch-alls zijn GET-routes: Starlette zag een bekend pad met een verkeerde methode (405, Allow: GET)."""
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).request(methode, pad)
+
+    assert resp.status_code == 404
+    assert "allow" not in resp.headers
+    assert resp.json() == {"detail": NIET_GEVONDEN}
+
+
+@pytest.mark.parametrize("pad", ["/api", "/api/bestaat-niet"])
+def test_head_op_een_onbekend_api_pad_is_een_404(tmp_path, pad):
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).head(pad)
+
+    assert resp.status_code == 404
+    assert "allow" not in resp.headers
+
+
+@pytest.mark.parametrize(
+    "methode, pad, allow",
+    [
+        ("POST", "/health", "GET"),
+        ("DELETE", "/health", "GET"),
+        ("PUT", "/api/ping", "GET"),
+        ("DELETE", "/api/ping", "GET"),
+        ("PATCH", "/api/bewaar", "POST"),
+    ],
+)
+def test_een_bestaand_pad_met_de_verkeerde_methode_blijft_405(tmp_path, methode, pad, allow):
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).request(methode, pad)
+
+    assert resp.status_code == 405
+    assert resp.headers["allow"] == allow
+
+
+def test_de_echte_app_houdt_de_405_van_een_bestaand_pad_met_een_gebouwde_frontend(tmp_path):
+    import server
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    client = TestClient(server.create_app(frontend_dist=tmp_path))
+
+    assert client.post("/health").status_code == 405
+    assert client.delete("/api/config").status_code == 405
+    assert client.post("/api/bestaat-niet").status_code == 404

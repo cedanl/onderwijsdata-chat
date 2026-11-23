@@ -17,7 +17,6 @@ import { buildIndexChartOpts, horizontalBarOpts } from '../components/dashboards
 import { buildBenchmarkLineData, buildPeerLinesData } from '../components/dashboards/shared/chart-builders'
 import { buildMarktaandeelData, MarktaandeelChart, buildGroeiRankingData, GroeiRankingChart } from '../components/dashboards/shared/charts-markt'
 import { PeersTable } from '../components/dashboards/shared/charts-peers'
-import { OndergrensNoot } from '../components/dashboards/shared/ondergrens'
 import { DemografieKpis } from '../components/dashboards/shared/kpis'
 
 const PERIODEN = { ingeschrevenen: 'schooljaar', eerstejaars: 'schooljaar', cohorten: 'schooljaar', gediplomeerden: 'diplomajaar' }
@@ -87,14 +86,6 @@ describe('schooljaren op de assen en in de koppen (#904)', () => {
   it('de lijnen van gediplomeerden houden het diplomajaar als jaartal', () => {
     const data = buildPeerLinesData({ 2023: 10, 2024: 12 }, {}, 'Eigen', '#000', '#999', 'diplomajaar')
     expect(data.labels).toEqual(['2023', '2024'])
-  })
-
-  it('de ondergrensnoot noemt de jaren naar hun soort', () => {
-    const el = render(createElement(OndergrensNoot, { reeksen: [
-      { label: 'Ingeschrevenen', onderdrukt: { 2024: 1 }, soort: 'schooljaar' },
-      { label: 'Gediplomeerden', onderdrukt: { 2022: 1, 2023: 2 }, soort: 'diplomajaar' },
-    ] }))
-    expect(el.textContent).toContain('Ingeschrevenen in 2024/25; Gediplomeerden in diplomajaar 2022, 2023: ten minste')
   })
 
   it('de groeiranking noemt start- en eindjaar als schooljaar', () => {

@@ -7,7 +7,7 @@ import logging
 import os
 
 from core import config as runtime
-from core.config import MODEL
+from core.config import MODEL, AuthConfigFout
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,8 @@ class Config:
 
     # Required settings
     MODEL: str = MODEL  # één default, in core/config.py (#234)
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "").strip().upper() or "INFO"
+    LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     # Leeg = geen cross-origin toegang: de frontend praat via dezelfde origin (#421).
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
@@ -69,7 +70,10 @@ class Config:
             # Een tikfout ("prod") zou anders stil als ontwikkelomgeving gelden, met API-documentatie.
             errors.append(f"APP_ENV moet een van {', '.join(cls.OMGEVINGEN)} zijn, kreeg: {cls.APP_ENV}")
 
-        if fout := cls._login_ontbreekt():
+        if cls.LOG_LEVEL not in cls.LOG_LEVELS:
+            errors.append(f"LOG_LEVEL moet een van {', '.join(cls.LOG_LEVELS)} zijn, kreeg: {cls.LOG_LEVEL}")
+
+        if fout := cls._auth_ongeldig() or cls._login_ontbreekt():
             errors.append(fout)
 
         if fout := cls._nepmodel_ongeldig():
@@ -84,13 +88,25 @@ class Config:
             )
 
         if errors:
-            for error in errors:
-                logger.error(error)
+            # Eén foutregel, door server.py gelogd: wie de melding hier ook logt, zet haar dubbel in het log.
             raise ConfigError("; ".join(errors))
 
         logger.info(
             f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}"
         )
+
+    @classmethod
+    def _auth_ongeldig(cls) -> str | None:
+        """De foutmelding als `core.auth` bij het laden weigert, anders None.
+
+        Dat doet het bij een login zonder CHAT_SECRET en bij een ongeldige sessieduur. Zonder deze controle eindigt de
+        start, ook buiten lokaal, in een Python-traceback van platte tekst in plaats van één melding in het log (#1164).
+        """
+        try:
+            from core import auth  # noqa: F401  (de import zelf is de controle)
+        except AuthConfigFout as fout:
+            return str(fout)
+        return None
 
     @classmethod
     def _login_ontbreekt(cls) -> str | None:
@@ -101,7 +117,7 @@ class Config:
         """
         if cls.APP_ENV == "local":
             return None
-        from core import auth  # pas hier: de import eist CHAT_SECRET zodra er een login is
+        from core import auth
 
         if auth.AUTH_ENABLED:
             return None
@@ -167,6 +183,12 @@ class Config:
         zo'n instelling zou stil falen.
         """
         return [o for o in cls.get_parsed_cors_origins() if "*" in o]
+
+    @classmethod
+    def log_level(cls) -> str:
+        """Het niveau voor setup_logging: een ongeldige LOG_LEVEL valt op INFO terug, zodat de configuratiefout die
+        validate() daarover meldt wel in de gewone logvorm komt (JSON buiten local) in plaats van als traceback (#1163)."""
+        return cls.LOG_LEVEL if cls.LOG_LEVEL in cls.LOG_LEVELS else "INFO"
 
     @classmethod
     def json_logs(cls) -> bool:

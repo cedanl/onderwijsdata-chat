@@ -227,6 +227,47 @@ describe('before login', () => {
     }
   })
 
+  // #1177: de losse pagina stond buiten de shell, dus zonder <main> en zonder skiplink.
+  it('/privacy before login has one main landmark and a skip-link to it', { timeout: 20000 }, async () => {
+    localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/auth/status') return response(200, { required: true, oidc_enabled: false })
+      return response(200, {})
+    }))
+    window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
+    window.history.replaceState({}, '', '/privacy')
+    try {
+      await render(createElement(App))
+      await waitFor(() => container.querySelector('.privacy-page--standalone'))
+      const mains = container.querySelectorAll('main')
+      expect(mains).toHaveLength(1)
+      expect(mains[0].contains(container.querySelector('.privacy-page--standalone'))).toBe(true)
+      expect(container.querySelector('a.skip-link').getAttribute('href')).toBe(`#${mains[0].id}`)
+    } finally {
+      delete window.matchMedia
+      window.history.replaceState({}, '', '/')
+    }
+  })
+
+  it('/privacy without login keeps the one main of the app shell', { timeout: 20000 }, async () => {
+    localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/auth/status') return response(200, { required: false, oidc_enabled: false })
+      return response(200, {})
+    }))
+    window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
+    window.history.replaceState({}, '', '/privacy')
+    try {
+      await render(createElement(App))
+      await waitFor(() => container.querySelector('.privacy-page'))
+      expect(container.querySelectorAll('main')).toHaveLength(1)
+      expect(container.querySelectorAll('a.skip-link')).toHaveLength(1)
+    } finally {
+      delete window.matchMedia
+      window.history.replaceState({}, '', '/')
+    }
+  })
+
   // #1006: App reads /api/config before it decides on login, so the page before login names this environment's list.
   it('/privacy before login names the sources /api/config reports', { timeout: 20000 }, async () => {
     localStorage.clear()

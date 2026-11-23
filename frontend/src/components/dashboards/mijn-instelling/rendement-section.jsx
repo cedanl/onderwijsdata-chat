@@ -4,6 +4,9 @@ import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, afgekapteAs, benchmarkColor, oordeelKleur, WeggelatenNoot } from '../shared/index'
 import { asJaar, jaarLabel } from '../../../schooljaar'
 
+// Een cohortmaat heet niet "rendement" als er geen cohortmaat staat (#1135): bij hbo en wo is dit de kop boven de reden.
+export const DIPLOMA_COHORTEN = "Diploma's per cohort"
+
 const NOOT = { fontSize: '12.5px', color: 'var(--muted-text)' }
 const pct = v => Math.round(v * 1000) / 10
 // Een cohort heet naar het jaar van zijn eerstejaars: een schooljaar (#904); het soort komt uit de payload, net als
@@ -41,7 +44,7 @@ function RendementKpis({ data, dark }) {
           <div className="kpi-sub">
             {cohort ? `${fmt(cohort[`gediplomeerden_t${termijn}`])} diploma's in ${diplomaJaar(data, Number(latest[0]) + termijn)} / ${fmt(cohort.instroom)} eerstejaars` : `diploma's na ${termijn} jaar per eerstejaars`}
           </div>
-          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)}pp t.o.v. {cohortJaar(data, prev[0])}</div>}
+          {delta != null && <div className="kpi-sub" style={{ color: oordeelKleur(delta >= 0 ? 'goed' : 'slecht', dark) }}>{delta >= 0 ? '+' : ''}{fmt(Math.round(delta * 10) / 10)} procentpunt ten opzichte van {cohortJaar(data, prev[0])}</div>}
         </div>
       )}
       {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi data={data} />}
@@ -85,7 +88,7 @@ function RendementTrendChart({ data, instelling, dark }) {
   const { tick, grid, label } = darkColors(dark)
   const { rendement_per_jaar: rendementPerJaar, benchmark_rendement: benchmarkRendement, peers_rendement: peersRendement } = data
   // De kop noemt de groep met aantal en terugval; de legenda alleen de groep (#951: daar stond de hele kop).
-  const benchmarkLabel = data.benchmark_label || 'Regiogemiddelde'
+  const benchmarkLabel = data.benchmark_label || 'Gemiddelde vergelijkingsgroep'
   const legendaLabel = data.benchmark_populatie ? `Gemiddelde ${data.benchmark_populatie}` : benchmarkLabel
   const nPerJaar = data.benchmark_n_per_jaar
   const soort = data.perioden?.cohorten
@@ -131,7 +134,7 @@ function RendementTrendChart({ data, instelling, dark }) {
   if (!chartData) return null
   const peers = n => (n == null ? '' : ` (${n} ${n === 1 ? 'instelling' : 'instellingen'})`)
   return (
-    <ChartCard title={`${data.definitie?.naam || 'Diploma\'s per eerstejaars'} over tijd`} subtitle={`Per cohort — eigen instelling vs. ${benchmarkLabel}`}>
+    <ChartCard title={`${data.definitie?.naam || 'Diploma\'s per eerstejaars'} over tijd`} subtitle={`Per cohort — eigen instelling tegenover ${benchmarkLabel}`}>
       <Grafiek soort="line" data={chartData} hoogte={280} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
@@ -189,9 +192,9 @@ function CohortenTable({ data, dark }) {
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>Cohort</th>
             <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+4</th>
-            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+5</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 3 jaar"}</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 4 jaar"}</th>
+            <th scope="col" style={{ textAlign: 'right', padding: '6px 8px' }}>{"Diploma's na 5 jaar"}</th>
           </tr>
         </thead>
         <tbody>
@@ -213,7 +216,7 @@ function CohortenTable({ data, dark }) {
 function GeenRendement({ reden }) {
   return (
     <>
-      <SectionHeader title="Diplomarendement" />
+      <SectionHeader title={DIPLOMA_COHORTEN} />
       <p className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 16px' }}>{reden}</p>
     </>
   )
@@ -222,15 +225,15 @@ function GeenRendement({ reden }) {
 export function RendementSection({ data, instelling, dark }) {
   if (!data?.gevonden) return null
   if (data.geen_rendement) return <GeenRendement reden={data.geen_rendement} />
-  const naam = data.definitie?.naam || 'Diplomarendement'
+  const naam = data.definitie?.naam || DIPLOMA_COHORTEN
   return (
     <>
-      <SectionHeader title={naam} subtitle="Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met de regio" />
+      <SectionHeader title={naam} subtitle={`Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met ${data.benchmark_populatie || 'de vergelijkingsgroep'}`} />
       <RendementDefinitie definitie={data.definitie} />
       <RendementKpis data={data} dark={dark} />
       <div style={NOOT}><WeggelatenNoten weggelaten={data.weggelaten} jaar={j => cohortJaar(data, j)} /></div>
       <RendementTrendChart data={data} instelling={instelling} dark={dark} />
-      <div style={NOOT}><WeggelatenNoten weggelaten={data.peers_weggelaten} peers label="niet in het regiogemiddelde" jaar={j => cohortJaar(data, j)} /></div>
+      <div style={NOOT}><WeggelatenNoten weggelaten={data.peers_weggelaten} peers label="niet in het gemiddelde van de vergelijkingsgroep" jaar={j => cohortJaar(data, j)} /></div>
       <CohortenTable data={data} dark={dark} />
     </>
   )

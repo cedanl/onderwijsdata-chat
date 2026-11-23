@@ -78,7 +78,7 @@ describe('tegels of staafgrafiek (#949)', () => {
     render({ matchScore: score, verhouding })
 
     expect(container.querySelectorAll('.kpi-card')).toHaveLength(0)
-    expect(container.querySelector('.chart-title').textContent).toBe('Match per sector')
+    expect(container.querySelector('.chart-title').textContent).toBe('Aansluiting per sector')
     const { data, options, plugins } = getekend.at(-1)
     expect(data.labels).toHaveLength(8)
     expect(options.indexAxis).toBe('y')
@@ -112,7 +112,7 @@ describe('de grafiek is toegankelijk en Nederlands (#905, #904)', () => {
     const canvas = container.querySelector('canvas')
     expect(canvas.getAttribute('role')).toBe('img')
     const naam = canvas.getAttribute('aria-label')
-    expect(naam).toMatch(/^Staafdiagram: Match per sector\./)
+    expect(naam).toMatch(/^Staafdiagram: Aansluiting per sector\./)
     expect(naam).toContain('vacature-aandeel ÷ diploma-aandeel')
     expect(naam).toContain('Schaarste: 3 punten')
 

@@ -85,7 +85,8 @@ def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
     assert client.head("/health").headers["content-type"].startswith("application/json")
     schema = client.head("/api/openapi.json")
     if productie:
-        assert schema.status_code == 405
+        # Het schema bestaat niet: een onbekend /api-pad is een 404, ook voor HEAD (#1156).
+        assert schema.status_code == 404
     else:
         assert schema.status_code == 200
         assert schema.headers["content-type"] == "application/json"

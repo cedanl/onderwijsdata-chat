@@ -14,7 +14,7 @@ export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendCh
 export { RoaSection, PrognoseSection, UwvSection, MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF, MATCH_KAP } from './charts-arbeidsmarkt'
 export { MomentopnameBanner, MatchDuiding, peildatumTekst, uwvBron, jarenTekst } from './momentopname'
 export { buildSectorTrendData, buildLeerwegenData, SectorTrendChart, HoofdgroepenChart, LeerwegenChart, LEERWEGEN_MBO } from './charts-sector'
-export { buildRendementVergelijkingData, RendementVergelijkingChart } from './charts-rendement'
+export { buildDiplomaVerhoudingData, DiplomaVerhoudingChart } from './charts-diplomaverhouding'
 export { diplomaRatio } from './diploma-ratio'
 export { KaartSection } from './charts-kaart'
 export { ONDERDRUKT_UITLEG, perJaar, isOndergrens, TenMinste, OndergrensNoot, OndergrensCategorieen, WeggelatenNoot } from './ondergrens'

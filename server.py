@@ -26,7 +26,7 @@ from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
-setup_logging(level=Config.LOG_LEVEL, json_format=Config.json_logs())
+setup_logging(level=Config.log_level(), json_format=Config.json_logs())
 logger = logging.getLogger(__name__)
 
 # Validate configuration early
@@ -61,8 +61,10 @@ try:
     persistence_db.init_db()
     logger.info("Database initialized successfully")
 except Exception as e:
-    # Een driverfout kan host en databasenaam citeren: op ERROR alleen type en kenmerk, de tekst op DEBUG (#817).
-    logger.error("Failed to initialize database: %s", foutkenmerk(e))
+    # Een driverfout kan host en databasenaam citeren: op ERROR alleen een veilige oorzaak (als er een is) met type en
+    # kenmerk, de tekst op DEBUG (#817, #1155).
+    oorzaak = persistence_db.startfout_oorzaak(e)
+    logger.error("Failed to initialize database: %s", f"{oorzaak} [{foutkenmerk(e)}]" if oorzaak else foutkenmerk(e))
     logger.debug("Failed to initialize database", exc_info=True)
     sys.exit(1)
 
@@ -96,7 +98,11 @@ def resource_policy(pad: str) -> str:
 
 
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        # Hier en niet in een exception handler: die draait buiten deze middleware, zonder de headers hieronder (#1154).
+        response = foutmeldingen.onverwachte_fout(request, exc)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

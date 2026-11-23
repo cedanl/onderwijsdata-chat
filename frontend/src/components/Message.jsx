@@ -7,7 +7,7 @@ import { hasExport } from '../dataExport'
 import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
-import { answerBlocks, metBronnen } from '../answerBlocks'
+import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
@@ -115,7 +115,7 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
         <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
         {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
-            {msg.content && <CopyButton text={metBronnen(msg.content, msg.bronnen)} className="copy-btn-message" />}
+            {msg.content && <CopyButton text={kopieerTekst(msg)} className="copy-btn-message" />}
             <MessageContent msg={msg} blocks={blocks} />
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}

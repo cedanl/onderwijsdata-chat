@@ -462,6 +462,9 @@ def kent_dataset_id(tekst: str) -> bool:
         return True
 
 
+_NIET_IN_CATALOGUS = "staat niet in de catalogus"
+
+
 def scope_blokkade(dataset_id: str) -> str | None:
     """Waarom een datatool `dataset_id` niet laadt; None als het binnen het profiel valt.
 
@@ -480,7 +483,19 @@ def scope_blokkade(dataset_id: str) -> str | None:
     logger.warning("scope_blokkade %s niet in de catalogus", _id_kenmerk(ruw))
     ids = _vergelijkbare_ids(dataset_id, binnen)
     hint = f" Vergelijkbare datasets: {ids[:3]}." if ids else " Zoek de juiste dataset-ID met search_catalog."
-    return f"Dataset '{dataset_id}' staat niet in de catalogus; zonder scopebesluit laadt de chat hem niet.{hint}"
+    return f"Dataset '{dataset_id}' {_NIET_IN_CATALOGUS}; zonder scopebesluit laadt de chat hem niet.{hint}"
+
+
+def is_scopeweigering(uitkomst: str) -> bool:
+    """Is `uitkomst` de weigering van `scope_blokkade`: een record buiten het profiel, of een ID dat de catalogus niet
+    kent? Dat is een besluit van de app, geen storing van de bron (#1126)."""
+    if uitkomst.startswith("{"):
+        try:
+            geweigerd = json.loads(uitkomst)
+        except ValueError:
+            return False
+        return isinstance(geweigerd, dict) and geweigerd.get("buiten_scope") is True
+    return uitkomst.startswith("Dataset '") and _NIET_IN_CATALOGUS in uitkomst
 
 
 def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:

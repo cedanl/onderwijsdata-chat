@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN, mijnInstellingBeschrijving,
@@ -13,6 +13,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import VerwijderFout from '../components/VerwijderFout'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
+import { focusEerste, kiezerMetId } from '../focusNa'
 
 const GEEN_INSTELLINGEN = []
 const GEEN_BRONNEN = {}
@@ -42,11 +43,12 @@ export function effectieveInstelling(urlInstelling, profielInstelling) {
 // De vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
 // onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
 export default function DashboardPage({ settings, instellingen = GEEN_INSTELLINGEN, bronnen = GEEN_BRONNEN, feedbackEnabled = false }) {
-  useDocumentTitle(pageTitle('Dashboards'))
   const [searchParams, setSearchParams] = useSearchParams()
   const id = searchParams.get('id')
   const builtins = vasteDashboards(bronnen)
   const selected = builtins.find(b => b.id === id) ?? null
+  // Het tabblad noemt het dashboard dat open is (#1173), zoals bij een rapport.
+  useDocumentTitle(pageTitle(selected?.title ?? 'Dashboards'))
 
   const { workbooks: opgeslagen, pendingConfirm, setPendingConfirm, handleDelete, verwijderFout } = useWorkbookGallery({
     type: 'dashboard',
@@ -62,6 +64,24 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
     return builtins.map(b => (beschrijving[b.id] ? { ...b, description: beschrijving[b.id](sector) } : b))
   }, [builtins, sector])
 
+  // Openen en terugkeren verwijderen het element met de focus; de focus gaat dan naar de kop van het dashboard
+  // of naar de kaart die open was (#1172). Alleen na een keuze van de gebruiker, een link naar een dashboard
+  // laat de focus waar de browser hem zet.
+  const focusNaWissel = useRef(null)
+  useEffect(() => {
+    if (!focusNaWissel.current) return
+    focusEerste(focusNaWissel.current)
+    focusNaWissel.current = null
+  }, [selected?.id])
+  const open = wb => {
+    focusNaWissel.current = '.wb-viewer-heading'
+    setSearchParams({ id: wb.id, instelling }, { replace: true })
+  }
+  const terug = () => {
+    focusNaWissel.current = kiezerMetId('.wb-card', 'data-wb-id', selected.id)
+    setSearchParams({}, { replace: true })
+  }
+
   // De galerij en het dashboard delen hun ladingen (#933): de miniatuur van een kaart en het dashboard erachter
   // vragen de server één keer. Beide takken beginnen met dezelfde provider, dus React houdt hem (en wat hij bewaart)
   // vast bij openen en teruggaan.
@@ -73,7 +93,7 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
           instelling={instelling}
           sector={sector}
           gekozenInstelling={settings?.instelling?.trim() || ''}
-          onBack={() => setSearchParams({}, { replace: true })}
+          onBack={terug}
           onUpdate={() => {}}
           backLabel="Dashboards"
           feedbackEnabled={feedbackEnabled}
@@ -97,7 +117,7 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
         workbooks={dashboards}
         opgeslagen={opgeslagen}
         instelling={instelling}
-        onSelect={wb => setSearchParams({ id: wb.id, instelling }, { replace: true })}
+        onSelect={open}
         onDelete={handleDelete}
       />
     </DashboardLadingen>

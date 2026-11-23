@@ -194,52 +194,54 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
 
   return (
     <div className="confirm-overlay">
-      <form
+      {/* role="dialog" is not allowed on a <form> (ARIA in HTML): the div carries it, the form sits inside. */}
+      <div
         className="confirm-dialog feedback-dialog"
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        onSubmit={handleSubmit}
       >
-        <h2 className="feedback-title" id={titleId}>Feedback geven</h2>
-        <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de {metWoord('rapporten', woord)} te verbeteren.</p>
-        <p className="feedback-intro">
-          {instelling
-            ? `We bewaren je antwoorden, de titel van het ${woord} en je gekozen instelling bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`
-            : `We bewaren je antwoorden en de titel van het ${woord} bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`}
-        </p>
-        {extraQuestions.length > 0 && (
+        <form onSubmit={handleSubmit}>
+          <h2 className="feedback-title" id={titleId}>Feedback geven</h2>
+          <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de {metWoord('rapporten', woord)} te verbeteren.</p>
           <p className="feedback-intro">
-            Na de vragen over het {woord} kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die
-            zijn optioneel; we bewaren die antwoorden op dezelfde manier.
+            {instelling
+              ? `We bewaren je antwoorden, de titel van het ${woord} en je gekozen instelling bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`
+              : `We bewaren je antwoorden en de titel van het ${woord} bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`}
           </p>
-        )}
-        {!questions && !error && <p role="status">Vragen worden geladen…</p>}
-        <QuestionList questions={reportQuestions} answers={answers} setAnswer={setAnswer} instelling={instelling} />
-        {extraQuestions.length > 0 && !showExtra && (
-          <button type="button" className="feedback-extra-btn" onClick={() => setShowExtra(true)}>
-            {sectionTitle(EXTRA_BUTTON, instelling)} ({countLabel(extraQuestions.length)})
-          </button>
-        )}
-        {showExtra && (
-          <QuestionList
-            questions={extraQuestions}
-            answers={answers}
-            setAnswer={setAnswer}
-            instelling={instelling}
-            headingRef={extraHeadingRef}
-          />
-        )}
-        {error && <p role="alert" className="feedback-error">{error}</p>}
-        <div className="confirm-actions">
-          <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
-          <button type="submit" className="feedback-submit" disabled={!hasAnswer || sending}>
-            {sending ? 'Versturen…' : 'Versturen'}
-          </button>
-        </div>
-      </form>
+          {extraQuestions.length > 0 && (
+            <p className="feedback-intro">
+              Na de vragen over het {woord} kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die
+              zijn optioneel; we bewaren die antwoorden op dezelfde manier.
+            </p>
+          )}
+          {!questions && !error && <p role="status">Vragen worden geladen…</p>}
+          <QuestionList questions={reportQuestions} answers={answers} setAnswer={setAnswer} instelling={instelling} />
+          {extraQuestions.length > 0 && !showExtra && (
+            <button type="button" className="feedback-extra-btn" onClick={() => setShowExtra(true)}>
+              {sectionTitle(EXTRA_BUTTON, instelling)} ({countLabel(extraQuestions.length)})
+            </button>
+          )}
+          {showExtra && (
+            <QuestionList
+              questions={extraQuestions}
+              answers={answers}
+              setAnswer={setAnswer}
+              instelling={instelling}
+              headingRef={extraHeadingRef}
+            />
+          )}
+          {error && <p role="alert" className="feedback-error">{error}</p>}
+          <div className="confirm-actions">
+            <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
+            <button type="submit" className="feedback-submit" disabled={!hasAnswer || sending}>
+              {sending ? 'Versturen…' : 'Versturen'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

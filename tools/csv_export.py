@@ -14,9 +14,10 @@ import csv
 import io
 import json
 import re
-import unicodedata
 
 import pandas as pd
+
+from core.bestandsnaam import bestandsdeel
 
 from . import catalog, duo, herlaad, store
 from .exportnoten import herkomstregels
@@ -138,14 +139,10 @@ def _noten(key: str, afronden: bool, username: str | None) -> list[str]:
 
 # Bestandsnaam van een export (#533): <titel>_<dataset-id>.csv, zonder titel alleen het id. Elk deel veilig
 # voor een bestandsnaam en de Content-Disposition-header: accenten weg (é → e), al het andere dan letters en
-# cijfers een underscore, de titel hoogstens 80 tekens. Dezelfde regel als figureCsvFilename in
-# frontend/src/figureCsv.js: de twee moeten gelijk opgaan.
+# cijfers een underscore, de titel hoogstens 80 tekens (core/bestandsnaam.py). Dezelfde regel als figureCsvFilename
+# in frontend/src/figureCsv.js: de twee moeten gelijk opgaan.
 _TITEL_MAX = 80
-
-
-def _bestandsdeel(tekst: str) -> str:
-    zonder_accenten = "".join(c for c in unicodedata.normalize("NFD", tekst) if not "\u0300" <= c <= "\u036f")
-    return re.sub(r"[^A-Za-z0-9]+", "_", zonder_accenten).strip("_")
+_KENMERK_MAX = 40
 
 
 def bestandsnaam(key: str) -> str:
@@ -155,9 +152,19 @@ def bestandsnaam(key: str) -> str:
         return "data.csv"
     titel = catalog.bron_titel(known.dataset, vo_context=known.vo_context)
     # Kent de catalogus de dataset niet, dan is de titel het kale id: dat staat er niet twee keer in.
-    titeldeel = _bestandsdeel(titel)[:_TITEL_MAX].rstrip("_") if titel != known.dataset else ""
-    naam = "_".join(deel for deel in (titeldeel, _bestandsdeel(known.dataset)) if deel)
-    return f"{naam or 'data'}.csv"
+    titeldeel = bestandsdeel(titel, _TITEL_MAX) if titel != known.dataset else ""
+    delen = (titeldeel, bestandsdeel(known.dataset), _selectiedeel(key, known))
+    return f"{'_'.join(deel for deel in delen if deel) or 'data'}.csv"
+
+
+def _selectiedeel(key: str, known: store.KeyMeta) -> str:
+    """Wat een afgeleide tabel onderscheidt van haar ouder en van de andere selecties op dezelfde dataset (#1120): haar
+    kenmerk (de groepering) en de rest van de key (resource en digest van de selectie). De ruwe lading houdt de naam
+    van de dataset."""
+    if not known.afgeleid_van:
+        return ""
+    delen = (bestandsdeel(known.kenmerk, _KENMERK_MAX), bestandsdeel(":".join(key.split(":")[2:])))
+    return "_".join(deel for deel in delen if deel)
 
 
 def naar_csv(key: str, username: str | None = None) -> str | None:

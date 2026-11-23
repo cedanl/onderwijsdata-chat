@@ -74,9 +74,9 @@ describe('mbo: diploma\'s na 3 jaar per eerstejaars (#898)', () => {
     expect(tekst).toContain("3.925 diploma's in diplomajaar 2025 / 4.341 eerstejaars")
   })
 
-  it('noemt een peer die niet in het regiogemiddelde telt, met de reden', () => {
+  it('noemt een peer die niet in het gemiddelde van de vergelijkingsgroep telt, met de reden', () => {
     expect(render(CURIO).textContent).toContain(
-      'Niet getoond (niet in het regiogemiddelde: geen eerstejaars bekend): BBO de Schalm (2021/22, 2022/23).',
+      'Niet getoond (niet in het gemiddelde van de vergelijkingsgroep: geen eerstejaars bekend): BBO de Schalm (2021/22, 2022/23).',
     )
   })
 

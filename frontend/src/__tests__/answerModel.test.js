@@ -28,6 +28,14 @@ describe('answerModels', () => {
     expect(answerModels([vraag, { id: 2, role: 'assistant', done: true, content: 'model' }], MODELS)).toEqual({ 2: 'Sonnet' })
   })
 
+  // #1111: the same for a clarification card made by code; a card from clarify_scope keeps the label.
+  it('labels a clarification card only when the model made it', () => {
+    const vraag = { id: 1, role: 'user', model: 'claude-sonnet' }
+    const kaart = { id: 2, role: 'assistant', done: true, clarification: [{ label: 'Utrecht' }] }
+    expect(answerModels([vraag, { ...kaart, vast: true }], MODELS)).toEqual({})
+    expect(answerModels([vraag, kaart], MODELS)).toEqual({ 2: 'Sonnet' })
+  })
+
   it('falls back to the model id when the model is no longer offered', () => {
     expect(answerModels([{ id: 1, role: 'user', model: 'oud-model' }, { id: 2, role: 'assistant', done: true }], MODELS)).toEqual({ 2: 'oud-model' })
   })

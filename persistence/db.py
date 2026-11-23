@@ -2,6 +2,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -32,6 +33,50 @@ def _db_path() -> Path:
     if azure_home.exists() and os.access(str(azure_home), os.W_OK):
         return azure_home / "onderwijsdata.db"
     return Path(__file__).parent.parent / "onderwijsdata.db"
+
+
+class DatabaseStartFout(RuntimeError):
+    """Een databasefout met een eigen tekst zonder host, gebruiker of wachtwoord; die tekst mag in het log (#1155)."""
+
+
+# Wat een Postgres-fout van de driver zegt, als vaste tekst. De driver citeert host, poort, gebruiker en databasenaam,
+# dus de fouttekst zelf komt niet in het log: alleen de eerste categorie die erin past.
+_POSTGRES_OORZAKEN = (
+    (r"connection refused", "verbinding geweigerd (poort dicht of de server draait niet)"),
+    (r"timeout expired|timed out", "time-out bij het verbinden"),
+    (
+        r"could not translate host name|name or service not known|temporary failure in name resolution",
+        "hostnaam onbekend",
+    ),
+    (
+        r"password authentication failed|no password supplied|role \".*\" does not exist|no pg_hba\.conf entry",
+        "authenticatie mislukt (gebruiker of wachtwoord) of toegang geweigerd",
+    ),
+    (r"database \".*\" does not exist", "database bestaat niet"),
+    (r"invalid dsn|invalid connection option|missing \"=\" after|invalid uri", "ongeldige URI"),
+    (
+        r"server does not support ssl|ssl error|sslmode",
+        "TLS-verbinding mislukt (sslmode=require, de server moet TLS bieden)",
+    ),
+)
+# sqlite3 meldt een pad dat niet te openen of te beschrijven is zonder het pad te noemen.
+_SQLITE_PAD_FOUTEN = ("unable to open database file", "readonly database", "disk i/o error")
+
+
+def startfout_oorzaak(e: BaseException) -> str | None:
+    """Een veilige oorzaak van een mislukte databasestart voor het log, of None als de fout geen herkenbare categorie heeft.
+
+    Een beheerder met een pod in CrashLoopBackOff ziet zo wat er mis is zonder LOG_LEVEL=DEBUG (dat zet ook vraag- en
+    antwoordtekst in het log), en de tekst van de driverfout, met host en databasenaam, blijft uit het log (#817, #1155).
+    """
+    if isinstance(e, DatabaseStartFout):
+        return str(e)
+    tekst = str(e).lower()
+    if _USE_POSTGRES:
+        return next((oorzaak for patroon, oorzaak in _POSTGRES_OORZAKEN if re.search(patroon, tekst)), None)
+    if isinstance(e, sqlite3.Error) and any(f in tekst for f in _SQLITE_PAD_FOUTEN):
+        return f"SQLite-pad niet te openen of niet schrijfbaar (of een map): {_db_path()}"
+    return None
 
 
 def _tls_verplicht(uri: str) -> dict:
@@ -72,7 +117,7 @@ def _connect() -> Any:
             conn.autocommit = False
             return conn
         except ImportError:
-            raise RuntimeError("psycopg2 required for PostgreSQL but not installed") from None
+            raise DatabaseStartFout("psycopg2 ontbreekt: installeer het met `uv sync --extra postgres`") from None
     else:
         conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -649,7 +694,7 @@ def _migratielock(conn: Any) -> Generator[None]:
     einde = time.monotonic() + _MIGRATIE_WACHT_S
     while not _slotvraag(conn, "SELECT pg_try_advisory_lock(%s)"):
         if time.monotonic() >= einde:
-            raise RuntimeError(
+            raise DatabaseStartFout(
                 f"Geen migratieslot binnen {_MIGRATIE_WACHT_S}s: draait een andere pod nog een migratie?"
             )
         time.sleep(_MIGRATIE_POLL_S)
@@ -1162,6 +1207,38 @@ def upsert_workbook(
             ),
         )
         conn.commit()
+
+
+_WERKBOEKGROOTTE = (
+    "LENGTH(COALESCE(messages, '')) + LENGTH(COALESCE(figures, '')) + LENGTH(COALESCE(html_content, '')) "
+    "+ LENGTH(COALESCE(dashboard_spec, ''))"
+)
+
+
+def opslagstand(username: str, soort: str, item_id: str) -> dict[str, int | None]:
+    """Wat `username` bewaart (#682, S24): aantal gesprekken en werkboeken, hun samen bewaarde grootte (tekens) en de
+    grootte van het item `item_id` van `soort` ("gesprek" of "werkboek"), None als het nog niet bestaat."""
+    tabel, grootte = ("conversations", "LENGTH(messages)") if soort == "gesprek" else ("workbooks", _WERKBOEKGROOTTE)
+    with _connection() as conn:
+        g = _execute(
+            conn,
+            "SELECT COUNT(*) AS n, COALESCE(SUM(LENGTH(messages)), 0) AS grootte FROM conversations WHERE username = ?",
+            (username,),
+        ).fetchone()
+        w = _execute(
+            conn,
+            f"SELECT COUNT(*) AS n, COALESCE(SUM({_WERKBOEKGROOTTE}), 0) AS grootte FROM workbooks WHERE username = ?",
+            (username,),
+        ).fetchone()
+        item = _execute(
+            conn, f"SELECT {grootte} AS grootte FROM {tabel} WHERE id = ? AND username = ?", (item_id, username)
+        ).fetchone()
+    return {
+        "gesprekken": int(g["n"]),
+        "werkboeken": int(w["n"]),
+        "grootte": int(g["grootte"]) + int(w["grootte"]),
+        "item": None if item is None else int(item["grootte"] or 0),
+    }
 
 
 def werkboek_geopend(username: str, wb_id: str) -> None:
