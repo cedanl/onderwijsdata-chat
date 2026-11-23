@@ -150,7 +150,9 @@ def test_het_logniveau_van_de_app_geldt_ook_voor_uvicorn(logging_zoals_uvicorn_h
 def _start(tmp_path, **env) -> subprocess.CompletedProcess:
     """Importeer server.py in een eigen proces, zoals uvicorn dat doet, met alleen deze configuratie."""
     basis = {
-        k: v for k, v in os.environ.items() if k not in ("LOG_LEVEL", "CHAT_USERS", "CHAT_SECRET", "OIDC_PROVIDER")
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("LOG_LEVEL", "CHAT_USERS", "CHAT_SECRET", "OIDC_PROVIDER", "SESSION_TTL_HOURS")
     }
     return subprocess.run(
         [sys.executable, "-c", "import server"],
@@ -205,3 +207,44 @@ def test_een_lege_log_level_is_de_standaard():
     )
 
     assert uitvoer.stdout.strip() == "INFO"
+
+
+# --- #1164: een ontbrekende CHAT_SECRET is een configuratiemelding ---
+
+
+@pytest.mark.parametrize("login", [{"CHAT_USERS": "admin:pw"}, {"OIDC_PROVIDER": "sram"}])
+def test_buiten_local_stopt_een_ontbrekende_chat_secret_met_een_json_regel(tmp_path, login):
+    uitslag = _start(tmp_path, APP_ENV="test", **login)
+
+    assert uitslag.returncode != 0
+    assert "Traceback" not in uitslag.stdout + uitslag.stderr
+    [regel] = uitslag.stdout.splitlines()
+    bericht = json.loads(regel)
+    assert bericht["level"] == "ERROR"
+    assert bericht["message"].startswith("Configuration validation failed: CHAT_SECRET moet ingesteld zijn")
+
+
+def test_in_local_is_het_een_leesbare_regel(tmp_path):
+    uitslag = _start(tmp_path, APP_ENV="local", CHAT_USERS="admin:pw")
+
+    assert uitslag.returncode != 0
+    assert "Traceback" not in uitslag.stdout + uitslag.stderr
+    [regel] = uitslag.stdout.splitlines()
+    assert "Configuration validation failed: CHAT_SECRET moet ingesteld zijn" in regel
+    assert not regel.startswith("{")
+
+
+def test_een_ongeldige_sessieduur_is_dezelfde_soort_melding(tmp_path):
+    uitslag = _start(tmp_path, APP_ENV="local", SESSION_TTL_HOURS="veel")
+
+    assert uitslag.returncode != 0
+    assert "Traceback" not in uitslag.stdout + uitslag.stderr
+    [regel] = uitslag.stdout.splitlines()
+    assert "Configuration validation failed: SESSION_TTL_HOURS moet een positief aantal uren zijn" in regel
+
+
+def test_met_chat_secret_start_de_app(tmp_path):
+    uitslag = _start(tmp_path, APP_ENV="test", CHAT_USERS="admin:pw", CHAT_SECRET="een-geheim")
+
+    assert uitslag.returncode == 0
+    assert "Configuration validation failed" not in uitslag.stdout

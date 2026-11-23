@@ -9,6 +9,15 @@ import, omdat tests die modules met een andere omgeving herladen.
 
 import os
 
+
+class AuthConfigFout(ValueError):
+    """De inlog is verkeerd ingesteld (CHAT_SECRET ontbreekt, een ongeldige sessieduur).
+
+    `core/auth.py` gooit dit bij de import. Het staat hier, niet daar, omdat `Config.validate()` het moet kunnen
+    vangen terwijl die import mislukt (#1164).
+    """
+
+
 MODEL = os.getenv("MODEL", "anthropic/claude-sonnet-4-6")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "40960"))
 # Analyses horen herhaalbaar te zijn: temperature 0 en een vaste seed (#46). Providers die een

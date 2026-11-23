@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException
 
+from core.config import AuthConfigFout
 from persistence import db
 
 _TOKEN_SECRET_RAW = os.getenv("CHAT_SECRET", "")
@@ -23,7 +24,7 @@ def _uren_uit_env(naam: str, standaard: int) -> int:
     except ValueError:
         uren = math.nan
     if not math.isfinite(uren) or int(uren * 3600) < 1:
-        raise ValueError(f"{naam} moet een positief aantal uren zijn (bijvoorbeeld 8), niet {raw!r}.")
+        raise AuthConfigFout(f"{naam} moet een positief aantal uren zijn (bijvoorbeeld 8), niet {raw!r}.")
     return int(uren * 3600)
 
 
@@ -168,7 +169,7 @@ OIDC_ENABLED = bool(os.getenv("OIDC_PROVIDER"))
 AUTH_ENABLED = bool(USERS) or OIDC_ENABLED
 
 if AUTH_ENABLED and not _TOKEN_SECRET_RAW:
-    raise ValueError(
+    raise AuthConfigFout(
         "CHAT_SECRET moet ingesteld zijn wanneer CHAT_USERS of OIDC_PROVIDER is geconfigureerd. "
         'Genereer een willekeurige waarde: python -c "import secrets; print(secrets.token_hex(32))"'
     )

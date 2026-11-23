@@ -7,7 +7,7 @@ import logging
 import os
 
 from core import config as runtime
-from core.config import MODEL
+from core.config import MODEL, AuthConfigFout
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class Config:
         if cls.LOG_LEVEL not in cls.LOG_LEVELS:
             errors.append(f"LOG_LEVEL moet een van {', '.join(cls.LOG_LEVELS)} zijn, kreeg: {cls.LOG_LEVEL}")
 
-        if fout := cls._login_ontbreekt():
+        if fout := cls._auth_ongeldig() or cls._login_ontbreekt():
             errors.append(fout)
 
         if fout := cls._nepmodel_ongeldig():
@@ -94,6 +94,19 @@ class Config:
         )
 
     @classmethod
+    def _auth_ongeldig(cls) -> str | None:
+        """De foutmelding als `core.auth` bij het laden weigert, anders None.
+
+        Dat doet het bij een login zonder CHAT_SECRET en bij een ongeldige sessieduur. Zonder deze controle eindigt de
+        start, ook buiten lokaal, in een Python-traceback van platte tekst in plaats van één melding in het log (#1164).
+        """
+        try:
+            from core import auth  # noqa: F401  (de import zelf is de controle)
+        except AuthConfigFout as fout:
+            return str(fout)
+        return None
+
+    @classmethod
     def _login_ontbreekt(cls) -> str | None:
         """De foutmelding als een omgeving buiten lokaal zonder login zou starten (#787), anders None.
 
@@ -102,7 +115,7 @@ class Config:
         """
         if cls.APP_ENV == "local":
             return None
-        from core import auth  # pas hier: de import eist CHAT_SECRET zodra er een login is
+        from core import auth
 
         if auth.AUTH_ENABLED:
             return None
