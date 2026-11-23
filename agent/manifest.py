@@ -4,7 +4,7 @@ Een antwoord of rapport droeg geen model-, prompt- of dataversie, en `drop_param
 liet een provider die `seed` niet kent hem stil vallen: of een run herhaalbaar was,
 was niet te zien. CBS herziet cijfers en DUO muteert cellen, dus hetzelfde rapport
 is morgen een ander getal. Het manifest legt per antwoord en rapport vast met welk
-model (en welke providerversie), welke prompt- en catalogusversie, welke appversie
+model (en welke providerversie), welke prompt- en catalogusversie, welke appversie (en build-commit, #1123)
 en welke dataversie het is gemaakt, en of seed en temperature daadwerkelijk zijn
 toegepast.
 
@@ -27,6 +27,7 @@ from litellm import get_supported_openai_params
 from config import Config
 from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
+from core.pakketherkomst import korte_commit
 from tools import herlaad, store
 from tools.catalog import catalogus_digest, catalogus_laatste_update
 from tools.inhoudshash import hash_van
@@ -132,4 +133,7 @@ def bouw(model: str, data_keys, model_versie: str | None = None, username: str |
     }
     if model_versie and model_versie != model:
         m["model_versie"] = model_versie
+    # Zonder GIT_COMMIT (lokaal) blijft de sleutel weg: de leesregel zegt dan niets, geen "onbekend" (#1123).
+    if commit := korte_commit(Config.GIT_COMMIT):
+        m["commit"] = commit
     return m

@@ -83,6 +83,13 @@ def test_reikwijdte_definities_bronnen_en_herkomst():
     ]
 
 
+def test_de_verantwoordingsregel_met_commit_komt_ongewijzigd_in_het_document():
+    """#1123: de regel komt uit het rapport zoals reportHtml.js hem bouwt, dus ook met de commit."""
+    html = RAPPORT_HTML.replace("app 2.8.0", "app 2.8.0 (commit 7d3488aa)")
+    herkomst = [t for s, t in _alineas(_document(html)[0]) if s == "Herkomst"]
+    assert herkomst[0] == "Verantwoording: model gpt-4.1 · prompt abc123 · app 2.8.0 (commit 7d3488aa)"
+
+
 def test_per_visualisatie_titel_grafiek_noot_bron_en_toelichting():
     doc, _ = _document()
     alineas = _alineas(doc)

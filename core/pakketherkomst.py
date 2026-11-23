@@ -19,6 +19,13 @@ from importlib import metadata
 # De publieke spiegel van deze repo; de oude pakketrepo's (cbs-/rio-onderwijsdata) zijn alleen nog archief.
 SPIEGEL_URL = "https://github.com/cedanl/onderwijsdata-chat"
 PAKKETMAP = "packages"
+KORTE_COMMIT = 8
+
+
+def korte_commit(commit: str | None) -> str | None:
+    """De korte vorm van een buildcommit zoals `/version` en het manifest van een rapport hem noemen (#1123);
+    None zonder commit."""
+    return commit[:KORTE_COMMIT] if commit else None
 
 
 def pakketversie(naam: str) -> str | None:

@@ -13,7 +13,7 @@ export function manifestRegels(manifest) {
     m.sampling ? `seed ${toegepast(m.sampling.seed_toegepast)}` : '',
     m.prompt_hash ? `prompt ${m.prompt_hash}` : '',
     m.catalogus ? `catalogus ${m.catalogus}` : '',
-    m.app ? `app ${m.app}` : '',
+    m.app ? `app ${m.app}${m.commit ? ` (commit ${m.commit})` : ''}` : '',
   ].filter(Boolean).join(' · ')
   const dataversie = (m.data_as_of || []).map(d => {
     const extra = [

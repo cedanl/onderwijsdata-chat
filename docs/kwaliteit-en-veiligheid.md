@@ -13,7 +13,7 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
 - **Elk getal uit een tool**: de controle na het antwoord (hieronder) houdt een antwoord in met een getal dat niet in de
   opgehaalde data staat; wat die controle wel en niet dekt staat in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md).
 - **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, de redeneerkaart), elk antwoord en
-  rapport een manifest met model, prompt-, catalogus-, app- en dataversie (#345; de catalogusversie is dezelfde digest
+  rapport een manifest met model, prompt-, catalogus-, app- (met de korte build-commit uit `GIT_COMMIT`, #1123) en dataversie (#345; de catalogusversie is dezelfde digest
   als `catalogus_digest` in `/version`, #1029), en elk gepubliceerd resultaat (antwoord,
   figuur, CSV-export, rapport) één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
   selectie), volledigheid, afronding, herlaaddatum en, voor een CBS- of RIO-bron, de `inhoudshash` van de brontabel (#715) en voor een DUO-bron de `bronhash`, de md5 van het bestand (#717), plus die versies en het tijdstip (#169). Geen vraag- of antwoordtekst;

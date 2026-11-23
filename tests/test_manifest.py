@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from agent import manifest
+from config import Config
 from core.config import SEED, TEMPERATURE
 from tools import herlaad, store
 
@@ -76,13 +77,26 @@ def test_onbekende_key_valt_stil_weg():
     assert m["data_as_of"] == []
 
 
-def test_manifest_draagt_alleen_herkomst_geen_inhoud():
+def test_manifest_draagt_alleen_herkomst_geen_inhoud(monkeypatch):
     """Vaste sleutels, geen vraag- of antwoordtekst en geen gebruikersvelden (privacy-criterium #345)."""
+    monkeypatch.setattr(Config, "GIT_COMMIT", None)
     m = _bouw([])
     assert set(m) == _VASTE_SLEUTELS
     assert m["prompt_hash"] and len(m["prompt_hash"]) == 12
     assert m["catalogus"] and len(m["catalogus"]) == 12
     assert m["app"]
+
+
+def test_manifest_noemt_de_buildcommit_kort_als_die_bekend_is(monkeypatch):
+    """#1123: twee builds met dezelfde appversie zijn in een rapport anders niet uit elkaar te houden."""
+    monkeypatch.setattr(Config, "GIT_COMMIT", "7d3488aa0da386a087f6363b3f2ffa40049f604b")
+    assert _bouw([])["commit"] == "7d3488aa"
+
+
+def test_manifest_zonder_buildcommit_heeft_geen_commit_sleutel(monkeypatch):
+    """Geen "onbekend" in een rapport: zonder GIT_COMMIT blijft het manifest zoals het was."""
+    monkeypatch.setattr(Config, "GIT_COMMIT", None)
+    assert "commit" not in _bouw([])
 
 
 def test_providerversie_komt_erbij_als_hij_afwijkt():
