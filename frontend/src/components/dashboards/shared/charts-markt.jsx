@@ -6,6 +6,7 @@ import { Grafiek } from './grafiek'
 import { WeggelatenNoot, perJaar } from './ondergrens'
 import { fmt } from './getal'
 import { asJaar, jaarLabel } from '../../../schooljaar'
+import { gebiedTekst, totaalTekst } from './vergelijking'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -84,12 +85,12 @@ function _ratioLineOpts(dark, tooltipLabel) {
   }
 }
 
-export function MarktaandeelTrendChart({ data, dark }) {
+export function MarktaandeelTrendChart({ data, dark, landelijk = false }) {
   if (!data) return null
   return (
     <ChartCard
       title="Marktaandeel over tijd"
-      subtitle="% van regiototaal ingeschrevenen — verliest of wint de instelling terrein?"
+      subtitle={`% van het ${totaalTekst(landelijk)} ingeschrevenen — verliest of wint de instelling terrein?`}
     >
       <Grafiek soort="line" data={data} options={_ratioLineOpts(dark, '')} hoogte={200} />
     </ChartCard>
@@ -98,14 +99,14 @@ export function MarktaandeelTrendChart({ data, dark }) {
 
 // Eén ondertitel voor mbo en ho; "(HO)" staat er alleen bij ho (#918).
 export function instroomRatioOndertitel(type) {
-  return `Eerstejaars als % van totaal ingeschrevenen — pipeline-gezondheid${type === 'mbo' ? '' : ' (HO)'}`
+  return `Eerstejaars als % van alle ingeschrevenen${type === 'mbo' ? '' : ' (hoger onderwijs)'} — komen er genoeg nieuwe studenten bij?`
 }
 
 export function InstroomRatioChart({ data, dark, type }) {
   if (!data) return null
   return (
     <ChartCard
-      title="Instroom ratio"
+      title="Aandeel eerstejaars"
       subtitle={instroomRatioOndertitel(type)}
     >
       <Grafiek soort="line" data={data} options={_ratioLineOpts(dark, '')} hoogte={200} />
@@ -185,7 +186,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
 }
 
 
-export function MarktaandeelChart({ data, dark }) {
+export function MarktaandeelChart({ data, dark, landelijk = false }) {
   if (!data) return null
   const { jaar: jaartal, soort, weggelaten, ...barData } = data
   const jaar = jaarLabel(jaartal, soort)
@@ -193,7 +194,7 @@ export function MarktaandeelChart({ data, dark }) {
   return (
     <ChartCard
       title={`Marktpositie ${jaar}`}
-      subtitle="Totaal ingeschrevenen per instelling in de regio (eigen instelling blauw)"
+      subtitle={`Totaal ingeschrevenen per instelling in ${gebiedTekst(landelijk)} (eigen instelling blauw)`}
     >
       <Grafiek soort="bar" data={barData} options={horizontalBarOpts(dark)} hoogte={h} categorie="Instelling" />
       <WeggelatenNoot namen={weggelaten} reden={`geen cijfers over ${jaar}`} />

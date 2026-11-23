@@ -56,7 +56,7 @@ function KengetalChart({ fin, eenheid, kengetal, dark }) {
   }, [fin, reeks, kengetal.sleutel, sector, dark, tick])
   const eenheidTekst = kengetal.procent ? '%' : ''
   return (
-    <ChartCard title={kengetal.naam} subtitle={`Per verslagjaar — bestuur vs. sectorcijfer ${sector}${kengetal.signaal ? '; stippellijn: signaleringswaarde van de Inspectie' : ''}`}>
+    <ChartCard title={kengetal.naam} subtitle={`Per verslagjaar — bestuur tegenover sectorcijfer ${sector}${kengetal.signaal ? '; stippellijn: signaleringswaarde van de Inspectie' : ''}`}>
       <Grafiek soort="line" data={data} hoogte={240} categorie="Verslagjaar" options={{
         responsive: true, maintainAspectRatio: false,
         plugins: {
@@ -175,7 +175,7 @@ export function FinancienSection({ data, dark }) {
   const jaren = fin.bron?.editie ? `, ${fin.bron.editie}` : ''
   return (
     <>
-      <SectionHeader title={TITEL} subtitle={`${bestuur.naam} (bestuur ${bestuur.nummer})${jaren}; DUO, financiële verantwoording uit XBRL`} />
+      <SectionHeader title={TITEL} subtitle={`${bestuur.naam} (bestuur ${bestuur.nummer})${jaren}; DUO, financiële verantwoording`} />
       {(fin.meldingen || []).map(m => <p key={m} className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 8px' }}>{m}</p>)}
       {(fin.eenheden || []).map(e => <Eenheid key={e.eenheid} fin={fin} eenheid={e} dark={dark} />)}
       <Voorbehouden fin={fin} />

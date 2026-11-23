@@ -373,6 +373,8 @@ export function useChat({ maxHistory } = {}) {
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant',
           content: ev.vraag, clarification: ev.opties, done: true,
+          // A card made by code, not by the model (clarify_scope): no "Antwoord van <model>" under it (#1111).
+          ...(ev.vast === true && { vast: true }),
         }])
         finishStream()
       },

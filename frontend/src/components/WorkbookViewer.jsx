@@ -105,7 +105,7 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
           </svg>
           {backLabel}
         </button>
-        <h1 className="wb-viewer-heading">
+        <h1 className="wb-viewer-heading" tabIndex={-1}>
           {editingTitle ? (
             <input
               ref={titleInputRef}

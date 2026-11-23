@@ -8,13 +8,12 @@ en gaan in een thread, zodat de event loop en de chat-streams van anderen doorlo
 
 import asyncio
 import logging
-import re
-import unicodedata
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from core.auth import get_current_user
+from core.bestandsnaam import rapportdeel
 from core.rate_limit import RateLimiter
 from persistence import db as persistence_db
 from tools.rapport_docx import AfbeeldingFout, kan_docx, lees_grafieken, rapport_uit_html, render_docx
@@ -32,9 +31,8 @@ _limiter = RateLimiter(max_attempts=30, window_seconds=60, naam="rapport_docx")
 
 
 def bestandsnaam(titel: str) -> str:
-    """Zoals workbookFilename in de app: letters en cijfers, de rest een liggend streepje."""
-    zonder_accenten = "".join(c for c in unicodedata.normalize("NFD", titel) if not "̀" <= c <= "ͯ")
-    return re.sub(r"[^A-Za-z0-9]", "_", zonder_accenten or "rapport") + ".docx"
+    """Dezelfde naam als workbookFilename in de app (core/bestandsnaam.py, #1124, #1125)."""
+    return f"{rapportdeel(titel)}.docx"
 
 
 def _maak(username: str, wb_id: str, content_type: str | None, lichaam: bytes) -> tuple[str, bytes, int, int]:

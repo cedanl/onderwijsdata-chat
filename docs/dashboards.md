@@ -113,7 +113,7 @@ welk soort jaar elke reeks heeft (#904, `PERIODEN` in `data/dashboard.py`).
   Geslacht, sectoren, leerwegen, hoofdgroepen en Landelijk volgen de ingeschrevenen.
 - **Diplomajaar:** de gediplomeerden (ho `DIPLOMAJAAR`, mbo de `DIP…`-kolommen). DUO legt niet vast of dat een kalender-
   of studiejaar is, dus het blijft een jaartal: "diplomajaar 2024" (CH-41, domeinregel `p04-diplomajaar`,
-  `tools/periode.GEEN_SCHOOLJAAR`). De ratio diploma/inschrijving en de rendementvergelijking delen een diplomajaar door
+  `tools/periode.GEEN_SCHOOLJAAR`). De tegel en de grafiek "Diploma's per 100 ingeschrevenen" delen een diplomajaar door
   een schooljaar met hetzelfde jaartal (#927) en noemen beide.
 
 Alle getallen gaan door één formatter, `fmt` in `frontend/src/components/dashboards/shared/getal.js`: komma als
@@ -135,18 +135,18 @@ Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar
 - **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
   laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
   Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
-- **Matchscore** (`match_score`): per sector het aandeel in de gewogen vacatures (`vacatures_per_sector`) tegenover het
+- **Aansluiting op de arbeidsmarkt** (`match_score`): per sector het aandeel in de gewogen vacatures (`vacatures_per_sector`) tegenover het
   aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. Schaarste als het vacature-aandeel meer dan
   `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht; `None` voor een sector
   zonder beroepenclusters in de indeling. `match_duiding` zegt waar de score op rust (#900): `drempel`,
   `min_gediplomeerden`, `vacatures_peildatum` (de UWV-momentopname in de provincie), `diplomajaren` (de jaren van het
   gemiddelde), `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet
   van UWV; een veld dat de mapping niet vastlegt, zoals nu het model, staat er niet in, #951). De
-  tegels, de grafiek "Gediplomeerden vs. vacatures" en het vacatureaanbod tonen de peildatum uit de payload; onder de
+  tegels, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod tonen de peildatum uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
 - **Match als staafgrafiek** (#949): vanaf acht sectoren met een score (`MATCH_GRAFIEK_VANAF` in
-  `shared/charts-arbeidsmarkt.jsx`) staat de match niet als tegels maar als liggende staafgrafiek "Match per sector";
+  `shared/charts-arbeidsmarkt.jsx`) staat de match niet als tegels maar als liggende staafgrafiek "Aansluiting per sector";
   onder de acht blijven het tegels. De staaf is `match_verhouding`: per sector het vacature-aandeel gedeeld door het
   diploma-aandeel, op twee decimalen (`_match_verhoudingen`; `null` zonder label of zonder gediplomeerden). Stippellijnen
   staan op `drempel` (daarboven schaarste) en 1 / `drempel` (daaronder overaanbod), getekend door de inline-plugin

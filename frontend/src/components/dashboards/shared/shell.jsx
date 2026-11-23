@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { COLOR_EIGEN } from '../../../constants'
 import { openUitklappenBijAfdrukken } from '../../../afdrukUitklap'
-import { korteDatum } from '../../../relatieveDatum'
+import { datumsInTekst, langeDatum } from './datum'
 import { GrafiekTitel } from './grafiek'
 
 // ─── Shell ──────────────────────────────────────────────────────────────────
@@ -207,18 +207,27 @@ export const ROA_SIS = 'SIS 2024'
 // noemt, met het dataset-ID.
 export const bronLabel = ({ bron, titel, dataset }) => (titel && titel !== dataset ? `${bron} — ${titel} (${dataset})` : `${bron} — ${dataset}`)
 
+// Een technische versiecode ("versie v20251218") is geen datum die een lezer begrijpt (#1143): ze staat in een tooltip bij
+// de bronlink, niet in de tekst. "versie van 08-04-2026" is wel een datum en blijft, in de gewone notatie.
+const VERSIECODE = /(?:,\s*)?\bversie (v\d+)\b/
+
+export const bronVersiecode = ({ peilmoment }) => peilmoment?.match(VERSIECODE)?.[1] ?? null
+
+// Het peilmoment van de bron in de tekst: "editie 2025", "versie van 8 april 2026", "peildatum 16 mei 2023".
+export const peilmomentTekst = peilmoment => datumsInTekst((peilmoment || '').replace(VERSIECODE, '').trim()) || null
+
 // Wat er onder de link staat: versie of editie, peildatum, voorlopige jaren en wanneer de app de bron ophaalde.
 export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren: jaren, opgehaald_op: opgehaald }) {
   return [
-    peilmoment,
-    peildatum && !peilmoment?.includes(peildatum) ? `peildatum ${peildatum}` : null,
+    peilmomentTekst(peilmoment),
+    peildatum && !peilmoment?.includes(peildatum) ? `peildatum ${datumsInTekst(peildatum)}` : null,
     voorlopig && jaren?.length ? `cijfers ${jaren.join(', ')} voorlopig` : null,
-    opgehaald ? `opgehaald ${korteDatum(opgehaald)}` : null,
+    opgehaald ? `opgehaald ${langeDatum(opgehaald)}` : null,
   ].filter(Boolean)
 }
 
-// "editie 2025, versie v20251218": de editie van ROA uit het bronblok, voor de teksten bij de ROA-grafieken.
-export const roaPeilmoment = bronnen => (bronnen || []).find(b => b.bron === 'ROA')?.peilmoment || null
+// "editie 2025": de editie van ROA uit het bronblok, voor de teksten bij de ROA-grafieken.
+export const roaPeilmoment = bronnen => peilmomentTekst((bronnen || []).find(b => b.bron === 'ROA')?.peilmoment)
 
 // "DUO, UWV & ROA": de bronnen in het bronblok, ieder één keer.
 export function bronBadge(bronnen) {
@@ -235,16 +244,17 @@ export function DashboardSources({ sources }) {
         {sources.map(bron => {
           const label = bronLabel(bron)
           const details = bronDetails(bron)
+          const versiecode = bronVersiecode(bron)
           return (
             <li key={`${bron.bron}:${bron.dataset}`}>
               <div>
                 {bron.url
                   ? (
-                    <a href={bron.url} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opent in een nieuw tabblad)`}>
+                    <a href={bron.url} target="_blank" rel="noopener noreferrer" title={versiecode ? `Versiecode ${versiecode}` : undefined} aria-label={`${label} (opent in een nieuw tabblad)`}>
                       <span>{label}</span>
                     </a>
                   )
-                  : <span className="dashboard-sources-naam">{label}</span>}
+                  : <span className="dashboard-sources-naam" title={versiecode ? `Versiecode ${versiecode}` : undefined}>{label}</span>}
                 {details.length > 0 && <div className="dashboard-sources-meta">{details.join(' · ')}</div>}
                 {/* Een bron die een vermelding verplicht stelt (LCSK, #957): die zin staat er letterlijk. */}
                 {bron.vermelding && <div className="dashboard-sources-meta">{bron.vermelding}</div>}

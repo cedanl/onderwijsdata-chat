@@ -33,9 +33,9 @@ const LIJN = {
 
 describe('alsFiguur (#905)', () => {
   it('beschrijft een lijngrafiek met titel, assen en per reeks de eerste en laatste waarde', () => {
-    const figuur = alsFiguur('line', LIJN, { titel: 'Ingeschrevenen per jaar', waardeAs: '% verandering t.o.v. eerste jaar' })
+    const figuur = alsFiguur('line', LIJN, { titel: 'Ingeschrevenen per jaar', waardeAs: '% verandering ten opzichte van het eerste jaar' })
     expect(figuurBeschrijving(figuur)).toBe(
-      'Lijngrafiek: Ingeschrevenen per jaar. X-as: Jaar, y-as: % verandering t.o.v. eerste jaar. ' +
+      'Lijngrafiek: Ingeschrevenen per jaar. X-as: Jaar, y-as: % verandering ten opzichte van het eerste jaar. ' +
       'Hogeschool Utrecht: 3 punten, eerste 2021: 0, laatste 2023: 9. Regio: 2 punten, eerste 2021: 0, laatste 2022: 2.',
     )
   })
@@ -55,7 +55,7 @@ describe('alsFiguur (#905)', () => {
   })
 
   it('leest de titel van de waardeas uit de opties, ook van een liggende grafiek', () => {
-    expect(waardeAsTitel(buildIndexChartOpts(false))).toBe('% verandering t.o.v. het startjaar')
+    expect(waardeAsTitel(buildIndexChartOpts(false))).toBe('% verandering ten opzichte van het startjaar')
     expect(waardeAsTitel(horizontalBarOpts(false))).toBeUndefined()
   })
 })

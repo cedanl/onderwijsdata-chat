@@ -219,6 +219,19 @@ def test_een_selectie_met_query_data_komt_terug_na_haar_bron(client):
     assert "X-Data-Herladen" in daarna.headers
 
 
+def test_twee_tabellen_uit_een_dataset_krijgen_een_eigen_bestandsnaam(client):
+    """#1120: "Tabel 1 als CSV" en "Tabel 2 als CSV" onder één antwoord heetten gelijk; de browser maakte er `(1)` van."""
+    session = {"username": "alice"}
+    with _bronnen():
+        bron = _stap(session, *_ROOTS["duo"])
+        een = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2024}})
+        twee = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        _opslaan("alice", "c1", bron, een, twee)
+        namen = [_csv(client, key).headers["content-disposition"] for key in (bron, een, twee)]
+
+    assert len(set(namen)) == 3, namen
+
+
 def test_elke_selectie_op_een_herladen_bron_draagt_de_melding(client):
     """Twee tabellen op één DUO-load: ook de tweede download zegt dat de bron opnieuw is opgehaald."""
     session = {"username": "alice"}
@@ -403,6 +416,82 @@ def test_een_bronfout_bij_herladen_noemt_de_bron_en_is_geen_500(client):
     assert "CBS" in detail and f"'{bron_titel('85423NED')}'" in detail
     assert "HTTP 503" in detail
     assert key not in detail  # de titel, niet de interne key (#1053)
+
+
+@pytest.fixture
+def scopegrens_aan():
+    """De echte scopepoort van de laadtools terug voor een dataset die de catalogus niet kent (pytestmark zet hem uit
+    voor test-ID's), bij een lege inventaris: de echte komt van het netwerk, dat in tests dicht is."""
+    from tools import catalog
+
+    def poort(dataset_id):
+        return catalog.scope_blokkade(dataset_id) if dataset_id in {"p99bestaatniet", "99999NED"} else None
+
+    with (
+        patch.multiple(catalog, _cbs_alles=lambda: [], _cbs=lambda: [], _rio_duo_alles=lambda: [], _rio_duo=lambda: []),
+        patch("tools.duo.scope_blokkade", side_effect=poort),
+        patch("tools.cbs.scope_blokkade", side_effect=poort),
+    ):
+        yield
+
+
+_WEGGEVALLEN = [
+    (TOOL_GET_DUO_DATA, {"dataset_id": "p99bestaatniet"}, "duo:p99bestaatniet:0"),
+    (TOOL_GET_CBS_DATA, {"dataset_id": "99999NED"}, "cbs:99999NED:0"),
+]
+
+
+@pytest.mark.parametrize(("tool", "args", "key"), _WEGGEVALLEN, ids=["duo", "cbs"])
+def test_een_dataset_die_uit_de_catalogus_is_gevallen_is_geen_bronfout(scopegrens_aan, tool, args, key):
+    """#1126: de weigering komt van de app (catalogus, scope), niet van de bron: geen "<bron> gaf de data niet"."""
+    uitkomst = herlaad.herlaad(key, {"laad": [tool, args]})
+
+    assert not uitkomst.gelukt
+    assert not uitkomst.bronfout
+    assert uitkomst.melding == "Deze dataset staat niet meer in de catalogus."
+
+
+@pytest.mark.parametrize(("tool", "args", "key"), _WEGGEVALLEN, ids=["duo", "cbs"])
+def test_de_csv_van_een_dataset_buiten_de_catalogus_is_een_404_zonder_bron_erbij(
+    client, scopegrens_aan, tool, args, key
+):
+    recepten.onthoud("alice", key, {"laad": [tool, args]})
+    _opslaan("alice", "c1", key)
+
+    resp = _csv(client, key)
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == (
+        "Deze data is niet meer beschikbaar. Deze dataset staat niet meer in de catalogus. "
+        "Stel de vraag opnieuw om haar op te halen."
+    )
+
+
+def test_een_dataset_buiten_het_profiel_noemt_het_profiel_en_geen_bron():
+    """Een bekend record buiten mbo/hbo/wo: de melding van het scopeprofiel, geen bronfout."""
+    from tools import scopeprofiel
+
+    weigering = json.dumps(scopeprofiel.buiten_scope("duo"))
+    with patch("tools.duo.scope_blokkade", return_value=weigering):
+        uitkomst = herlaad.herlaad("duo:p01vo:0", {"laad": [TOOL_GET_DUO_DATA, {"dataset_id": "p01vo"}]})
+
+    assert not uitkomst.gelukt and not uitkomst.bronfout
+    assert uitkomst.melding.startswith("Deze dataset valt buiten het profiel van de chat")
+    assert "DUO" not in uitkomst.melding
+
+
+def test_herstellen_gaat_door_na_een_dataset_buiten_de_catalogus(scopegrens_aan):
+    """Een catalogusweigering is geen platliggende bron: de volgende key komt wel terug (#1050)."""
+    weg = "duo:p99bestaatniet:0"
+    with _bronnen():
+        bron = _stap({"username": "alice"}, *_ROOTS["duo"])
+        recepten.onthoud("alice", weg, {"laad": [TOOL_GET_DUO_DATA, {"dataset_id": "p99bestaatniet"}]})
+        recepten.onthoud("alice", bron, {"laad": list(_ROOTS["duo"])})
+        store.clear()
+        herstel = herstel_data_keys({"data_keys": [weg, bron]}, "alice")
+
+    assert list(herstel.onherstelbaar) == [weg]
+    assert store.get(bron) is not None
 
 
 def test_een_rio_lading_zonder_catalogustitel_noemt_alleen_de_bron(monkeypatch):

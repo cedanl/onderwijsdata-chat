@@ -22,7 +22,7 @@ from core.logging_util import foutkenmerk
 
 from . import beschikbaarheid, store
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
-from .catalog import bron_titel, catalogus_laatste_update
+from .catalog import bron_titel, catalogus_laatste_update, is_scopeweigering
 from .cbs import laad_cbs_data
 from .duo import get_duo_data
 from .financien import get_bestuursfinancien
@@ -68,6 +68,7 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
 }
 _MAX_STAPPEN = 10  # een keten van selecties; meer is een kapot of rondlopend recept
 _MAX_REDEN = 300
+_NIET_MEER_IN_CATALOGUS = "Deze dataset staat niet meer in de catalogus."
 # Een interne key in een toolmelding, met of zonder aanhalingstekens: bron, dataset en minstens één deel meer.
 _KEY_IN_TEKST = re.compile(r"'?\b[a-z][\w]*:[\w.-]+(?::[\w.-]+)+\b'?")
 
@@ -232,11 +233,20 @@ def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
         logger.debug("herladen %s via %s mislukt: %r", key, tool, e)
         uitkomst = ""
     if store.get(key) is None:
+        if is_scopeweigering(uitkomst):
+            # De app weigerde (catalogus, scope), de bron niet: geen "<bron> gaf de data niet", geen 502 (#1126).
+            return _niet(key, "buiten catalogus of scope", _scopemelding(uitkomst))
         reden = _reden(uitkomst) or "geen data."
         melding = f"{bron} gaf {_de_data(args)} niet opnieuw: {reden}"
         return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
     markeer(username, key)
     return _terug(key, username)
+
+
+def _scopemelding(weigering: str) -> str:
+    """Wat de gebruiker leest bij een weigering van scope_blokkade: het scopeprofiel zegt het zelf, een ID dat de
+    catalogus niet meer kent, krijgt een vaste zin (zonder het kale ID, #1053)."""
+    return _reden(weigering) if weigering.startswith("{") else _NIET_MEER_IN_CATALOGUS
 
 
 def _de_data(args: dict) -> str:

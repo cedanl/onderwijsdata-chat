@@ -5,6 +5,7 @@ import { groeiStartjaar, groeiPct } from './chart-builders'
 import { Grafiek } from './grafiek'
 import { oordeelKleur } from './chart-opts'
 import { perJaar } from './ondergrens'
+import { gebiedTekst, isLandelijk } from './vergelijking'
 import { jaarLabel } from '../../../schooljaar'
 
 // ─── Peer chart components ────────────────────────────────────────────────────
@@ -60,17 +61,18 @@ export function PeersTable({ data, instelling, dark }) {
     rows.push({ naam, val: null, groei: null, eigen: false })
   }
 
+  const gebied = gebiedTekst(isLandelijk(data.benchmark))
   const groeiHeader = commonStart != null ? `Groei (${jaar(commonStart)}–${jaar(lastJaar)})` : 'Groei'
 
   return (
     <>
       <SectionHeader
         title="Overzicht concurrenten"
-        subtitle={`${rows.length} instellingen in de benchmark-regio — gesorteerd op omvang ingeschrevenen`}
+        subtitle={`${rows.length} instellingen in ${gebied} — gesorteerd op omvang ingeschrevenen`}
       />
       <div className="chart-card" style={{ padding: 0 }}>
         <TabelScroll label="Overzicht concurrenten" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-          <caption className="sr-only">Overzicht concurrenten in de benchmark-regio, gesorteerd op ingeschrevenen</caption>
+          <caption className="sr-only">Overzicht concurrenten in {gebied}, gesorteerd op ingeschrevenen</caption>
           <thead>
             <tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--gray-200)' }}>
               <th scope="col" style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>#</th>

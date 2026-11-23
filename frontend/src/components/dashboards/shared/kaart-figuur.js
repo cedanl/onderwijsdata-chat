@@ -2,6 +2,8 @@
 // lichte kleuren, de instellingen als rijen (layout.meta.data) en wie niet op de kaart past (layout.meta.zonder_locatie).
 // Hier krijgt ze het thema, een vaste hoogte en geen sleepmodus, en komen beschrijving en tabel uit dezelfde rijen.
 
+import { gebiedTekst } from './vergelijking'
+
 // De hoogte die de server de kaart geeft; de kaart past haar gebied erin, dus de kaart wordt nooit afgesneden.
 export const KAART_HOOGTE = 340
 
@@ -41,11 +43,12 @@ export const zonderLocatie = figuur => {
 }
 
 // De toegankelijke naam van de kaart (#588): wat er staat, niet hoe het eruitziet.
-export function kaartBeschrijving(figuur) {
+export function kaartBeschrijving(figuur, landelijk = false) {
   const rijen = rijenVan(figuur)
-  if (!rijen.length) return 'Kaart van de instellingen in de regio.'
+  const gebied = gebiedTekst(landelijk)
+  if (!rijen.length) return `Kaart van de instellingen in ${gebied}.`
   const namen = rijen.map(r => (r.Rol === 'eigen instelling' ? `${r.Instelling} (eigen instelling)` : r.Instelling))
-  return `Kaart met ${rijen.length} ${rijen.length === 1 ? 'instelling' : 'instellingen'} in de regio, op benaderde plaatscoördinaten: ${namen.join(', ')}.`
+  return `Kaart met ${rijen.length} ${rijen.length === 1 ? 'instelling' : 'instellingen'} in ${gebied}, op benaderde plaatscoördinaten: ${namen.join(', ')}.`
 }
 
 // De punten als tabel (FiguurTabel): alle kolommen zijn labels, geen getallen.

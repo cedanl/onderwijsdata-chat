@@ -13,11 +13,23 @@ import server
 from tests.test_persistence_beurtbewijs import postgres  # noqa: F401  (fixture)
 
 
-@pytest.mark.parametrize("methode", ["GET", "POST"])
-def test_er_is_geen_eindpunt_voor_feedback_per_antwoord(methode):
-    client = TestClient(server.app)
+@pytest.fixture(params=["zonder-dist", "met-dist"])
+def client(request, tmp_path):
+    """De app zonder en met een gebouwde frontend, hoe frontend/dist er lokaal ook bij staat (#1156)."""
+    dist = None
+    if request.param == "met-dist":
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+        dist = tmp_path
+    return TestClient(server.create_app(frontend_dist=dist))
+
+
+@pytest.mark.parametrize("methode", ["GET", "POST", "PUT", "PATCH", "DELETE"])
+def test_er_is_geen_eindpunt_voor_feedback_per_antwoord(client, methode):
     # Vroeger: GET gaf de oordelen (200), POST zonder geldige body een 422.
-    assert client.request(methode, "/api/answer-feedback", params={"conversation_id": "c1"}, json={}).status_code == 404
+    resp = client.request(methode, "/api/answer-feedback", params={"conversation_id": "c1"}, json={})
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "Niet gevonden"}
     # De vragenlijst op rapporten en de link Feedback blijven: daar bestaat de route, dus geen 404.
     assert client.post("/api/feedback", json={}).status_code != 404
     assert client.post("/api/feedback/algemeen", json={}).status_code != 404

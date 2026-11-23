@@ -200,7 +200,7 @@ e2e:nepmodel:
   needs: []
   image:
     # Dezelfde Playwright-versie als package.json; bij een update beide aanpassen, met de digest van de nieuwe tag.
-    name: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+    name: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
   variables:
     UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
     UV_PYTHON_INSTALL_DIR: $CI_PROJECT_DIR/.uv-python
@@ -651,7 +651,7 @@ sync:github:
     - if: $CI_COMMIT_TAG
       when: always
   image:
-    name: alpine/git:v2.54.1@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a
+    name: alpine/git:v2.54.1@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c50909d9aef
     entrypoint: [""]
   variables:
     GIT_STRATEGY: clone

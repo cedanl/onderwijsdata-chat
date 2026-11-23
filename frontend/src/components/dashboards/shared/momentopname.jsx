@@ -3,16 +3,12 @@
 // de jaren en de herkomst van de sectorindeling komen uit `match_duiding` (data/dashboard.py, _match_duiding).
 
 import { fmt } from './getal'
-
-const DATUM = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+import { langeDatum } from './datum'
 
 // "2023-05-16" → "16 mei 2023"; meer peildata (komma's, zoals de server ze geeft) elk; iets anders ongewijzigd.
 export function peildatumTekst(peildatum) {
   if (!peildatum) return null
-  return String(peildatum).split(',').map(d => {
-    const iso = d.trim()
-    return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? DATUM.format(new Date(`${iso}T00:00:00Z`)) : iso
-  }).join(', ')
+  return String(peildatum).split(',').map(d => langeDatum(d)).join(', ')
 }
 
 function peildatumOfOnbekend(peildatum) {
@@ -30,6 +26,13 @@ export function jarenTekst(jaren) {
   return jaren.length === 1 ? String(jaren[0]) : `${jaren[0]} tot en met ${jaren[jaren.length - 1]}`
 }
 
+// De herkomst van de sectorindeling zoals de server haar noemt ("LLM-classificatie, niet van UWV"), zonder afkorting
+// die de lezer niet kent (#1133): een taalmodel (AI) deelde de beroepenclusters in.
+const HERKOMST_ONBEKEND = 'LLM-classificatie, niet van UWV'
+export function herkomstTekst(herkomst) {
+  return (herkomst || HERKOMST_ONBEKEND).replace(/LLM-classificatie/i, 'indeling door een taalmodel (AI)')
+}
+
 export function MomentopnameBanner({ peildatum }) {
   return (
     <div className="db-momentopname" role="note">
@@ -39,7 +42,7 @@ export function MomentopnameBanner({ peildatum }) {
   )
 }
 
-// Onder de match-tegels: bron, peildatum, drempel, de drie labels en wat de score niet zegt.
+// Onder de aansluiting: bron, peildatum, drempel, de drie labels en wat de indicatie niet zegt.
 export function MatchDuiding({ duiding }) {
   if (!duiding) return null
   const drempel = duiding.drempel != null ? fmt(duiding.drempel) : null
@@ -62,12 +65,12 @@ export function MatchDuiding({ duiding }) {
         </ul>
       )}
       <p>
-        Wat de score niet zegt: de vacatures zijn een bevroren stand van één dag, de gediplomeerden een gemiddelde over
+        Wat deze indicatie niet zegt: de vacatures zijn een bevroren stand van één dag, de gediplomeerden een gemiddelde over
         meer jaren. Teller en noemer zijn dus verschillende grootheden: een voorraad vacatures in de hele provincie
         tegenover een jaarlijkse stroom diploma&apos;s van deze ene instelling; de verhouding zegt niet hoeveel vacatures er
         per gediplomeerde zijn. UWV legt bij vacatures geen opleidingsniveau vast, dus een sector telt ook banen op een
         ander niveau mee. Welke beroepenclusters bij een sector horen, is een indeling van deze app
-        ({mapping.herkomst || 'LLM-classificatie, niet van UWV'}{mappingVersie}).
+        ({herkomstTekst(mapping.herkomst)}{mappingVersie}).
         {minimum && ` Een sector met minder dan ${minimum} gediplomeerden per jaar krijgt geen label: daar verschuift één diploma de verhouding te sterk.`}
       </p>
     </div>

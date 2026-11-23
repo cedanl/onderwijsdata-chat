@@ -167,7 +167,7 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
     await toon(galerij())
     await inBeeld(MARKT)
     const tekst = miniatuur(MARKT).textContent
-    expect(tekst).toContain('Match score')
+    expect(tekst).toContain('Aansluiting op de arbeidsmarkt')
     expect(tekst).toContain('Techniek')
     expect(tekst).toContain('Schaarste')
   })
@@ -188,16 +188,16 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
   })
 
   it.each([
-    ['hbo', HBO, 'Gem. hogescholen in arbeidsmarktregio Midden-Utrecht'],
-    ['wo', WO, 'Gem. universiteiten in heel Nederland'],
-    ['mbo', MBO, 'Gem. mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
+    ['hbo', HBO, 'Gemiddelde hogescholen in arbeidsmarktregio Midden-Utrecht'],
+    ['wo', WO, 'Gemiddelde universiteiten in heel Nederland'],
+    ['mbo', MBO, 'Gemiddelde mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
   ])('%s: de kerncijfers volgen het niveau van de instelling', async (_niveau, regio, benchmark) => {
     payloads['/api/dashboard/regio'] = regio
     await toon(galerij(regio.instelling))
     await inBeeld(MIJN)
     expect(api.fetchDashboardData.mock.calls[0][1]).toBe(regio.instelling)
     const tekst = miniatuur(MIJN).textContent
-    expect(tekst).toContain(`${regio.instelling} vs. ${regio.benchmark.label}`)
+    expect(tekst).toContain(`${regio.instelling} tegenover ${regio.benchmark.label}`)
     expect(tekst).toContain(benchmark)
     expect(tekst).toContain('35.058')
   })
@@ -238,7 +238,7 @@ describe('miniatuur van een vast dashboard (#933): laden, niet gevonden en fout'
     const melding = miniatuur(MIJN).querySelector('.wb-miniatuur-melding')
     expect(melding.textContent).toMatch(/niet .*geladen/)
     expect(melding.textContent).not.toMatch(/API \d|voorbeeld/i)
-    expect(miniatuur(MARKT).textContent).toContain('Match score')
+    expect(miniatuur(MARKT).textContent).toContain('Aansluiting op de arbeidsmarkt')
     expect(miniatuur(LAND).textContent).toContain('Positie per sector')
   })
 

@@ -240,7 +240,8 @@ async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: di
     session.setdefault(_CODE_OPTIES, []).extend(optie["label"] for optie in kaart.opties)
     session["_clarified"] = True
     session["_last_turn_tool_calls"] = []
-    await emit({"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties})
+    # `vast`: de kaart komt uit code, dus de frontend noemt er geen model onder (#1111).
+    await emit({"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties, "vast": True})
     return ""
 
 

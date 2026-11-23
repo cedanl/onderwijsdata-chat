@@ -112,8 +112,8 @@ export function SectorTrendChart({ data, dark }) {
   const displayData = proportional ? _normalizeProportional(data) : data
   return (
     <ChartCard
-      title="Inschrijvingen per sector over tijd"
-      subtitle="Stacked — welke faculteiten groeien of krimpen?"
+      title="Ingeschrevenen per sector over tijd"
+      subtitle="Gestapeld per sector: welke sectoren groeien of krimpen?"
       actions={<AandeelKnop aan={proportional} onWissel={() => setProportional(p => !p)} />}
     >
       <Grafiek soort="line" data={displayData} options={_stackedAreaOpts(dark, proportional)} hoogte={260} />
@@ -133,7 +133,7 @@ export function HoofdgroepenChart({ perHoofdgroep, jaar, soort, onderdrukt, dark
   return (
     <ChartCard
       title="Ingeschrevenen per hoofdgroep"
-      subtitle={`Mbo-studenten per DUO-hoofdgroep${inJaar}, ingeschreven op 1 oktober (DUO instromende-mbo-studenten, TOTAAL MBO). Geen eerstejaars: nieuw of niet. Een ander DUO-bestand dan het totaal ingeschrevenen, dus de som wijkt daarvan af.`}
+      subtitle={`Mbo-studenten per hoofdgroep${inJaar}, ingeschreven op 1 oktober, nieuw of niet (dus niet alleen eerstejaars). Dit komt uit een ander DUO-bestand dan het totaal aantal ingeschrevenen, dus de som kan daarvan afwijken.`}
     >
       <Grafiek
         soort="bar"

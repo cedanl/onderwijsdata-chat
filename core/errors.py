@@ -94,7 +94,12 @@ def friendly_error(exc: Exception, *, ander_model: bool = False) -> str:
         fout_id = log_interne_fout(exc, "model/API")
         return f"❌ Het antwoord kon niet worden gemaakt (fout-ID {fout_id}). Probeer het opnieuw{keuze}; {_MELD_VIA_FEEDBACK}"
     fout_id = log_interne_fout(exc, "verwerking")
-    return f"❌ Er ging intern iets mis (fout-ID {fout_id}). Probeer het opnieuw; {_MELD_VIA_FEEDBACK}"
+    return f"❌ {melding_interne_fout(fout_id)}"
+
+
+def melding_interne_fout(fout_id: str) -> str:
+    """De vaste tekst voor een fout in onze eigen code, in de chat en in de REST-API (#1154, #1147)."""
+    return f"Er ging intern iets mis (fout-ID {fout_id}). Probeer het opnieuw; {_MELD_VIA_FEEDBACK}"
 
 
 def error_event(exc: Exception, *, ander_model: bool = False) -> dict:

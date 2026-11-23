@@ -192,6 +192,53 @@ def test_bestandsnaam_maakt_titel_veilig_zoals_figure_csv_filename(monkeypatch):
     assert len(naam.removesuffix("_p01hoinges.csv")) <= 80
 
 
+def _selectie(**args) -> str:
+    return json.loads(query_data("duo:p01hoinges:0", **args))["data_key"]
+
+
+def test_een_selectie_heeft_een_andere_bestandsnaam_dan_zijn_ouder():
+    """#1120: de naam kwam alleen uit titel en dataset-id, dus twee tabellen uit één dataset heetten gelijk."""
+    _bron()
+    ouder = bestandsnaam("duo:p01hoinges:0")
+    kind = bestandsnaam(_selectie(filters={"STUDIEJAAR": 2023}))
+    assert (
+        ouder == "Ingeschrevenen_hoger_onderwijs_in_het_domein_hoger_onderwijs_p01hoinges.csv"
+    )  # ruwe lading: ongewijzigd
+    assert kind != ouder
+    assert kind.startswith("Ingeschrevenen_hoger_onderwijs_in_het_domein_hoger_onderwijs_p01hoinges_")
+
+
+def test_twee_selecties_uit_dezelfde_dataset_heten_verschillend():
+    _bron()
+    een = _selectie(filters={"STUDIEJAAR": 2022})
+    twee = _selectie(filters={"STUDIEJAAR": 2023})
+    assert een != twee
+    assert bestandsnaam(een) != bestandsnaam(twee)
+
+
+def test_de_naam_van_een_selectie_noemt_haar_groepering():
+    _bron()
+    gegroepeerd = _selectie(group_by=["INSTELLINGSNAAM"], aggregate={"STUDIEJAAR": "max"})
+    gefilterd = _selectie(filters={"STUDIEJAAR": 2023})
+    assert "_per_INSTELLINGSNAAM_" in bestandsnaam(gegroepeerd)
+    assert "_selectie_" in bestandsnaam(gefilterd)
+    assert bestandsnaam(gegroepeerd).endswith(f"_0_{gegroepeerd.rsplit(':', 1)[1]}.csv")
+
+
+def test_dezelfde_selectie_houdt_dezelfde_naam():
+    _bron()
+    assert bestandsnaam(_selectie(filters={"STUDIEJAAR": 2023})) == bestandsnaam(
+        _selectie(filters={"STUDIEJAAR": 2023})
+    )
+
+
+def test_een_bestandsnaam_met_een_lange_groepering_blijft_binnen_de_grens_van_een_bestandssysteem():
+    kolommen = [f"KOLOM_{i}_MET_EEN_LANGE_NAAM" for i in range(12)]
+    _bron(df=pd.DataFrame({k: [1, 2] for k in [*kolommen, "AANTAL"]}))
+    key = _selectie(group_by=kolommen, aggregate={"AANTAL": "sum"})
+    assert len(bestandsnaam(key).encode()) < 255
+
+
 # ── Welke stap een exporteerbare tabel opleverde ─────────────────────────────
 
 

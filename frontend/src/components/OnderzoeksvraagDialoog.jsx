@@ -86,79 +86,82 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
 
   return (
     <div className="confirm-overlay">
-      <form className="confirm-dialog onderzoeksvraag-dialoog" ref={dialogRef} role="dialog" aria-modal="true"
-        aria-labelledby={labelId} tabIndex={-1} onSubmit={genereer}>
-        {keuze && (
-          <details className="rapport-keuze" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
-            <summary className="rapport-keuze-samenvatting">
-              Vragen in het rapport: {aan.length} van {items.length}
-              {aantalFiguren > 0 && ` · figuren: ${figurenAan.length} van ${aantalFiguren}`}
-            </summary>
-            <fieldset className="rapport-keuze-set" aria-describedby={fout ? foutId : undefined}>
-              <legend className="rapport-keuze-legend">Welke vragen met data horen in het rapport?</legend>
-              <ul className="rapport-keuze-lijst">
-                {items.map(item => {
-                  const bron = [...(item.bronnen ?? []), voortbouwNotitie(item, items), nodigVoor(item, items, figurenAan)]
-                    .filter(Boolean).join(' · ')
-                  const figuren = figurenVan(item)
-                  return (
-                    <li key={item.beurt}>
-                      <label>
-                        <input type="checkbox" checked={!gekozen.beurtenUit.has(item.beurt)}
-                          onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselBeurt(k, item, aangevinkt, items)) }}
-                          aria-describedby={bron ? `${keuzeId}-${item.beurt}` : undefined} />
-                        <span>
-                          <span className="rapport-keuze-vraag">{item.vraag}</span>
-                          {bron && <span className="rapport-keuze-bron" id={`${keuzeId}-${item.beurt}`}>{bron}</span>}
-                        </span>
-                      </label>
-                      {figuren.length > 0 && (
-                        <ul className="rapport-keuze-figuren">
-                          {figuren.map(f => (
-                            <li key={f.id}>
-                              <label>
-                                <input type="checkbox" checked={figurenAan.includes(f.id)}
-                                  onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselFiguur(k, item, f.id, aangevinkt)) }} />
-                                <span className="rapport-keuze-figuur">Figuur: {labels.get(f.id)}</span>
-                              </label>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            </fieldset>
-          </details>
-        )}
-        {keuze && aantalFiguren > 0 && <p className="onderzoeksvraag-uitleg">{ALLEEN_AANGEVINKT}</p>}
-        {fout && <p className="rapport-keuze-fout" id={foutId} role="alert">{fout}</p>}
-        {wacht && <p className="onderzoeksvraag-uitleg" role="status">De vragen met data worden opgehaald…</p>}
-        {checklist?.status === 'fout' && (
-          <p className="onderzoeksvraag-uitleg" role="status">{GEEN_LIJST}</p>
-        )}
-        <label className="onderzoeksvraag-label" id={labelId} htmlFor={veldId}>Onderzoeksvraag van het rapport</label>
-        <textarea
-          ref={veldRef}
-          id={veldId}
-          className="onderzoeksvraag-veld"
-          rows={2}
-          value={tekst}
-          maxLength={max}
-          aria-describedby={uitlegId}
-          onChange={e => { setTekst(e.target.value); pasHoogteAan(e.target) }}
-          onKeyDown={onKeyDown}
-        />
-        <p className="onderzoeksvraag-uitleg" id={uitlegId}>
-          Het rapport beantwoordt deze vraag. Pas haar aan om af te bakenen. Leeg laten: het rapport neemt je eerste vraag.
-        </p>
-        <div className="confirm-actions">
-          <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
-          <button type="submit" className="confirm-primary" aria-disabled={wacht || Boolean(fout) || undefined}
-            aria-describedby={fout ? foutId : undefined}>Genereer</button>
-        </div>
-      </form>
+      {/* role="dialog" is not allowed on a <form> (ARIA in HTML): the div carries it, the form sits inside. */}
+      <div className="confirm-dialog onderzoeksvraag-dialoog" ref={dialogRef} role="dialog" aria-modal="true"
+        aria-labelledby={labelId} tabIndex={-1}>
+        <form className="onderzoeksvraag-form" onSubmit={genereer}>
+          {keuze && (
+            <details className="rapport-keuze" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
+              <summary className="rapport-keuze-samenvatting">
+                Vragen in het rapport: {aan.length} van {items.length}
+                {aantalFiguren > 0 && ` · figuren: ${figurenAan.length} van ${aantalFiguren}`}
+              </summary>
+              <fieldset className="rapport-keuze-set" aria-describedby={fout ? foutId : undefined}>
+                <legend className="rapport-keuze-legend">Welke vragen met data horen in het rapport?</legend>
+                <ul className="rapport-keuze-lijst">
+                  {items.map(item => {
+                    const bron = [...(item.bronnen ?? []), voortbouwNotitie(item, items), nodigVoor(item, items, figurenAan)]
+                      .filter(Boolean).join(' · ')
+                    const figuren = figurenVan(item)
+                    return (
+                      <li key={item.beurt}>
+                        <label>
+                          <input type="checkbox" checked={!gekozen.beurtenUit.has(item.beurt)}
+                            onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselBeurt(k, item, aangevinkt, items)) }}
+                            aria-describedby={bron ? `${keuzeId}-${item.beurt}` : undefined} />
+                          <span>
+                            <span className="rapport-keuze-vraag">{item.vraag}</span>
+                            {bron && <span className="rapport-keuze-bron" id={`${keuzeId}-${item.beurt}`}>{bron}</span>}
+                          </span>
+                        </label>
+                        {figuren.length > 0 && (
+                          <ul className="rapport-keuze-figuren">
+                            {figuren.map(f => (
+                              <li key={f.id}>
+                                <label>
+                                  <input type="checkbox" checked={figurenAan.includes(f.id)}
+                                    onChange={e => { const aangevinkt = e.target.checked; setGekozen(k => wisselFiguur(k, item, f.id, aangevinkt)) }} />
+                                  <span className="rapport-keuze-figuur">Figuur: {labels.get(f.id)}</span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </fieldset>
+            </details>
+          )}
+          {keuze && aantalFiguren > 0 && <p className="onderzoeksvraag-uitleg">{ALLEEN_AANGEVINKT}</p>}
+          {fout && <p className="rapport-keuze-fout" id={foutId} role="alert">{fout}</p>}
+          {wacht && <p className="onderzoeksvraag-uitleg" role="status">De vragen met data worden opgehaald…</p>}
+          {checklist?.status === 'fout' && (
+            <p className="onderzoeksvraag-uitleg" role="status">{GEEN_LIJST}</p>
+          )}
+          <label className="onderzoeksvraag-label" id={labelId} htmlFor={veldId}>Onderzoeksvraag van het rapport</label>
+          <textarea
+            ref={veldRef}
+            id={veldId}
+            className="onderzoeksvraag-veld"
+            rows={2}
+            value={tekst}
+            maxLength={max}
+            aria-describedby={uitlegId}
+            onChange={e => { setTekst(e.target.value); pasHoogteAan(e.target) }}
+            onKeyDown={onKeyDown}
+          />
+          <p className="onderzoeksvraag-uitleg" id={uitlegId}>
+            Het rapport beantwoordt deze vraag. Pas haar aan om af te bakenen. Leeg laten: het rapport neemt je eerste vraag.
+          </p>
+          <div className="confirm-actions">
+            <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
+            <button type="submit" className="confirm-primary" aria-disabled={wacht || Boolean(fout) || undefined}
+              aria-describedby={fout ? foutId : undefined}>Genereer</button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

@@ -45,7 +45,8 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=6.0",
     "ruff>=0.15.16",
-    "ty>=0.0.48",
+    # <0.0.100: ty 0.0.108 meldt nieuwe diagnostics (tests/, tools/duo.py) boven het plafond van ty-baseline (#391); optillen in een eigen MR.
+    "ty>=0.0.48,<0.0.100",
 ]
 # Alleen voor demo/narrate.py (TTS-narratie van de demo-video): piper-tts trekt
 # onnxruntime mee (~185 MB) — niet in elke venv of de productie-image.

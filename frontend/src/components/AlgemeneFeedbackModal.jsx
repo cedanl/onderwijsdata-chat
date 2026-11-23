@@ -55,54 +55,56 @@ export default function AlgemeneFeedbackModal({ onClose }) {
 
   return createPortal(
     <div className="confirm-overlay algemene-feedback-overlay" onClick={closeFromBackdrop}>
-      <form
+      {/* role="dialog" is not allowed on a <form> (ARIA in HTML): the div carries it, the form sits inside. */}
+      <div
         className="confirm-dialog feedback-dialog"
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        onSubmit={handleSubmit}
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="feedback-title" id={titleId}>Feedback over openEDUdata+</h2>
-        {/* Always rendered: a live region inserted together with its text is often not announced. */}
-        <p role="status" className="feedback-intro">{verstuurd ? 'Bedankt voor je feedback! Het team leest elk bericht.' : ''}</p>
-        {verstuurd ? (
-          <div className="confirm-actions">
-            <button type="button" className="feedback-submit" onClick={onClose}>Sluiten</button>
-          </div>
-        ) : (
-          <>
-            <p className="feedback-intro">Een idee, iets dat niet werkt of een compliment: laat het ons weten.</p>
-            <div className="feedback-question">
-              <label htmlFor={`${titleId}-tekst`}>Wat wil je ons laten weten?</label>
-              <textarea id={`${titleId}-tekst`} rows={4} maxLength={MAX_FEEDBACK_CHARS} value={tekst} aria-describedby={bewaardId}
-                onChange={e => setTekst(e.target.value)} />
-            </div>
-            <fieldset className="feedback-question">
-              <legend>Soort (optioneel)</legend>
-              <div className="feedback-options choice">
-                {SOORTEN.map(([waarde, label]) => (
-                  <label key={waarde} className="feedback-option">
-                    <input type="radio" name={`${titleId}-soort`} value={waarde} checked={soort === waarde}
-                      onChange={() => setSoort(waarde)} />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <p className="feedback-intro" id={bewaardId}>{BEWAARD}</p>
-            {error && <p role="alert" className="feedback-error">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <h2 className="feedback-title" id={titleId}>Feedback over openEDUdata+</h2>
+          {/* Always rendered: a live region inserted together with its text is often not announced. */}
+          <p role="status" className="feedback-intro">{verstuurd ? 'Bedankt voor je feedback! Het team leest elk bericht.' : ''}</p>
+          {verstuurd ? (
             <div className="confirm-actions">
-              <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
-              <button type="submit" className="feedback-submit" disabled={!tekst.trim() || sending}>
-                {sending ? 'Versturen…' : 'Versturen'}
-              </button>
+              <button type="button" className="feedback-submit" onClick={onClose}>Sluiten</button>
             </div>
-          </>
-        )}
-      </form>
+          ) : (
+            <>
+              <p className="feedback-intro">Een idee, iets dat niet werkt of een compliment: laat het ons weten.</p>
+              <div className="feedback-question">
+                <label htmlFor={`${titleId}-tekst`}>Wat wil je ons laten weten?</label>
+                <textarea id={`${titleId}-tekst`} rows={4} maxLength={MAX_FEEDBACK_CHARS} value={tekst} aria-describedby={bewaardId}
+                  onChange={e => setTekst(e.target.value)} />
+              </div>
+              <fieldset className="feedback-question">
+                <legend>Soort (optioneel)</legend>
+                <div className="feedback-options choice">
+                  {SOORTEN.map(([waarde, label]) => (
+                    <label key={waarde} className="feedback-option">
+                      <input type="radio" name={`${titleId}-soort`} value={waarde} checked={soort === waarde}
+                        onChange={() => setSoort(waarde)} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <p className="feedback-intro" id={bewaardId}>{BEWAARD}</p>
+              {error && <p role="alert" className="feedback-error">{error}</p>}
+              <div className="confirm-actions">
+                <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
+                <button type="submit" className="feedback-submit" disabled={!tekst.trim() || sending}>
+                  {sending ? 'Versturen…' : 'Versturen'}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
     </div>,
     document.body,
   )

@@ -86,12 +86,12 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
       {fiveYearChange != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Verandering t.o.v. 5 jaar geleden</span>
+            <span className="kpi-label">Verandering ten opzichte van 5 jaar geleden</span>
           </div>
           <div className="kpi-value" style={{ color: fiveYearChange >= 0 ? 'var(--teal-600)' : '#E11D48' }}>
-            {fiveYearChange >= 0 ? '+' : ''}{fmt(fiveYearChange)} pp
+            {fiveYearChange >= 0 ? '+' : ''}{fmt(fiveYearChange)} procentpunt
           </div>
-          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>procentpunt verandering in aandeel vrouw</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>verandering in het aandeel vrouw</div>
         </div>
       )}
       {vrouw != null && (
@@ -176,7 +176,7 @@ export function GenderSection({ data, instelling, dark }) {
       )}
 
       {peerData && (
-        <ChartCard title="% vrouw — benchmark peers" subtitle="Gesorteerd op aandeel vrouw (eigen instelling groen)">
+        <ChartCard title="% vrouw per instelling" subtitle="Instellingen in de vergelijkingsgroep, gesorteerd op aandeel vrouw (eigen instelling groen)">
           <Grafiek soort="bar" data={peerData} options={peerOpts} hoogte={staafHoogte(peerData.labels, { minimum: 200 })} categorie="Instelling" />
         </ChartCard>
       )}
