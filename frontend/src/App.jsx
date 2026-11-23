@@ -264,7 +264,15 @@ function AppShell() {
 
   if (authRequired && !user) {
     // De privacy-informatie moet vóór het inloggen te lezen zijn (#477): de loginpagina linkt ernaar.
-    if (location.pathname === '/privacy') return <PrivacyPage standalone />
+    // Buiten de shell, dus met een eigen <main> en skiplink (#1177).
+    if (location.pathname === '/privacy') {
+      return (
+        <>
+          <SkipLink />
+          <main id={MAIN_ID} tabIndex={-1}><PrivacyPage standalone /></main>
+        </>
+      )
+    }
     return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} gegevensVerwijderd={gegevensVerwijderd} />
   }
 
