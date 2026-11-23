@@ -29,7 +29,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
 
 const HBO = dashboards.regio
-const RATIO_ONDERTITEL = 'pipeline-gezondheid'
+const RATIO_ONDERTITEL = 'nieuwe studenten bij'
 
 // Het wo-dashboard: dezelfde ho-payload, maar het benchmark is landelijk, met de reden van die terugval (#926).
 const WO_TERUGVAL = 'te weinig universiteiten in provincie Utrecht (0 andere)'
@@ -137,16 +137,16 @@ describe('de kaartbeschrijving van Mijn instelling (#918)', () => {
   })
 })
 
-describe('"(HO)" in de ondertitel van Instroom ratio (#918)', () => {
+describe('"(hoger onderwijs)" in de ondertitel van Aandeel eerstejaars (#918)', () => {
   it.each([
     ['hbo', HBO, true],
     ['wo', WO, true],
     ['mbo', MBO, false],
-  ])('%s: ondertitel noemt "(HO)": %s', async (_niveau, regio, ho) => {
+  ])('%s: ondertitel noemt "(hoger onderwijs)": %s', async (_niveau, regio, ho) => {
     await dashboard(regio)
     const ondertitel = [...container.querySelectorAll('*')].find(e => e.children.length === 0 && e.textContent.includes(RATIO_ONDERTITEL))
     expect(ondertitel).toBeTruthy()
-    expect(ondertitel.textContent.includes('(HO)')).toBe(ho)
+    expect(ondertitel.textContent.includes('(hoger onderwijs)')).toBe(ho)
   })
 })
 
@@ -155,7 +155,7 @@ describe('de totaal-KPI volgt het benchmarktype (#918) en telt de eigen instelli
     await dashboard(WO)
     expect(tekst()).toContain('Landelijk totaal 2025')
     expect(tekst()).toContain('330.765')
-    expect(tekst()).not.toContain('Regio totaal')
+    expect(tekst()).not.toContain('Regiototaal')
     expect(tekst()).toContain('Universiteit Utrecht en 16 andere universiteiten in heel Nederland')
   })
 
@@ -164,9 +164,9 @@ describe('de totaal-KPI volgt het benchmarktype (#918) en telt de eigen instelli
   it.each([
     ['hbo', HBO, 'Hogeschool Utrecht en 6 andere hogescholen in arbeidsmarktregio Midden-Utrecht'],
     ['mbo', MBO, 'ROC van Amsterdam en 6 andere mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
-  ])('%s: "Regio totaal" noemt de eigen instelling en de andere', async (_niveau, regio, groep) => {
+  ])('%s: "Regiototaal" noemt de eigen instelling en de andere', async (_niveau, regio, groep) => {
     await dashboard(regio)
-    expect(tekst()).toContain('Regio totaal 2025')
+    expect(tekst()).toContain('Regiototaal 2025')
     expect(tekst()).toContain('78.311')
     expect(tekst()).not.toContain('Landelijk totaal')
     expect(tekst()).toContain(groep)
@@ -179,16 +179,16 @@ describe('een lijngrafiek belooft het gemiddelde alleen als het er is (#951)', (
   const ondertitel = titel => [...container.querySelectorAll('.chart-card')]
     .find(k => k.querySelector('.chart-title')?.textContent === titel)?.querySelector('.chart-sub')?.textContent
 
-  it('met gemiddelde: eigen instelling vs. de groep', async () => {
+  it('met gemiddelde: eigen instelling tegenover de groep', async () => {
     await dashboard(HBO)
-    expect(ondertitel('Gediplomeerden per jaar')).toContain('eigen instelling vs. gemiddelde hogescholen')
+    expect(ondertitel('Gediplomeerden per jaar')).toContain('eigen instelling tegenover gemiddelde hogescholen')
   })
 
   it('zonder gemiddelde: zegt dat het er niet is', async () => {
     const { gediplomeerden: _weg, ...zonder } = HBO.benchmark
     await dashboard({ ...HBO, benchmark: zonder })
     expect(ondertitel('Gediplomeerden per jaar')).toContain('geen gemiddelde van de vergelijkingsgroep')
-    expect(ondertitel('Gediplomeerden per jaar')).not.toContain(' vs. ')
+    expect(ondertitel('Gediplomeerden per jaar')).not.toContain(' tegenover ')
   })
 })
 
@@ -199,15 +199,15 @@ describe('de kop en de teksten noemen de vergelijkingsgroep (#926)', () => {
     ['mbo', MBO, 'mbo-instellingen in arbeidsmarktregio Groot Amsterdam'],
   ])('%s: kop met regio, aantal en terugval; ondertitels met het type', async (_niveau, regio, populatie) => {
     await dashboard(regio)
-    expect(tekst()).toContain(`${regio.instelling} vs. ${regio.benchmark.label}`)
-    expect(tekst()).toContain(`Gem. ${populatie}`)
-    expect(tekst()).toContain(`eigen instelling vs. gemiddelde ${populatie}`)
+    expect(tekst()).toContain(`${regio.instelling} tegenover ${regio.benchmark.label}`)
+    expect(tekst()).toContain(`Gemiddelde ${populatie}`)
+    expect(tekst()).toContain(`eigen instelling tegenover gemiddelde ${populatie}`)
     expect(tekst()).not.toMatch(/excl\. eigen instelling|nationaal wo gemiddelde/i)
   })
 
   it('wo: de kop zegt waarom de vergelijking landelijk is', async () => {
     await dashboard(WO)
-    expect(tekst()).toContain('Universiteit Utrecht vs. Landelijk, 16 andere universiteiten — te weinig universiteiten in provincie Utrecht (0 andere)')
+    expect(tekst()).toContain('Universiteit Utrecht tegenover Landelijk, 16 andere universiteiten — te weinig universiteiten in provincie Utrecht (0 andere)')
   })
 })
 
@@ -252,11 +252,11 @@ describe('een kerncijfer zonder gemiddelde als te weinig instellingen cijfers he
       te_weinig_peers: { eerstejaars: REDEN },
     },
   }
-  const gemRegels = () => [...container.querySelectorAll('.kpi-trend')].map(e => e.textContent).filter(t => t.startsWith('Gem. '))
+  const gemRegels = () => [...container.querySelectorAll('.kpi-trend')].map(e => e.textContent).filter(t => t.startsWith('Gemiddelde '))
 
   it('eerstejaars: de reden in plaats van het gemiddelde, met "1 instelling"', async () => {
     await dashboard(UU)
-    expect(gemRegels()).toContain(`Gem. universiteiten in heel Nederland (1 instelling): ${REDEN}`)
+    expect(gemRegels()).toContain(`Gemiddelde universiteiten in heel Nederland (1 instelling): ${REDEN}`)
     expect(tekst()).not.toContain('984') // het "gemiddelde" van die ene universiteit
   })
 

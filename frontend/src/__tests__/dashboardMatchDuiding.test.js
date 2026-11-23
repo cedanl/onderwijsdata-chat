@@ -82,7 +82,7 @@ describe('de arbeidsmarktmatch noemt bron, peildatum, drempel en definitie (#900
   it('tegels, grafiek en UWV-sectie dragen elk de banner met de peildatum uit de data', async () => {
     await arbeidsmarkt(DUIDING)
 
-    // Match-tegels, "Gediplomeerden vs. vacatures" en het vacatureaanbod in de regio.
+    // Match-tegels, "Gediplomeerden en vacatures" en het vacatureaanbod in de regio.
     expect(banners()).toHaveLength(3)
     for (const banner of banners()) expect(banner).toContain('peildatum 16 mei 2023')
     expect(container.textContent).not.toContain('Momentopname mei 2023')
@@ -98,7 +98,7 @@ describe('de arbeidsmarktmatch noemt bron, peildatum, drempel en definitie (#900
     expect(tekst).toContain('Overaanbod: het diploma-aandeel is meer dan 1,2 keer het vacature-aandeel')
     expect(tekst).toContain('Evenwicht')
     expect(tekst).toContain('geen opleidingsniveau')
-    expect(tekst).toContain('LLM-classificatie, niet van UWV, versie 2026-08-17')
+    expect(tekst).toContain('indeling door een taalmodel (AI), niet van UWV, versie 2026-08-17')
   })
 
   it('de grafiek noemt diplomajaren en peildatum in de ondertitel', async () => {

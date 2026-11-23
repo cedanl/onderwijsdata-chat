@@ -514,7 +514,7 @@ def test_marktaandeel_rekent_over_het_totaal_van_het_eigen_type(instelling, soor
         if reeks.get(laatste):
             assert 0 < reeks[laatste] <= result["sectoren_landelijk"][onderdeel][laatste]
     assert result["landelijk"]["definitie"].startswith(
-        f"de som van DUO p01hoinges over alle {dashboard._SOORTNAAM[soort][1]};"
+        f"de som van de DUO-aantallen ingeschrevenen per instelling over alle {dashboard._SOORTNAAM[soort][1]};"
     )
 
 
@@ -528,5 +528,5 @@ def test_marktaandeel_mbo_blijft_over_alle_mbo_instellingen():
     for leerweg, kolom in (("BBL", "BBL"), ("BOL voltijd", "BOLVT")):
         assert result["sectoren_landelijk"][leerweg][laatste] == int(mbo[mbo["JAAR"] == laatste][kolom].sum())
     assert result["landelijk"]["definitie"].startswith(
-        "de som van DUO mbo-studenten-per-instelling over alle mbo-instellingen;"
+        "de som van de DUO-aantallen mbo-studenten per instelling over alle mbo-instellingen;"
     )

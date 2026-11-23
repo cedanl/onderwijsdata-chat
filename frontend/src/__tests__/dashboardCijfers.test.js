@@ -51,12 +51,13 @@ describe('mbo-leerwegen (#899)', () => {
 })
 
 describe('HoofdgroepenChart (#899)', () => {
-  it('noemt TOTAAL MBO ingeschrevenen, geen eerstejaars of sectorkamers', () => {
+  it('noemt ingeschrevenen, geen eerstejaars of sectorkamers', () => {
     const el = render(createElement(HoofdgroepenChart, { perHoofdgroep: { 'Zorg en welzijn': 5000, Entree: 300 }, dark: false }))
     const tekst = el.textContent
 
     expect(tekst).toContain('Ingeschrevenen per hoofdgroep')
-    expect(tekst).toContain('Geen eerstejaars')
+    expect(tekst).toContain('nieuw of niet (dus niet alleen eerstejaars)')
+    expect(tekst).not.toMatch(/TOTAAL MBO/)
     expect(tekst).not.toMatch(/sectorkamer/i)
     expect(tekst).not.toMatch(/eerstejaars per hoofdgroep/i)
     const data = JSON.parse(el.querySelector('[data-chart="bar"]').textContent)
@@ -137,14 +138,30 @@ describe('een som over onderdrukte cellen is een ondergrens (#902)', () => {
     expect(isOndergrens(undefined, 2024)).toBe(false)
   })
 
-  it('zegt "ten minste" met de jaren per reeks, en niets zonder lege cellen', () => {
+  it('begint met de boodschap en noemt alleen de reeksen met lege cellen (#1145)', () => {
     const el = render(createElement(OndergrensNoot, { reeksen: [
       { label: 'Ingeschrevenen', onderdrukt: { 2024: 1, 2022: 3 } },
       { label: 'Eerstejaars', onderdrukt: {} },
     ] }))
 
-    expect(el.textContent).toContain('Ingeschrevenen in 2022, 2024: ten minste')
+    expect(el.textContent).toBe('Sommige totalen zijn een ondergrens: DUO publiceert aantallen van 1 tot en met 4 niet; die cellen tellen niet mee. Het gaat om Ingeschrevenen.')
     expect(el.textContent).not.toContain('Eerstejaars')
+  })
+
+  it('blijft kort bij vier reeksen over vijf jaren: hoogstens twee zinnen (#1145)', () => {
+    const jaren = { 2021: 1, 2022: 2, 2023: 1, 2024: 3, 2025: 1 }
+    const el = render(createElement(OndergrensNoot, { reeksen: [
+      { label: 'Landelijk Economie', onderdrukt: jaren },
+      { label: 'Landelijk Gedrag & Maatschappij', onderdrukt: jaren },
+      { label: 'Eigen Onderwijs', onderdrukt: jaren },
+      { label: 'Eigen Techniek', onderdrukt: jaren },
+    ] }))
+
+    const tekst = el.textContent
+    expect(tekst.split(/(?<=\.)\s/)).toHaveLength(2)
+    expect(tekst.split(/\s+/).length).toBeLessThan(40)
+    expect(tekst).toContain('Het gaat om Landelijk Economie, Landelijk Gedrag & Maatschappij, Eigen Onderwijs en 1 andere.')
+    expect(tekst).not.toMatch(/20\d\d/)
   })
 
   it('toont geen noot zonder onderdrukte cellen', () => {
@@ -205,10 +222,10 @@ describe('één groeiregel voor grafiek, ranking en tabel (#903)', () => {
   })
 
   it('noemt op de as het startjaar, niet het eerste jaar van elke reeks', () => {
-    expect(buildIndexChartOpts(false).scales.y.title.text).toBe('% verandering t.o.v. het startjaar')
+    expect(buildIndexChartOpts(false).scales.y.title.text).toBe('% verandering ten opzichte van het startjaar')
   })
 
-  it('rekent eigen instelling en benchmark t.o.v. hetzelfde jaar', () => {
+  it('rekent eigen instelling en vergelijkingsgroep ten opzichte van hetzelfde jaar', () => {
     const data = buildBenchmarkLineData({ 2021: 100, 2022: 110, 2023: 121 }, { 2022: 50, 2023: 55 }, 'Eigen', 'Regio', '#000', '#999')
 
     expect(data.startjaar).toBe(2022)
@@ -233,18 +250,18 @@ describe('een peer zonder gegevens (#925)', () => {
 
     expect(rijen.map(r => r[1])).toEqual(['Eigen ★', 'Peer A', 'BBO de Schalm'])
     expect(rijen[2]).toEqual(['—', 'BBO de Schalm', 'geen gegevens', '—'])
-    expect(el.textContent).toContain('3 instellingen in de benchmark-regio')
+    expect(el.textContent).toContain('3 instellingen in de regio')
   })
 })
 
 describe('landelijk zegt wat het telt (#903)', () => {
   it('noemt de DUO-som en de CBS-tabel van de chat', () => {
     const el = render(createElement(LandelijkDefinitie, { landelijk: {
-      definitie: 'de som van DUO p01hoinges over alle universiteiten',
-      verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-tabel 85423NED.',
+      definitie: 'de som van de DUO-aantallen ingeschrevenen per instelling over alle universiteiten',
+      verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-cijfers over het hoger onderwijs.',
     } }))
 
-    expect(el.textContent).toContain('Landelijk is hier de som van DUO p01hoinges')
-    expect(el.textContent).toContain('85423NED')
+    expect(el.textContent).toContain('Landelijk is hier de som van de DUO-aantallen ingeschrevenen per instelling')
+    expect(el.textContent).toContain('CBS-cijfers over het hoger onderwijs')
   })
 })

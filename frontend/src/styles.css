@@ -1283,7 +1283,8 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
    buiten .dashboard-content, dat daardoor zijwaarts scrolde. Daarom is de tegel een container, breekt de regel onder
    het getal af (.kpi-trend), mag "ten minste" boven het getal staan en wijkt in een smalle tegel het decoratieve icoon
    voor het label. */
-.kpi-ondergrens { display: inline-block; }
+.kpi-ondergrens { display: inline-block; white-space: pre-wrap; }
+.kpi-trend .kpi-ondergrens { white-space: normal; }
 @container (max-width: 150px) { .kpi-icon { display: none; } }
 .kpi-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .kpi-label { font-size: 12.5px; color: var(--gray-500); font-weight: 500; }

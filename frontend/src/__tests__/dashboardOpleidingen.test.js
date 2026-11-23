@@ -180,7 +180,7 @@ describe('melding en bronvermelding', () => {
     await dashboard(payloads.hbo)
     const bronnen = container.querySelector('.dashboard-sources')
     expect(bronnen.textContent).toContain(VERPLICHTE_ZIN)
-    expect(bronnen.textContent).toContain('versie 26.6, export van 2026-11-06, NSE 2026, 1cijferHO 2025/26')
+    expect(bronnen.textContent).toContain('versie 26.6, export van 6 november 2026, NSE 2026, 1cijferHO 2025/26')
     expect(bronnen.querySelector('a').getAttribute('href')).toBe('https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/')
   })
 })

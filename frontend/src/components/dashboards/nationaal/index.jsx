@@ -71,9 +71,9 @@ export function populatieTekst(populatie) {
   return populatie.n != null ? `alle ${populatie.n} ${naam}` : `alle ${naam}`
 }
 
-// {sector: {jaar: n}} als reeksen voor de ondergrensnoot; de jaren zijn die van de ingeschrevenen.
-function sectorReeksen(perSector, soort) {
-  return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt, soort }))
+// {sector: {jaar: n}} als reeksen voor de ondergrensnoot.
+function sectorReeksen(perSector) {
+  return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt }))
 }
 
 function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
@@ -237,8 +237,8 @@ export function InlineDashboardNationaal({ instelling }) {
         <SectionHeader title="Marktaandeel" subtitle={`Aandeel in het landelijke totaal van ${populatieTekst({ soort: data?.populatie?.soort })} per sector`} />
         <MarktaandeelPerSectorChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} populatie={data?.populatie} soort={data?.perioden?.ingeschrevenen} dark={dark} />
         <OndergrensNoot reeksen={[
-          ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
-          ...sectorReeksen(data?.onderdrukt?.eigen_sectoren, data?.perioden?.ingeschrevenen).map(r => ({ ...r, label: `Eigen ${r.label}` })),
+          ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
+          ...sectorReeksen(data?.onderdrukt?.eigen_sectoren).map(r => ({ ...r, label: `Eigen ${r.label}` })),
         ]} />
 
         <SectionHeader title="Trend" subtitle="Ingeschrevenen per sector over tijd" />

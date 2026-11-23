@@ -134,8 +134,8 @@ describe('"ten minste" en decimalen (#951)', () => {
     render(createElement(DemografieKpis, { ...basis, bmOnderdrukt: { 2025: 1 } }))
 
     const tegels = [...container.querySelectorAll('.kpi-card')].map(k => k.textContent)
-    const totaal = tegels.find(t => t.startsWith('Regio totaal'))
-    expect(totaal).toContain('ten minste72.104')
+    const totaal = tegels.find(t => t.startsWith('Regiototaal'))
+    expect(totaal).toContain('ten minste 72.104')
     expect(totaal).toContain('Curio en 6 andere mbo-instellingen in provincie Noord-Brabant')
     expect(tegels.find(t => t.startsWith('Ingeschrevenen'))).not.toContain('ten minste')
   })

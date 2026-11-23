@@ -3,6 +3,7 @@ import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants
 import { Sparkline } from './shell'
 import { TenMinste, isOndergrens } from './ondergrens'
 import { jaarLabel } from '../../../schooljaar'
+import { DIPLOMA_VERHOUDING } from './charts-diplomaverhouding'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ export function JaarNoot({ noot, testid }) {
 }
 
 // Een nationaal benchmark (wo) is een landelijk totaal; een regionaal benchmark een regiototaal (#918). Het totaal telt de
-// eigen instelling mee (`totaal_regio`, #951): "Regio totaal" was de som van de peers alleen, naast "6 instellingen in
+// eigen instelling mee (`totaal_regio`, #951): het regiototaal was de som van de peers alleen, naast "6 instellingen in
 // regio" terwijl de tabel er 8 toonde. `nPeers`: de andere instellingen in het totaal van dat jaar; `populatie` de groep
 // in woorden ("mbo-instellingen in provincie Noord-Brabant"). `onderdrukt`/`bmOnderdrukt`: de lege cellen van de eigen
 // reeks en van de peers (#902), voor "ten minste".
@@ -50,14 +51,14 @@ export function DemografieKpis({ instelling, lastInges, ingesDelta, ingesEntries
             </div>
           </div>
           <div className="kpi-value"><TenMinste actief={isOndergrens(onderdrukt, lastInges[0])} />{fmt(lastInges[1])}</div>
-          {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
+          {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} ten opzichte van vorig jaar</div>}
           <Sparkline values={ingesEntries.map(([,v]) => v)} color={COLOR_EIGEN} />
         </div>
       )}
       {totaalRegio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">{landelijk ? 'Landelijk totaal' : 'Regio totaal'} {jaar(totaalRegioJaar)}</span>
+            <span className="kpi-label">{landelijk ? 'Landelijk totaal' : 'Regiototaal'} {jaar(totaalRegioJaar)}</span>
             <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
@@ -105,7 +106,7 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type, peri
           </div>
         </div>
         <div className="kpi-value">{fmt(lastEj[1])}</div>
-        {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+        {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} ten opzichte van vorig jaar</div>}
         <JaarNoot noot={eerstejaarsNoot({ ejJaar: lastEj[0], ingesJaar: lastInges?.[0], type, perioden })} />
         <Sparkline values={ejEntries.map(([,v]) => v)} color={COLOR_EERSTEJAARS} />
       </div>
@@ -114,7 +115,7 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type, peri
 }
 
 // `ratio` is { jaar, procent } van diploma-ratio.js: de teller en de noemer komen uit hetzelfde jaartal, een diplomajaar
-// en een schooljaar; de tegel noemt beide (#904).
+// en een schooljaar; de tegel noemt beide (#904). De waarde is het aantal diploma's per 100 ingeschrevenen (#1135).
 export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot, perioden }) {
   if (!lastDipl) return null
   return (
@@ -127,20 +128,20 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot,
           </div>
         </div>
         <div className="kpi-value">{fmt(lastDipl[1])}</div>
-        {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+        {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} ten opzichte van vorig jaar</div>}
         <JaarNoot noot={noot} testid="diplomanoot" />
         <Sparkline values={diplEntries.map(([,v]) => v)} color={COLOR_DIPLOM} />
       </div>
       {ratio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Ratio diploma/inschrijving</span>
+            <span className="kpi-label">{DIPLOMA_VERHOUDING}</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
-          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{fmt(ratio.procent)}%</div>
-          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} en ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)} — proxy, geen cohortmeting</div>
+          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{fmt(ratio.procent)}</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} per 100 ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)}; geen rendement</div>
         </div>
       )}
     </div>

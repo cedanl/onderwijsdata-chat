@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, fmtProcent, darkColors } from '../shared/index'
+import { datumsInTekst } from '../shared/datum'
 
 // Personeel van een universiteit (#936): de payload van /api/dashboard/personeel, met de uitkomst van
 // tools/wo_personeel.py (`reeks_van`): fte zonder GEZO per jaar (peildatum 31 december). Alleen voor wo; een hbo- of
@@ -9,11 +10,14 @@ import { SectionHeader, ChartCard, Grafiek, fmt, fmtProcent, darkColors } from '
 const NOOT = { fontSize: '12.5px', color: 'var(--muted-text)' }
 const TITEL = 'Personeel (wo)'
 
+// De bronregel van de server zonder het staartje over het gebied Gezondheid: de subtitel zegt dat zelf in woorden.
+const bronTekst = regel => datumsInTekst(regel || 'WOPI, Universiteiten van Nederland').replace(/,\s*(excl|incl)\.?\s*sector Gezondheid\s*$/i, '')
+
 function Kpis({ laatste }) {
   const tegels = [
     ['Totaal', `${fmt(laatste.totaal)} fte`],
     ['Wetenschappelijk personeel', `${fmt(laatste.wetenschappelijk_personeel)} fte`],
-    ['Ondersteunend en beheer (OBP)', `${fmt(laatste.obp)} fte`],
+    ['Ondersteunend en beheer', `${fmt(laatste.obp)} fte`],
     ['Aandeel tijdelijk', laatste.aandeel_tijdelijk_procent == null ? '—' : `${fmtProcent(laatste.aandeel_tijdelijk_procent)}%`],
   ]
   return (
@@ -53,11 +57,11 @@ function FteChart({ cijfers, dark }) {
     labels: cijfers.map(r => String(r.jaar)),
     datasets: [
       lijn('Wetenschappelijk personeel', cijfers.map(r => r.wetenschappelijk_personeel ?? null), CHART_COLORS[0], { borderWidth: 3 }),
-      lijn('OBP', cijfers.map(r => r.obp ?? null), CHART_COLORS[1]),
+      lijn('Ondersteunend en beheer', cijfers.map(r => r.obp ?? null), CHART_COLORS[1]),
     ],
   }), [cijfers])
   return (
-    <ChartCard title="Fte per jaar" subtitle="Wetenschappelijk personeel en OBP, zonder GEZO, peildatum 31 december">
+    <ChartCard title="Fte per jaar" subtitle="Wetenschappelijk personeel en ondersteunend en beheerspersoneel, zonder het gebied Gezondheid, peildatum 31 december">
       <Grafiek soort="line" data={data} hoogte={260} categorie="Jaar" options={opties(dark, ' fte')} />
     </ChartCard>
   )
@@ -94,7 +98,7 @@ export function PersoneelSection({ data, dark }) {
   const cijfers = [...pers.cijfers].sort((a, b) => a.jaar - b.jaar)
   return (
     <>
-      <SectionHeader title={TITEL} subtitle={`In fte, zonder GEZO; ${pers.bron?.regel || 'WOPI, Universiteiten van Nederland'}`} />
+      <SectionHeader title={TITEL} subtitle={`In fte, zonder het gebied Gezondheid (geneeskunde, diergeneeskunde en tandheelkunde); ${bronTekst(pers.bron?.regel)}`} />
       <Kpis laatste={cijfers.at(-1)} />
       <FteChart cijfers={cijfers} dark={dark} />
       <TijdelijkChart cijfers={cijfers} dark={dark} />
