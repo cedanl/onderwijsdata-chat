@@ -91,6 +91,9 @@ class KeyMeta:
     laad: tuple[str, dict] | None = field(default=None, compare=False)
     # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
     stap: str | None = field(default=None, compare=False)
+    # Een kort kenmerk van die selectie voor de bestandsnaam van de CSV ("per STUDIEJAAR"), zodat twee tabellen uit één
+    # dataset niet dezelfde naam krijgen (#1120). Herkomst, geen identiteit.
+    kenmerk: str | None = field(default=None, compare=False)
     # The keys an own computation (run_analysis) read: its selection, which it inherits suppression from (#414).
     gelezen: tuple[str, ...] | None = field(default=None, compare=False)
     # Column -> title from the source, for axis and legend titles (CBS DataProperties, #418).
@@ -225,7 +228,9 @@ def derive(parent: str, key: str, value, **changes) -> None:
     if parent_meta is None:
         put(key, value, None)
         return
-    known = replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, "keten": (), **changes})
+    known = replace(
+        parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, "kenmerk": None, "keten": (), **changes}
+    )
     put(key, value, replace(known, keten=_leg_vast(key, known)))
 
 

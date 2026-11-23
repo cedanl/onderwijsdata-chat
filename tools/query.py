@@ -77,6 +77,11 @@ def _stap(filters, columns, group_by, aggregate, weights=None) -> str:
     )
 
 
+def _kenmerk(group_by) -> str:
+    """Het kenmerk van een selectie voor de bestandsnaam van haar CSV: haar groepering, anders alleen "selectie"."""
+    return f"per {' '.join(group_by)}" if group_by else "selectie"
+
+
 def _resource_hint(known, col: str) -> str:
     """Wijs bij een kolom die in deze DUO-resource ontbreekt naar de resource die hem wel noemt (#173)."""
     if not known or known.bron != "duo":
@@ -526,6 +531,7 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
         result_key,
         sel.df,
         stap=_stap(filters, columns, group_by, aggregate, weights),
+        kenmerk=_kenmerk(group_by),
         vier_cellen=sel.vier_totaal,
         **gedekt,
     )

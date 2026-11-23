@@ -142,6 +142,7 @@ def _noten(key: str, afronden: bool, username: str | None) -> list[str]:
 # cijfers een underscore, de titel hoogstens 80 tekens (core/bestandsnaam.py). Dezelfde regel als figureCsvFilename
 # in frontend/src/figureCsv.js: de twee moeten gelijk opgaan.
 _TITEL_MAX = 80
+_KENMERK_MAX = 40
 
 
 def bestandsnaam(key: str) -> str:
@@ -152,8 +153,18 @@ def bestandsnaam(key: str) -> str:
     titel = catalog.bron_titel(known.dataset, vo_context=known.vo_context)
     # Kent de catalogus de dataset niet, dan is de titel het kale id: dat staat er niet twee keer in.
     titeldeel = bestandsdeel(titel, _TITEL_MAX) if titel != known.dataset else ""
-    naam = "_".join(deel for deel in (titeldeel, bestandsdeel(known.dataset)) if deel)
-    return f"{naam or 'data'}.csv"
+    delen = (titeldeel, bestandsdeel(known.dataset), _selectiedeel(key, known))
+    return f"{'_'.join(deel for deel in delen if deel) or 'data'}.csv"
+
+
+def _selectiedeel(key: str, known: store.KeyMeta) -> str:
+    """Wat een afgeleide tabel onderscheidt van haar ouder en van de andere selecties op dezelfde dataset (#1120): haar
+    kenmerk (de groepering) en de rest van de key (resource en digest van de selectie). De ruwe lading houdt de naam
+    van de dataset."""
+    if not known.afgeleid_van:
+        return ""
+    delen = (bestandsdeel(known.kenmerk, _KENMERK_MAX), bestandsdeel(":".join(key.split(":")[2:])))
+    return "_".join(deel for deel in delen if deel)
 
 
 def naar_csv(key: str, username: str | None = None) -> str | None:

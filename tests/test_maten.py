@@ -260,6 +260,7 @@ def test_de_uitkomst_van_get_maat_is_exporteerbaar_met_recept(args):
     assert key is not None
     assert key == uit["data_key"]
     dataset = uit["data_key"].split(":")[1]
-    assert bestandsnaam(key).endswith(f"_{dataset.replace('-', '_')}.csv")  # <titel>_<dataset-id>.csv (#533)
+    # <titel>_<dataset-id>_<wat de maat van haar ouder onderscheidt>.csv (#533, #1120)
+    assert f"_{dataset.replace('-', '_')}_" in bestandsnaam(key)
     recept = herlaad.recept(key, {"name": TOOL_GET_MAAT, "arguments": args})
     assert recept is not None and recept["tool"] == TOOL_GET_MAAT

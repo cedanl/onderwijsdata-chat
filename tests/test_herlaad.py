@@ -219,6 +219,19 @@ def test_een_selectie_met_query_data_komt_terug_na_haar_bron(client):
     assert "X-Data-Herladen" in daarna.headers
 
 
+def test_twee_tabellen_uit_een_dataset_krijgen_een_eigen_bestandsnaam(client):
+    """#1120: "Tabel 1 als CSV" en "Tabel 2 als CSV" onder één antwoord heetten gelijk; de browser maakte er `(1)` van."""
+    session = {"username": "alice"}
+    with _bronnen():
+        bron = _stap(session, *_ROOTS["duo"])
+        een = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2024}})
+        twee = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        _opslaan("alice", "c1", bron, een, twee)
+        namen = [_csv(client, key).headers["content-disposition"] for key in (bron, een, twee)]
+
+    assert len(set(namen)) == 3, namen
+
+
 def test_elke_selectie_op_een_herladen_bron_draagt_de_melding(client):
     """Twee tabellen op één DUO-load: ook de tweede download zegt dat de bron opnieuw is opgehaald."""
     session = {"username": "alice"}
