@@ -103,11 +103,11 @@ describe('financiën van het bestuur (#935)', () => {
 })
 
 describe('personeel van een universiteit (#936)', () => {
-  it('toont het laatste jaar in fte zonder GEZO, met peildatum en aandeel tijdelijk', () => {
+  it('toont het laatste jaar in fte zonder het gebied Gezondheid, met peildatum en aandeel tijdelijk', () => {
     const tekst = render(createElement(PersoneelSection, { data: PERS, dark: false }))
 
     expect(tekst).toContain('Personeel (wo)')
-    expect(tekst).toContain('In fte, zonder GEZO; WOPI 2025, Universiteiten van Nederland, peildatum 31-12-2025')
+    expect(tekst).toContain('In fte, zonder het gebied Gezondheid (geneeskunde, diergeneeskunde en tandheelkunde); WOPI 2025, Universiteiten van Nederland, peildatum 31-12-2025')
     expect(tekst).toContain('6.184,36 fte')
     expect(tekst).toContain('3.584,05 fte')
     expect(tekst).toContain('2.600,31 fte')

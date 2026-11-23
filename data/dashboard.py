@@ -1318,29 +1318,38 @@ def load_dashboard_regio(instelling: str) -> dict:
 # sectoren), maar zegt welke som het is en welke maat de chat gebruikt; tests/test_dashboard_cijfers.py legt de namen
 # vast tegen tools/maten.py.
 _LANDELIJK = {
-    "ho": {"dataset": "p01hoinges", "chat_maat": "deelnemers_ho_landelijk", "chat_dataset": "85423NED"},
+    "ho": {
+        "dataset": "p01hoinges",
+        "chat_maat": "deelnemers_ho_landelijk",
+        "chat_dataset": "85423NED",
+        "naam": "de DUO-aantallen ingeschrevenen per instelling",
+        "chat_naam": "de CBS-cijfers over het hoger onderwijs",
+    },
     "mbo": {
         "dataset": "mbo-studenten-per-instelling",
         "chat_maat": "mbo_studenten_landelijk",
         "chat_dataset": "85354NED",
+        "naam": "de DUO-aantallen mbo-studenten per instelling",
+        "chat_naam": "de CBS-cijfers over mbo-studenten",
     },
 }
 
 
 def _landelijk_definitie(sector: str, soort: str) -> dict[str, str]:
     """Wat "landelijk" in dit dashboard telt, en waarom de chat een ander getal kan geven. De som loopt over de
-    instellingen van `soort`, het type van de eigen instelling (#950)."""
+    instellingen van `soort`, het type van de eigen instelling (#950). De teksten noemen de bronnen in gewone
+    woorden, zonder dataset-ID (#1134); `dataset` en `chat_dataset` blijven als velden voor wie ze zoekt."""
     bron = _LANDELIJK[sector]
     return {
         "maat": "duo_som_per_instelling",
         **bron,
         "definitie": (
-            f"de som van DUO {bron['dataset']} over alle {_SOORTNAAM[soort][1]}; onderdrukte cellen tellen niet mee, "
+            f"de som van {bron['naam']} over alle {_SOORTNAAM[soort][1]}; onderdrukte cellen tellen niet mee, "
             "dus een totaal kan een ondergrens zijn"
         ),
         "verschil_met_chat": (
-            f"De chat geeft het landelijke aantal uit de CBS-tabel {bron['chat_dataset']}. "
-            "Dat is een andere telling: het kan van deze som afwijken."
+            f"De chat geeft het landelijke aantal uit {bron['chat_naam']}. "
+            "Dat is een andere telling, dus het getal in de chat kan van deze som afwijken."
         ),
     }
 

@@ -27,6 +27,9 @@ vi.mock('../api', async importOriginal => ({
 }))
 
 import { InlineDashboardMijnInstelling } from '../components/dashboards/mijn-instelling/index'
+import { PersoneelSection } from '../components/dashboards/mijn-instelling/personeel-section'
+import { FinancienSection } from '../components/dashboards/mijn-instelling/financien-section'
+import { FIN, PERS } from './fixtures/bestuurEnPersoneel'
 import { InlineDashboardNationaal } from '../components/dashboards/nationaal/index'
 import { InlineDashboardArbeidsmarkt } from '../components/dashboards/arbeidsmarkt-consolidated/index'
 
@@ -301,5 +304,46 @@ describe('geen Engelse woorden of jargon op de dashboards (#1133)', () => {
     await mijnInstelling(HBO)
     expect(kaartMetTitel('Ingeschrevenen per sector over tijd').textContent).toContain('welke sectoren groeien of krimpen')
     expect(alles()).not.toMatch(/faculteit/i)
+  })
+})
+
+// #1134: noten noemen geen interne datasetcodes of kolomwaarden en geen onbekende afkortingen.
+describe('noten zonder interne codes en afkortingen (#1134)', () => {
+  // Een dataset-ID, een ruwe kolomwaarde of een afkorting die de lezer niet kent. De bronblokken (links met ID) vallen erbuiten.
+  const INTERN = /p0\d[a-z]+|\b\d{5}NED\b|TOTAAL MBO|\bGEZO\b|\bOBP\b|\bXBRL\b|instromende-mbo|mbo-studenten-per/i
+  const stukken = () => teksten().filter(t => INTERN.test(t))
+  // Wat de server meegeeft bij "Landelijk" (data/dashboard.py, _landelijk_definitie).
+  const LANDELIJK_NOOT = {
+    maat: 'duo_som_per_instelling', dataset: 'p01hoinges', chat_dataset: '85423NED',
+    definitie: 'de som van de DUO-aantallen ingeschrevenen per instelling over alle hogescholen; onderdrukte cellen tellen niet mee, dus een totaal kan een ondergrens zijn',
+    verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-cijfers over het hoger onderwijs. Dat is een andere telling, dus het getal in de chat kan van deze som afwijken.',
+  }
+
+  it('Landelijk zegt in gewone woorden waarom het getal van de chat kan afwijken', async () => {
+    await nationaal({ ...dashboards.nationaal, landelijk: LANDELIJK_NOOT })
+    expect(stukken()).toEqual([])
+    expect(container.textContent).toContain('het getal in de chat kan van deze som afwijken')
+  })
+
+  it('de mbo-hoofdgroepen noemen geen bestand of kolomwaarde', async () => {
+    await mijnInstelling({ ...HBO, type: 'mbo', ingeschrevenen_per_hoofdgroep: { Zorg: 4000, Techniek: 3000 }, ingeschrevenen_per_hoofdgroep_jaar: 2025 })
+    expect(kaartMetTitel('Ingeschrevenen per hoofdgroep')).toBeTruthy()
+    expect(stukken()).toEqual([])
+  })
+
+  it('het personeel en de financiën schrijven GEZO, OBP en XBRL niet uit in de teksten van de pagina', () => {
+    for (const [Sectie, data] of [[PersoneelSection, PERS], [FinancienSection, FIN]]) {
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      root = createRoot(container)
+      act(() => root.render(createElement(Sectie, { data, dark: false })))
+      // De voorbehouden en definities komen woordelijk van de server en leggen de afkorting uit; de eigen koppen en
+      // ondertitels van de pagina gebruiken ze niet.
+      const eigen = [...container.querySelectorAll('h2, h3, .db-sectie-sub, .chart-sub, .kpi-label, [role="img"]')].map(e => e.textContent)
+      expect(eigen.filter(t => INTERN.test(t))).toEqual([])
+      act(() => root.unmount())
+      container.remove()
+      root = container = undefined
+    }
   })
 })

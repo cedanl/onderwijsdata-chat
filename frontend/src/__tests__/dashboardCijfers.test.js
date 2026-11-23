@@ -51,12 +51,13 @@ describe('mbo-leerwegen (#899)', () => {
 })
 
 describe('HoofdgroepenChart (#899)', () => {
-  it('noemt TOTAAL MBO ingeschrevenen, geen eerstejaars of sectorkamers', () => {
+  it('noemt ingeschrevenen, geen eerstejaars of sectorkamers', () => {
     const el = render(createElement(HoofdgroepenChart, { perHoofdgroep: { 'Zorg en welzijn': 5000, Entree: 300 }, dark: false }))
     const tekst = el.textContent
 
     expect(tekst).toContain('Ingeschrevenen per hoofdgroep')
-    expect(tekst).toContain('Geen eerstejaars')
+    expect(tekst).toContain('nieuw of niet (dus niet alleen eerstejaars)')
+    expect(tekst).not.toMatch(/TOTAAL MBO/)
     expect(tekst).not.toMatch(/sectorkamer/i)
     expect(tekst).not.toMatch(/eerstejaars per hoofdgroep/i)
     const data = JSON.parse(el.querySelector('[data-chart="bar"]').textContent)
@@ -240,11 +241,11 @@ describe('een peer zonder gegevens (#925)', () => {
 describe('landelijk zegt wat het telt (#903)', () => {
   it('noemt de DUO-som en de CBS-tabel van de chat', () => {
     const el = render(createElement(LandelijkDefinitie, { landelijk: {
-      definitie: 'de som van DUO p01hoinges over alle universiteiten',
-      verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-tabel 85423NED.',
+      definitie: 'de som van de DUO-aantallen ingeschrevenen per instelling over alle universiteiten',
+      verschil_met_chat: 'De chat geeft het landelijke aantal uit de CBS-cijfers over het hoger onderwijs.',
     } }))
 
-    expect(el.textContent).toContain('Landelijk is hier de som van DUO p01hoinges')
-    expect(el.textContent).toContain('85423NED')
+    expect(el.textContent).toContain('Landelijk is hier de som van de DUO-aantallen ingeschrevenen per instelling')
+    expect(el.textContent).toContain('CBS-cijfers over het hoger onderwijs')
   })
 })
