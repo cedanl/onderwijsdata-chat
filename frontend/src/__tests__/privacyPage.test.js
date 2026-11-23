@@ -10,6 +10,7 @@ import LoginPage from '../pages/LoginPage'
 import SettingsModal from '../components/SettingsModal'
 import App from '../App'
 import { zetBronnenLijst } from '../bronnenLijst'
+import { zetTermijnen } from '../termijnen'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
@@ -135,6 +136,29 @@ describe('PrivacyPage', () => {
       expect(tekst).toContain('alleen na een eigen keuze')
       expect(tekst).toContain('Help ons verder')
       expect(tekst).toMatch(/zonder die vragen (te )?versturen/)
+    }
+  })
+})
+
+// #1144: JSX knipt een regelovergang weg, dus "na" en {gesprek} plakten aan elkaar ("na90 dagen"). Geen cijfer direct na
+// een letter in de tekst van de pagina, en de termijn uit de configuratie staat er met een spatie.
+describe('de spaties in de tekst (#1144)', () => {
+  it('heeft nergens een cijfer direct achter een woord ("na90")', async () => {
+    await render(createElement(PrivacyPage))
+    expect(container.textContent).not.toMatch(/\p{L}\d/u)
+  })
+
+  it('zegt "na 90 dagen" bij het bewijs per antwoord, met de termijn uit de configuratie', async () => {
+    await render(createElement(PrivacyPage))
+    expect(sectionText('Wat de server bewaart')).toContain('of na 90 dagen als het gesprek er niet meer is')
+    act(() => root.unmount())
+    container.remove()
+    zetTermijnen({ bewaartermijn_gesprekken_dagen: 45 })
+    try {
+      await render(createElement(PrivacyPage))
+      expect(sectionText('Wat de server bewaart')).toContain('of na 45 dagen als het gesprek er niet meer is')
+    } finally {
+      zetTermijnen({})
     }
   })
 })

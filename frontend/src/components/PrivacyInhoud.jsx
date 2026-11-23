@@ -84,7 +84,7 @@ export default function PrivacyInhoud() {
           <strong>Bewijs per antwoord</strong>: bij elk antwoord op data bewaart de server waar de data vandaan kwam
           (bron en selectie), de uitkomsten van berekeningen en de stappen achter de figuren, onder een hash van de
           antwoordtekst. Zo geeft een rapport op een heropend gesprek hetzelfde
-          resultaat als in het gesprek zelf. Je vraag en het antwoord staan er niet in. Gaat weg met het gesprek, of na
+          resultaat als in het gesprek zelf. Je vraag en het antwoord staan er niet in. Gaat weg met het gesprek, of na{' '}
           {gesprek} dagen als het gesprek er niet meer is, of eerder als je al je gegevens verwijdert.
         </li>
         <li>
