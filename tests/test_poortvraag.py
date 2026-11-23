@@ -120,3 +120,20 @@ def test_na_de_beurt_is_er_geen_beurtvraag_meer():
     _poort_tijdens_de_loop([{"role": "user", "content": "Hoeveel hbo-studenten zijn er?"}])
 
     assert ho_markers._beurtvraag.get() is None
+
+
+def test_de_kaart_uit_code_is_vast_en_krijgt_geen_modelnaam_eronder(monkeypatch):
+    """#1111: de frontend noemt alleen onder een tekst van het model "Antwoord van <model>"; een kaart uit code is vast."""
+    monkeypatch.setattr(instelling, "get_all", lambda: [])
+    kaart = afbakeningsvraag("Hoeveel leerlingen?")
+    assert kaart is not None
+    events: list[dict] = []
+
+    async def emit(ev):
+        events.append(ev)
+
+    asyncio.run(run_module._vaste_verduidelijking(kaart, [], {}, emit))
+
+    assert [e for e in events if e["type"] == "clarification"] == [
+        {"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties, "vast": True}
+    ]

@@ -425,6 +425,18 @@ describe('useChat tooltrace bij intrekken (#398)', () => {
     expect(vraag.clarification).toEqual(['2023', '2024'])
   })
 
+  // #1111: a card from code (place or measure question) is written by no model; one from clarify_scope is.
+  it('marks a clarification card from code as vast, and only that one', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'clarification', vraag: 'Over welke Utrecht gaat je vraag?', opties: ['Utrecht (stad)'], vast: true })
+      ws.emit({ type: 'clarification', vraag: 'Welk jaar?', opties: ['2023'] })
+    })
+    const [uitCode, vanModel] = assistantMessages()
+    expect(uitCode.vast).toBe(true)
+    expect(vanModel).not.toHaveProperty('vast')
+  })
+
   it('houdt de stappen vóór een fout, zonder de halve tekst', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {
