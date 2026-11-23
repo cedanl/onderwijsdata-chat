@@ -803,6 +803,53 @@ describe('useChat connection loss', () => {
   })
 })
 
+// #1087: de stop tijdens een tool komt pas na de tool bij de gebruiker aan; tot dan zegt de knop "Stoppen…".
+describe('useChat stop tijdens een tool (#1087)', () => {
+  it('zet stopping bij de stop en haalt het weg als de run eindigt', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Rekenvraag') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    expect(chat.stopping).toBe(false)
+
+    await act(async () => { chat.stop() })
+    expect(ws.sent).toContainEqual({ action: 'stop' })
+    expect(chat.stopping).toBe(true)
+    expect(chat.busy).toBe(true)
+
+    await act(async () => { ws.emit({ type: 'message_end', aborted: true }) })
+    expect(chat.busy).toBe(false)
+    expect(chat.stopping).toBe(false)
+  })
+
+  it('sluit een stap die nog liep als gestopt, zodat hij niet blijft pulseren', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Rekenvraag') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { ws.emit({ type: 'tool_start', name: 'run_analysis', label: 'Analyse uitgevoerd' }) })
+    await act(async () => { chat.stop() })
+    await act(async () => { ws.emit({ type: 'message_end', aborted: true }) })
+
+    const [msg] = assistantMessages()
+    expect(msg.stopped).toBe(true)
+    expect(msg.tools).toEqual([
+      expect.objectContaining({ name: 'run_analysis', done: true, status: 'stopped', statusLabel: 'Gestopt' }),
+    ])
+  })
+
+  it('laat een stap die klaar was zoals hij was', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Rekenvraag') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data gefilterd' }) })
+    await act(async () => { ws.emit({ type: 'tool_end', name: 'query_data', output: '{}' }) })
+    await act(async () => { ws.emit({ type: 'message_end', aborted: true }) })
+
+    const [msg] = assistantMessages()
+    expect(msg.tools[0].done).toBe(true)
+    expect(msg.tools[0].status).toBeUndefined()
+  })
+})
+
 describe('useChat busy refusal (#145)', () => {
   it('shows the notice, removes the refused question and hands it back as a draft', async () => {
     const ws = FakeWebSocket.last

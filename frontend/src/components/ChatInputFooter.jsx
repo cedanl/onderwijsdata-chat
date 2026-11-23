@@ -9,6 +9,7 @@ export default function ChatInputFooter({
   bijwerken,
   onVerbindOpnieuw,
   busy,
+  stopping = false,
   models,
   selectedModel,
   onModelChange,
@@ -24,7 +25,11 @@ export default function ChatInputFooter({
       <ConnectionStatus connected={connected} opgegeven={opgegeven} bijwerken={bijwerken} onOpnieuw={onVerbindOpnieuw} />
       <MessageCounter {...length} />
       {busy ? (
-        <button type="button" className="send-btn" onClick={onStop} title="Stop genereren" aria-label="Stop genereren">
+        // Pressed once is enough: the server needs a moment to end a tool it cannot interrupt (#1087).
+        <button
+          type="button" className="send-btn" onClick={onStop} aria-disabled={stopping}
+          title={stopping ? 'Stoppen…' : 'Stop genereren'} aria-label={stopping ? 'Stoppen…' : 'Stop genereren'}
+        >
           <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
         </button>
       ) : (

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { chatSocket, checkSession, endSession, getToken } from '../auth'
 import { trimHistory } from '../contextLimits'
 import { zijnBronlinks } from '../bronLink'
-import { finishStep } from '../toolSteps'
+import { finishStep, stopOpenSteps } from '../toolSteps'
 import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
 import { HERSTART, createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
@@ -48,6 +48,8 @@ const itemsUit = ev => (Array.isArray(ev.items) ? ev.items.filter(i => Number.is
 export function useChat({ maxHistory } = {}) {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
+  // The stop button was pressed and the server has not ended the run yet (#1087): the button says so.
+  const [stopping, setStopping] = useState(false)
   const [thinking, setThinking] = useState(false)
   // The server calls the current run slow after RUN_SLOW_S (#599); the next question starts without.
   const [slow, setSlow] = useState(false)
@@ -339,7 +341,7 @@ export function useChat({ maxHistory } = {}) {
             ...m,
             content,
             done: true,
-            ...(ev.aborted && { stopped: true }),
+            ...(ev.aborted && { stopped: true, tools: stopOpenSteps(m.tools) }),
             // Stopped by the time limit, not by the stop button (#775): the reason stays with the message, with retry.
             ...(ev.timeout && { timeout: true, ...(typeof ev.stopreden === 'string' && { stopreden: ev.stopreden }) }),
             ...(ev.truncated && { truncated: true }),
@@ -635,7 +637,12 @@ export function useChat({ maxHistory } = {}) {
 
   const stop = useCallback(() => {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
+    setStopping(true)
   }, [])
+  // Whatever ended the run (the answer, an error, a reset), the next one starts without "Stoppen…".
+  useEffect(() => {
+    if (!busy) setStopping(false)
+  }, [busy])
 
   // The user leaves while an answer or a report runs (#772): it stops cleanly, as with the stop button, and is marked as
   // stopped because they left, not as a broken connection. At once, without waiting for the server: the page or the
@@ -777,5 +784,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

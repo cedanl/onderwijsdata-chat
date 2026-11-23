@@ -20,3 +20,9 @@ export function markRecovered(steps) {
     return later ? { ...step, recovered: true } : step
   })
 }
+
+// A stop landed while this step ran (#1087): the server does not wait for the tool, so no tool_end follows. The step
+// closes as stopped instead of pulsing in a finished message.
+export function stopOpenSteps(tools) {
+  return (tools || []).map(step => (step.done ? step : { ...step, done: true, status: 'stopped', statusLabel: 'Gestopt' }))
+}

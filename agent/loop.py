@@ -24,7 +24,7 @@ from core.config import MAX_TOKENS
 from core.errors import log_interne_fout
 from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, dispatch, fouten, outcome, store
+from tools import LABELS, afbreken, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
 from tools.snippet import Receptbron
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 _OPRUIMEN_S = 0.5
 
 
-async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | None) -> tuple[bool, Any]:
+async def tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | None) -> tuple[bool, Any]:
     """`aanroep`, tenzij er eerst een stop komt: (gestopt, uitkomst) (#759).
 
     Het stopsignaal werd pas gezien tussen rondes en per ontvangen chunk. Tot de eerste byte van het model (tot
@@ -75,6 +75,9 @@ async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | N
 
 # What a tool_end event carries of the output; the full result stays in the loop.
 _EVENT_OUTPUT_CHARS = 2000
+
+# Een stap met deze uitkomst leverde geen data en krijgt geen codefragment (#1072); een leeg filter wel: het toont hoe.
+_ZONDER_SNIPPET = frozenset({"error", "buiten_scope"})
 
 
 @dataclass
@@ -108,6 +111,7 @@ def _figure_identity(figure: Any) -> str:
 
 ToolHook = Callable[[ToolCall, str, Any], Awaitable[None]]
 Check = Callable[[str, list[str]], list[str]]
+HaltCheck = Callable[[ToolCall], str | None]
 
 
 @dataclass
@@ -177,7 +181,8 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
     label = LABELS.get(call.name, call.name)
     logger.debug("TOOL CALL  %-30s args=%s", call.name, call.arguments)
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
-    result, figure = await asyncio.to_thread(dispatch, call.name, call.args)
+    # Met een afbreeksignaal: wordt de aanroep geannuleerd (stop), dan stopt een tool die dat kan, zoals de sandbox (#1087).
+    result, figure = await afbreken.in_thread(dispatch, call.name, call.args)
     result = str(result)
     # Welke stap het geheugen opjaagt (#546): het proces en de datastore na elke tool, alleen getallen.
     gebruik = store.gebruik()
@@ -185,9 +190,15 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
         "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
     )
 
+    uitkomst = outcome(call.name, result)
+    # Een stap zonder data heeft niets om te herhalen: een snippet zou de mislukte aanroep als geslaagd laten zien (#1072).
     # Het recept van een key kan alleen nog in de database staan (#763); to_thread neemt de context mee, dus
     # store.gesprek ziet in de thread dezelfde keys.
-    snippet = await asyncio.to_thread(_generate_snippet, call.name, call.args, result, recept_van=recept_van)
+    snippet = (
+        None
+        if uitkomst.get("status") in _ZONDER_SNIPPET
+        else await asyncio.to_thread(_generate_snippet, call.name, call.args, result, recept_van=recept_van)
+    )
     if snippet:
         # De snippet bevat de toolargumenten, dus tekst uit de vraag: alleen op DEBUG (#475).
         logger.info("REPRODUCEER %-28s %s", call.name, tekst_kenmerk(snippet))
@@ -196,7 +207,7 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
         "type": "tool_end",
         "name": call.name,
         "output": result[:_EVENT_OUTPUT_CHARS],
-        **outcome(call.name, result),
+        **uitkomst,
     }
     if snippet:
         end_event["snippet"] = snippet
@@ -229,6 +240,8 @@ class _Loop:
     tool_limits: dict[str, int]
     halt_on: frozenset[str]
     wrap_up: str | None
+    # Een halt_on-aanroep die dit afkeurt (de melding) beëindigt de beurt niet: het model krijgt de melding terug (#1067).
+    halt_check: HaltCheck | None = None
     # Het recept per key, zodat een afgeleide snippet de stappen van zijn ouder herhaalt (#624).
     recept_van: Receptbron | None = None
     result: LoopResult = field(default_factory=LoopResult)
@@ -239,6 +252,8 @@ class _Loop:
     locked: dict[str, str] = field(default_factory=dict)
     figure_shown: set[str] = field(default_factory=set)
     trace: SearchTrace = field(default_factory=SearchTrace)
+    # Modelrondes met tools tot nu toe, over de eerste ronde en de herkansing samen: het budget geldt per vraag (#1090).
+    rondes: int = 0
 
     def _stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
@@ -259,7 +274,7 @@ class _Loop:
             _log_aanroep(self.model, meting)
 
     async def _ask_gemeten(self, meting: _Aanroepmeting, **extra: Any) -> StreamResult | None:
-        gestopt, stream = await _tenzij_gestopt(
+        gestopt, stream = await tenzij_gestopt(
             acompletion_with_backoff(
                 self.emit,
                 model=self.model,
@@ -295,18 +310,25 @@ class _Loop:
         return sr
 
     async def rounds(self) -> None:
-        """Call the model until it answers, a tool halts the turn, or a stop lands."""
+        """Call the model until it answers, a tool halts the turn, or a stop lands.
+
+        Het stappenbudget geldt voor de hele vraag: een herkansing na een mislukte controle krijgt hooguit wat er van
+        het budget over is, en geen tools als het op is (#1090)."""
         result = self.result
-        for iteration in range(self.max_iterations):
+        if self.rondes >= self.max_iterations:
+            await self._herkansing_zonder_tools()
+            return
+        for _ in range(self.max_iterations - self.rondes):
             if self._stopped():
                 result.aborted = "tools"
                 return
-            logger.debug("ITERATIE   %d", iteration + 1)
+            self.rondes += 1
+            logger.debug("ITERATIE   %d", self.rondes)
             sr = await self._ask()
             if sr is None:
                 return
             if sr.text:
-                logger.debug("LLM TEKST  iter=%d  %r", iteration + 1, sr.text[:500])
+                logger.debug("LLM TEKST  iter=%d  %r", self.rondes, sr.text[:500])
             if not sr.tool_calls:
                 return
 
@@ -326,13 +348,26 @@ class _Loop:
                 }
             )
             result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
-            await self._run_tools(calls)
+            if not await self._run_tools(calls):
+                result.aborted = "tools"
+                return
 
-            halt = next((c for c in calls if c.name in self.halt_on), None)
+            halt = next((c for c in calls if self._haltend(c)), None)
             if halt:
                 result.halted_on = halt
                 return
         await self._wrap_up()
+
+    async def _herkansing_zonder_tools(self) -> None:
+        """De herkansing na een op budget: één ronde zonder tools, op wat al is opgehaald (#1090).
+
+        Een model dat toch een toolaanroep levert of niets schrijft, is zoals bij de afrondronde: `exhausted`."""
+        if self._stopped():
+            self.result.aborted = "tools"
+            return
+        sr = await self._ask(tool_choice="none")
+        if sr is not None and (sr.tool_calls or not sr.text.strip()):
+            self.result.exhausted = True
 
     async def _wrap_up(self) -> None:
         """The budget is spent: one last call without tools, for an answer from what was fetched (#381)."""
@@ -349,6 +384,15 @@ class _Loop:
             return
         self.result.wrapped_up = True
 
+    def _afkeuring(self, c: ToolCall) -> str | None:
+        """Waarom een halt_on-aanroep de beurt niet kan beëindigen: de melding voor het model, of None."""
+        return self.halt_check(c) if self.halt_check else None
+
+    def _haltend(self, c: ToolCall) -> bool:
+        """Beëindigt deze aanroep de beurt? Niet bij kapotte argumenten of een afgekeurde inhoud (#1067): de kaart
+        zou leeg zijn, dus het model hoort dat en gaat door."""
+        return c.name in self.halt_on and c.args is not None and self._afkeuring(c) is None
+
     def _note_error(self, name: str, content: str) -> None:
         code = fouten.code(content)
         if code is None:
@@ -358,7 +402,8 @@ class _Loop:
             self.locked[name] = code
             logger.warning("TOOL OP SLOT  %s: %dx %s", name, n, code)
 
-    async def _run_tools(self, calls: list[ToolCall]) -> None:
+    async def _run_tools(self, calls: list[ToolCall]) -> bool:
+        """Draai de tools van deze ronde en zet hun uitkomsten in het gesprek; False als een stop ze afbrak (#1087)."""
         blocked: dict[str, str] = {}
         for c in calls:
             if c.name in self.locked:
@@ -375,19 +420,28 @@ class _Loop:
             for c in calls
             if c.id not in blocked and c.name not in self.halt_on and c.args is not None and c.key not in self.cache
         }
-        outcomes = await asyncio.gather(*[_execute_tool(c, self.emit, self.recept_van) for c in runnable.values()])
+        # Een stop wacht niet tot de tools klaar zijn: een tool die niet af te breken is (een bronaanroep) loopt in zijn
+        # thread af en zijn uitkomst gaat verloren, de beurt eindigt als gestopt (#1087).
+        gestopt, outcomes = await tenzij_gestopt(
+            asyncio.gather(*[_execute_tool(c, self.emit, self.recept_van) for c in runnable.values()]),
+            self.stop_event,
+        )
+        if gestopt:
+            return False
         self.cache.update(zip(runnable, outcomes, strict=True))
 
         for c in calls:
             if c.id in blocked:
                 content = blocked[c.id]
-            elif c.name in self.halt_on:
+            elif self._haltend(c):
                 content = "OK"
             elif c.args is None:
                 content = (
                     f"Fout: de argumenten voor `{c.name}` waren geen geldige JSON."
                     " Lever opnieuw aan met geldige JSON-argumenten."
                 )
+            elif c.name in self.halt_on:
+                content = self._afkeuring(c) or "OK"
             else:
                 content, figure = self.cache[c.key]
                 # The same chart is shown once per run, whichever call made it (#218, #327).
@@ -413,6 +467,7 @@ class _Loop:
                     "content": _truncate(content, self.max_result_chars, tool=c.name),
                 }
             )
+        return True
 
 
 async def tool_loop(
@@ -435,6 +490,7 @@ async def tool_loop(
     on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
     keep_partial: Callable[[], bool] | None = None,
     wrap_up: str | None = None,
+    halt_check: HaltCheck | None = None,
     recept_van: Receptbron | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
@@ -451,7 +507,9 @@ async def tool_loop(
     budget gets one more call without tools with that message, instead of ending
     as ``exhausted`` right away.
 
-    A ``halt_on`` tool ends the turn instead of an answer (a clarification); it runs no handler.
+    A ``halt_on`` tool ends the turn instead of an answer (a clarification); it runs no handler. A call with
+    malformed arguments, or one that ``halt_check(call)`` rejects with a message, does not end the turn: the model
+    gets the error back like any other tool and goes on (#1067).
     """
     run = _Loop(
         messages=messages,
@@ -468,6 +526,7 @@ async def tool_loop(
         tool_limits=tool_limits or {},
         halt_on=halt_on,
         wrap_up=wrap_up,
+        halt_check=halt_check,
         recept_van=recept_van,
     )
     result = run.result

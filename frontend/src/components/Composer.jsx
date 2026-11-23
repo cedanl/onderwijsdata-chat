@@ -75,7 +75,7 @@ function useComposerExtra(slotRef, wrapRef, active) {
 // prefill ({ tekst }): a follow-up question the user picked (#364); it replaces the draft and is not sent.
 // refusal ({}): a question sent from elsewhere ("Opnieuw") was refused; the notice here says why (#585).
 export default function Composer({
-  hasMessages, connected, opgegeven = null, bijwerken = false, onVerbindOpnieuw, busy, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
+  hasMessages, connected, opgegeven = null, bijwerken = false, onVerbindOpnieuw, busy, stopping = false, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
   onModelChange, onStop, onSubmit, max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
   refusal = null, clearRefusal = NO_PREFILL, compact = false,
 }) {
@@ -182,6 +182,7 @@ export default function Composer({
           bijwerken={bijwerken}
           onVerbindOpnieuw={onVerbindOpnieuw}
           busy={busy}
+          stopping={stopping}
           models={compact ? NO_MODELS : models}
           selectedModel={selectedModel}
           onModelChange={onModelChange}
