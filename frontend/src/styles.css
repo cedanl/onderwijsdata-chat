@@ -26,6 +26,9 @@
   --teal-100: #CCFBF1;
   --teal-50:  #F0FDFA;
   --green-500:#22C55E;
+  /* Npuls Groen met Zwart: de goedgekeurde combinatie, 7.45:1. Wit op dit groen haalt maar 2.82:1. Niet per thema. */
+  --npuls-groen: #00AF81;
+  --npuls-zwart: #000000;
   --amber-500:#F59E0B;
   --red-500:  #EF4444;
   --gray-900: #111827;
@@ -1138,7 +1141,7 @@ html.dark .send-notice:not(:empty) {
 }
 .wb-builtin-badge {
   position: absolute; top: 8px; left: 8px; z-index: 2;
-  background: rgba(22,163,74,.9); color: #fff;
+  background: var(--npuls-groen); color: var(--npuls-zwart);
   font-size: .65rem; font-weight: 700; padding: 2px 8px;
   border-radius: 999px; letter-spacing: .04em; text-transform: uppercase;
 }
@@ -1174,8 +1177,7 @@ html.dark .send-notice:not(:empty) {
 }
 .wb-builtin-instelling {
   position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
-  background: linear-gradient(135deg, #15803D 0%, #16a34a 100%);
-  color: #fff; font-size: .8rem; font-weight: 700;
+  background: var(--npuls-groen); color: var(--npuls-zwart); font-size: .8rem; font-weight: 700;
   padding: 7px 12px; display: flex; align-items: center; gap: 6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
