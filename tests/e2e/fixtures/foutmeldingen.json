@@ -1,37 +1,37 @@
 {
   "api-sleutel": {
     "type": "error",
-    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
+    "message": "❌ De assistent is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": true
   },
   "model-onbekend": {
     "type": "error",
-    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
+    "message": "❌ De assistent is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": true
   },
   "limiet": {
     "type": "error",
-    "message": "❌ Te veel verzoeken naar de API. Wacht even en probeer opnieuw.",
+    "message": "❌ Te veel verzoeken tegelijk. Wacht even en probeer het opnieuw.",
     "modelafhankelijk": true
   },
   "api-onbereikbaar": {
     "type": "error",
-    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
+    "message": "❌ De assistent is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": true
   },
   "modelfout": {
     "type": "error",
-    "message": "❌ Fout bij het model of de API (fout-ID abcd1234). Probeer het opnieuw of kies een ander model.",
+    "message": "❌ Het antwoord kon niet worden gemaakt (fout-ID abcd1234). Probeer het opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": true
   },
   "timeout": {
     "type": "error",
-    "message": "❌ Fout bij het model of de API (fout-ID abcd1234). Probeer het opnieuw of kies een ander model.",
+    "message": "❌ Het antwoord kon niet worden gemaakt (fout-ID abcd1234). Probeer het opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": true
   },
   "intern": {
     "type": "error",
-    "message": "❌ Er ging intern iets mis (fout-ID abcd1234). Probeer het opnieuw; blijft het misgaan, geef dit ID dan door.",
+    "message": "❌ Er ging intern iets mis (fout-ID abcd1234). Probeer het opnieuw; blijft het misgaan, meld het dan via Geef feedback met dit ID.",
     "modelafhankelijk": false
   },
   "gebruikersfout": {

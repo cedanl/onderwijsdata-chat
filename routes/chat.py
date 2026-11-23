@@ -31,7 +31,7 @@ from core.config import (
     TOKENBUDGET_MAAND,
     toegestaan_model,
 )
-from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, error_event, log_interne_fout
+from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, ander_model_te_kiezen, error_event, log_interne_fout
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
@@ -134,7 +134,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     try:
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
-        await emit(error_event(e))
+        await emit(error_event(e, ander_model=ander_model_te_kiezen(session.get("username"))))
         # De vraag blijft staan, met een afbreekmarkering als antwoord: het gesprek blijft in beurten,
         # een herhaling bouwt op de afgeronde stappen (#431) en een andere vraag gaat niet op deze door (#548).
         messages.append(afgebroken_beurt())

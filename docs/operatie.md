@@ -161,12 +161,15 @@ Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenme
 
 **Foutmeldingen: wat ziet de gebruiker, wat de beheerder** (#703)
 
+De meldingen met fout-ID sturen de gebruiker naar Geef feedback met dat ID (#1147): hij kent geen beheerder. "Of kies een
+ander model" staat er alleen als hij er een kan kiezen, dus bij twee of meer modellen in zijn aanbod (#1167).
+
 | Categorie | De gebruiker ziet | Knoppen | De beheerder ziet |
 |---|---|---|---|
-| Limiet | vaste melding: even wachten | Opnieuw, en Opnieuw met een ander model | `Rate limit (poging n/4): provider=… status=…` van `agent.ratelimit`; kijk naar de status van de provider |
-| API-sleutel ontbreekt of ongeldig, model onbekend, API onbereikbaar | "Het model is nu niet beschikbaar" met fout-ID; geen verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API (<wat te controleren>): <type en kenmerk>` op ERROR: sleutel in het secret, `MODEL`/`AVAILABLE_MODELS` of `*_API_BASE` |
-| Overige fout van model of API, time-out | "Fout bij het model of de API" met fout-ID | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API: <type en kenmerk>` op ERROR, de traceback op DEBUG |
-| Fout in onze eigen code | "Er ging intern iets mis" met fout-ID en het verzoek het ID door te geven | alleen Opnieuw (een ander model helpt niet) | `Interne fout <ID> in verwerking: <type en kenmerk>` op ERROR, de traceback op DEBUG |
+| Limiet | "Te veel verzoeken tegelijk": even wachten | Opnieuw, en Opnieuw met een ander model | `Rate limit (poging n/4): provider=… status=…` van `agent.ratelimit`; kijk naar de status van de provider |
+| API-sleutel ontbreekt of ongeldig, model onbekend, API onbereikbaar | "De assistent is nu niet beschikbaar" met fout-ID en de weg naar Geef feedback; geen verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API (<wat te controleren>): <type en kenmerk>` op ERROR: sleutel in het secret, `MODEL`/`AVAILABLE_MODELS` of `*_API_BASE` |
+| Overige fout van model of API, time-out | "Het antwoord kon niet worden gemaakt" met fout-ID en de weg naar Geef feedback | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API: <type en kenmerk>` op ERROR, de traceback op DEBUG |
+| Fout in onze eigen code | "Er ging intern iets mis" met fout-ID en de weg naar Geef feedback | alleen Opnieuw (een ander model helpt niet) | `Interne fout <ID> in verwerking: <type en kenmerk>` op ERROR, de traceback op DEBUG |
 | Geen data om een rapport van te maken | de tekst van de `Gebruikersfout`, letterlijk | Opnieuw | niets: de gebruiker lost dit zelf op met een vraag |
 | Verbinding weg tijdens een antwoord | "De verbinding viel weg voordat er een antwoord kwam. Stel je vraag opnieuw." | de vraag staat klaar om opnieuw te stellen | `VERBINDING`-regels met het verbindings-ID |
 
