@@ -87,6 +87,53 @@ def test_de_gebruikersnaam_staat_niet_leesbaar_in_de_database(budget):
     assert rijen and all("anna" not in r["sleutel"] for r in rijen)
 
 
+def test_de_sleutel_is_een_hmac_en_niet_de_kale_sha256_van_de_accountnaam(budget, monkeypatch):
+    """#1112: met een kale sha256 van het e-mailadres is te bevestigen dat iemand de app gebruikte."""
+    import hashlib
+
+    from persistence import db
+
+    monkeypatch.setenv("CHAT_SECRET", "test-geheim")
+    budget.zet_gebruiker("jan.jansen@example.nl")
+    budget.boek(Tokens(invoer=12_345))
+    with db._connection() as conn:
+        sleutels = [r["sleutel"] for r in db._execute(conn, "SELECT sleutel FROM tokengebruik", ()).fetchall()]
+    kaal = hashlib.sha256(b"jan.jansen@example.nl").hexdigest()
+    assert len(sleutels) == 1
+    assert sleutels[0] != kaal and kaal not in sleutels[0]
+    assert budget.gebruik("jan.jansen@example.nl") == (12_345, 12_345), "het budget klopt nog per account"
+
+
+def test_een_ander_geheim_telt_niet_door_op_de_oude_rijen(budget, monkeypatch):
+    """Roteert `CHAT_SECRET`, dan zijn de oude rijen niet meer aan het account te koppelen (core/pseudoniem.py)."""
+    monkeypatch.setenv("CHAT_SECRET", "geheim-1")
+    budget.zet_gebruiker("anna@hu.nl")
+    budget.boek(Tokens(invoer=1_000))
+    monkeypatch.setenv("CHAT_SECRET", "geheim-2")
+    assert budget.gebruik("anna@hu.nl") == (0, 0)
+
+
+def test_rijen_met_een_kale_hash_gaan_weg_bij_de_start_en_die_met_een_hmac_blijven(budget, monkeypatch):
+    """#1112: de migratie verwijdert de sleutels van vóór de HMAC; ze is idempotent."""
+    import hashlib
+
+    from persistence import db
+
+    monkeypatch.setenv("CHAT_SECRET", "test-geheim")
+    budget.zet_gebruiker("anna@hu.nl")
+    budget.boek(Tokens(invoer=1_000))
+    kaal = hashlib.sha256(b"anna@hu.nl").hexdigest()
+    db.tokengebruik_boek(kaal, dt.date.today().isoformat(), 7_000)
+
+    db.init_db()
+    db.init_db()
+
+    with db._connection() as conn:
+        sleutels = [r["sleutel"] for r in db._execute(conn, "SELECT sleutel FROM tokengebruik", ()).fetchall()]
+    assert len(sleutels) == 1 and kaal not in sleutels
+    assert budget.gebruik("anna@hu.nl") == (1_000, 1_000)
+
+
 def test_de_maand_telt_de_dagen_van_deze_maand(budget, monkeypatch):
     budget.zet_gebruiker("anna@hu.nl")
     for dag, n in ((dt.date(2026, 10, 31), 50_000), (dt.date(2026, 11, 1), 20_000), (dt.date(2026, 11, 19), 30_000)):

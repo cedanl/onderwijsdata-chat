@@ -15,13 +15,13 @@ verbindingsgrens. Faalt de database, dan gaat het chatten door met een WARNING: 
 """
 
 import datetime as dt
-import hashlib
 import logging
 import time
 from contextvars import ContextVar
 
 from agent.stream import Tokens
 from core.config import TOKENBUDGET_DAG, TOKENBUDGET_MAAND
+from core.pseudoniem import pseudoniem
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +79,9 @@ def _vandaag() -> dt.date:
 
 
 def _sleutel(gebruiker: str) -> str:
-    """Alleen de hash gaat de database in, zoals bij de limieten."""
-    return hashlib.sha256(gebruiker.encode()).hexdigest()
+    """Alleen een HMAC met een servergeheim gaat de database in (#1112): de accountnaam is een e-mailadres en een kale
+    hash ervan is terug te rekenen."""
+    return pseudoniem("tokengebruik", gebruiker)
 
 
 def _aan() -> bool:

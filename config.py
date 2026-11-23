@@ -75,6 +75,8 @@ class Config:
         if fout := cls._nepmodel_ongeldig():
             errors.append(fout)
 
+        cls._waarschuw_zonder_pseudoniemgeheim()
+
         if ongeldig := cls._ongeldige_cors_origins():
             errors.append(
                 f"CORS_ORIGINS mag geen '*' bevatten, ook niet als patroon ({', '.join(ongeldig)}); "
@@ -115,6 +117,19 @@ class Config:
             "(controleer ook of de waarde in het secret niet leeg is), of zet ALLOW_ANONYMOUS=true voor een "
             "bewust openbare demo"
         )
+
+    @classmethod
+    def _waarschuw_zonder_pseudoniemgeheim(cls) -> None:
+        """Waarschuwt buiten lokaal zonder `CHAT_SECRET` (#1112): de pseudoniemen in `tokengebruik` en
+        `rate_limit_hits` (core/pseudoniem.py) zijn dan met een bekende sleutel te berekenen. Alleen een bewust
+        openbare demo zonder login komt hier; met een login eist core/auth.py het geheim al.
+        """
+        if cls.APP_ENV != "local" and not os.getenv("CHAT_SECRET"):
+            logger.warning(
+                "CHAT_SECRET is leeg in APP_ENV=%s: de pseudoniemen van accountnamen en adressen in de database zijn "
+                "dan terug te rekenen; stel CHAT_SECRET in",
+                cls.APP_ENV,
+            )
 
     @classmethod
     def _nepmodel_ongeldig(cls) -> str | None:

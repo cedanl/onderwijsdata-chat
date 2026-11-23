@@ -12,6 +12,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.pseudoniem import VERSIE
+
 logger = logging.getLogger(__name__)
 
 _MAX_CONVERSATIONS = 15
@@ -360,6 +362,7 @@ def _migrate(conn: Any) -> None:
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _verwijder_tabel(conn, "answer_feedback")
+    _verwijder_kale_hashes_tokengebruik(conn)
 
 
 def _voeg_kolom_toe(conn: Any, tabel: str, kolom: str, definitie: str) -> None:
@@ -402,6 +405,19 @@ def _verwijder_tabel(conn: Any, tabel: str) -> None:
     Idempotent, dus veilig bij elke start en bij twee replica's tegelijk: `IF EXISTS` kennen SQLite en PostgreSQL allebei.
     """
     _execute(conn, f"DROP TABLE IF EXISTS {tabel}")
+    conn.commit()
+
+
+def _verwijder_kale_hashes_tokengebruik(conn: Any) -> None:
+    """Een rij van vóór #1112 draagt een kale sha256 van de accountnaam als sleutel: met één hash van een bekend
+    e-mailadres is het account terug te vinden. Ze gaat weg; de rijen onder de HMAC (`h1:`, core/pseudoniem.py) blijven.
+
+    De tellers van de lopende dag en maand beginnen daarmee eenmalig opnieuw: de oude sleutel is zonder de accountnamen
+    niet naar de nieuwe om te zetten, en meenemen betekent de kale hash laten staan. Idempotent, dus veilig bij elke
+    start en bij twee replica's tegelijk; een pod van de vorige versie die tijdens de uitrol nog onder de oude sleutel
+    schrijft, laat rijen achter die na `TOKENGEBRUIK_DAGEN` verlopen.
+    """
+    _execute(conn, "DELETE FROM tokengebruik WHERE sleutel NOT LIKE ?", (f"{VERSIE}%",))
     conn.commit()
 
 
@@ -505,8 +521,9 @@ _REVOKED_USERS_TABLE = """
 
 
 # Tellers van de limieten (core/rate_limit.py), gedeeld door alle pods (#984). Eén rij per meegetelde poging; `verloopt`
-# (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als sha256: de
-# gebruikersnaam of het adres uit de limiet staat zo nergens leesbaar, en "verwijder al mijn gegevens" hoeft er niets mee.
+# (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als HMAC met een
+# servergeheim (core/pseudoniem.py, #1117): de gebruikersnaam of het adres uit de limiet staat zo nergens leesbaar of
+# terug te rekenen, en "verwijder al mijn gegevens" hoeft er niets mee.
 _RATE_LIMIT_TABLE = """
     CREATE TABLE IF NOT EXISTS rate_limit_hits (
         bucket   TEXT   NOT NULL,
@@ -516,8 +533,8 @@ _RATE_LIMIT_TABLE = """
 """
 _RATE_LIMIT_INDEX = "CREATE INDEX IF NOT EXISTS idx_rate_limit ON rate_limit_hits(bucket, sleutel, verloopt)"
 
-# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een sha256
-# van de gebruikersnaam, zoals bij de limieten; `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
+# Tokengebruik per gebruiker per dag (#678, core/tokenbudget.py), in invoertoken-equivalenten. De sleutel is een HMAC
+# van de gebruikersnaam met een servergeheim (core/pseudoniem.py, #1112); `dag` is jjjj-mm-dd (UTC). Rijen ouder dan TOKENGEBRUIK_DAGEN gaan weg
 # bij het opruimen: genoeg voor deze en de vorige maand.
 _TOKENGEBRUIK_TABLE = """
     CREATE TABLE IF NOT EXISTS tokengebruik (
