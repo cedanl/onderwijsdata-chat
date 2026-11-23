@@ -25,7 +25,10 @@ from tools.analysis import SCRIPTCONSTANTEN
 # Een getal in Nederlandse notatie: 378.490 of 378490, optioneel met decimale komma.
 # Duizendtallen ook met (harde of smalle) spatie: 378 490, zoals gpt-oss schrijft (#236).
 # Niet aan een letter of cijfer vast: 85423NED, 2024SJ00 en T001228 zijn codes (#48).
-_TEXT_NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d+)?(?!\w)")
+# En niet aan het jaarsuffix van een schooljaar: in "2025/'26 475.550" is 475.550 het getal, niet "26 475.550" (#1068).
+_TEXT_NUMBER = re.compile(
+    r"(?<![\w.,])(?<!\d{4}/)(?<!\d{4}/['\u2019])(\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d+)?(?!\w)"
+)
 _THOUSANDS = re.compile(r"[. \u00a0\u202f]")
 _TEXT_PERCENT = re.compile(r"(?<![\w.,])(\d+(?:,\d+)?)\s?(?:%|procent\b)")
 _TOOL_NUMBER = re.compile(r"\d+")
