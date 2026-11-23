@@ -117,6 +117,17 @@ describe('PrivacyPage', () => {
     }
   })
 
+  // #1112, #1117: the counters of the budget and the limits are named: what they hold, under what key, how long.
+  it('names the counters of the budget and the limits, in the app and the docs', async () => {
+    await render(createElement(PrivacyPage))
+    const app = sectionText('Wat de server bewaart')
+    expect(app).toContain('Tellers')
+    expect(app).toMatch(/pseudoniem dat de server met een eigen geheim maakt/)
+    const docs = oneLine(docsSection('Wat de server bewaart'))
+    for (const tabel of ['`tokengebruik`', '`rate_limit_hits`']) expect(docs).toContain(tabel)
+    expect(docs).toMatch(/HMAC met een geheim van de server/)
+  })
+
   // #666: the questions about the institution in the report feedback come only after the user's own choice.
   it('says that the questions about the institution are asked only after a choice, in the app and the docs', async () => {
     await render(createElement(PrivacyPage))

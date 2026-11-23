@@ -6,9 +6,10 @@ niemand op nul zet (#984). Faalt de database, dan telt de limiet tijdelijk per p
 inlog of chatbericht meer voor iedereen.
 """
 
-import hashlib
 import logging
 import time
+
+from core.pseudoniem import pseudoniem
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,9 @@ class RateLimiter:
         return self._naam if db.deelt_staat() else None
 
     def _sleutel(self, key: str) -> str:
-        """Alleen de hash gaat de database in: gebruikersnaam of adres staan er niet leesbaar."""
-        return hashlib.sha256(key.encode()).hexdigest()
+        """Alleen een HMAC met een servergeheim gaat de database in (#1117): gebruikersnaam of adres staan er niet
+        leesbaar en ook niet terug te rekenen (een e-mailadres is te raden, een IPv4-adres telt hooguit 2^32 waarden)."""
+        return pseudoniem("ratelimit", key)
 
     def _uit_database(self, naam: str, key: str, *, tel: bool) -> tuple[bool, int | None]:
         """(gelukt, wachttijd in s of None). Gelukt is False bij een databasefout: dan telt het geheugen."""

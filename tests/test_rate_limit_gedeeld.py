@@ -5,6 +5,7 @@ Postgres-eigen regel (advisory lock) staat in de laatste test, met een stand-in 
 """
 
 import contextlib
+import hashlib
 import importlib
 import logging
 import sqlite3
@@ -80,14 +81,29 @@ def test_na_het_venster_mag_het_weer(db, monkeypatch):
     assert pod.probeer("anna") is None
 
 
-def test_de_database_bevat_de_sleutel_alleen_gehasht(db, tmp_path):
-    _pod().probeer("anna@hu.nl|10.1.2.3")
+def test_de_database_bevat_de_sleutel_alleen_als_hmac_en_niet_als_kale_sha256(db, tmp_path, monkeypatch):
+    """#1117: een kale sha256 van een e-mailadres of IPv4-adres is met één hash of 2^32 pogingen terug te rekenen."""
+    monkeypatch.setenv("CHAT_SECRET", "test-geheim")
+    sleutel = "anna@hu.nl|10.1.2.3"
+    _pod().probeer(sleutel)
     conn = sqlite3.connect(tmp_path / "test.db")
     rijen = conn.execute("SELECT bucket, sleutel FROM rate_limit_hits").fetchall()
     conn.close()
     assert len(rijen) == 1
-    assert "anna" not in rijen[0][1] and "10.1.2.3" not in rijen[0][1]
-    assert len(rijen[0][1]) == 64
+    opgeslagen = rijen[0][1]
+    assert "anna" not in opgeslagen and "10.1.2.3" not in opgeslagen
+    kaal = hashlib.sha256(sleutel.encode()).hexdigest()
+    assert opgeslagen != kaal and kaal not in opgeslagen
+
+
+def test_een_ander_geheim_is_een_andere_teller(db, monkeypatch):
+    """De limiet blijft per sleutel werken zolang het geheim gelijk is; roteren zet de tellers op nul."""
+    monkeypatch.setenv("CHAT_SECRET", "geheim-1")
+    pod = _pod(1)
+    assert pod.probeer("anna") is None
+    assert pod.probeer("anna") is not None
+    monkeypatch.setenv("CHAT_SECRET", "geheim-2")
+    assert pod.probeer("anna") is None
 
 
 def test_gelijktijdige_pods_laten_nooit_meer_door_dan_de_limiet(db):
