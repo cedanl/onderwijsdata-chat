@@ -9,6 +9,9 @@ dan blijft het bij inhouden.
 Dat laatste geldt ook per tabel (#976). Een tabel van twaalf hogescholen waarvan elf rijen wegvielen, stond onder een
 conclusie "bij 12 hogescholen": de rest van het antwoord sprak de tabel tegen. Een tabel die meer rijen verliest dan
 ze houdt, is een restant; dan houdt de app het antwoord in, met de meldingen erbij.
+
+Een antwoord is ook een restant als er geen inhoudszin overblijft (#1107): alleen een `Bron:`-regel, een Bronnen-sectie
+of kopjes zeggen niets, en de bronregel van een tabel die de data niet had, wijst dan een verkeerde bron aan.
 """
 
 import re
@@ -27,6 +30,35 @@ GESCHRAPT = (
 _MAX_WEG = 0.5
 # De scheidingsrij onder de kop van een markdowntabel: |---|:--:|.
 _SCHEIDINGSRIJ = re.compile(r"^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$")
+# "Bron: CBS, …", "Bronnen:" of "**Bronnen**" (een regel die met het woord begint, ook als opsommingsitem of kop).
+_BRONREGEL = re.compile(r"^\W*bron(?:nen)?\b", re.IGNORECASE)
+# Alleen het woord: de kop van een Bronnen-sectie, waaronder de bronnen als lijst staan.
+_BRONNENKOP = re.compile(r"^\W*bron(?:nen)?\W*$", re.IGNORECASE)
+
+
+def _bronregels_samen(delen: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Een `Bron:`-regel is één segment: de puntkomma's en punten erin splitsen hem niet (#1107)."""
+    samen: list[tuple[str, str]] = []
+    for zin, scheiding in delen:
+        if samen and _BRONREGEL.match(samen[-1][0]) and "\n" not in samen[-1][1]:
+            samen[-1] = (samen[-1][0] + samen[-1][1] + zin, scheiding)
+        else:
+            samen.append((zin, scheiding))
+    return samen
+
+
+def _inhoudszinnen(delen: Sequence[tuple[str, str]]) -> list[bool]:
+    """Per segment: is het inhoud? Geen lege regel, kopje, `Bron:`-regel of regel in een Bronnen-sectie (#1107)."""
+    inhoud: list[bool] = []
+    in_bronnen = False
+    for zin, _ in delen:
+        regel = zin.strip()
+        if _BRONNENKOP.match(regel):
+            in_bronnen = True
+        elif regel.startswith("#"):
+            in_bronnen = False
+        inhoud.append(bool(regel) and not regel.startswith("#") and not in_bronnen and not _BRONREGEL.match(regel))
+    return inhoud
 
 
 def _tabelrestant(delen: Sequence[tuple[str, str]], weg: Sequence[bool]) -> bool:
@@ -62,7 +94,7 @@ def zonder_ongedekte_zinnen(
     getallen = {getattr(p, "getal", None) for p in harde_problemen}
     if not harde_problemen or None in getallen or not result.text.strip():
         return result
-    delen = segmenten_met_scheiding(result.text)
+    delen = _bronregels_samen(segmenten_met_scheiding(result.text))
     weg = [
         zin.strip() != ""
         and bool(getallen & {getattr(p, "getal", None) for p in getalcontrole(zin, result.tool_results)})
@@ -71,9 +103,12 @@ def zonder_ongedekte_zinnen(
     inhoud = sum(1 for zin, _ in delen if zin.strip())
     if not any(weg) or sum(weg) > inhoud * _MAX_WEG or _tabelrestant(delen, weg):
         return result
-    rest = "".join(zin + scheiding for (zin, scheiding), valt in zip(delen, weg, strict=True) if not valt).strip()
-    if not rest:
+    blijft = [
+        (deel, is_inhoud) for deel, valt, is_inhoud in zip(delen, weg, _inhoudszinnen(delen), strict=True) if not valt
+    ]
+    if not any(is_inhoud for _, is_inhoud in blijft):
         return result
+    rest = "".join(zin + scheiding for (zin, scheiding), _ in blijft).strip()
     problemen = check(rest, result.tool_results)
     if harde(problemen):
         return result
