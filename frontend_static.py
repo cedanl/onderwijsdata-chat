@@ -59,7 +59,7 @@ class _CatchAllRoute(APIRoute):
     """
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["method"] not in self.methods:
+        if self.methods and scope["method"] not in self.methods:
             raise HTTPException(status_code=404, detail=NIET_GEVONDEN)
         await super().handle(scope, receive, send)
 
