@@ -86,7 +86,12 @@ EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je ku
     - Is de verbinding terug, dan stel je de afgebroken vraag opnieuw met "Probeer opnieuw".
     - Duurt het langer dan 12 minuten, dan staat er "Geen verbinding." met de knop "Opnieuw verbinden".
 - **Bij een storing van de server** start het platform de server vanzelf opnieuw. Tot die weer draait, is EDUdata
-  niet bereikbaar en zie je dezelfde meldingen als bij een update.
+  niet bereikbaar. Sluit de server netjes af, dan zie je dezelfde meldingen als bij een update. Valt hij weg zonder
+  netjes af te sluiten (een crash, een node die verdwijnt, een time-out van de ingress), dan staat er na een halve
+  minuut "Geen verbinding." met de knop "Opnieuw verbinden". Je hoeft er niet op te klikken: de app vraagt daarna
+  elke 30 seconden of de server terug is en verbindt dan zelf. Alleen als er te veel vensters openstaan, of de server
+  het adres van de app weigert, wacht hij op jou. Een antwoord dat op dat moment werd geschreven, breekt af zoals bij
+  een update.
 - **Hoe we reageren.** Een storing die we zelf merken of die aan ons wordt gemeld, pakken we zo snel als het kan op.
   Er is geen afgesproken reactie- of hersteltijd en geen bereikbaarheidsdienst buiten werktijd.
 

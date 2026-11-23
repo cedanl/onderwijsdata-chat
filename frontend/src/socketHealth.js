@@ -28,6 +28,15 @@ export const opgevenBij = (code) => OPGEVEN_BIJ[code] ?? null
 export const HERSTART = 1012
 export const HERSTART_MS = 12 * 60 * 1000
 
+// Na "Geen verbinding." blijft de hook op de achtergrond kijken of de server terug is (#1169): een pod die crasht (OOM-kill,
+// node weg, ingress-time-out) sluit zonder 1012, en de nieuwe pod is pas na tientallen seconden klaar (startupProbe tot
+// 150 s), langer dan de reeks van MAX_RETRIES pogingen. Elke ACHTERGROND_MS vraagt hij /health; antwoordt de server,
+// dan verbindt hij weer zonder dat iemand klikt. Zo flikkert de status niet van "Geen verbinding." naar "herstellen"
+// zolang de server weg is. 1013 en 4003 sluiten zelf zonder te plannen (OPGEVEN_BIJ): daar helpt wachten niet. Een 4003
+// die de browser als kale 1006 ziet, komt hier wel in terecht: een poging per ACHTERGROND_MS is dan de prijs.
+export const ACHTERGROND_MS = 30000
+export const serverBereikbaar = () => fetch('/health', { cache: 'no-store' }).then(res => res.ok, () => false)
+
 // The heartbeat pings over the open socket; any incoming message counts as proof of life.
 // When nothing comes back in time it closes the socket and calls onDead(ws) at once: a
 // real close() is asynchronous, and its onclose only follows after the closing handshake.
@@ -72,28 +81,36 @@ export function createHeartbeat(getWs, onDead) {
 // opened() cancels a pending attempt; the count starts over only once the socket stayed open STABIEL_MS.
 // reset() cancels everything and starts the count over (the network came back, the user asked, or the hook unmounts).
 // herstart() (after 1012) keeps it trying until HERSTART_MS have passed, at the longest pause; opened() or reset() ends it.
-export function createRetry(connect, { opgegeven = () => {} } = {}) {
+// After `opgegeven`, `bereikbaar` is asked every ACHTERGROND_MS (#1169) and connect() runs once it says yes; opened() or
+// reset() ends that too.
+export function createRetry(connect, { opgegeven = () => {}, bereikbaar = serverBereikbaar } = {}) {
   let count = 0
   let timeout = null
   let stabiel = null
   let herstartTot = null
+  // Een controle die nog loopt als er intussen iets anders gebeurde (een open socket, een reset), telt niet meer mee.
+  let ronde = 0
 
   const wachtNiet = () => {
     clearTimeout(stabiel)
     stabiel = null
   }
 
-  const reset = () => {
+  const stopAchtergrond = () => {
+    ronde += 1
     clearTimeout(timeout)
     timeout = null
+  }
+
+  const reset = () => {
+    stopAchtergrond()
     wachtNiet()
     count = 0
     herstartTot = null
   }
 
   const opened = () => {
-    clearTimeout(timeout)
-    timeout = null
+    stopAchtergrond()
     wachtNiet()
     herstartTot = null
     stabiel = setTimeout(() => { stabiel = null; count = 0 }, STABIEL_MS)
@@ -103,12 +120,25 @@ export function createRetry(connect, { opgegeven = () => {} } = {}) {
     herstartTot = Date.now() + HERSTART_MS
   }
 
+  const kijkOpAchtergrond = () => {
+    const mijn = ronde
+    timeout = setTimeout(async () => {
+      timeout = null
+      const terug = await bereikbaar()
+      if (mijn !== ronde) return
+      if (terug) connect()
+      else kijkOpAchtergrond()
+    }, ACHTERGROND_MS)
+  }
+
   const schedule = () => {
     wachtNiet()
     const wachtOpHerstart = herstartTot !== null && Date.now() < herstartTot
     if (count >= MAX_RETRIES && !wachtOpHerstart) {
       herstartTot = null
       opgegeven()
+      stopAchtergrond()
+      kijkOpAchtergrond()
       return
     }
     const delay = BACKOFF_DELAYS[count] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
