@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from core.foutmeldingen import ONGELDIGE_INVOER
+from routes.rapport_docx import DOCX_TYPE
 
 
 @pytest.fixture(scope="module")
@@ -74,10 +75,13 @@ def test_de_validatieschemas_van_fastapi_zijn_weg(schema):
     assert "HTTPValidationError" not in str(schema["paths"])
 
 
-def test_de_422_van_het_schema_is_wat_de_api_geeft(schema):
+def test_de_422_van_het_schema_is_wat_de_api_geeft():
+    from core.auth import get_current_user
     from server import create_app
 
-    resp = TestClient(create_app(api_docs=True)).put("/api/conversations/x", json={"title": {"a": 1}})
+    app = create_app(api_docs=True)
+    app.dependency_overrides[get_current_user] = lambda: "demo"
+    resp = TestClient(app).put("/api/conversations/x", json={"title": {"a": 1}})
 
     assert resp.status_code == 422
     assert resp.json() == {"detail": ONGELDIGE_INVOER}
@@ -88,3 +92,22 @@ def test_de_foutmelding_in_het_schema_is_een_voorbeeld_van_de_echte_tekst(schema
 
     assert fout["properties"]["detail"]["examples"] == [ONGELDIGE_INVOER]
     assert fout["required"] == ["detail"]
+
+
+# ── Bestanden (#1159) ────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "pad, methode, media_type",
+    [
+        ("/api/data/csv", "get", "text/csv"),
+        ("/api/workbooks/{wb_id}/docx", "post", DOCX_TYPE),
+        ("/api/mijn-gegevens/export", "get", "application/json"),
+    ],
+)
+def test_een_bestandseindpunt_noemt_zijn_echte_mediatype_als_bijlage(schema, pad, methode, media_type):
+    antwoord = schema["paths"][pad][methode]["responses"]["200"]
+
+    assert list(antwoord["content"]) == [media_type]
+    assert antwoord["content"][media_type]["schema"] == {"type": "string", "format": "binary"}
+    assert "Content-Disposition" in antwoord["headers"]
