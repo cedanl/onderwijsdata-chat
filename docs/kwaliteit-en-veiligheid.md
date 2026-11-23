@@ -45,7 +45,7 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 
 ### Controle na het antwoord (#207)
 
-Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, dan krijgt het model één herkansing. Wat daarna blijft, wordt per soort behandeld:
+Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, dan krijgt het model één herkansing. Het stappenbudget geldt voor de hele vraag: de herkansing krijgt hooguit wat er van het budget over is, en na een op budget (of een afrondronde) geen tools meer (#1090). Wat daarna blijft, wordt per soort behandeld:
 
 | Soort | Voorbeelden | Chat | Rapport |
 |-------|-------------|------|---------|

@@ -73,7 +73,11 @@ def _heropen(username: str) -> dict:
         pass
 
     msg = {"action": "history", "messages": messages, "conv_id": "c1"}
-    asyncio.run(chat.ACTIES["history"](msg, session, emit, None))
+
+    async def openen():
+        await chat.ACTIES["history"](msg, session, emit, None)
+
+    asyncio.run(openen())
     return session
 
 
