@@ -102,13 +102,15 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
 function NavBtn({ to, label, children }) {
   const navigate = useBewaakteNavigatie()
   const location = useLocation()
+  const actief = isActief(to, location.pathname)
   return (
     <a
       href={to}
-      className={`nav-btn${isActief(to, location.pathname) ? ' active' : ''}`}
+      className={`nav-btn${actief ? ' active' : ''}`}
+      aria-current={actief ? 'page' : undefined}
       onClick={(e) => { e.preventDefault(); navigate(to) }}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {children}
       </svg>
       {label}
@@ -128,6 +130,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
   const [installeerUitleg, setInstalleerUitleg] = useState(false)
   const installeerAanbod = useInstallatieAanbod()
   const knopRef = useRef(null)
+  const menuRef = useRef(null)
   const sluit = () => setOpen(false)
   // Escape en een tik op een bestemming geven de focus aan de knop terug, zodat toetsenbord en schermlezer
   // niet op <body> terechtkomen.
@@ -135,6 +138,12 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
   useEscape(open, sluitMetFocus)
   // Een andere pagina (ook terug-knop van de browser): het menu hoort dicht.
   useEffect(() => { setOpen(false) }, [location.pathname])
+  // Het menu ligt over de pagina: gaat de focus naar een element erbuiten, dan zou hij onder het menu vallen
+  // (WCAG 2.4.11). Het menu sluit dan. Zonder doel (het venster wisselt, een tik op het menu) blijft het open.
+  const focusVerlaat = (e) => {
+    const naar = e.relatedTarget
+    if (naar && naar !== knopRef.current && !menuRef.current?.contains(naar)) sluit()
+  }
 
   const kies = (actie) => () => { sluit(); actie() }
 
@@ -143,7 +152,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
       <button
         type="button" ref={knopRef} className="navbar-menu-btn"
         aria-label="Menu" aria-expanded={open} aria-controls="navbar-menu"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen(o => !o)} onBlur={focusVerlaat}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
@@ -152,7 +161,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
       {open && (
         <>
           <div className="navbar-menu-overlay" onClick={sluit} aria-hidden="true" />
-          <div className="navbar-menu" id="navbar-menu">
+          <div className="navbar-menu" id="navbar-menu" ref={menuRef} onBlur={focusVerlaat}>
             {bestemmingen.map(b => (
               <a
                 key={b.to} href={b.to}
