@@ -122,3 +122,19 @@ def test_report_checks_markeren_een_ongedekt_getal_als_hard():
     spec = ReportSpec(conclusie="Er waren 6.340 studenten.", beantwoordt=["aantal"])
     problemen = report_problems(spec, [], ['{"rijen": [{"AANTAL": 5943}]}'])
     assert harde(problemen) and all("6.340" in p for p in harde(problemen))
+
+
+def test_een_melding_die_een_zin_citeert_toont_geen_markdowntekens():
+    """#1110: de reden citeert de zin van het model, met **92.600** erin. De gebruiker ziet de sterretjes letterlijk."""
+    probleem = Probleem(
+        "92.600 hoort bij 2024/25, niet bij 2025/26 "
+        "('Dit studiejaar (2025/'26) studeren **92.600** internationale __studenten__ in `hbo`.')."
+    )
+
+    (melding,) = meldingen([probleem])
+
+    assert melding == (
+        "92.600 hoort bij 2024/25, niet bij 2025/26 ('Dit studiejaar (2025/'26) studeren 92.600 internationale studenten in hbo.')."
+    )
+    # Het model krijgt de tekst zoals hij was.
+    assert "**92.600**" in probleem

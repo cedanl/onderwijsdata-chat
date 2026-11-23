@@ -65,4 +65,16 @@ describe('IngetrokkenVersies (#398)', () => {
     const el = render([{ tekst: 'Het zijn er 99.', naStap: 2, reden: ['99 staat niet in de opgehaalde data.'] }])
     expect(el.textContent).toContain('Reden: 99 staat niet in de opgehaalde data.')
   })
+
+  // #1110: de eerdere versie is de ruwe tekst van het model; sterretjes horen er niet letterlijk te staan.
+  it('toont de eerdere versie als markdown, zoals het antwoord zelf', () => {
+    const el = render([{ tekst: 'Dit studiejaar studeren **92.600** internationale studenten.', naStap: 2 }])
+    expect(el.querySelector('.message-ingetrokken-tekst strong').textContent).toBe('92.600')
+    expect(el.textContent).not.toContain('**')
+  })
+
+  it('zet geen html uit de eerdere versie in de pagina', () => {
+    const el = render([{ tekst: 'Een <img src=x onerror=alert(1)> zin.', naStap: 2 }])
+    expect(el.querySelector('img')).toBeNull()
+  })
 })

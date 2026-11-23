@@ -18,9 +18,11 @@ app het antwoord in. Zacht (label, teleenheid, woordkeuze): het antwoord blijft,
 met een waarschuwing.
 
 Een melding citeert soms modeltekst ("het getal dat u noemt"); de gebruiker ziet ook
-die in de je-vorm (#536). Het model krijgt de tekst zoals hij was.
+die in de je-vorm (#536), en zonder de opmaak van het model (`**92.600**`, #1110): de melding is platte tekst.
+Het model krijgt de tekst zoals hij was.
 """
 
+import re
 from collections.abc import Callable, Iterable
 from typing import TypeVar
 
@@ -50,9 +52,13 @@ class Probleem(str):
         return probleem
 
 
+# De inline opmaak van het model in een geciteerde zin: **vet**, __vet__ en `code`. De tekens zelf gaan weg, de tekst blijft.
+_OPMAAK = re.compile(r"\*\*|__|`")
+
+
 def meldingen(problemen: list[str]) -> list[str]:
-    """Wat de gebruiker van de problemen ziet, in de je-vorm en zonder dubbele."""
-    return list(dict.fromkeys(in_je_vorm(getattr(p, "melding", p)) for p in problemen))
+    """Wat de gebruiker van de problemen ziet, in de je-vorm, zonder opmaaktekens en zonder dubbele."""
+    return list(dict.fromkeys(_OPMAAK.sub("", in_je_vorm(getattr(p, "melding", p))) for p in problemen))
 
 
 def niet_gecontroleerd(fout_id: str) -> Probleem:

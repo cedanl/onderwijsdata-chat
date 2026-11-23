@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { answerBlocks, bronnenMarkdown, bronnenTekst, citatieSamenvatting, metBronnen } from '../answerBlocks'
+import { answerBlocks, bronnenMarkdown, bronnenTekst, citatieSamenvatting, kopieerTekst, metBronnen } from '../answerBlocks'
 import { ALLEEN_CITATIES, DUO, TEKST, VIJF_ANTWOORDEN } from './fixtures/vijfAntwoorden'
 
 const kinds = msg => answerBlocks(msg, { settled: true }).map(b => b.kind).join(' · ')
@@ -87,6 +87,28 @@ describe('bronnen in de tekst voor kopiëren en export', () => {
   it('neemt alleen bronnen die tekst zijn', () => {
     expect(bronnenMarkdown([{ titel: DUO }, DUO, null, 3, ' '])).toBe(`**Bronnen**\n- ${DUO}`)
     expect(metBronnen(TEKST, [{ titel: DUO }])).toBe(TEKST)
+  })
+})
+
+// #1108: wat een journalist plakt, zegt ook dat de controle iets uit het antwoord haalde.
+describe('kopieerTekst: het antwoord met de controlemelding en de bronnen', () => {
+  const melding = 'Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten.'
+
+  it('zet elke controlemelding als "Let op" vóór de bronnen', () => {
+    const msg = { content: TEKST, bronnen: [DUO], controle: [melding, '92.600 hoort bij 2024/25.'] }
+    expect(kopieerTekst(msg)).toBe(
+      `${TEKST}\n\nLet op: ${melding}\n\nLet op: 92.600 hoort bij 2024/25.\n\n**Bronnen**\n- ${DUO}`,
+    )
+  })
+
+  it('kopieert van een ingehouden antwoord de melding en de redenen', () => {
+    const msg = { content: 'Dit antwoord is ingehouden.', controle: ['Hieronder staat wat er niet klopte.', '5 klopt niet.'] }
+    expect(kopieerTekst(msg)).toBe('Dit antwoord is ingehouden.\n\nLet op: Hieronder staat wat er niet klopte.\n\nLet op: 5 klopt niet.')
+  })
+
+  it('laat een antwoord zonder controlemelding zoals metBronnen het geeft', () => {
+    expect(kopieerTekst({ content: TEKST, bronnen: [DUO] })).toBe(metBronnen(TEKST, [DUO]))
+    expect(kopieerTekst({ content: TEKST, controle: [] })).toBe(TEKST)
   })
 })
 

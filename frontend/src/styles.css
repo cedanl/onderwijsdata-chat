@@ -1500,7 +1500,7 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
 .message-ingetrokken summary { cursor: pointer; padding: 4px 0; }
 .message-ingetrokken-reden { margin: 4px 0 0; font-style: italic; }
 .message-ingetrokken-tekst {
-  white-space: pre-wrap; margin: 4px 0 0; padding: 8px 12px;
+  margin: 4px 0 0; padding: 8px 12px;
   border-left: 3px solid var(--gray-200);
 }
 

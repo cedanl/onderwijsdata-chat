@@ -130,3 +130,65 @@ def test_blijft_de_rest_hard_door_een_ander_probleem_dan_blijft_het_inhouden():
     na = zonder_ongedekte_zinnen(resultaat, check, getalcontrole)
 
     assert na is resultaat
+
+
+_UITVAL = (
+    "Vorig jaar (2024/'25) stopte **15,4%** van de eerstejaars met de opleiding: ruim 16.700 studenten.\n\n"
+    "Dat is iets meer dan een jaar eerder (14,9%).\n\n"
+    "Bron: CBS, Hoger onderwijs; eerstejaarsstudenten, vooropleiding en opleidingsfase (85422NED)."
+)
+
+
+def test_blijft_na_het_schrappen_alleen_een_bronregel_over_dan_houdt_het_antwoord_in():
+    """#1107: van het antwoord bleef alleen een Bron-regel (met een tabel die de data niet heeft) en de melding."""
+    resultaat = _schrap(_UITVAL)
+
+    assert harde(resultaat.problems)
+    assert resultaat.text == _UITVAL
+
+
+def test_een_bronregel_met_puntkomma_telt_als_een_segment():
+    """#1107: bij de puntkomma splitste de bronregel in drie stukken, die als inhoud meetelden: drie van de zeven
+    segmenten leken weg te vallen, terwijl het er drie van de vijf zijn."""
+    tekst = (
+        "In 2024 waren er 70.812 eerstejaars. Dat is 11.111 meer dan in 2023. Het waren er 22.222 in 2022. "
+        "Het verschil zit vooral bij het hbo.\n\n"
+        "Bron: DUO, Inschrijvingen; hoger onderwijs; per instelling (p02)."
+    )
+
+    resultaat = _schrap(tekst)
+
+    assert harde(resultaat.problems)
+    assert resultaat.text == tekst
+
+
+@pytest.mark.parametrize(
+    "rest",
+    [
+        "## Uitval\n\nBron: CBS.",
+        "**Bronnen**\n- CBS, tabel 85422NED\n- DUO, ingeschrevenen",
+        "### Bronnen\n\n- CBS, tabel 85422NED\n- DUO, ingeschrevenen",
+        "Bronnen:\n- CBS, tabel 85422NED",
+    ],
+)
+def test_kopjes_en_bronnen_zijn_geen_inhoud(rest):
+    tekst = f"In 2024 waren er 70.812 eerstejaars.\n\n{rest}"
+
+    resultaat = _schrap(tekst)
+
+    assert harde(resultaat.problems)
+    assert resultaat.text == tekst
+
+
+def test_een_inhoudszin_naast_de_geschrapte_zin_houdt_het_schrappen_bij_een_bronregel():
+    tekst = (
+        "In 2024 waren er 5.943 eerstejaars. Dat is 70.812 minder dan een jaar eerder.\n"
+        "Het verschil zit vooral bij het hbo.\n\n"
+        "Bron: DUO; Inschrijvingen (p02)."
+    )
+
+    resultaat = _schrap(tekst)
+
+    assert "70.812" not in resultaat.text
+    assert "Het verschil zit vooral bij het hbo." in resultaat.text
+    assert resultaat.problems[-1] == GESCHRAPT
