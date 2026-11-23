@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { fetchFeedbackQuestions, postFeedback } from '../api'
+import { foutMelding } from '../foutMelding'
 import { metWoord, rapportWoord } from '../rapportWoord'
 import { useTermijnen, getal } from '../termijnen'
 
@@ -160,7 +161,7 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
     let cancelled = false
     fetchFeedbackQuestions()
       .then(qs => { if (!cancelled) setQuestions(qs.map(q => woordInVraag(q, woord))) })
-      .catch(err => { if (!cancelled) setError(`Vragen niet geladen: ${err.message}`) })
+      .catch(err => { if (!cancelled) setError(foutMelding('Vragen niet geladen', err)) })
     return () => { cancelled = true }
   }, [woord])
 
@@ -187,7 +188,7 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
       })
       onSubmitted()
     } catch (err) {
-      setError(`Feedback niet verstuurd: ${err.message}`)
+      setError(foutMelding('Feedback niet verstuurd', err))
       setSending(false)
     }
   }

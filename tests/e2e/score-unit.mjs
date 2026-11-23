@@ -60,7 +60,7 @@ test('de bron per toolaanroep komt uit de input van tool_start, alleen bij een t
 test('de berichtlimiet: de runner wacht de genoemde tijd en vraagt opnieuw, alleen als er nog niets gebeurde (#909)', async () => {
   const melding = 'Te veel verzoeken in korte tijd. Probeer het over 7 seconden opnieuw.'
   assert.equal(limietWacht(melding), 7)
-  assert.equal(limietWacht('Te veel verzoeken naar de API. Wacht even en probeer opnieuw.'), null)
+  assert.equal(limietWacht('Te veel verzoeken tegelijk. Wacht even en probeer het opnieuw.'), null)
   assert.equal(limietWacht(null), null)
 
   const gewacht = []

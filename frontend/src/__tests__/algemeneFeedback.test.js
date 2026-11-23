@@ -111,11 +111,11 @@ describe('het algemene feedbackformulier', () => {
   })
 
   it('houdt de tekst en meldt de fout als versturen mislukt', async () => {
-    api.postAlgemeneFeedback.mockRejectedValue(new Error('HTTP 429'))
+    api.postAlgemeneFeedback.mockRejectedValue(Object.assign(new Error('API 429'), { status: 429 }))
     await open()
     await typ('Een idee')
     await act(async () => { verstuur().click() })
-    expect(dialog().querySelector('[role="alert"]').textContent).toContain('HTTP 429')
+    expect(dialog().querySelector('[role="alert"]').textContent).toContain('Feedback niet verstuurd. De server kon het niet verwerken')
     expect(veld().value).toBe('Een idee')
   })
 

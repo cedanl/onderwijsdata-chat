@@ -13,6 +13,7 @@ import uuid
 import litellm
 import openai
 
+from core.config import get_available_models_for_user
 from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class Gebruikersfout(Exception):
 
 # Alleen een limiet is iets wat de gebruiker zelf kan oplossen (even wachten): die houdt een vaste tekst zonder ID.
 _FRIENDLY_ERRORS: list[tuple[type, str | None]] = [
-    (litellm.RateLimitError, "Te veel verzoeken naar de API. Wacht even en probeer opnieuw."),
+    (litellm.RateLimitError, "Te veel verzoeken tegelijk. Wacht even en probeer het opnieuw."),
     (litellm.BadRequestError, None),
 ]
 
@@ -43,9 +44,12 @@ _MODEL_NIET_BESCHIKBAAR = (
 
 # Zonder sleutel antwoordt geen enkel model (#790): dezelfde soort melding als hierboven, zonder `.env` of omgevingsvariabele.
 # Welke sleutel ontbreekt, staat in het log.
-MODEL_ZONDER_SLEUTEL = (
-    "Het model is nu niet beschikbaar. Probeer het later opnieuw; blijft het misgaan, meld het dan aan de beheerder."
-)
+MODEL_ZONDER_SLEUTEL = "De assistent is nu niet beschikbaar. Probeer het later opnieuw; blijft het misgaan, meld het dan via Geef feedback."
+
+# De vervolgstap bij een fout met ID (#1147): de gebruiker kent geen beheerder, wel de feedbacklink. Het ID is wat het log
+# onder die melding terugvindt.
+_MELD_VIA_FEEDBACK = "blijft het misgaan, meld het dan via Geef feedback met dit ID."
+_ANDER_MODEL = " of kies een ander model"
 
 # Alle litellm-API-fouten erven van openai.OpenAIError; een budget of timeout hoort ook bij het model.
 _MODELFOUTEN = (openai.OpenAIError, litellm.BudgetExceededError, TimeoutError)
@@ -54,6 +58,11 @@ _MODELFOUTEN = (openai.OpenAIError, litellm.BudgetExceededError, TimeoutError)
 def modelafhankelijk(exc: Exception) -> bool:
     """Kan een ander model hier wel slagen? Nee bij een fout in onze eigen code."""
     return isinstance(exc, _MODELFOUTEN)
+
+
+def ander_model_te_kiezen(username: str | None) -> bool:
+    """Heeft deze gebruiker een ander model om te kiezen? Zonder aanbod of met één model is er geen picker (#1167)."""
+    return len(get_available_models_for_user(username) or []) >= 2
 
 
 def log_interne_fout(exc: Exception, waar: str) -> str:
@@ -66,7 +75,9 @@ def log_interne_fout(exc: Exception, waar: str) -> str:
     return fout_id
 
 
-def friendly_error(exc: Exception) -> str:
+def friendly_error(exc: Exception, *, ander_model: bool = False) -> str:
+    """De melding voor de gebruiker; `ander_model`: hij kan een ander model kiezen, dus mag de tekst dat voorstellen."""
+    keuze = _ANDER_MODEL if ander_model else ""
     if isinstance(exc, Gebruikersfout):
         return f"❌ {exc}"
     for exc_type, msg in _FRIENDLY_ERRORS:
@@ -77,25 +88,24 @@ def friendly_error(exc: Exception) -> str:
     for exc_type, waar in _MODEL_NIET_BESCHIKBAAR:
         if isinstance(exc, exc_type):
             fout_id = log_interne_fout(exc, f"model/API ({waar})")
-            return (
-                f"❌ Het model is nu niet beschikbaar (fout-ID {fout_id}). Probeer het later opnieuw of kies een ander "
-                "model; blijft het misgaan, geef dit ID dan door aan de beheerder."
-            )
+            return f"❌ De assistent is nu niet beschikbaar (fout-ID {fout_id}). Probeer het later opnieuw{keuze}; {_MELD_VIA_FEEDBACK}"
     if modelafhankelijk(exc):
         # Ook een API-fout kan interne details bevatten (#503): vaste tekst, details in het log.
         fout_id = log_interne_fout(exc, "model/API")
-        return f"❌ Fout bij het model of de API (fout-ID {fout_id}). Probeer het opnieuw of kies een ander model."
+        return f"❌ Het antwoord kon niet worden gemaakt (fout-ID {fout_id}). Probeer het opnieuw{keuze}; {_MELD_VIA_FEEDBACK}"
     fout_id = log_interne_fout(exc, "verwerking")
     return f"❌ {melding_interne_fout(fout_id)}"
 
 
 def melding_interne_fout(fout_id: str) -> str:
-    """De vaste tekst voor een fout in onze eigen code, in de chat en in de REST-API (#1154)."""
-    return (
-        f"Er ging intern iets mis (fout-ID {fout_id}). Probeer het opnieuw; blijft het misgaan, geef dit ID dan door."
-    )
+    """De vaste tekst voor een fout in onze eigen code, in de chat en in de REST-API (#1154, #1147)."""
+    return f"Er ging intern iets mis (fout-ID {fout_id}). Probeer het opnieuw; {_MELD_VIA_FEEDBACK}"
 
 
-def error_event(exc: Exception) -> dict:
+def error_event(exc: Exception, *, ander_model: bool = False) -> dict:
     """Het websocket-event voor een fout; de frontend toont alleen bij een modelfout een ander model."""
-    return {"type": "error", "message": friendly_error(exc), "modelafhankelijk": modelafhankelijk(exc)}
+    return {
+        "type": "error",
+        "message": friendly_error(exc, ander_model=ander_model),
+        "modelafhankelijk": modelafhankelijk(exc),
+    }

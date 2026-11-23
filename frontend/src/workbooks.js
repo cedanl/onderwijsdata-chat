@@ -1,6 +1,7 @@
 import { STORAGE_WORKBOOKS } from './constants'
 import { fetchWorkbooks, fetchWorkbook, putWorkbook, deleteWorkbookApi } from './api'
 import { getToken, sessionEndedSince } from './auth'
+import { foutMelding } from './foutMelding'
 import { volgOpslag } from './gesprekOpslag'
 import { terugInLijst } from './verwijderenMetUitstel'
 import { AANSLUITING_ARBEIDSMARKT } from './dashboardNamen'
@@ -198,7 +199,7 @@ export async function syncWorkbook(workbook) {
   try {
     await putWorkbook(workbook.id, serverFields(workbook))
   } catch (e) {
-    return { ok: false, status: e.status, error: `Opslaan op de server mislukt: ${e.message}`, workbook }
+    return { ok: false, status: e.status, error: foutMelding('Opslaan op de server mislukt', e), workbook }
   }
   return { ok: true, workbook }
 }
