@@ -135,6 +135,27 @@ async def _handle_figure(name: str, figure, session: dict, emit: Emit) -> None:
     )
 
 
+def _is_optie(optie) -> bool:
+    """Een optie met een label: een niet-lege tekst, of een object met een niet-leeg `label`."""
+    if isinstance(optie, dict):
+        optie = optie.get("label")
+    return isinstance(optie, str) and bool(optie.strip())
+
+
+def verduidelijking_afgekeurd(call: ToolCall) -> str | None:
+    """De melding voor het model als deze `clarify_scope` geen kaart kan worden; None als er een vraag en minstens
+    twee opties zijn (#1067). De beurt gaat dan door: de gebruiker krijgt nooit een lege kaart."""
+    args = call.args or {}
+    vraag, opties = args.get("vraag"), args.get("opties")
+    heeft_vraag = isinstance(vraag, str) and bool(vraag.strip())
+    if heeft_vraag and isinstance(opties, list) and len(opties) >= 2 and all(_is_optie(o) for o in opties):
+        return None
+    return (
+        f"Fout: `{call.name}` heeft een niet-lege `vraag` en 2 of 3 `opties`, elk met een `label`, nodig. "
+        "Lever opnieuw aan, of ga door zonder verduidelijkingsvraag."
+    )
+
+
 async def _handle_clarify_scope(
     call: ToolCall,
     text_content: str,
@@ -663,6 +684,7 @@ async def run(
                         on_tool_result=partial(_bewaar_stap, session, emit),
                         tool_limits=_TOOL_LIMITS,
                         halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+                        halt_check=verduidelijking_afgekeurd,
                         max_iterations=MAX_TOOL_ITERATIONS,
                         max_result_chars=_MAX_TOOL_RESULT_CHARS,
                         check=check,

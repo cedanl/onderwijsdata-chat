@@ -108,6 +108,7 @@ def _figure_identity(figure: Any) -> str:
 
 ToolHook = Callable[[ToolCall, str, Any], Awaitable[None]]
 Check = Callable[[str, list[str]], list[str]]
+HaltCheck = Callable[[ToolCall], str | None]
 
 
 @dataclass
@@ -229,6 +230,8 @@ class _Loop:
     tool_limits: dict[str, int]
     halt_on: frozenset[str]
     wrap_up: str | None
+    # Een halt_on-aanroep die dit afkeurt (de melding) beëindigt de beurt niet: het model krijgt de melding terug (#1067).
+    halt_check: HaltCheck | None = None
     # Het recept per key, zodat een afgeleide snippet de stappen van zijn ouder herhaalt (#624).
     recept_van: Receptbron | None = None
     result: LoopResult = field(default_factory=LoopResult)
@@ -328,7 +331,7 @@ class _Loop:
             result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
             await self._run_tools(calls)
 
-            halt = next((c for c in calls if c.name in self.halt_on), None)
+            halt = next((c for c in calls if self._haltend(c)), None)
             if halt:
                 result.halted_on = halt
                 return
@@ -348,6 +351,15 @@ class _Loop:
             self.result.exhausted = True
             return
         self.result.wrapped_up = True
+
+    def _afkeuring(self, c: ToolCall) -> str | None:
+        """Waarom een halt_on-aanroep de beurt niet kan beëindigen: de melding voor het model, of None."""
+        return self.halt_check(c) if self.halt_check else None
+
+    def _haltend(self, c: ToolCall) -> bool:
+        """Beëindigt deze aanroep de beurt? Niet bij kapotte argumenten of een afgekeurde inhoud (#1067): de kaart
+        zou leeg zijn, dus het model hoort dat en gaat door."""
+        return c.name in self.halt_on and c.args is not None and self._afkeuring(c) is None
 
     def _note_error(self, name: str, content: str) -> None:
         code = fouten.code(content)
@@ -381,13 +393,15 @@ class _Loop:
         for c in calls:
             if c.id in blocked:
                 content = blocked[c.id]
-            elif c.name in self.halt_on:
+            elif self._haltend(c):
                 content = "OK"
             elif c.args is None:
                 content = (
                     f"Fout: de argumenten voor `{c.name}` waren geen geldige JSON."
                     " Lever opnieuw aan met geldige JSON-argumenten."
                 )
+            elif c.name in self.halt_on:
+                content = self._afkeuring(c) or "OK"
             else:
                 content, figure = self.cache[c.key]
                 # The same chart is shown once per run, whichever call made it (#218, #327).
@@ -435,6 +449,7 @@ async def tool_loop(
     on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
     keep_partial: Callable[[], bool] | None = None,
     wrap_up: str | None = None,
+    halt_check: HaltCheck | None = None,
     recept_van: Receptbron | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
@@ -451,7 +466,9 @@ async def tool_loop(
     budget gets one more call without tools with that message, instead of ending
     as ``exhausted`` right away.
 
-    A ``halt_on`` tool ends the turn instead of an answer (a clarification); it runs no handler.
+    A ``halt_on`` tool ends the turn instead of an answer (a clarification); it runs no handler. A call with
+    malformed arguments, or one that ``halt_check(call)`` rejects with a message, does not end the turn: the model
+    gets the error back like any other tool and goes on (#1067).
     """
     run = _Loop(
         messages=messages,
@@ -468,6 +485,7 @@ async def tool_loop(
         tool_limits=tool_limits or {},
         halt_on=halt_on,
         wrap_up=wrap_up,
+        halt_check=halt_check,
         recept_van=recept_van,
     )
     result = run.result
