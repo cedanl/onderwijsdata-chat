@@ -79,8 +79,6 @@ class Config:
         if fout := cls._nepmodel_ongeldig():
             errors.append(fout)
 
-        cls._waarschuw_zonder_pseudoniemgeheim()
-
         if ongeldig := cls._ongeldige_cors_origins():
             errors.append(
                 f"CORS_ORIGINS mag geen '*' bevatten, ook niet als patroon ({', '.join(ongeldig)}); "
@@ -90,6 +88,9 @@ class Config:
         if errors:
             # Eén foutregel, door server.py gelogd: wie de melding hier ook logt, zet haar dubbel in het log.
             raise ConfigError("; ".join(errors))
+
+        # Pas na de foutcontrole: een ongeldige configuratie geeft één regel, niet ook nog een waarschuwing (#1164).
+        cls._waarschuw_zonder_pseudoniemgeheim()
 
         logger.info(
             f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}"
