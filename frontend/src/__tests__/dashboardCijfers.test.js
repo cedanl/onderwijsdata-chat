@@ -233,7 +233,7 @@ describe('een peer zonder gegevens (#925)', () => {
 
     expect(rijen.map(r => r[1])).toEqual(['Eigen ★', 'Peer A', 'BBO de Schalm'])
     expect(rijen[2]).toEqual(['—', 'BBO de Schalm', 'geen gegevens', '—'])
-    expect(el.textContent).toContain('3 instellingen in de benchmark-regio')
+    expect(el.textContent).toContain('3 instellingen in de regio')
   })
 })
 

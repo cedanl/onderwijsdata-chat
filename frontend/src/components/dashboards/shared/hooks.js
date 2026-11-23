@@ -3,6 +3,7 @@ import { useDarkMode } from '../../../hooks/useDarkMode'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
 import { benchmarkColor, buildIndexChartOpts } from './chart-opts'
+import { isLandelijk } from './vergelijking'
 import {
   sortedEntries, yearOverYearDelta,
   buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData,
@@ -177,7 +178,7 @@ export function useRegioComputed(data, instelling) {
       : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor, perioden.ingeschrevenen)
 
     return {
-      dark, bmColor, bm, bmLabel, bmZin, hasPeers, perioden,
+      dark, bmColor, bm, bmLabel, bmZin, hasPeers, perioden, landelijk: isLandelijk(bm),
       indexOpts: buildIndexChartOpts(dark),
       peerOpts: buildPeerLinesOpts(dark, instelling),
       ingesEntries,

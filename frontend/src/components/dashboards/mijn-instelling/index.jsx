@@ -88,10 +88,10 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
         {/* ── Kerncijfers ── eerst, zodat ze op het eerste scherm en vooraan op papier staan (#1078) */}
         <Kerncijfers data={data} instelling={instelling} c={c} />
 
-        <KaartSection figureJson={data?.kaart_figure_json} />
+        <KaartSection figureJson={data?.kaart_figure_json} landelijk={c.landelijk} />
 
         {/* ── Instroom & demografie ── */}
-        <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
+        <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en de vergelijking met andere instellingen" />
         <DemografieKpis
           {...c}
           instelling={instelling}
@@ -113,13 +113,13 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
         <InstroomKpis {...c} type={data?.type} />
         <OndergrensNoot reeksen={noot('eerstejaars', 'Eerstejaars')} />
         <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf('eerstejaars')(start)} — ${tegen('eerstejaars')}`} data={c.ejLineData} indexOpts={c.indexOpts} />
-        <MarktaandeelChart data={marktData} dark={c.dark} />
-        <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} />
+        <MarktaandeelChart data={marktData} dark={c.dark} landelijk={c.landelijk} />
+        <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} landelijk={c.landelijk} />
         <GroeiRankingChart data={groeiData} dark={c.dark} />
         <InstroomRatioChart data={ratioData} dark={c.dark} type={data?.type} />
 
         {/* ── Diplomering & rendement ── */}
-        <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />
+        <SectionHeader title="Diplomering" subtitle={`Gediplomeerden per jaar, vergeleken met ${bm.populatie || 'de vergelijkingsgroep'}`} />
         <DiplomeringKpis {...c} ratio={ratio} noot={diplNoot} />
         <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
         <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf('gediplomeerden')(start)} — ${tegen('gediplomeerden')}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />

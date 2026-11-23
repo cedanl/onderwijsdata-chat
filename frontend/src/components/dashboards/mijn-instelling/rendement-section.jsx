@@ -85,7 +85,7 @@ function RendementTrendChart({ data, instelling, dark }) {
   const { tick, grid, label } = darkColors(dark)
   const { rendement_per_jaar: rendementPerJaar, benchmark_rendement: benchmarkRendement, peers_rendement: peersRendement } = data
   // De kop noemt de groep met aantal en terugval; de legenda alleen de groep (#951: daar stond de hele kop).
-  const benchmarkLabel = data.benchmark_label || 'Regiogemiddelde'
+  const benchmarkLabel = data.benchmark_label || 'Gemiddelde vergelijkingsgroep'
   const legendaLabel = data.benchmark_populatie ? `Gemiddelde ${data.benchmark_populatie}` : benchmarkLabel
   const nPerJaar = data.benchmark_n_per_jaar
   const soort = data.perioden?.cohorten
@@ -225,12 +225,12 @@ export function RendementSection({ data, instelling, dark }) {
   const naam = data.definitie?.naam || 'Diplomarendement'
   return (
     <>
-      <SectionHeader title={naam} subtitle="Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met de regio" />
+      <SectionHeader title={naam} subtitle={`Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met ${data.benchmark_populatie || 'de vergelijkingsgroep'}`} />
       <RendementDefinitie definitie={data.definitie} />
       <RendementKpis data={data} dark={dark} />
       <div style={NOOT}><WeggelatenNoten weggelaten={data.weggelaten} jaar={j => cohortJaar(data, j)} /></div>
       <RendementTrendChart data={data} instelling={instelling} dark={dark} />
-      <div style={NOOT}><WeggelatenNoten weggelaten={data.peers_weggelaten} peers label="niet in het regiogemiddelde" jaar={j => cohortJaar(data, j)} /></div>
+      <div style={NOOT}><WeggelatenNoten weggelaten={data.peers_weggelaten} peers label="niet in het gemiddelde van de vergelijkingsgroep" jaar={j => cohortJaar(data, j)} /></div>
       <CohortenTable data={data} dark={dark} />
     </>
   )

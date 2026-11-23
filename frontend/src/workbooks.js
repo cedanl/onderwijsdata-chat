@@ -11,7 +11,7 @@ export function mijnInstellingBeschrijving(sector) {
   const onderdelen = ['Kerncijfers', 'instroom', 'diplomering']
   if (sector === 'mbo') onderdelen.push("diploma's per eerstejaars")
   if (sector === 'hbo' || sector === 'wo') onderdelen.push('gender')
-  return `${onderdelen.join(', ')} en regionale benchmark in één overzicht.`
+  return `${onderdelen.join(', ')} en de vergelijking met andere instellingen in één overzicht.`
 }
 
 export const BUILTIN_MIJN_INSTELLING = {
