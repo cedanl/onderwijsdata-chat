@@ -68,7 +68,8 @@ dagen verwijdert niets. Dezelfde taak ruimt ook de korte staat op: tokengebruik 
   `frontend/src/App.jsx`), en "Verwijder al mijn gegevens" ook.
 - `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
   favoriete rapporten; geen titels of inhoud. Blijft na uitloggen staan (`NOT_SESSION_DATA_KEYS`): de chat en
-  `/rapporten` tonen een ID alleen als het bij een gesprek of rapport van het ingelogde account hoort.
+  `/rapporten` tonen een ID alleen als het bij een gesprek of rapport van het ingelogde account hoort. "Verwijder al
+  mijn gegevens" wist de lijst wel (`wisRecent`, #1115): de ID's verwijzen dan naar gesprekken die niet meer bestaan.
 - `openEDUdata_te_verwijderen` (#801): de ID's van verwijderde gesprekken waarvan de server de verwijdering nog niet
   bevestigde; geen titels of inhoud. Hoort bij het account (`SESSION_DATA_KEYS`): uitloggen stuurt die verwijderingen
   eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.

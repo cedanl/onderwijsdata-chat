@@ -22,6 +22,7 @@ import { resolveMaxMessageChars } from './messageLength'
 import { resolveMaxChatTurns, resolveMaxHistory } from './contextLimits'
 import { applyMode } from './theme'
 import { wisPwaCaches } from './pwaCaches'
+import { wisRecent } from './recentBekeken'
 import { NavSlotContext } from './navSlot'
 import { BronnenAan } from './bronnenAan'
 import SkipLink, { MAIN_ID } from './components/SkipLink'
@@ -286,6 +287,7 @@ function AppShell() {
   const handleGegevensVerwijderd = () => {
     clearToken()
     resetSession()
+    wisRecent() // not part of a logout (#603), but the IDs it holds point to conversations that are gone now (#1115)
     setGegevensVerwijderd(true)
   }
 

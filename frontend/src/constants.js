@@ -34,7 +34,7 @@ export const NOT_SESSION_DATA_KEYS = [
   STORAGE_TOKEN,      // the login itself: clearToken removes it, together with the cached userInfo
   STORAGE_MODEL,      // a model id, a device preference without user data: stays on logout
   STORAGE_USERINFO,   // the cached user info of the login: clearToken removes it together with the token
-  STORAGE_RECENT,     // only IDs, no titles; shown only for conversations and reports of the account logged in (#603)
+  STORAGE_RECENT,     // only IDs, no titles; shown only for conversations and reports of the account logged in (#603); "Verwijder al mijn gegevens" empties it (#1115)
   STORAGE_VOORGEVULDE_VRAAG, // sessionStorage: a question from a link (#709) has to outlive the login; the chat takes it once
 ]
 

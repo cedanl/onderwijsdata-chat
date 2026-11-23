@@ -94,7 +94,7 @@ describe('App: Verwijder al mijn gegevens', APP_TEST, () => {
     expect(container.querySelector('.mijn-gegevens-export-btn')).not.toBeNull()
   })
 
-  it('after success empties the browser copy, the profile and the login, keeps model and recent, and shows the login page', async () => {
+  it('after success empties the browser copy, the profile, the login and the recent list, keeps the model, and shows the login page', async () => {
     vulLocalStorage()
     serve({ required: true })
     await render()
@@ -115,7 +115,8 @@ describe('App: Verwijder al mijn gegevens', APP_TEST, () => {
       expect(localStorage.getItem(key), key).toBeNull()
     }
     expect(localStorage.getItem(STORAGE_MODEL)).toBe('claude')
-    expect(localStorage.getItem(STORAGE_RECENT)).toBe('{"gesprekken":["c1"]}')
+    // The IDs of the deleted conversations go too (#1115); logging out leaves them (recentBekeken.test.js).
+    expect(localStorage.getItem(STORAGE_RECENT)).toBeNull()
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/auth/logout')).toBe(false)
 
     expect(container.querySelector('#login-username')).not.toBeNull()

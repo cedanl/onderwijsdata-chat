@@ -7,7 +7,7 @@ import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '../App'
 import { endSession } from '../auth'
-import { STORAGE_TOKEN, STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
+import { STORAGE_TOKEN, STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES, STORAGE_RECENT } from '../constants'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
@@ -102,11 +102,14 @@ afterEach(async () => {
 describe('App wipes the dashboard chat', APP_TEST, () => {
   it('on logout', async () => {
     await openDashboards()
+    localStorage.setItem(STORAGE_RECENT, '{"gesprekken":["c1"]}')
 
     await click('Uitloggen')
 
     expect(container.querySelector('#login-username')).not.toBeNull()
     expect(dcKeys()).toEqual([])
+    // The recent list stays on logout (#603); only "Verwijder al mijn gegevens" empties it (#1115).
+    expect(localStorage.getItem(STORAGE_RECENT)).toBe('{"gesprekken":["c1"]}')
   })
 
   it('on the SRAM landing', async () => {

@@ -118,7 +118,7 @@ export default function PrivacyInhoud() {
           Welke gesprekken en rapporten je hier het laatst opende en welke rapporten je als favoriet markeerde, staan
           er als nummers, zonder titel of inhoud. Die blijven na uitloggen staan, zodat je ze een volgende keer
           terugvindt; ze verschijnen alleen bij een gesprek of rapport van het account waarmee je inlogt. Anderen met
-          hetzelfde account zien ze niet.
+          hetzelfde account zien ze niet. Verwijder je al je gegevens, dan gaan ook deze nummers weg.
         </li>
         <li>
           Een sessie duurt {sessie} uur en wordt bij gebruik verlengd tot ten hoogste {sessieMax} uur na het inloggen. Tijdens het
