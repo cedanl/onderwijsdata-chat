@@ -76,6 +76,19 @@ describe('stopknop (#589, B5)', () => {
     expect(knopMetNaam('Verstuur bericht')).toBeUndefined()
   })
 
+  // #1087: de server heeft even nodig voor een tool die hij niet kan afbreken; de knop zegt dat de stop is aangekomen.
+  it('heet "Stoppen…" zodra erop is gedrukt, tot de server de run beëindigt', async () => {
+    await render(createElement(ChatInputFooter, {
+      connected: true, busy: true, stopping: true, models: [], selectedModel: '', onModelChange: vi.fn(),
+      onStop: vi.fn(), onSend: vi.fn(), canSend: true, max: MAX_MESSAGE_CHARS,
+    }))
+    const knop = knopMetNaam('Stoppen…')
+    expect(knop).toBeDefined()
+    expect(knop.getAttribute('title')).toBe('Stoppen…')
+    expect(knop.getAttribute('aria-disabled')).toBe('true')
+    expect(knopMetNaam('Stop genereren')).toBeUndefined()
+  })
+
   it('is er niet als er niets loopt', async () => {
     await render(footer(false))
     expect(knopMetNaam('Stop genereren')).toBeUndefined()

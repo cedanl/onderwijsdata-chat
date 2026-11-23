@@ -24,7 +24,7 @@ from core.config import MAX_TOKENS
 from core.errors import log_interne_fout
 from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, dispatch, fouten, outcome, store
+from tools import LABELS, afbreken, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
 from tools.snippet import Receptbron
@@ -181,7 +181,8 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
     label = LABELS.get(call.name, call.name)
     logger.debug("TOOL CALL  %-30s args=%s", call.name, call.arguments)
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
-    result, figure = await asyncio.to_thread(dispatch, call.name, call.args)
+    # Met een afbreeksignaal: wordt de aanroep geannuleerd (stop), dan stopt een tool die dat kan, zoals de sandbox (#1087).
+    result, figure = await afbreken.in_thread(dispatch, call.name, call.args)
     result = str(result)
     # Welke stap het geheugen opjaagt (#546): het proces en de datastore na elke tool, alleen getallen.
     gebruik = store.gebruik()
@@ -347,7 +348,9 @@ class _Loop:
                 }
             )
             result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
-            await self._run_tools(calls)
+            if not await self._run_tools(calls):
+                result.aborted = "tools"
+                return
 
             halt = next((c for c in calls if self._haltend(c)), None)
             if halt:
@@ -399,7 +402,8 @@ class _Loop:
             self.locked[name] = code
             logger.warning("TOOL OP SLOT  %s: %dx %s", name, n, code)
 
-    async def _run_tools(self, calls: list[ToolCall]) -> None:
+    async def _run_tools(self, calls: list[ToolCall]) -> bool:
+        """Draai de tools van deze ronde en zet hun uitkomsten in het gesprek; False als een stop ze afbrak (#1087)."""
         blocked: dict[str, str] = {}
         for c in calls:
             if c.name in self.locked:
@@ -416,7 +420,14 @@ class _Loop:
             for c in calls
             if c.id not in blocked and c.name not in self.halt_on and c.args is not None and c.key not in self.cache
         }
-        outcomes = await asyncio.gather(*[_execute_tool(c, self.emit, self.recept_van) for c in runnable.values()])
+        # Een stop wacht niet tot de tools klaar zijn: een tool die niet af te breken is (een bronaanroep) loopt in zijn
+        # thread af en zijn uitkomst gaat verloren, de beurt eindigt als gestopt (#1087).
+        gestopt, outcomes = await tenzij_gestopt(
+            asyncio.gather(*[_execute_tool(c, self.emit, self.recept_van) for c in runnable.values()]),
+            self.stop_event,
+        )
+        if gestopt:
+            return False
         self.cache.update(zip(runnable, outcomes, strict=True))
 
         for c in calls:
@@ -456,6 +467,7 @@ class _Loop:
                     "content": _truncate(content, self.max_result_chars, tool=c.name),
                 }
             )
+        return True
 
 
 async def tool_loop(

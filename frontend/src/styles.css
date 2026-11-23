@@ -708,6 +708,7 @@ html.dark .login-melding { color: var(--accent-text); }
 .reasoning-step.buiten_scope .reasoning-step-dot { margin-top: 6px; }
 .reasoning-step.recovered { color: var(--gray-500); }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
+.reasoning-step-dot.stopped { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
 /* Code under its own step on a phone (#595), folded behind "Bekijk code". Only the text fills the row:

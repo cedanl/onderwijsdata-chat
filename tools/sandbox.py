@@ -2,7 +2,7 @@
 
 Het script draait niet in de server maar in `tools/sandbox_kind.py`, gestart met
 dezelfde interpreter (`sys.executable -I`), een lege omgeving (geen secrets) en een
-eigen, lege werkmap. Een time-out stopt het proces echt (kill), niet een thread.
+eigen, lege werkmap. Een time-out of een stop van de gebruiker (#1087) stopt het proces echt (kill), niet een thread.
 
 De data gaat erheen als pickle (van ons, dus te vertrouwen); de uitkomst komt terug
 als JSON, want wat het kindproces schrijft vertrouwen we niet.
@@ -14,6 +14,7 @@ import pickle
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,8 @@ from core.config import MAX_SANDBOX_RUNS, SANDBOX_QUEUE_TIMEOUT_S
 from core.gelijktijdig import Procesplaatsen
 from core.logging_util import tekst_kenmerk
 
+from . import afbreken
+
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 10
@@ -31,6 +34,9 @@ _KIND = Path(__file__).with_name("sandbox_kind.py")
 _EEN_DRAAD = dict.fromkeys(("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"), "1")
 # Hooguit zoveel kindprocessen tegelijk op de pod (#688); de rest wacht even, daarna een melding voor het model.
 _PROCESSEN = Procesplaatsen(max_tegelijk=MAX_SANDBOX_RUNS, wacht_s=SANDBOX_QUEUE_TIMEOUT_S)
+GESTOPT = "Het script is afgebroken omdat de gebruiker stopte."
+# Zo vaak kijkt de wachtlus of het kindproces klaar is of de beurt is gestopt.
+_POLL_S = 0.1
 BEZET = "De analyseomgeving is nu bezet door andere gebruikers. Probeer het over een minuut opnieuw."
 
 
@@ -54,19 +60,40 @@ def voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Ui
 def _voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Uitkomst:
     invoer = pickle.dumps({"code": code, "df": df, "tabellen": tabellen}, protocol=pickle.HIGHEST_PROTOCOL)
     with tempfile.TemporaryDirectory(prefix="run_analysis-") as werkmap:
-        try:
-            proces = subprocess.run(
-                [sys.executable, "-I", "-B", str(_KIND)],
-                input=invoer,
-                capture_output=True,
-                timeout=TIMEOUT_SECONDS,
-                cwd=werkmap,
-                env={"HOME": werkmap, "LANG": "C.UTF-8", **_EEN_DRAAD},
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            return Uitkomst(fout=f"Script duurde langer dan {TIMEOUT_SECONDS} seconden en is afgebroken.")
-    return _lees(proces)
+        proces = _draai(invoer, werkmap)
+    return proces if isinstance(proces, Uitkomst) else _lees(proces)
+
+
+def _draai(invoer: bytes, werkmap: str) -> subprocess.CompletedProcess | Uitkomst:
+    """Het kindproces tot het klaar is. Een time-out of een stop (`tools.afbreken`) doodt het echt en geeft de melding.
+
+    Elke `_POLL_S` kijkt de wachtlus of de beurt is gestopt (#1087): zonder dat rekende het kindproces door tot de
+    time-out, ook als niemand nog op de uitkomst wachtte."""
+    eind = time.monotonic() + TIMEOUT_SECONDS
+    with subprocess.Popen(
+        [sys.executable, "-I", "-B", str(_KIND)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=werkmap,
+        env={"HOME": werkmap, "LANG": "C.UTF-8", **_EEN_DRAAD},
+    ) as proces:
+        data: bytes | None = invoer
+        while True:
+            try:
+                stdout, stderr = proces.communicate(data, timeout=_POLL_S)
+                return subprocess.CompletedProcess(proces.args, proces.returncode, stdout, stderr)
+            except subprocess.TimeoutExpired:
+                data = None  # de invoer is bij de eerste aanroep al in de pijp gegaan
+            if afbreken.gevraagd():
+                melding = GESTOPT
+            elif time.monotonic() >= eind:
+                melding = f"Script duurde langer dan {TIMEOUT_SECONDS} seconden en is afgebroken."
+            else:
+                continue
+            proces.kill()
+            proces.communicate()
+            return Uitkomst(fout=melding)
 
 
 def _log_zonder_uitkomst(proces: subprocess.CompletedProcess) -> None:
