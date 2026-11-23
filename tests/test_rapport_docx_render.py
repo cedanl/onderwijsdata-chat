@@ -1,6 +1,7 @@
 """Het rapport als Word-document (#1038): het sjabloon, de inhoud en de grafieken, teruggelezen met python-docx."""
 
 import zipfile
+from datetime import UTC, datetime
 from io import BytesIO
 
 import pytest
@@ -249,6 +250,41 @@ def test_een_lange_titel_staat_heel_in_het_document_en_ingekort_in_de_eigenschap
     assert zipfile.ZipFile(BytesIO(data)).testzip() is None
     assert _alineas(doc)[0] == ("Title", titel)
     assert doc.core_properties.title == titel[: render_module.MAX_EIGENSCHAP]
+
+
+def test_de_eigenschappen_zijn_die_van_het_rapport_niet_van_het_sjabloon():
+    """#1121: aanmaak- en wijzigdatum zijn het moment van renderen (UTC), auteur is de opsteller uit het rapport."""
+    vooraf = datetime.now(UTC).replace(microsecond=0)
+    doc, _ = _document()
+    achteraf = datetime.now(UTC)
+    eigenschappen = doc.core_properties
+    assert vooraf <= eigenschappen.created <= achteraf
+    assert eigenschappen.modified == eigenschappen.created
+    assert eigenschappen.author == "jansen"
+    assert eigenschappen.last_modified_by == "jansen"
+    assert eigenschappen.revision == 1
+
+
+def test_zonder_opsteller_zijn_auteur_en_laatst_gewijzigd_door_leeg_niet_de_toolnaam():
+    html = RAPPORT_HTML.replace("Opgesteld door <b>jansen</b> met", "Opgesteld met")
+    doc, _ = _document(html)
+    assert doc.core_properties.author == ""
+    assert doc.core_properties.last_modified_by == ""
+
+
+def test_een_opsteller_met_stuurtekens_of_een_lange_naam_blijft_een_geldige_eigenschap():
+    naam = "Jan\x07 " + "x" * 300
+    doc, data = _document(RAPPORT_HTML.replace("<b>jansen</b>", f"<b>{naam}</b>"))
+    assert zipfile.ZipFile(BytesIO(data)).testzip() is None
+    assert doc.core_properties.author == ("Jan " + "x" * 300)[: render_module.MAX_EIGENSCHAP]
+
+
+def test_het_sjabloon_verandert_niet_door_de_eigenschappen():
+    """De opmaak blijft die van het Npuls-sjabloon: alleen docProps/core.xml verschilt."""
+    sjabloon = zipfile.ZipFile(SJABLOON)
+    nieuw = zipfile.ZipFile(BytesIO(_document()[1]))
+    assert "word/styles.xml" in nieuw.namelist()
+    assert nieuw.read("word/styles.xml") == sjabloon.read("word/styles.xml")
 
 
 # ── Grafieken uit het verzoek ─────────────────────────────────────────────────────────────────────────────────────
