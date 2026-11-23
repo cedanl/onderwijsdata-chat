@@ -6,9 +6,11 @@ Provides JSON logging for Kubernetes log aggregation.
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 
 from core.logging_context import GEEN, VerbindingFilter
+
+_UVICORN_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
 
 
 class JSONFormatter(logging.Formatter):
@@ -19,7 +21,8 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_obj = {
-            "timestamp": datetime.utcnow().isoformat(),
+            # Het moment van de regel, met zone (+00:00): een logplatform leest een naïeve tijd als lokale tijd (#1153).
+            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -32,6 +35,23 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             log_obj["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_obj, default=str)
+
+
+def _uvicorn_via_root() -> None:
+    """De loggers van uvicorn schrijven via de handler van de root-logger, in dezelfde vorm als de rest (#1152).
+
+    Uvicorn zet bij het starten eigen tekst-handlers op `uvicorn` en `uvicorn.access`, vóór het laden van de app; zonder
+    dit staan start-, stop- en foutregels (en elke tracebackregel) als platte tekst tussen het JSON-log.
+
+    Het toegangslog gaat uit (#1114): het schrijft per verzoek het client-adres en het volledige pad met gespreks- en
+    werkboek-ID's, en koppelt zo een gesprek aan een bezoeker. Het log valt buiten "gesprek verwijderen".
+    """
+    for naam in _UVICORN_LOGGERS:
+        logger = logging.getLogger(naam)
+        logger.handlers.clear()
+        logger.propagate = True
+        logger.setLevel(logging.NOTSET)
+    logging.getLogger("uvicorn.access").disabled = True
 
 
 def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
@@ -62,6 +82,8 @@ def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
     console_handler.addFilter(VerbindingFilter())
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
+
+    _uvicorn_via_root()
 
     # Reduce noise from verbose libraries
     logging.getLogger("LiteLLM").setLevel(logging.WARNING)
