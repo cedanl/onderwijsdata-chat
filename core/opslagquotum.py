@@ -46,10 +46,11 @@ def toets(username: str, soort: str, item_id: str, nieuw: int) -> str | None:
         return None
     stand = db.opslagstand(username, soort, item_id)
     bestaat = stand["item"] is not None
-    if not bestaat and soort == "gesprek" and 0 < MAX_GESPREKKEN <= stand["gesprekken"]:
+    gesprekken, werkboeken, grootte = (stand[k] or 0 for k in ("gesprekken", "werkboeken", "grootte"))
+    if not bestaat and soort == "gesprek" and 0 < MAX_GESPREKKEN <= gesprekken:
         return MELDING_GESPREKKEN.format(n=MAX_GESPREKKEN)
-    if not bestaat and soort == "werkboek" and 0 < MAX_WERKBOEKEN <= stand["werkboeken"]:
+    if not bestaat and soort == "werkboek" and 0 < MAX_WERKBOEKEN <= werkboeken:
         return MELDING_WERKBOEKEN.format(n=MAX_WERKBOEKEN)
-    if MAX_OPSLAG_BYTES > 0 and stand["grootte"] - (stand["item"] or 0) + nieuw > MAX_OPSLAG_BYTES:
+    if MAX_OPSLAG_BYTES > 0 and grootte - (stand["item"] or 0) + nieuw > MAX_OPSLAG_BYTES:
         return MELDING_RUIMTE.format(mb=MAX_OPSLAG_BYTES // (1024 * 1024) or 1)
     return None
