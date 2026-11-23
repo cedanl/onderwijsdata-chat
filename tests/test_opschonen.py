@@ -305,6 +305,68 @@ def test_een_bestaand_werkboek_krijgt_bij_de_migratie_nu_als_laatst_gebruikt(tmp
     assert _ids(pad, "SELECT id FROM workbooks") == {"w"}
 
 
+# ── Korte staat: tokengebruik, intrekkingen en limiettellers (#1113) ──
+
+
+def _dag(dagen_geleden: int) -> str:
+    return (NU - timedelta(days=dagen_geleden)).date().isoformat()
+
+
+def _korte_staat(pad) -> None:
+    """Van elke tabel een verlopen en een levende rij."""
+    for dagen, sleutel in ((63, "h1:oud"), (61, "h1:jong")):
+        _sql(pad, "INSERT INTO tokengebruik (sleutel, dag, eenheden) VALUES (?, ?, 5)", (sleutel, _dag(dagen)))
+    for tabel, kolom in (("revoked_tokens", "token_hash"), ("revoked_users", "user_hash")):
+        extra = ", 0" if tabel == "revoked_users" else ""
+        kolommen = f"{kolom}, expires_at{', revoked_before' if extra else ''}"
+        for naam, verloopt in (("verlopen", _epoch(1)), ("levend", _epoch(-1))):
+            _sql(pad, f"INSERT INTO {tabel} ({kolommen}) VALUES (?, ?{extra})", (naam, verloopt))
+    for sleutel, verloopt in (("h1:verlopen", _epoch(0.01) * 1000), ("h1:levend", _epoch(-0.01) * 1000)):
+        _sql(pad, "INSERT INTO rate_limit_hits (bucket, sleutel, verloopt) VALUES ('login', ?, ?)", (sleutel, verloopt))
+
+
+def test_tokengebruik_van_63_dagen_gaat_weg_en_dat_van_61_dagen_blijft(pad):
+    _korte_staat(pad)
+
+    aantallen = opschonen.schoon_op(_grenzen())
+
+    assert _ids(pad, "SELECT sleutel FROM tokengebruik") == {"h1:jong"}
+    assert aantallen["tokengebruik"] == 1
+
+
+def test_verlopen_intrekkingen_en_limietpogingen_gaan_weg_levende_blijven(pad):
+    _korte_staat(pad)
+
+    aantallen = opschonen.schoon_op(_grenzen())
+
+    assert _ids(pad, "SELECT token_hash FROM revoked_tokens") == {"levend"}
+    assert _ids(pad, "SELECT user_hash FROM revoked_users") == {"levend"}
+    assert _ids(pad, "SELECT sleutel FROM rate_limit_hits") == {"h1:levend"}
+    assert (aantallen["revoked_tokens"], aantallen["revoked_users"], aantallen["rate_limit_hits"]) == (1, 1, 1)
+
+
+def test_droog_telt_de_korte_staat_zonder_te_verwijderen(pad):
+    _korte_staat(pad)
+    voor = _alles(pad)
+
+    geteld = opschonen.tel(_grenzen())
+
+    assert _alles(pad) == voor
+    assert {
+        t: geteld[t] for t in ("tokengebruik", "revoked_tokens", "revoked_users", "rate_limit_hits")
+    } == dict.fromkeys(("tokengebruik", "revoked_tokens", "revoked_users", "rate_limit_hits"), 1)
+
+
+def test_de_opdrachtregel_noemt_de_aantallen_van_de_korte_staat(pad, capsys):
+    _korte_staat(pad)
+
+    assert opschonen.main([], nu=NU) == 0
+
+    uitvoer = capsys.readouterr().out
+    for tabel in ("tokengebruik", "revoked_tokens", "revoked_users", "rate_limit_hits"):
+        assert f"{tabel}=1" in uitvoer
+
+
 # ── Droog, transactie en de opdrachtregel ──
 
 
@@ -339,6 +401,10 @@ def test_droog_telt_wat_de_echte_run_verwijdert_en_verwijdert_zelf_niets(pad):
         "feedback": 1,
         "algemene_feedback": 0,
         "workbooks": 1,
+        "tokengebruik": 0,
+        "revoked_tokens": 0,
+        "revoked_users": 0,
+        "rate_limit_hits": 0,
     }
     # Een tweede run vindt niets meer.
     assert set(opschonen.schoon_op(_grenzen()).values()) == {0}

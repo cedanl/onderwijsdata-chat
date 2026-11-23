@@ -12,6 +12,10 @@ Termijnen (besluit 21-10-2026), in te stellen in core/config.py:
 - Bewijsrijen zonder gesprek (`beurtbewijs`, ADR-009): 90 dagen na `created_at`, zoals een recept zonder gesprek.
 - Rapporten en dashboards (`workbooks`): 365 dagen nadat ze voor het laatst zijn opgeslagen of geopend
   (`laatst_gebruikt`). Langer dan een gesprek: een rapport is het resultaat dat je bewaart en terugkijkt.
+- Korte staat (`db.verlopen_staat`, #1113): tokengebruik na `TOKENGEBRUIK_DAGEN` (62), ingetrokken sessies en accounts
+  (`revoked_tokens`, `revoked_users`) na het verlopen van hun token en pogingen in `rate_limit_hits` na hun venster.
+  De app ruimt die ook op bij de start en bij intrekken, maar een pod die weken niet herstart en waar niemand uitlogt,
+  behield ze anders langer dan de termijn in de privacytekst.
 
 Veiligheid: de grens is één expliciet tijdstip (`grenzen`, uit een opgegeven `nu`); een rij precies op de grens
 blijft. Een termijn die geen geheel getal is of korter dan 7 dagen, verwijdert niets. Alles gebeurt in één
@@ -38,15 +42,19 @@ logger = logging.getLogger(__name__)
 
 MINIMUM_DAGEN = 7
 
-# De tabellen die de opschoning raakt, in de volgorde van de uitvoer.
-SOORTEN = (
-    "conversations",
-    "data_recipes",
-    "beurtbewijs",
+# Tabellen waarvan de verlopen rijen met één DELETE op hun voorwaarde weggaan; de andere drie volgen het gesprek.
+_PER_RIJ = (
     "feedback",
     "algemene_feedback",
     "workbooks",
+    "tokengebruik",
+    "revoked_tokens",
+    "revoked_users",
+    "rate_limit_hits",
 )
+
+# De tabellen die de opschoning raakt, in de volgorde van de uitvoer.
+SOORTEN = ("conversations", "data_recipes", "beurtbewijs", *_PER_RIJ)
 
 
 class OngeldigeTermijn(ValueError):
@@ -65,6 +73,7 @@ class Grenzen:
 
     gesprekken: datetime
     rapporten: datetime
+    nu: datetime  # voor de korte staat (db.verlopen_staat), die geen termijn uit de config heeft
 
 
 def _dagen(naam: str, waarde: object) -> int:
@@ -92,7 +101,7 @@ def termijnen(gesprekken: object = _UIT_CONFIG, rapporten: object = _UIT_CONFIG)
 def grenzen(t: Termijnen, nu: datetime) -> Grenzen:
     if nu.tzinfo is None:
         raise ValueError("nu heeft een tijdzone nodig")
-    return Grenzen(gesprekken=nu - timedelta(days=t.gesprekken), rapporten=nu - timedelta(days=t.rapporten))
+    return Grenzen(gesprekken=nu - timedelta(days=t.gesprekken), rapporten=nu - timedelta(days=t.rapporten), nu=nu)
 
 
 def _iso(tijd: datetime) -> str:
@@ -130,6 +139,7 @@ def _voorwaarden(g: Grenzen) -> dict[str, tuple[str, tuple]]:
         "feedback": ("created_at < ?", (gesprek_iso,)),
         "algemene_feedback": ("created_at < ?", (gesprek_iso,)),
         "workbooks": ("laatst_gebruikt < ?", (int(g.rapporten.timestamp()),)),
+        **db.verlopen_staat(g.nu),
     }
 
 
@@ -168,7 +178,7 @@ def _verwijder(conn: Any, g: Grenzen) -> dict[str, int]:
     for tabel in ("data_recipes", "beurtbewijs"):
         wezen = f"DELETE FROM {tabel} WHERE created_at < ? AND NOT {_bij_gesprek(tabel, 'conv_id', False)}"
         aantallen[tabel] += db._execute(conn, wezen, (_iso(g.gesprekken),)).rowcount
-    for tabel in ("feedback", "algemene_feedback", "workbooks"):
+    for tabel in _PER_RIJ:
         waar, params = voorwaarden[tabel]
         aantallen[tabel] = db._execute(conn, f"DELETE FROM {tabel} WHERE {waar}", params).rowcount
     return {tabel: aantallen[tabel] for tabel in SOORTEN}

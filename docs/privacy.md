@@ -59,7 +59,7 @@ Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taa
 termijnen staan in de tabel hierboven: gesprekken en feedback 90 dagen, rapporten en dashboards 365 dagen, langer
 omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te stellen met
 `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7
-dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen buiten deze opschoning.
+dagen verwijdert niets. Dezelfde taak ruimt ook de korte staat op: tokengebruik na 62 dagen, ingetrokken sessies en accounts als hun sessie is verlopen, en pogingen in `rate_limit_hits` als ze uit het venster van de limiet zijn gevallen (#1113); dat gebeurt dus ook op een pod die weken niet herstart. De serverlogs en de back-ups van de beheerder vallen buiten deze opschoning.
 
 ## Wat in je browser staat
 

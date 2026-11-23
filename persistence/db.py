@@ -668,14 +668,28 @@ def init_db() -> None:
         conn.commit()
 
 
+def verlopen_staat(nu: datetime) -> dict[str, tuple[str, tuple]]:
+    """Per tabel met korte staat wat op `nu` verlopen is, als WHERE met parameters (#1113).
+
+    Ingetrokken sessies en accounts verlopen met hun token (verificatie weigert zo'n token zelf), een poging in
+    `rate_limit_hits` als zij uit het venster van de limiet valt, en tokengebruik na `TOKENGEBRUIK_DAGEN`. Eén plek voor
+    twee gebruikers: `purge_expired_revocations` bij de start en bij intrekken, en de nachtelijke opschoning
+    (persistence/opschonen.py), die ook een pod bereikt die weken niet herstart.
+    """
+    seconden = int(nu.timestamp())
+    grens = (nu.astimezone(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
+    return {
+        "revoked_tokens": ("expires_at < ?", (seconden,)),
+        "revoked_users": ("expires_at < ?", (seconden,)),
+        "rate_limit_hits": ("verloopt <= ?", (seconden * 1000,)),
+        "tokengebruik": ("dag < ?", (grens,)),
+    }
+
+
 def purge_expired_revocations(conn: Any) -> None:
-    """Drop denylist rows whose token has expired: verification rejects such a token on its own."""
-    nu = int(time.time())
-    _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
-    _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
-    _execute(conn, "DELETE FROM rate_limit_hits WHERE verloopt <= ?", (nu * 1000,))
-    grens = (datetime.now(UTC).date() - timedelta(days=TOKENGEBRUIK_DAGEN)).isoformat()
-    _execute(conn, "DELETE FROM tokengebruik WHERE dag < ?", (grens,))
+    """Drop the short-lived state that has expired: denylist rows, rate-limit attempts and old token usage."""
+    for tabel, (waar, params) in verlopen_staat(datetime.now(UTC)).items():
+        _execute(conn, f"DELETE FROM {tabel} WHERE {waar}", params)
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
