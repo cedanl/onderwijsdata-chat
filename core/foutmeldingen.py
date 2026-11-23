@@ -3,7 +3,8 @@
 FastAPI antwoordt bij ongeldige invoer met pydantic's lijst ("Field required", "Input should be ...",
 met de verstuurde waarde erin) en bij een onbekend pad met Starlette's "Not Found". Deze handlers
 vervangen alleen die standaardteksten. Wat een route zelf meldt ("Gesprek niet gevonden", een 429 met
-Retry-After) gaat ongewijzigd door FastAPI's eigen handler, met de headers erbij.
+Retry-After) gaat ongewijzigd door FastAPI's eigen handler, met de headers erbij. Een uitzondering die geen
+route afving krijgt een JSON-500 met fout-ID (`onverwachte_fout`, #1154).
 """
 
 from http import HTTPStatus
@@ -13,6 +14,8 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from core.errors import log_interne_fout, melding_interne_fout
 
 ONGELDIGE_INVOER = "Ongeldige invoer. Controleer de gegevens en probeer opnieuw."
 NIET_GEVONDEN = "Niet gevonden"
@@ -39,6 +42,19 @@ async def _http_fout(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, StarletteHTTPException):  # alleen hiervoor geregistreerd; voor de typechecker
         raise exc
     return await http_exception_handler(request, _vertaald(exc))
+
+
+def onverwachte_fout(request: Request, exc: Exception) -> JSONResponse:
+    """Het antwoord op een uitzondering die een route niet afving (#1154): een 500 in JSON met een fout-ID.
+
+    Geen exception handler voor `Exception`: Starlette draait die in ServerErrorMiddleware, buiten alle
+    middleware, dus het antwoord kreeg geen security-headers en geen `Cache-Control: no-store`. De
+    middleware `security_headers` roept deze functie zelf aan en zet die headers dan wel. Het log krijgt het
+    type en een kenmerk van de uitzondering onder het fout-ID, de traceback op DEBUG (`log_interne_fout`).
+    """
+    route = request.scope.get("route")  # het pad met {parameters}, niet de waarden: die kunnen een id of naam zijn
+    fout_id = log_interne_fout(exc, f"{request.method} {getattr(route, 'path', 'onbekende route')}")
+    return JSONResponse({"detail": melding_interne_fout(fout_id)}, status_code=500)
 
 
 def registreer(app: FastAPI) -> None:

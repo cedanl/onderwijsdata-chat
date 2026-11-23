@@ -4,6 +4,8 @@ De handlers vervangen alleen wat FastAPI en Starlette zelf zeggen: pydantic's li
 en de standaardzinnen bij een 404 of 405. Wat een route zelf meldt, blijft zoals het was.
 """
 
+import logging
+import re
 from typing import Annotated
 
 import pytest
@@ -163,3 +165,57 @@ def test_server_onbekend_werkboek_houdt_de_eigen_melding_van_de_route(server_cli
 
     assert resp.status_code == 404
     assert resp.content == b'{"detail":"Werkboek niet gevonden"}'
+
+
+# ── Een onverwachte fout (#1154) ─────────────────────────────────────────────
+
+
+@pytest.fixture
+def storing(server_client, monkeypatch):
+    """PUT /api/workbooks met een fout in de opslag, als `attempt to write a readonly database`; geen uitzondering in de test."""
+    import server
+    from persistence import db
+
+    def stuk(*args, **kwargs):
+        raise RuntimeError("geheim-host-424242 database geheim-db")
+
+    monkeypatch.setattr(db, "upsert_workbook", stuk)
+    return TestClient(server.app, raise_server_exceptions=False)
+
+
+def test_een_onverwachte_fout_geeft_een_nederlandse_json_500_met_fout_id(storing, caplog):
+    with caplog.at_level(logging.DEBUG):
+        resp = storing.put("/api/workbooks/wb1", json={"title": "t"})
+
+    assert resp.status_code == 500
+    assert resp.headers["content-type"] == "application/json"
+    fout_id = re.fullmatch(r"Er ging intern iets mis \(fout-ID (\w{8})\)\. .*", resp.json()["detail"])
+    assert fout_id, resp.text
+    _geen_engels_of_invoer(resp, "Internal Server Error", "geheim", "424242")
+    # Het ID uit het antwoord staat in het log: één ERROR-regel met type en kenmerk, de traceback op DEBUG.
+    fouten = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert len(fouten) == 1
+    regel = fouten[0].getMessage()
+    assert fout_id[1] in regel
+    assert "RuntimeError fout_len=" in regel
+    assert "geheim" not in regel
+    assert [r for r in caplog.records if r.levelname == "DEBUG" and fout_id[1] in r.getMessage() and r.exc_info]
+
+
+def test_de_500_draagt_dezelfde_headers_als_een_gewoon_api_antwoord(storing, server_client):
+    gewoon = server_client.get("/api/config")
+    resp = storing.put("/api/workbooks/wb1", json={"title": "t"})
+
+    assert resp.status_code == 500
+    assert resp.headers["cache-control"] == "no-store"
+    for naam in (
+        "content-security-policy",
+        "x-content-type-options",
+        "x-frame-options",
+        "strict-transport-security",
+        "referrer-policy",
+        "permissions-policy",
+        "cross-origin-opener-policy",
+        "cross-origin-resource-policy",
+    ):
+        assert resp.headers[naam] == gewoon.headers[naam], naam
