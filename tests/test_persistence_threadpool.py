@@ -8,6 +8,7 @@ gebruikers. Een gewone `def`-handler draait FastAPI in zijn threadpool.
 import asyncio
 import importlib
 import inspect
+import json
 import threading
 import time
 
@@ -143,7 +144,9 @@ async def test_de_snippet_na_een_tool_blokkeert_de_loop_niet(monkeypatch):
         time.sleep(0.5)
         return "snippet"
 
-    monkeypatch.setattr(loop_module, "dispatch", lambda name, args: ("resultaat", None))
+    # Een geslaagde query_data: bij een mislukte stap maakt de loop geen snippet (#1072).
+    resultaat = json.dumps({"data_key": "cbs:85423NED", "rijen": [{"JAAR": "2025"}]})
+    monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (resultaat, None))
     monkeypatch.setattr(loop_module, "_generate_snippet", traag)
     events: list[dict] = []
 
