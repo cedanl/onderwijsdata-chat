@@ -3,6 +3,7 @@ import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants
 import { Sparkline } from './shell'
 import { TenMinste, isOndergrens } from './ondergrens'
 import { jaarLabel } from '../../../schooljaar'
+import { DIPLOMA_VERHOUDING } from './charts-diplomaverhouding'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries, lastInges, type, peri
 }
 
 // `ratio` is { jaar, procent } van diploma-ratio.js: de teller en de noemer komen uit hetzelfde jaartal, een diplomajaar
-// en een schooljaar; de tegel noemt beide (#904).
+// en een schooljaar; de tegel noemt beide (#904). De waarde is het aantal diploma's per 100 ingeschrevenen (#1135).
 export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot, perioden }) {
   if (!lastDipl) return null
   return (
@@ -134,13 +135,13 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, ratio, noot,
       {ratio != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Ratio diploma/inschrijving</span>
+            <span className="kpi-label">{DIPLOMA_VERHOUDING}</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
-          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{fmt(ratio.procent)}%</div>
-          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} en ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)} — proxy, geen cohortmeting</div>
+          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{fmt(ratio.procent)}</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>gediplomeerden {jaarLabel(ratio.jaar, perioden?.gediplomeerden)} per 100 ingeschrevenen {jaarLabel(ratio.jaar, perioden?.ingeschrevenen)}; geen rendement</div>
         </div>
       )}
     </div>

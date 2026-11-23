@@ -4,6 +4,9 @@ import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, afgekapteAs, benchmarkColor, oordeelKleur, WeggelatenNoot } from '../shared/index'
 import { asJaar, jaarLabel } from '../../../schooljaar'
 
+// Een cohortmaat heet niet "rendement" als er geen cohortmaat staat (#1135): bij hbo en wo is dit de kop boven de reden.
+export const DIPLOMA_COHORTEN = "Diploma's per cohort"
+
 const NOOT = { fontSize: '12.5px', color: 'var(--muted-text)' }
 const pct = v => Math.round(v * 1000) / 10
 // Een cohort heet naar het jaar van zijn eerstejaars: een schooljaar (#904); het soort komt uit de payload, net als
@@ -213,7 +216,7 @@ function CohortenTable({ data, dark }) {
 function GeenRendement({ reden }) {
   return (
     <>
-      <SectionHeader title="Diplomarendement" />
+      <SectionHeader title={DIPLOMA_COHORTEN} />
       <p className="dashboard-noot" role="note" style={{ ...NOOT, margin: '0 0 16px' }}>{reden}</p>
     </>
   )
@@ -222,7 +225,7 @@ function GeenRendement({ reden }) {
 export function RendementSection({ data, instelling, dark }) {
   if (!data?.gevonden) return null
   if (data.geen_rendement) return <GeenRendement reden={data.geen_rendement} />
-  const naam = data.definitie?.naam || 'Diplomarendement'
+  const naam = data.definitie?.naam || DIPLOMA_COHORTEN
   return (
     <>
       <SectionHeader title={naam} subtitle={`Een ruwe verhouding per cohort, geen cohortrendement; vergeleken met ${data.benchmark_populatie || 'de vergelijkingsgroep'}`} />

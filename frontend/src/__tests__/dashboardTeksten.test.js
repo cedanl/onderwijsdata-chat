@@ -153,15 +153,16 @@ describe('de gebiedsteksten volgen de vergelijkingsgroep (#1130)', () => {
 
 // #1136: dezelfde DUO-telling van personen heet overal "Ingeschrevenen"; "Inschrijvingen" is een telling van inschrijvingen.
 describe('één woord voor de telling van personen (#1136)', () => {
-  const sectorTitels = () => [...container.querySelectorAll('.chart-title, h2')].map(k => k.textContent).filter(t => /per sector over tijd/.test(t))
+  const sectorTrends = () => [...container.querySelectorAll('.chart-title, .db-sectie-sub')].map(k => k.textContent).filter(t => /per sector over tijd/.test(t))
 
-  it('Mijn instelling en Landelijk noemen de sectortrend "Ingeschrevenen per sector over tijd"', async () => {
+  it('Mijn instelling noemt de sectortrend "Ingeschrevenen per sector over tijd"', async () => {
     await mijnInstelling(HBO)
-    expect(sectorTitels()).toEqual(['Ingeschrevenen per sector over tijd'])
-    act(() => root.unmount())
-    container.remove()
+    expect(sectorTrends()).toEqual(['Ingeschrevenen per sector over tijd'])
+  })
+
+  it('Landelijk noemt dezelfde telling met hetzelfde woord', async () => {
     await nationaal()
-    expect(container.querySelector('h2:not(:empty)') && [...container.querySelectorAll('.db-sectie-sub')].map(e => e.textContent)).toContain('Ingeschrevenen per sector over tijd')
+    expect(sectorTrends()).toEqual(['Ingeschrevenen per sector over tijd'])
   })
 
   it.each([
@@ -176,14 +177,14 @@ describe('één woord voor de telling van personen (#1136)', () => {
 
 // #1137: één spelling per begrip.
 describe('één spelling per begrip (#1137)', () => {
-  it('de arbeidsmarkt schrijft "beroepencluster" en Mijn instelling "Regiototaal"', async () => {
+  it('de arbeidsmarkt schrijft "beroepencluster", niet "beroepscluster"', async () => {
     await arbeidsmarkt()
     expect(alles()).not.toMatch(/beroepscluster/i)
-    act(() => root.unmount())
-    container.remove()
+  })
+
+  it('de totaal-tegel van Mijn instelling heet "Regiototaal", één woord zoals de ondertitels', async () => {
     await mijnInstelling(HBO)
-    const labels = [...container.querySelectorAll('.kpi-label')].map(e => e.textContent)
-    expect(labels).toContain('Regiototaal 2025/26')
+    expect([...container.querySelectorAll('.kpi-label')].map(e => e.textContent)).toContain('Regiototaal 2025/26')
     expect(alles()).not.toMatch(/regio totaal/i)
   })
 
@@ -195,5 +196,58 @@ describe('één spelling per begrip (#1137)', () => {
       .filter(pad => afgekeurd.test(zonderCommentaar(readFileSync(pad, 'utf8'))))
       .map(pad => pad.slice(root.length))
     expect(overtreders).toEqual([])
+  })
+})
+
+// #1135: de verhouding gediplomeerden/ingeschrevenen is geen rendement.
+describe('de verhouding gediplomeerden/ingeschrevenen heet geen rendement (#1135)', () => {
+  const VERHOUDING = "Diploma's per 100 ingeschrevenen"
+  const REDEN_HO = 'Voor hbo en wo staat hier geen rendement. DUO publiceert voor het hoger onderwijs geen cohorten.'
+  // Mbo: DUO publiceert de gediplomeerden tot en met 2025, ook van de peers.
+  const MBO = {
+    ...HBO,
+    type: 'mbo',
+    instelling: 'ROC van Amsterdam',
+    gediplomeerden: { 2023: 5854, 2024: 6438, 2025: 6200 },
+    benchmark: {
+      ...HBO.benchmark,
+      peers: {
+        ...HBO.benchmark.peers,
+        gediplomeerden: {
+          'Hogeschool voor de Kunsten Utrecht': { 2023: 870, 2024: 869, 2025: 900 },
+          'Universiteit Utrecht': { 2023: 12040, 2024: 12136, 2025: 12500 },
+        },
+      },
+    },
+  }
+  const MBO_RENDEMENT = {
+    instelling: 'ROC van Amsterdam', gevonden: true, type: 'mbo',
+    definitie: { naam: "Diploma's na 3 jaar per eerstejaars", termijn: 3, definitie: "Per cohort de diploma's 3 jaar later, gedeeld door de eerstejaars." },
+    perioden: { cohorten: 'schooljaar', gediplomeerden: 'diplomajaar' },
+    pseudo_cohorten: [{ instroom_jaar: 2021, instroom: 4459, gediplomeerden_t3: 4037, gediplomeerden_t4: null, gediplomeerden_t5: null }],
+    rendement_per_jaar: { 2021: 0.9054 },
+    weggelaten: {},
+  }
+  // Wat een kop, tegel, reeks of as zegt: geen lopende uitleg.
+  const labels = () => [...container.querySelectorAll('h2, h3, .kpi-label, th, [role="img"]')].map(e => e.textContent)
+
+  it('hbo: grafiek, reeks, as en tegel heten "Diploma\'s per 100 ingeschrevenen", en niets heet rendement', async () => {
+    await mijnInstelling(HBO, { ...dashboards.rendement, geen_rendement: REDEN_HO })
+    const kaart = kaartMetTitel(VERHOUDING)
+    expect(kaart).toBeTruthy()
+    // De reeks en de titel van de as (met eenheid) van de grafiek.
+    expect(kaart.querySelector('[role="img"]').textContent).toBe(`${VERHOUDING} | ${VERHOUDING}`)
+    expect([...container.querySelectorAll('.kpi-label')].map(e => e.textContent)).toContain(VERHOUDING)
+    expect(labels().filter(t => /rendement/i.test(t))).toEqual([])
+    // De noot zegt dat er geen rendement is, maar er staat geen rendementskop boven.
+    expect(container.textContent).toContain('geen rendement')
+    expect(sectieKop("Diploma's per cohort")).toBeTruthy()
+  })
+
+  it('mbo: de verhouding heet hetzelfde en de cohortmaat houdt haar eigen naam', async () => {
+    await mijnInstelling(MBO, MBO_RENDEMENT)
+    expect(kaartMetTitel(VERHOUDING)).toBeTruthy()
+    expect(sectieKop("Diploma's na 3 jaar per eerstejaars")).toBeTruthy()
+    expect(labels().filter(t => /rendement/i.test(t))).toEqual([])
   })
 })

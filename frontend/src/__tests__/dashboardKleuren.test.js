@@ -64,7 +64,7 @@ describe('tekstkleuren (#905)', () => {
   })
 
   it('gebruikt in de dashboards geen hardgecodeerde lichte kleuren onder 3:1 meer', () => {
-    const bronnen = ['shared/charts-markt.jsx', 'shared/charts-rendement.jsx', 'mijn-instelling/gender-section.jsx',
+    const bronnen = ['shared/charts-markt.jsx', 'shared/charts-diplomaverhouding.jsx', 'mijn-instelling/gender-section.jsx',
       'arbeidsmarkt-consolidated/index.jsx', 'shared/charts-arbeidsmarkt.jsx']
       .map(f => readFileSync(join(import.meta.dirname, '..', 'components', 'dashboards', f), 'utf8'))
     for (const zwak of ['#CBD5E1', '#E2E8F0', '#FEE2E2', '#D1FAE5', "'#94A3B8'"]) {

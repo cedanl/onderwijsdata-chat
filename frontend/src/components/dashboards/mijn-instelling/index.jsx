@@ -6,13 +6,13 @@ import {
   useRegioComputed, useDarkMode,
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
-  buildSectorTrendData, buildLeerwegenData, buildRendementVergelijkingData,
+  buildSectorTrendData, buildLeerwegenData, buildDiplomaVerhoudingData,
   DemografieKpis, InstroomKpis, DiplomeringKpis, gediplomeerdenNoot, diplomaRatio, SECTOR_LABELS,
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
   PeersTable, SectorTrendChart, LeerwegenChart, HoofdgroepenChart,
-  RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
+  DiplomaVerhoudingChart, NietGeladen, DeelLading, gatenVan,
   perJaar, OndergrensNoot,
 } from '../shared/index'
 import { useFinancienDashboardData, usePersoneelDashboardData } from '../shared/hooks'
@@ -22,7 +22,7 @@ import { useBronAan } from '../../../bronnenAan'
 // Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; UWV en ROA staan op het arbeidsmarktdashboard.
 // UNL is WOPI, van het personeel (#936).
 const REGIO_BRONNEN = ['DUO', 'UNL']
-import { RendementSection } from './rendement-section'
+import { RendementSection, DIPLOMA_COHORTEN } from './rendement-section'
 import { GenderSection } from './gender-section'
 import { Kerncijfers } from './kerncijfers'
 import { FinancienSection } from './financien-section'
@@ -49,7 +49,7 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
   const dark = useDarkMode()
 
   const {
-    marktData, marktTrendData, groeiData, ratioData, sectorTrendData, leerwegenData, rendVergData, ratio,
+    marktData, marktTrendData, groeiData, ratioData, sectorTrendData, leerwegenData, verhoudingData, ratio,
   } = useMemo(() => ({
     marktData: buildMarktaandeelData(data, instelling, c.dark),
     marktTrendData: buildMarktaandeelTrendData(data),
@@ -57,7 +57,7 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
     ratioData: buildInstroomRatioData(data),
     sectorTrendData: buildSectorTrendData(data?.sectoren_trend, data?.perioden?.ingeschrevenen),
     leerwegenData: buildLeerwegenData(data?.leerwegen, data?.perioden?.ingeschrevenen),
-    rendVergData: buildRendementVergelijkingData(data, instelling, c.dark),
+    verhoudingData: buildDiplomaVerhoudingData(data, instelling, c.dark),
     ratio: diplomaRatio(data),
   }), [data, instelling, c.dark])
 
@@ -123,9 +123,9 @@ export function InlineDashboardMijnInstelling({ instelling, sector = null }) {
         <DiplomeringKpis {...c} ratio={ratio} noot={diplNoot} />
         <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
         <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf('gediplomeerden')(start)} — ${tegen('gediplomeerden')}${diplNoot ? `. ${diplNoot}` : ''}`} data={c.diplLineData} indexOpts={c.indexOpts} />
-        <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
+        <DiplomaVerhoudingChart data={verhoudingData} dark={c.dark} />
 
-        <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>
+        <DeelLading titel={DIPLOMA_COHORTEN} loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>
           <RendementSection data={rendData} instelling={instelling} dark={dark} />
         </DeelLading>
 

@@ -1,6 +1,6 @@
 // #907: de build*Data-functies van de dashboards die nog geen test hadden. Elk zet een payload van de server om in de
 // reeksen van één grafiek: welke jaren of instellingen meedoen, welk getal er staat, en wanneer er geen grafiek is.
-// (buildRendementVergelijkingData staat hier niet: #927 werkt die om.)
+// (buildDiplomaVerhoudingData staat hier niet: #927 werkt die om.)
 import { describe, it, expect } from 'vitest'
 import { buildMarktaandeelTrendData, buildInstroomRatioData, buildMarktaandeelData } from '../components/dashboards/shared/charts-markt'
 import { buildTrendLineData, buildPeerGenderData } from '../components/dashboards/mijn-instelling/gender-section'
