@@ -219,3 +219,35 @@ def test_de_500_draagt_dezelfde_headers_als_een_gewoon_api_antwoord(storing, ser
         "cross-origin-resource-policy",
     ):
         assert resp.headers[naam] == gewoon.headers[naam], naam
+
+
+# ── Een body die niet te lezen is (#1162) ────────────────────────────────────
+
+
+_ONLEESBAAR = {
+    "ongeldige-utf8": b'{"title": "\xff\xfe"}',
+    "te-diep-genest": b"[" * 100_000 + b"]" * 100_000,
+    "kapotte-json": b"{bad json",
+}
+
+
+@pytest.mark.parametrize("inhoud", _ONLEESBAAR.values(), ids=_ONLEESBAAR)
+def test_een_onleesbare_body_geeft_dezelfde_nederlandse_melding(inhoud):
+    resp = TestClient(_app()).patch("/api/ding/x", content=inhoud, headers={"Content-Type": "application/json"})
+
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": foutmeldingen.ONGELDIGE_INVOER}
+    assert "parsing the body" not in resp.text
+    _geen_engels_of_invoer(resp)
+
+
+@pytest.mark.parametrize(
+    "inhoud",
+    [b'{"title":"\xff\xfe","timestamp":1,"messages":[]}', b"[" * 100_000 + b"]" * 100_000],
+    ids=["ongeldige-utf8", "te-diep-genest"],
+)
+def test_server_onleesbare_body_op_een_gesprek_is_nederlands(server_client, inhoud):
+    resp = server_client.put("/api/conversations/y", content=inhoud, headers={"Content-Type": "application/json"})
+
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": foutmeldingen.ONGELDIGE_INVOER}

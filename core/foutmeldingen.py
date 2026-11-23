@@ -21,6 +21,10 @@ ONGELDIGE_INVOER = "Ongeldige invoer. Controleer de gegevens en probeer opnieuw.
 NIET_GEVONDEN = "Niet gevonden"
 METHODE_NIET_TOEGESTAAN = "Methode niet toegestaan"
 
+# FastAPI's 400 voor een body die het niet kan lezen: ongeldige UTF-8 of JSON die te diep genest is (#1162).
+# Gewone ongeldige JSON geeft al een RequestValidationError; deze twee kwamen als Engelse 400 door.
+_BODY_NIET_TE_LEZEN = "There was an error parsing the body"
+
 # Per status de Nederlandse tekst voor Starlette's standaardzin (HTTPStatus(...).phrase).
 _STANDAARDZINNEN = {404: NIET_GEVONDEN, 405: METHODE_NIET_TOEGESTAAN}
 
@@ -41,6 +45,8 @@ def _vertaald(exc: StarletteHTTPException) -> StarletteHTTPException:
 async def _http_fout(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, StarletteHTTPException):  # alleen hiervoor geregistreerd; voor de typechecker
         raise exc
+    if exc.status_code == 400 and exc.detail == _BODY_NIET_TE_LEZEN:
+        return await _ongeldige_invoer(request, exc)
     return await http_exception_handler(request, _vertaald(exc))
 
 
