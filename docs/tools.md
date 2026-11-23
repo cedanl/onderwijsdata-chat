@@ -229,7 +229,7 @@ platte tekst bij een miss en pseudo-records met een `melding`; het model las dri
 | `candidates` | Minstens één treffer | Kiest er één tot drie, controleert ze met `dataset_details`, laadt daarna data |
 | `no_match` | Niets raakt de vraag (of het geo-niveau) | Zoekt hooguit één keer opnieuw met andere of bredere termen, zonder sector, periode of populatie los te laten; vindt ook dat niets, dan zegt het dat de catalogus geen dataset vindt, niet dat de data niet bestaat |
 | `needs_clarification` | Alleen zwakke suggesties (drempel #351) | Laadt er geen, stelt met `clarify_scope` één vraag met deze datasets als opties |
-| `out_of_scope` | De zoekvraag gaat over po, so of vo en noemt geen ho of mbo (dezelfde regel als `agent/po_vraag.py`, behalve de toelatingsvraag over een ho-opleiding, die alleen `po_vraag` doorlaat) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
+| `out_of_scope` | De zoekterm gaat over po, so of vo en noemt geen ho of mbo, ook als er treffers zouden zijn; bij een beurt waarvan de vraag over vervolgonderwijs gaat blijft het een zoekvraag (dezelfde regel als `agent/po_vraag.py`, behalve de toelatingsvraag over een ho-opleiding, die alleen `po_vraag` doorlaat) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
 | `metadata_unknown` | Met `geo_niveau`: geen dataset heeft het niveau zeker, wel van enkele is de dekking onbekend | Controleert de dekking met `dataset_details` |
 | `source_unavailable` | De catalogus (package `onderwijsbronnen`) is niet leesbaar | Zegt dat zoeken nu niet werkt |
 | `tool_error` | Een onverwachte fout in de zoekfunctie | Probeert hooguit één keer opnieuw |
