@@ -7,12 +7,18 @@ noemt, en het toegangslog van uvicorn (client-adres, pad met gespreks- en rappor
 import json
 import logging
 import logging.config
+import os
+import subprocess
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 import uvicorn.config
 
 import logging_config
+
+_ROOT = Path(__file__).resolve().parent.parent
 
 _UVICORN = ("uvicorn", "uvicorn.error", "uvicorn.access")
 
@@ -136,3 +142,66 @@ def test_het_logniveau_van_de_app_geldt_ook_voor_uvicorn(logging_zoals_uvicorn_h
     logging.getLogger("uvicorn.error").info("Application startup complete.")
 
     assert _stdout_regels(logging_zoals_uvicorn_het_laat) == []
+
+
+# --- #1163: een ongeldige LOG_LEVEL is een configuratiemelding ---
+
+
+def _start(tmp_path, **env) -> subprocess.CompletedProcess:
+    """Importeer server.py in een eigen proces, zoals uvicorn dat doet, met alleen deze configuratie."""
+    basis = {
+        k: v for k, v in os.environ.items() if k not in ("LOG_LEVEL", "CHAT_USERS", "CHAT_SECRET", "OIDC_PROVIDER")
+    }
+    return subprocess.run(
+        [sys.executable, "-c", "import server"],
+        cwd=_ROOT,
+        env={**basis, "DATABASE_PATH": str(tmp_path / "start.db"), **env},
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
+def test_een_ongeldige_log_level_stopt_de_start_met_een_regel_zonder_traceback(tmp_path):
+    uitslag = _start(tmp_path, APP_ENV="local", LOG_LEVEL="garbage")
+
+    assert uitslag.returncode != 0
+    assert "Traceback" not in uitslag.stdout + uitslag.stderr
+    [regel] = uitslag.stdout.splitlines()
+    assert "LOG_LEVEL moet een van DEBUG, INFO, WARNING, ERROR, CRITICAL zijn, kreeg: GARBAGE" in regel
+
+
+def test_buiten_local_is_die_ene_regel_json(tmp_path):
+    uitslag = _start(tmp_path, APP_ENV="test", CHAT_USERS="admin:pw", CHAT_SECRET="s", LOG_LEVEL="garbage")
+
+    assert uitslag.returncode != 0
+    assert "Traceback" not in uitslag.stdout + uitslag.stderr
+    [regel] = uitslag.stdout.splitlines()
+    assert "LOG_LEVEL moet" in json.loads(regel)["message"]
+
+
+@pytest.mark.parametrize("waarde", ["info", "Warning", " debug "])
+def test_een_geldige_log_level_in_kleine_letters_werkt(waarde):
+    uitvoer = subprocess.run(
+        [sys.executable, "-c", "from config import Config; Config.validate(); print(Config.log_level())"],
+        cwd=_ROOT,
+        env={**os.environ, "LOG_LEVEL": waarde, "APP_ENV": "local"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert uitvoer.stdout.strip().splitlines()[-1] == waarde.strip().upper()
+
+
+def test_een_lege_log_level_is_de_standaard():
+    uitvoer = subprocess.run(
+        [sys.executable, "-c", "from config import Config; print(Config.log_level())"],
+        cwd=_ROOT,
+        env={**os.environ, "LOG_LEVEL": " "},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert uitvoer.stdout.strip() == "INFO"

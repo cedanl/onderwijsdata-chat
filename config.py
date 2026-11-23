@@ -23,7 +23,8 @@ class Config:
 
     # Required settings
     MODEL: str = MODEL  # één default, in core/config.py (#234)
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "").strip().upper() or "INFO"
+    LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     # Leeg = geen cross-origin toegang: de frontend praat via dezelfde origin (#421).
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
@@ -69,6 +70,9 @@ class Config:
             # Een tikfout ("prod") zou anders stil als ontwikkelomgeving gelden, met API-documentatie.
             errors.append(f"APP_ENV moet een van {', '.join(cls.OMGEVINGEN)} zijn, kreeg: {cls.APP_ENV}")
 
+        if cls.LOG_LEVEL not in cls.LOG_LEVELS:
+            errors.append(f"LOG_LEVEL moet een van {', '.join(cls.LOG_LEVELS)} zijn, kreeg: {cls.LOG_LEVEL}")
+
         if fout := cls._login_ontbreekt():
             errors.append(fout)
 
@@ -82,8 +86,7 @@ class Config:
             )
 
         if errors:
-            for error in errors:
-                logger.error(error)
+            # Eén foutregel, door server.py gelogd: wie de melding hier ook logt, zet haar dubbel in het log.
             raise ConfigError("; ".join(errors))
 
         logger.info(
@@ -152,6 +155,12 @@ class Config:
         zo'n instelling zou stil falen.
         """
         return [o for o in cls.get_parsed_cors_origins() if "*" in o]
+
+    @classmethod
+    def log_level(cls) -> str:
+        """Het niveau voor setup_logging: een ongeldige LOG_LEVEL valt op INFO terug, zodat de configuratiefout die
+        validate() daarover meldt wel in de gewone logvorm komt (JSON buiten local) in plaats van als traceback (#1163)."""
+        return cls.LOG_LEVEL if cls.LOG_LEVEL in cls.LOG_LEVELS else "INFO"
 
     @classmethod
     def json_logs(cls) -> bool:

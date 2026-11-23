@@ -26,7 +26,7 @@ from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
-setup_logging(level=Config.LOG_LEVEL, json_format=Config.json_logs())
+setup_logging(level=Config.log_level(), json_format=Config.json_logs())
 logger = logging.getLogger(__name__)
 
 # Validate configuration early
