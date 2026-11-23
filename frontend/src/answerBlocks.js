@@ -55,3 +55,10 @@ export function metBronnen(content, bronnen) {
   const lijst = bronnenMarkdown(bronnen)
   return lijst && content ? `${content}\n\n${lijst}` : content
 }
+
+// Wat de kopieerknop meeneemt: het antwoord, elke controlemelding als "Let op: …" (zoals onder het antwoord) en dan
+// de bronnen. Zonder die regels zegt de kopie niet dat de controle iets uit het antwoord haalde (#1108).
+export function kopieerTekst(msg) {
+  const meldingen = (msg.controle || []).map(zin => `Let op: ${zin}`)
+  return metBronnen(meldingen.length ? [msg.content, ...meldingen].join('\n\n') : msg.content, msg.bronnen)
+}
