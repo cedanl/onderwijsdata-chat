@@ -10,15 +10,16 @@ hebben geen hash in hun naam: manifest en worker zijn altijd vers (een browser v
 start byte voor byte), de iconen blijven een week staan.
 
 Onbekende paden onder /api krijgen een JSON-404 in plaats van index.html (#482):
-een client die een API-pad verkeerd spelt, hoort een fout te zien en geen HTML met 200.
+een client die een API-pad verkeerd spelt, hoort een fout te zien en geen HTML met 200. Dat geldt voor elke
+methode: een POST op een onbekend pad is een 404, geen 405 (#1156).
 
 HEAD op een pad van de app-shell antwoordt als GET, zonder body (#654). Een pad dat een
-andere route kent (/health, alles onder /api) houdt bij HEAD zijn 405, zoals voorheen.
+andere route kent (/health, /api/config) houdt bij een andere methode zijn 405, zoals voorheen.
 """
 
 from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
@@ -49,7 +50,21 @@ class _StatischMetCache(StaticFiles):
         return response
 
 
-class _SpaRoute(APIRoute):
+class _CatchAllRoute(APIRoute):
+    """Een catch-all die voor een andere methode dan de zijne een 404 geeft, geen 405 met `Allow: GET` (#1156).
+
+    Starlette ziet een GET-route die het pad dekt als een bekend pad met een verkeerde methode. Daarmee kreeg een POST
+    op een pad dat niet bestaat een 405, en dacht een client dat het eindpunt bestaat. Een route die het pad echt
+    kent staat vóór deze, en houdt dus zijn 405: de router gebruikt de eerste route die op het pad past.
+    """
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.methods and scope["method"] not in self.methods:
+            raise HTTPException(status_code=404, detail=NIET_GEVONDEN)
+        await super().handle(scope, receive, send)
+
+
+class _SpaRoute(_CatchAllRoute):
     """De catch-all van de app-shell, die een HEAD beantwoordt als GET.
 
     FastAPI zet HEAD niet bij een GET-route. De router geeft een HEAD alleen aan deze route als
@@ -81,10 +96,13 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     for naam, media_type in _ROOT_BESTANDEN.items():
         root_bestand(naam, media_type)
 
-    @app.get("/api", include_in_schema=False)
-    @app.get("/api/{rest:path}", include_in_schema=False)
     async def onbekende_api_route() -> JSONResponse:
         return JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)
+
+    for pad in ("/api", "/api/{rest:path}"):
+        app.router.add_api_route(
+            pad, onbekende_api_route, methods=["GET"], include_in_schema=False, route_class_override=_CatchAllRoute
+        )
 
     async def serve_spa(full_path: str) -> Response:
         return Response(

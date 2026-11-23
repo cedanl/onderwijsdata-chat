@@ -5,7 +5,7 @@ databaselaag is synchroon (sqlite3, psycopg2); in een `async def` zet elke aanro
 stil, en daarmee elke lopende chat-stream van alle gebruikers (#508).
 """
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, Strict, StrictInt, StrictStr, StringConstraints
@@ -26,8 +26,14 @@ class ConversationTitle(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-# Een eindig getal, geen tekst ("gisteren"), geen bool en geen NaN/Infinity: die gaven een 500 in plaats van 422 (#1064).
-Tijdstempel = StrictInt | Annotated[float, Strict(), Field(allow_inf_nan=False)]
+# Wat de database bewaart: een geheel getal van 64 bit. Daarbuiten geeft de binding een OverflowError (#1129).
+_INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
+
+# Een eindig getal binnen dat bereik, geen tekst ("gisteren"), geen bool en geen NaN/Infinity: die gaven een 500 in plaats van 422 (#1064).
+Tijdstempel = Annotated[
+    StrictInt | Annotated[float, Strict(), Field(allow_inf_nan=False)],
+    Field(ge=_INT64_MIN, le=_INT64_MAX),
+]
 
 
 class ConversationUpsert(BaseModel):
@@ -41,25 +47,25 @@ class ConversationUpsert(BaseModel):
 class WorkbookUpsert(BaseModel):
     """De body van PUT /api/workbooks/{id} (serverFields in workbooks.js).
 
-    Alleen messages en figures zijn strenger dan voorheen: geen lijst gaf een 500 (#1064). De rest gaat
-    ongewijzigd door, zoals toen de body nog een dict was.
+    Elk veld heeft het type dat de databaselaag bindt: een object of lijst in een tekstveld gaf anders een 500 bij
+    de binding (#1128). Zo'n lijst of object krijgt de 422 van #637; `type` van de frontend wordt genegeerd.
     """
 
-    title: Any = ""
-    description: Any = ""
+    title: StrictStr = ""
+    description: StrictStr = ""
     messages: list | None = None
     figures: list | None = None
-    instelling: Any = None
-    html_content: Any = Field(default=None, alias="htmlContent")
-    dashboard_spec: Any = Field(default=None, alias="dashboardSpec")
-    created_at: Any = Field(default="", alias="createdAt")
+    instelling: StrictStr | None = None
+    html_content: StrictStr | None = Field(default=None, alias="htmlContent")
+    dashboard_spec: dict | None = Field(default=None, alias="dashboardSpec")
+    created_at: StrictStr = Field(default="", alias="createdAt")
 
 
 @router.get("/api/conversations")
 def list_conversations(
     username: str = Depends(get_current_user),
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
-    before_ts: int | None = None,
+    before_ts: Annotated[int, Query(ge=_INT64_MIN, le=_INT64_MAX)] | None = None,
     before_id: str | None = None,
     q: str = "",
 ) -> list[dict]:

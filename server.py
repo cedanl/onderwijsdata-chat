@@ -98,7 +98,11 @@ def resource_policy(pad: str) -> str:
 
 
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        # Hier en niet in een exception handler: die draait buiten deze middleware, zonder de headers hieronder (#1154).
+        response = foutmeldingen.onverwachte_fout(request, exc)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
