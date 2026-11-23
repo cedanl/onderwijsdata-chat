@@ -278,7 +278,7 @@ class Plan:
     sector: str
     vorm: str
     jaren: tuple[int, ...]  # startjaren; leeg is alle beschikbare
-    instelling: dict | None  # naam, instellingscode, sector uit het register; None bij een landelijke maat
+    instelling: dict | None  # naam, instellingscode(s), sector uit het register; None bij een landelijke maat
     bestand: int | None  # DUO: de index van het bestand
     opleiding: str | None = None  # geslacht per opleiding (#742): de opleiding zoals het model haar noemde
     bestanden: tuple[int, int] | None = None  # en dan het niveau- en het geslachtsbestand
@@ -386,6 +386,21 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None, opleid
     return _geslachtplan(gewoon, opleiding) if opleiding else gewoon
 
 
+def instellingscodes(instelling: dict) -> list[str]:
+    """Alle codes van een instelling uit het register (#1069), de eerste voorop; zonder lijst de instellingscode.
+
+    DUO kent een mbo-instelling soms onder meer codes (Curio: 21CY en 25LX). Een maat per instelling telt ze allemaal,
+    zoals het dashboard Mijn instelling (#923): met alleen de eerste kreeg Curio 901 studenten in plaats van 15.288.
+    """
+    return list(instelling.get("instellingscodes") or [instelling["instellingscode"]])
+
+
+def _instellingsfilter(instelling: dict) -> str | list[str]:
+    """De filterwaarde op de instellingskolom: de code zelf bij één code (zoals altijd), anders de lijst."""
+    codes = instellingscodes(instelling)
+    return codes[0] if len(codes) == 1 else codes
+
+
 def per_opleiding(p: Plan, opleiding: str) -> Plan | str:
     """Hetzelfde plan voor één opleiding (#708): het niveaubestand van de maat, met de opleiding die de code kiest.
 
@@ -408,17 +423,18 @@ def per_opleiding(p: Plan, opleiding: str) -> Plan | str:
     df = store.get(str(geladen["data_key"]))
     if df is None:
         return f"{r.dataset}, bestand {bestand}, is net uit het geheugen verdwenen; probeer het opnieuw."
-    opl = geslacht_opleiding.kies_opleiding(df[df[r.instellingskolom] == p.instelling["instellingscode"]], opleiding)
+    eigen = df[df[r.instellingskolom].isin(instellingscodes(p.instelling))]
+    opl = geslacht_opleiding.kies_opleiding(eigen, opleiding)
     if isinstance(opl, str):
         return f"{opl} (instelling {p.instelling['naam']}, {r.dataset})"
     return replace(p, bestand=bestand, per_opleiding=opl)
 
 
 def filters(p: Plan) -> dict:
-    """De query_data-filters van een DUO-plan: instellingscode, vorm (tenzij alle), opleiding en schooljaren."""
+    """De query_data-filters van een DUO-plan: instellingscode(s), vorm (tenzij alle), opleiding en schooljaren."""
     recept = p.recept
     assert not isinstance(recept, CbsRecepten) and p.instelling is not None
-    uit: dict[str, Any] = {recept.instellingskolom: p.instelling["instellingscode"]}
+    uit: dict[str, Any] = {recept.instellingskolom: _instellingsfilter(p.instelling)}
     if isinstance(recept, DuoRecept) and p.vorm != ALLE:
         uit[recept.vormkolom] = recept.vormen[p.vorm]
     if p.per_opleiding is not None:
@@ -504,10 +520,10 @@ def _geslacht(p: Plan) -> dict | str:
         if not isinstance(uit, dict) or "data_key" not in uit:
             return _melding(uit)
     niveaukey, geslachtkey = (str(uit["data_key"]) for uit in geladen)
-    code = p.instelling["instellingscode"]
+    codes = instellingscodes(p.instelling)  # alle codes van de instelling, nooit één code alleen (#1069)
     niveau, geslacht = (store.get(k) for k in (niveaukey, geslachtkey))
-    niveau = niveau[niveau[r.instellingskolom] == code]
-    geslacht = geslacht[geslacht[r.instellingskolom] == code]
+    niveau = niveau[niveau[r.instellingskolom].isin(codes)]
+    geslacht = geslacht[geslacht[r.instellingskolom].isin(codes)]
     opl = geslacht_opleiding.kies_opleiding(niveau, p.opleiding)
     if isinstance(opl, str):
         return f"{opl} (instelling {p.instelling['naam']}, {r.dataset})"
@@ -519,7 +535,7 @@ def _geslacht(p: Plan) -> dict | str:
             "Zeg dat in het antwoord, zonder verdeling: schat haar niet uit een groep met andere opleidingen."
         )
     jaren = f":{'-'.join(map(str, p.jaren))}" if p.jaren else ""
-    key = f"{geslachtkey}:{r.naam}:geslacht:{code}:{opl.code}{jaren}"
+    key = f"{geslachtkey}:{r.naam}:geslacht:{'+'.join(codes)}:{opl.code}{jaren}"
     stap = (
         f"recept {r.naam}: geslacht van opleiding {opl.code} uit de cel van het geslachtsbestand waarin zij de enige is"
     )
@@ -661,7 +677,7 @@ def _recept(p: Plan) -> dict:
         return {
             **uit,
             "bestanden": {"niveau opleiding": niveau, "geslacht": geslacht},
-            "instelling": p.instelling["instellingscode"],
+            "instelling": _instellingsfilter(p.instelling),
             "regel": "de cel van het geslachtsbestand waarin de opleiding de enige is, zonder -1, met gelijke totalen",
         }
     return {**uit, "bestand": p.bestand, "filters": filters(p), "per": r.periodekolom, "som": aggregate(p)}

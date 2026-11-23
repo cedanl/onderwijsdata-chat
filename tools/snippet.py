@@ -926,7 +926,9 @@ def _geslachtregels(p: maten.Plan) -> list[str]:
     r = p.recept
     assert isinstance(r, maten.DuoRecept) and p.bestanden is not None and p.instelling is not None and p.opleiding
     niveau, geslacht = p.bestanden
-    instelling = f'df[df["{r.instellingskolom}"].astype(str) == {_lit(p.instelling["instellingscode"])}]'
+    codes = maten.instellingscodes(p.instelling)  # alle codes van de instelling (#1069)
+    kolom = f'df["{r.instellingskolom}"].astype(str)'
+    instelling = f"df[{kolom} == {_lit(codes[0])}]" if len(codes) == 1 else f"df[{kolom}.isin({codes!r})]"
     jaar = r.periodekolom
     lines = [
         *_duo_laadregels({"dataset_id": r.dataset, "resource": niveau}),

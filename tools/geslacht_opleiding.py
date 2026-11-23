@@ -163,7 +163,8 @@ def verdeling(
             rijen.append(
                 {
                     periodekolom: jaar,
-                    instellingskolom: eigen[instellingskolom].iloc[0],
+                    # Elke code van de instelling in de cellen, niet alleen de eerste (#1069).
+                    instellingskolom: " + ".join(sorted(set(eigen[instellingskolom].astype(str)))),
                     CODE: opl.code,
                     NAAM: opl.naam,
                     GESLACHT: geslachtswaarde,

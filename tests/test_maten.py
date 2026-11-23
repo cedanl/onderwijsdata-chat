@@ -196,6 +196,55 @@ def test_mbo_telt_de_leerwegkolommen_van_de_vorm_op_als_aantal():
     assert known is not None and known.stap is not None and "AANTAL = BBL + BOLDT + BOLVT + EX" in known.stap
 
 
+# --- een mbo-instelling met meer codes (#1069) ------------------------------------------------------------------------
+# Curio staat in DUO onder 21CY en 25LX. Het register houdt 21CY als instellingscode (adres en regio) en beide onder
+# instellingscodes; get_maat telt over beide, zoals het dashboard Mijn instelling (#923).
+_CURIO = {"naam": "Curio", "sector": "mbo", "instellingscode": "21CY", "instellingscodes": ["21CY", "25LX"]}
+_MBO_CURIO = pd.DataFrame(
+    [
+        (2023, "21CY", "Curio", 10, 0, 100, 5),
+        (2023, "25LX", "Curio", 200, 0, 1000, 20),
+        (2024, "21CY", "Curio", 11, 0, 110, 6),
+        (2024, "25LX", "Curio", 210, 1, 1100, 30),
+    ],
+    columns=_MBO.columns,
+)
+
+
+@pytest.fixture
+def _curio(monkeypatch):
+    for sleutel in ("curio", "21cy", "25lx"):
+        monkeypatch.setitem(_REGISTER, sleutel, _CURIO)
+    monkeypatch.setitem(_BESTANDEN, ("mbo-studenten-per-instelling", 0), pd.concat([_MBO, _MBO_CURIO]))
+
+
+@pytest.mark.usefixtures("_curio")
+@pytest.mark.parametrize("instelling", ["Curio", "21CY", "25LX"])
+def test_een_mbo_instelling_met_twee_codes_telt_over_beide_codes(instelling):
+    # 2023: 21CY 10 + 0 + 100 + 5 = 115, 25LX 200 + 0 + 1000 + 20 = 1220; 2024: 21CY 127, 25LX 1341.
+    alle = _uit(get_maat("mbo_studenten_instelling", instelling))
+    assert {r["JAAR"]: r["AANTAL"] for r in alle["rijen"]} == {2023: 115 + 1220, 2024: 127 + 1341}
+    assert alle["recept"]["filters"] == {"INSTELLINGSCODE": ["21CY", "25LX"]}
+    assert alle["instelling"]["instellingscode"] == "21CY"
+    bbl = _uit(get_maat("mbo_studenten_instelling", instelling, vorm="bbl", schooljaren=["2024/25"]))
+    assert [r["AANTAL"] for r in bbl["rijen"]] == [11 + 210]
+    assert bbl["recept"]["filters"] == {"INSTELLINGSCODE": ["21CY", "25LX"], "JAAR": [2024]}
+
+
+@pytest.mark.usefixtures("_curio")
+def test_een_instelling_met_een_code_houdt_de_code_als_filter():
+    p = plan("mbo_studenten_instelling", "ROC Mondriaan")
+    assert isinstance(p, maten.Plan) and maten.filters(p) == {"INSTELLINGSCODE": "27GZ"}
+    curio = plan("mbo_studenten_instelling", "Curio")
+    assert isinstance(curio, maten.Plan) and maten.filters(curio) == {"INSTELLINGSCODE": ["21CY", "25LX"]}
+
+
+@pytest.mark.usefixtures("_curio")
+def test_de_snippet_van_een_instelling_met_twee_codes_filtert_op_beide():
+    script = snippet.generate("get_maat", {"maat": "mbo_studenten_instelling", "instelling": "Curio"})
+    assert script is not None and "['21cy', '25lx']" in script
+
+
 def test_landelijk_cbs_met_vaste_codes(_bronnen):
     uit = _uit(get_maat("deelnemers_ho_landelijk", sector="hbo", vorm="voltijd", schooljaren=["2024/25"]))
     params = _bronnen.call_args.kwargs

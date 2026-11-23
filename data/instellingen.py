@@ -420,6 +420,9 @@ def instellingsprofiel(naam: str) -> dict | None:
     (Fontys, Inholland, NHL Stenden) krijgt de provincie en de arbeidsmarktregio van dat adres;
     de arbeidsmarktregio volgt uit de gemeente, in de namen van UWV en ROA (#454).
     Zonder adres blijven provincie en arbeidsmarktregio None.
+
+    `instellingscode` is de eerste code, die van adres en regio; `instellingscodes` heeft ze allemaal (Curio: 21CY en
+    25LX), zodat een telling per instelling over elke code loopt (#1069).
     """
     canoniek = _canoniek(naam)
     inst = next((i for i in get_all() if i["naam"] == canoniek), None)
@@ -431,4 +434,5 @@ def instellingsprofiel(naam: str) -> dict | None:
         "provincie": inst["provincie"],
         "arbeidsmarktregio": inst["arbeidsmarktregio"],
         "instellingscode": inst["instellingscode"],
+        "instellingscodes": list(inst["instellingscodes"]),
     }

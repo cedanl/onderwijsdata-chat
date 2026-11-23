@@ -140,7 +140,7 @@ class Uitkomst:
 class _Reeks:
     """De reeks van één instelling, uit get_maat, met de key die alleen binnen deze aanroep bestaat."""
 
-    instelling: dict[str, str]
+    instelling: dict[str, Any]
     uit: dict[str, Any]
     verloop: dict[str, Any]
     fusies: tuple[str, ...] = ()
@@ -233,7 +233,11 @@ def _reeks(profiel: dict, telling: Any, opleiding: Any, vorm: Any, schooljaren: 
     if not isinstance(uit, dict) or "data_key" not in uit:
         return tekst
     known = store.meta(uit["data_key"])
-    gekozen = {k: profiel[k] for k in ("naam", "instellingscode", "sector")}
+    gekozen: dict[str, Any] = {k: profiel[k] for k in ("naam", "instellingscode", "sector")}
+    # Een instelling met meer codes (Curio: 21CY en 25LX) noemt ze alle: de reeks telt over elke code (#1069). Bij één
+    # code blijft de uitkomst zoals hij was.
+    if len(codes := maten.instellingscodes(profiel)) > 1:
+        gekozen["instellingscodes"] = codes
     return _Reeks(gekozen, uit, _verloop(uit), known.fusies if known else ())
 
 
