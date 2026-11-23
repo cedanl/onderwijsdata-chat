@@ -808,7 +808,8 @@ def _zoekbaar(entry: dict, vervolgvraag: bool) -> bool:
 
 
 def _context(entry: dict) -> dict:
-    """Het etiket voor een treffer uit VO_CONTEXT; op de treffer, nooit op het gecachete catalogusrecord."""
+    """Het etiket voor een treffer of de details van een record uit VO_CONTEXT; op de uitvoer, nooit op het gecachete
+    catalogusrecord. Een direct dataset-ID laadt zonder zoekpoort (#1096), dus ook daar draagt het etiket."""
     return {"context": scopeprofiel.VO_CONTEXT_ETIKET} if scopeprofiel.is_vo_context(entry) else {}
 
 
@@ -1311,12 +1312,17 @@ def _build_details(entry: dict, dataset_id: str, zonder: tuple[str, ...] = ()) -
         ]
     if not details:
         return json.dumps(
-            {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar."},
+            {
+                "bron": entry.get("bron", dataset_id),
+                **_context(entry),
+                "melding": "Geen kolomdetails beschikbaar.",
+            },
             ensure_ascii=False,
         )
     return json.dumps(
         {
             "bron": entry.get("bron", dataset_id),
+            **_context(entry),
             "status": status(entry),
             "koppelbaar_via": koppelbaar_via(entry),
             **details,
