@@ -6,6 +6,7 @@
 // drawn traces, without ever dropping a point (#183).
 
 import { plotlyArray } from './plotlyArrays'
+import { bestandsdeel } from './bestandsnaam'
 
 function axisTitle(axis) {
   const title = axis?.title
@@ -137,19 +138,13 @@ export function figureToCsv(figure) {
   return withProvenance(hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure), figure)
 }
 
-// Veilig voor een bestandsnaam: accenten vallen weg (é → e), al het andere dan letters en cijfers wordt een
-// underscore.
-const bestandsdeel = tekst => String(tekst ?? '')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-
 // Bestandsnaam van de CSV bij een grafiek (#496 F11, #533): `<titel>_<dataset-id>.csv`, de titel van de grafiek
 // (hoogstens 80 tekens, zonder titel `fallback`) en het dataset-id uit layout.meta.dataset (tools/plot.py); zonder
 // id alleen `<titel>.csv`. Dezelfde regel als bestandsnaam in tools/csv_export.py: de twee moeten gelijk opgaan.
 export function figureCsvFilename(figure, fallback = 'data') {
   const title = figure?.layout?.title
   const tekst = typeof title === 'string' ? title : title?.text
-  const titel = bestandsdeel(tekst).slice(0, 80).replace(/_+$/, '') || bestandsdeel(fallback) || 'data'
+  const titel = bestandsdeel(tekst, 80) || bestandsdeel(fallback) || 'data'
   const dataset = bestandsdeel(figure?.layout?.meta?.dataset)
   return `${dataset ? `${titel}_${dataset}` : titel}.csv`
 }
