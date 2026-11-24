@@ -197,6 +197,80 @@ def test_dezelfde_stappen_geven_vijf_keer_dezelfde_lijst():
     assert runs[0] == [_DUO, _CBS, "UWV Open Match, mei 2023"]
 
 
+# --- voorlopige CBS-jaren (#1097) ---
+
+
+def _cbs_lading(key: str, statussen: dict[str, str] | None, opgehaald_op: datetime = _OPGEHAALD) -> str:
+    """Een CBS-lading met per periode haar Periodestatus; zonder `statussen` een tabel zonder die kolom."""
+    perioden = list(statussen or {"2024SJ00": ""})
+    df = pd.DataFrame({"Perioden": perioden, "AANTAL": [1] * len(perioden)})
+    if statussen is not None:
+        df["Periodestatus"] = list(statussen.values())
+    meta = KeyMeta(
+        bron="cbs", dataset="85423NED", periodekolom="Perioden", opgehaald_op=opgehaald_op, bijgewerkt_op="2026-04-10"
+    )
+    store.put(key, df, meta)
+    return key
+
+
+def test_voorlopige_cbs_jaren_staan_in_de_bronregel():
+    """CBS kan voorlopige cijfers nog herzien: de bronregel noemt die jaren, voor "bijgewerkt door CBS"."""
+    key = _cbs_lading("cbs:85423NED:vl", {"2024SJ00": "Definitief", "2025SJ00": "Voorlopig"})
+
+    assert bronnen_van([_stap("get_cbs_data", data_key=key)]) == [
+        "CBS · Hoger onderwijs; ingeschrevenen (85423NED), cijfers 2025/26 voorlopig, bijgewerkt door CBS op "
+        "10-04-2026, opgehaald op 02-11-2026"
+    ]
+
+
+def test_meer_voorlopige_jaren_en_een_kalenderjaar():
+    key = _cbs_lading(
+        "cbs:85423NED:vl2", {"2023JJ00": "Definitief", "2024JJ00": "Nader voorlopig", "2025JJ00": "Voorlopig"}
+    )
+
+    [regel] = bronnen_van([_stap("get_cbs_data", data_key=key)])
+    assert ", cijfers 2024 en 2025 voorlopig, bijgewerkt door CBS" in regel
+
+
+def test_een_selectie_leest_de_status_uit_haar_lading():
+    # Vandaag opgehaald: afleiden leest de lading, en een lading van langer dan de TTL geleden verloopt dan (#864).
+    vers = datetime.now(UTC)
+    key = _cbs_lading("cbs:85423NED:vl3", {"2024SJ00": "Definitief", "2025SJ00": "Voorlopig"}, opgehaald_op=vers)
+    store.derive(key, f"{key}:sel", pd.DataFrame({"AANTAL": [1]}))
+
+    [regel] = bronnen_van([_stap("query_data", data_key=f"{key}:sel")])
+    assert "cijfers 2025/26 voorlopig" in regel
+
+
+@pytest.mark.parametrize(
+    "statussen", [{"2023SJ00": "Definitief", "2024SJ00": "Definitief"}, None], ids=["definitief", "zonder-kolom"]
+)
+def test_alleen_definitieve_jaren_of_geen_statuskolom_geven_geen_toevoeging(statussen):
+    key = _cbs_lading(f"cbs:85423NED:{statussen is None}", statussen)
+
+    [regel] = bronnen_van([_stap("get_cbs_data", data_key=key)])
+    assert "voorlopig" not in regel
+    assert regel == _CBS
+
+
+def test_een_andere_bron_met_een_periodestatus_krijgt_geen_toevoeging():
+    store.put(
+        "duo:p01hoinges:vl",
+        pd.DataFrame({"STUDIEJAAR": [2025], "Periodestatus": ["Voorlopig"]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", schooljaren=(2025,)),
+    )
+    [regel] = bronnen_van([_stap("get_duo_data", data_key="duo:p01hoinges:vl")])
+    assert "voorlopig" not in regel
+
+
+def test_de_link_volgt_de_regel_met_voorlopige_jaren(monkeypatch):
+    """De nieuwe tekst is de sleutel van de link: bronnen en links horen nog bij elkaar (#621)."""
+    monkeypatch.setattr("agent.bronvermelding.documentatie_url", lambda d: f"https://example.org/{d}")
+    steps = [_stap("get_cbs_data", data_key=_cbs_lading("cbs:85423NED:vl4", {"2025SJ00": "Voorlopig"}))]
+
+    assert list(bronlinks_van(steps)) == bronnen_van(steps)
+
+
 # --- de eigen Bronnen-sectie van het model ---
 
 _ANTWOORD = "Het hoger onderwijs had 26.370 ingeschrevenen in 2023/24."
