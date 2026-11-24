@@ -250,17 +250,18 @@ _ROUTERS = (
 def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
     """De app met middleware, routes en event handlers; zonder frontend_dist geen SPA.
 
-    api_docs=None volgt Config.api_docs(). Tests bouwen zo een app zonder documentatie zonder de module te herladen.
+    api_docs=None volgt Config.api_docs() en zet alleen het schema (/api/openapi.json) aan. Tests bouwen zo een app
+    zonder schema zonder de module te herladen.
     """
-    # API-documentatie niet op playground en productie (#636, #676): het schema somt elke route op voor wie niet is
-    # ingelogd, en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+    # Het OpenAPI-schema niet op playground en productie (#636, #676): het somt elke route op voor wie niet is ingelogd.
+    # Nergens Swagger UI of ReDoc: hun pagina's laden scripts van cdn.jsdelivr.net, die de CSP blokkeert (#1161).
     docs = Config.api_docs() if api_docs is None else api_docs
     mcp = McpEindpunt.uit_config()
     app = FastAPI(
         title="Onderwijsdata Chat",
         version=app_versie(Config.APP_VERSION),
-        docs_url="/api/docs" if docs else None,
-        redoc_url="/redoc" if docs else None,
+        docs_url=None,
+        redoc_url=None,
         openapi_url="/api/openapi.json" if docs else None,
         lifespan=levensloop(mcp),
     )

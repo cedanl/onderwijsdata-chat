@@ -198,5 +198,5 @@ class Config:
 
     @classmethod
     def api_docs(cls) -> bool:
-        """Swagger UI, ReDoc en het OpenAPI-schema alleen waar ontwikkeld wordt (#636, #676)."""
+        """Het OpenAPI-schema alleen waar ontwikkeld wordt (#636, #676); Swagger UI en ReDoc nergens (#1161)."""
         return cls.APP_ENV in ("local", "development", "test")
