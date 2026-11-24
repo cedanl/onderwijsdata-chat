@@ -60,6 +60,48 @@ def test_de_arbeidsmarktmatch_mbo_telt_gediplomeerden_per_hoofdgroep():
     assert sum(verwacht.values()) < ingeschreven.sum() / 2, "het aanbod is niet meer het aantal ingeschrevenen"
 
 
+# ─── #1073: een jaar zonder diploma's in een sector telt als 0, niet als ontbrekend ─────────────────────────────────
+
+
+def test_een_sector_in_een_van_drie_jaren_is_gemiddeld_over_alle_drie():
+    df = pd.DataFrame(
+        {
+            "JAAR": [2022, 2023, 2024, 2024, 2024],
+            "SECTOR": ["ALTIJD", "ALTIJD", "ALTIJD", "EENMAAL", "NUL"],
+            "AANTAL": [30, 60, 90, 90, 0],
+        }
+    )
+
+    per_sector, jaren = dashboard._gemiddeld_per_sector(df, "JAAR", "SECTOR", "AANTAL")
+
+    assert jaren == [2022, 2023, 2024]
+    # EENMAAL: 90 in 2024 en geen rij in 2022 en 2023, dus (0 + 0 + 90) / 3; het oude gemiddelde gaf 90.
+    assert per_sector == {"ALTIJD": 60, "EENMAAL": 30}  # NUL telt 0 op en valt weg
+
+
+def test_de_hu_taal_en_cultuur_telt_het_jaar_zonder_diplomas_mee():
+    # De DUO-fixture (p04hogdipl van 08-04-2026): HU heeft TAAL_EN_CULTUUR in 2023 (52) en 2024 (76), niet in 2022.
+    dipl = pd.concat([_duo("p04hogdipl", 0), _duo("p04hogdipl", 1)])
+    hu = dipl[dipl["INSTELLINGSNAAM_ACTUEEL"] == "Hogeschool Utrecht"]
+    jaren = sorted(hu["DIPLOMAJAAR"].unique())[-3:]
+    per_jaar = hu[hu["DIPLOMAJAAR"].isin(jaren)].pivot_table(
+        index="ONDERDEEL", columns="DIPLOMAJAAR", values="AANTAL_GEDIPLOMEERDEN", aggfunc="sum", fill_value=0
+    )
+    verwacht = {k: int(round(v)) for k, v in per_jaar.reindex(columns=jaren, fill_value=0).mean(axis=1).items() if v}  # noqa: RUF046
+    assert per_jaar.loc["TAAL_EN_CULTUUR"].tolist() == [0, 52, 76]
+
+    result = dashboard.load_dashboard_arbeidsmarktmatch("Hogeschool Utrecht")
+
+    gps = result["gediplomeerden_per_sector"]
+    assert gps == verwacht
+    assert gps["TAAL_EN_CULTUUR"] == 43  # (0 + 52 + 76) / 3; zonder het lege jaar was het 64
+    # De verhouding rekent met 43: vacature-aandeel gedeeld door diploma-aandeel.
+    vacatures = result["vacatures_per_sector"]
+    aandeel_vac = vacatures["TAAL_EN_CULTUUR"] / sum(vacatures.values())
+    aandeel_dipl = 43 / sum(gps.values())
+    assert result["match_verhouding"]["TAAL_EN_CULTUUR"] == round(aandeel_vac / aandeel_dipl, 2)
+
+
 def test_de_leerwegen_tellen_op_tot_het_totaal_ingeschrevenen():
     regio = dashboard.load_dashboard_regio(_MONDRIAAN)
 

@@ -31,7 +31,12 @@ _UWV = pd.DataFrame(
 )
 
 
-def _roa_rij(regio, niveau, onderwerp, perc=None, aantal=None, typering=None, thema=arbeidsmarkt._ROA_SIS):
+# De thema's zoals editie 2026 ze spelt; de app leest ze uit het bestand (#1091).
+_SIS_THEMA = "Schoolverlatersinformatie (SIS 2025)"
+_PROGNOSE_THEMA = "Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering"
+
+
+def _roa_rij(regio, niveau, onderwerp, perc=None, aantal=None, typering=None, thema=_SIS_THEMA):
     return {
         "regionaam": regio,
         "thema": thema,
@@ -56,19 +61,19 @@ _ROA = pd.DataFrame(
             "Mbo4",
             "ITA toekomstige arbeidsmarktsituatie in 2030",
             typering="slecht",
-            thema=arbeidsmarkt._ROA_PROGNOSE,
+            thema=_PROGNOSE_THEMA,
         ),
         _roa_rij(
             "Nederland",
             "Mbo4",
             "ITA toekomstige arbeidsmarktsituatie in 2030",
             typering="redelijk",
-            thema=arbeidsmarkt._ROA_PROGNOSE,
+            thema=_PROGNOSE_THEMA,
         ),
         # Regionaal heeft ROA alleen de prognose, geen schoolverlatersinformatie.
-        _roa_rij("Midden-Utrecht", "Mbo4", _ITA, typering="goed", thema=arbeidsmarkt._ROA_PROGNOSE),
-        _roa_rij("provincie Utrecht", "Mbo4", _ITA, typering="redelijk", thema=arbeidsmarkt._ROA_PROGNOSE),
-        _roa_rij("Nederland", "Mbo4 - techniek en ict", _ITA, typering="slecht", thema=arbeidsmarkt._ROA_PROGNOSE),
+        _roa_rij("Midden-Utrecht", "Mbo4", _ITA, typering="goed", thema=_PROGNOSE_THEMA),
+        _roa_rij("provincie Utrecht", "Mbo4", _ITA, typering="redelijk", thema=_PROGNOSE_THEMA),
+        _roa_rij("Nederland", "Mbo4 - techniek en ict", _ITA, typering="slecht", thema=_PROGNOSE_THEMA),
         _roa_rij("Nederland", "Master - techniek en ict", "werkloosheid", perc="4"),
     ]
 )
@@ -88,7 +93,7 @@ def test_roa_geeft_alleen_bronwaarden_landelijk_en_binnen_het_profiel(bronnen):
     uit = json.loads(get_roa_benchmark())
 
     assert uit["versie"] == "v20251218"
-    assert uit["schoolverlaters_sis_2024"] == {
+    assert uit["schoolverlaters"] == {
         "Mbo4": {"werkloosheid": {"perc": 3}},
         "Bachelor": {"vast dienstverband": {"perc": 77}},
     }
@@ -112,8 +117,8 @@ def test_roa_bestaande_arbeidsmarktregio(bronnen):
     assert (uit["regio"], uit["regiotype"]) == ("Midden-Utrecht", "arbeidsmarktregio")
     assert uit["prognose_tot_2030"] == {"Mbo4": {_ITA: {"typering": "goed"}}}
     # Schoolverlatersinformatie is er alleen landelijk: dat staat erbij, het wordt niet stil vervangen.
-    assert uit["schoolverlaters_sis_2024"]["Mbo4"] == {"werkloosheid": {"perc": 3}}
-    assert uit["herkomst"] == {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "Midden-Utrecht"}
+    assert uit["schoolverlaters"]["Mbo4"] == {"werkloosheid": {"perc": 3}}
+    assert uit["herkomst"] == {"schoolverlaters": "Nederland", "prognose_tot_2030": "Midden-Utrecht"}
     assert "Midden-Utrecht" in uit["terugval"] and "landelijk" in uit["terugval"]
 
 
@@ -206,7 +211,7 @@ def test_roa_kent_de_mastersectoren(bronnen):
 
     uit = json.loads(get_roa_benchmark("Master - techniek en ict"))
 
-    assert uit["schoolverlaters_sis_2024"] == {"Master - techniek en ict": {"werkloosheid": {"perc": 4}}}
+    assert uit["schoolverlaters"] == {"Master - techniek en ict": {"werkloosheid": {"perc": 4}}}
 
 
 def test_roa_onbekende_sector_noemt_de_geldige(bronnen):

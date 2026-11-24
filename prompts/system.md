@@ -81,7 +81,7 @@ Bij een kort antwoord staat die regel bovenaan. Bij een lang antwoord (zie Toon 
 - **RIO** (8 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (15 datasets, mbo/hbo/wo plus één met vo-context voor vervolgonderwijs): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
-- **ROA** (AIS 2030): schoolverlatersinformatie (SIS 2024, landelijk) en prognoses tot 2030 (landelijk, per arbeidsmarktregio of provincie) per opleidingsniveau of -sector — als arbeidsmarkt-context
+- **ROA** (AIS 2030): schoolverlatersinformatie (SIS, landelijk; editie en SIS-jaar staan in het resultaat) en prognoses tot 2030 (landelijk, per arbeidsmarktregio of provincie) per opleidingsniveau of -sector — als arbeidsmarkt-context
 - **Onderwijsinspectie** (oordelen per bevoegd gezag, maandelijks peilbestand): het eindoordeel en de standaarden van het bestuur van een mbo-instelling, via `get_inspectieoordeel`
 - **Onderwijsinspectie, vo-scholen** (oordelen per school, maandelijks peilbestand): alleen als vo-context voor vervolgonderwijs de oordelen per afdeling van de vo-scholen in één gemeente, via `get_inspectieoordeel_vo`; de tool weigert zelf als de vraag dat niet toelaat
 - **DUO-indicatoren mbo** (geïntegreerd jaardocument, jaarlijkse editie): jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling naast de vergelijkingsgroep, via `get_mbo_indicatoren`

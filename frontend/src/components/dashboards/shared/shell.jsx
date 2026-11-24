@@ -198,11 +198,9 @@ export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
 // instelling (`populatie.soort` in de payload): een universiteit naast universiteiten, een hogeschool naast hogescholen.
 export const POPULATIE_NATIONAAL = { hbo: 'hogescholen (hbo)', wo: 'universiteiten (wo)', mbo: 'mbo-instellingen' }
 
-// De namen van de ROA-onderdelen (#917) in de teksten bij de ROA-grafieken. De editie staat er niet in: die komt uit
-// het bronblok (`roaPeilmoment`). De SIS-editie ligt vast in het filter van de backend (`_ROA_SIS` in
-// data/arbeidsmarkt.py): een ander SIS-thema geeft daar geen cijfers, dus deze naam loopt er niet bij achter.
+// De naam van de ROA-dataset (#917) in de teksten bij de ROA-grafieken. Editie en SIS-jaar staan er niet in: die komen
+// uit het bronblok (`roaEditie`, `roaSis`), dus uit het bestand dat de backend laadde (#1091).
 export const ROA_AIS = 'AIS tot 2030'
-export const ROA_SIS = 'SIS 2024'
 
 // "DUO — Gediplomeerde mbo-studenten (gediplomeerde-mbo-studenten)": de titel uit de catalogus, zoals de chat de bron
 // noemt, met het dataset-ID.
@@ -227,8 +225,10 @@ export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren:
   ].filter(Boolean)
 }
 
-// "editie 2025": de editie van ROA uit het bronblok, voor de teksten bij de ROA-grafieken.
-export const roaPeilmoment = bronnen => peilmomentTekst((bronnen || []).find(b => b.bron === 'ROA')?.peilmoment)
+// "editie 2026" en "SIS 2025": de editie en het SIS-jaar van ROA uit het bronblok, voor de teksten bij de ROA-grafieken.
+const roaRegel = bronnen => (bronnen || []).find(b => b.bron === 'ROA')
+export const roaEditie = bronnen => (roaRegel(bronnen)?.editie ? `editie ${roaRegel(bronnen).editie}` : null)
+export const roaSis = bronnen => roaRegel(bronnen)?.sis || null
 
 // "DUO, UWV & ROA": de bronnen in het bronblok, ieder één keer.
 export function bronBadge(bronnen) {

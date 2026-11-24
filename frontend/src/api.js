@@ -124,6 +124,11 @@ export async function fetchCatalogCounts() {
   return apiFetch('/api/catalog/counts')
 }
 
+// Release, catalogus en de dataversie van UWV en ROA (editie en SIS-jaar van het geladen ROA-bestand, #1091).
+export async function fetchVersion() {
+  return apiFetch('/api/version')
+}
+
 export async function fetchSettingsConfig() {
   return apiFetch('/api/settings/config')
 }

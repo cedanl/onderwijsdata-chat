@@ -83,9 +83,18 @@ def arbeidsmarktversie() -> list[dict]:
     # Hier en niet bovenaan: server.py importeert deze module vóór de logging-setup, en tools trekt pandas mee.
     from onderwijsbronnen import roa, uwv
 
+    from data import arbeidsmarkt
     from tools.arbeidsmarkt import ROA_ID, UWV_ID
 
+    # De editie en het SIS-jaar van het bestand dat de app laadt (`roa_bestand`, #1091), uit het schema in de catalogus:
+    # het venster Databronnen noemt ze zoals het bronblok van de dashboards en de bronregel in de chat.
+    # Zonder ROA-record in de catalogus blijft /version werken, zonder editie.
+    try:
+        bestand = arbeidsmarkt.roa_bestand()
+        roa_editie = {"editie": bestand.editie, "sis": arbeidsmarkt.roa_sis(bestand.themas)}
+    except ValueError:
+        roa_editie = {"editie": None, "sis": None}
     return [
         _arbeidsmarktbron("UWV", UWV_ID, uwv.catalog(live=False), "_ckan_id"),
-        _arbeidsmarktbron("ROA", ROA_ID, roa.catalog(), "_roa_id"),
+        _arbeidsmarktbron("ROA", ROA_ID, roa.catalog(), "_roa_id") | roa_editie,
     ]

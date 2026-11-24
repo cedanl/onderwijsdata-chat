@@ -3,9 +3,9 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 
-vi.mock('../api', () => ({ fetchCatalogCounts: vi.fn() }))
+vi.mock('../api', () => ({ fetchCatalogCounts: vi.fn(), fetchVersion: vi.fn() }))
 
-import { fetchCatalogCounts } from '../api'
+import { fetchCatalogCounts, fetchVersion } from '../api'
 import DataSourcesModal from '../components/DataSourcesModal'
 import { bronnenLijst, zetBronnenLijst } from '../bronnenLijst'
 
@@ -14,8 +14,16 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 let root
 let host
 
-async function render(counts) {
+const VERSIE = {
+  arbeidsmarkt: [
+    { bron: 'UWV', dataset: 'uwv-open-match-data', periode: '…' },
+    { bron: 'ROA', dataset: 'ais2030', periode: '…', editie: '2026', sis: 'SIS 2025' },
+  ],
+}
+
+async function render(counts, versie = VERSIE) {
   fetchCatalogCounts.mockResolvedValue(counts)
+  fetchVersion.mockResolvedValue(versie)
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -34,10 +42,10 @@ afterEach(() => {
   zetBronnenLijst({})
 })
 
-const opnieuw = async counts => {
+const opnieuw = async (counts, versie) => {
   act(() => root.unmount())
   host.remove()
-  await render(counts)
+  await render(counts, versie)
 }
 
 const ALLES = { studiekeuze: true, wo_personeel: true }
@@ -102,8 +110,29 @@ describe('DataSourcesModal', () => {
     expect(rows().map(r => r.bron)).toEqual(bronnenLijst(bronnen).map(b => b.naam))
   })
 
+  // #1091: the ROA row names the edition and SIS year the app loads (from /api/version), not a fixed SIS 2024.
+  it('names the ROA edition and SIS year of the loaded file', async () => {
+    await render({})
+    const roa = rows().find(r => r.bron === 'ROA')
+    expect(roa.inhoud).toBe('Schoolverlaters (SIS 2025) en arbeidsmarktprognoses tot 2030, editie 2026')
+    expect(host.textContent).not.toContain('SIS 2024')
+    await opnieuw({}, { arbeidsmarkt: [{ bron: 'ROA', dataset: 'ais2030', editie: '2027', sis: 'SIS 2026' }] })
+    expect(rows().find(r => r.bron === 'ROA').inhoud).toContain('(SIS 2026) en arbeidsmarktprognoses tot 2030, editie 2027')
+  })
+
+  it('names no year in the ROA row when the version is not there', async () => {
+    fetchVersion.mockRejectedValue(new Error('weg'))
+    fetchCatalogCounts.mockResolvedValue({})
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    root = createRoot(host)
+    await act(async () => { root.render(createElement(DataSourcesModal, { onClose: () => {} })) })
+    expect(rows().find(r => r.bron === 'ROA').inhoud).toBe('Schoolverlaters en arbeidsmarktprognoses tot 2030')
+  })
+
   it('always lists the Inspectie and wetten.nl, also when the counts fail', async () => {
     fetchCatalogCounts.mockRejectedValue(new Error('weg'))
+    fetchVersion.mockResolvedValue(VERSIE)
     host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)

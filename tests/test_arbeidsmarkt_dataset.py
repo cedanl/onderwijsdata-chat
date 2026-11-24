@@ -38,7 +38,12 @@ _UWV = pd.DataFrame(
 _ITA = "ITA toekomstige arbeidsmarktsituatie in 2030"
 
 
-def _roa_rij(regio, niveau, onderwerp, perc=None, typering=None, thema=arbeidsmarkt._ROA_SIS):
+# De thema's zoals editie 2026 ze spelt; de app leest ze uit het bestand (#1091).
+_SIS_THEMA = "Schoolverlatersinformatie (SIS 2025)"
+_PROGNOSE_THEMA = "Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering"
+
+
+def _roa_rij(regio, niveau, onderwerp, perc=None, typering=None, thema=_SIS_THEMA):
     return {
         "regionaam": regio,
         "thema": thema,
@@ -55,9 +60,9 @@ def _roa_rij(regio, niveau, onderwerp, perc=None, typering=None, thema=arbeidsma
 _ROA = pd.DataFrame(
     [
         _roa_rij("Nederland", "Mbo4", "werkloosheid", perc="3"),
-        _roa_rij("Nederland", "Mbo4", _ITA, typering="redelijk", thema=arbeidsmarkt._ROA_PROGNOSE),
-        _roa_rij("Midden-Utrecht", "Mbo4", _ITA, typering="goed", thema=arbeidsmarkt._ROA_PROGNOSE),
-        _roa_rij("Nederland", "Mbo4 - techniek en ict", _ITA, typering="slecht", thema=arbeidsmarkt._ROA_PROGNOSE),
+        _roa_rij("Nederland", "Mbo4", _ITA, typering="redelijk", thema=_PROGNOSE_THEMA),
+        _roa_rij("Midden-Utrecht", "Mbo4", _ITA, typering="goed", thema=_PROGNOSE_THEMA),
+        _roa_rij("Nederland", "Mbo4 - techniek en ict", _ITA, typering="slecht", thema=_PROGNOSE_THEMA),
     ]
 )
 _TITELS = {UWV_ID: "UWV Open Match", ROA_ID: "AIS tot 2030"}
@@ -137,11 +142,13 @@ def test_roa_resultaat_is_een_tabel_met_elk_cijfer_als_rij(bronnen):
     ]
     rijen = {(r["ONDERDEEL"], r["REGIO"], r["OPLEIDING"], r["INDICATOR"]): r for r in tabel.to_dict("records")}
     # Schoolverlaters zijn er alleen landelijk: die rij heet landelijk, de prognose regionaal.
-    assert rijen[("Schoolverlaters (SIS 2024)", "Nederland", "Mbo4", "werkloosheid")]["PERCENTAGE"] == 3
+    # Het SIS-jaar in de naam komt uit het thema van het geladen bestand (#1091).
+    assert rijen[("Schoolverlaters (SIS 2025)", "Nederland", "Mbo4", "werkloosheid")]["PERCENTAGE"] == 3
     assert rijen[("Prognose tot 2030", "Midden-Utrecht", "Mbo4", _ITA)]["TYPERING"] == "goed"
     known = store.meta("roa:midden-utrecht")
     assert known is not None
-    assert (known.bron, known.dataset, known.peilmoment) == ("roa", ROA_ID, "versie v20251218")
+    # Editie (catalogus), SIS-jaar (thema) en versie (kolom): zoals het bronblok van de dashboards (#1091).
+    assert (known.bron, known.dataset, known.peilmoment) == ("roa", ROA_ID, "editie 2026, SIS 2025, versie v20251218")
     assert known.laad == ("get_roa_benchmark", {"regio": "midden-utrecht"})
 
 
@@ -194,7 +201,7 @@ def test_bronnenlijst_van_het_rapport_noemt_uwv_en_roa_met_peilmoment(bronnen):
     assert [c["name"] for c in recept] == ["get_uwv_vacatures", "get_roa_benchmark"]
     assert sources_from_recipe(recept) == [
         "UWV — UWV Open Match (uwv-open-match-data), peildatum 2023-05-16",
-        "ROA — AIS tot 2030 (ais2030), versie v20251218",
+        "ROA — AIS tot 2030 (ais2030), editie 2026, SIS 2025, versie v20251218",
     ]
 
 

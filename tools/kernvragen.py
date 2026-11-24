@@ -44,7 +44,18 @@ VORMEN = (maten.ALLE, "voltijd", "deeltijd", "duaal", "bol", "bbl")
 MAX_INSTELLINGEN = 8
 
 # Wat get_maat naast de rijen zegt over de telling: het gaat mee, zodat het model van de client het ook ziet.
-_NOTEN = ("noot", "ontbrekende_schooljaren", "databewerking", "publicatieregels", "waarschuwing")
+# De publicatieregels met hun status, melding en waargenomen profiel (#1092): zonder die drie stond de regel '1-4 als
+# 4' er ook waar het bestand hem tegenspreekt.
+_NOTEN = (
+    "noot",
+    "ontbrekende_schooljaren",
+    "databewerking",
+    "publicatieregels",
+    "publicatieregel_status",
+    "publicatieregel_melding",
+    "publicatieregel_waargenomen",
+    "waarschuwing",
+)
 
 _SCHOOLJAREN = {
     "type": "array",

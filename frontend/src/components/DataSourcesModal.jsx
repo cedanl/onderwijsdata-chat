@@ -1,11 +1,16 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
 import { useEffect, useState } from 'react'
-import { fetchCatalogCounts } from '../api'
+import { fetchCatalogCounts, fetchVersion } from '../api'
 import { useDialog } from '../hooks/useDialog'
 import { useBronnenLijst } from '../bronnenLijst'
 
 // Counts come from the catalog the app searches, so they cannot drift from it.
 const withCount = (n, text) => (n ? `${n} ${text}` : text)
+
+// The ROA edition and SIS year of the file the app loads, from /api/version (#1091): the same as the source block of
+// the dashboards and the source line in the chat. Without them the row names no year rather than a fixed one.
+const roaInhoud = ({ editie, sis } = {}) =>
+  `Schoolverlaters${sis ? ` (${sis})` : ''} en arbeidsmarktprognoses tot 2030${editie ? `, editie ${editie}` : ''}`
 
 // One row per source that bronnenLijst() names (#1149): the same list as the welcome text of the chat and the intro of
 // the homepage, so a source behind a key or flag (LCSK, WOPI) shows here exactly where it shows there. The counts only
@@ -15,7 +20,7 @@ const RIJEN = {
   duo: counts => [withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'Bekijk de DUO-catalogus', 'https://onderwijsdata.duo.nl'],
   rio: counts => [`Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} bestanden)` : ''}`, 'Bekijk de RIO-catalogus', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/'],
   uwv: () => ['Vacatures per provincie of gemeente (momentopname mei 2023)', 'Bekijk de UWV-data', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
-  roa: () => ['Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'Bekijk de ROA-data', 'https://doi.org/10.34894/DVQTOG'],
+  roa: (_, roa) => [roaInhoud(roa), 'Bekijk de ROA-data', 'https://doi.org/10.34894/DVQTOG'],
   inspectie: () => ['Oordelen van de Inspectie per mbo-instelling, en als context per vo-school', 'Bekijk de site van de Inspectie', 'https://www.onderwijsinspectie.nl'],
   lcsk: () => ['Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'Bekijk de uitleg van LCSK', 'https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/'],
   unl: () => ['Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'Bekijk de WOPI-cijfers van UNL', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
@@ -24,10 +29,12 @@ const RIJEN = {
 
 export default function DataSourcesModal({ onClose }) {
   const [counts, setCounts] = useState({})
+  const [roa, setRoa] = useState()
   const dialogRef = useDialog(onClose)
   const bronnen = useBronnenLijst()
   useEffect(() => {
     fetchCatalogCounts().then(setCounts).catch(() => {})
+    fetchVersion().then(v => setRoa((v?.arbeidsmarkt || []).find(b => b.bron === 'ROA'))).catch(() => {})
   }, [])
 
   return (
@@ -51,7 +58,7 @@ export default function DataSourcesModal({ onClose }) {
             </thead>
             <tbody>
               {bronnen.filter(({ sleutel }) => RIJEN[sleutel]).map(({ sleutel, naam }) => {
-                const [inhoud, linktekst, href] = RIJEN[sleutel](counts)
+                const [inhoud, linktekst, href] = RIJEN[sleutel](counts, roa)
                 return (
                   <tr key={sleutel}>
                     <td><span className="source-name">{naam}</span></td>

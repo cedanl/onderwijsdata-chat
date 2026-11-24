@@ -18,7 +18,7 @@ from onderwijsbronnen.duo.financien import KENGETALLEN
 
 from tools import TOOL_RUN_ANALYSIS, cbs_meta, collegegeld, financien, mbo_indicatoren, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
-from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID, roa_blokken
+from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, ROA_SCHOOLVERLATERS_OUD, UWV_ID, roa_blokken, roa_onderdeelnaam
 from tools.kolomlabel import kolomlabel
 
 from . import kpi_bron
@@ -175,12 +175,17 @@ def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
     zodat een landelijke terugval landelijk heet. Bij een ho-onderdeel ook de gekoppelde categorieën en de
     opleidingstypen (#745), elk met hun eigen herkomst."""
     data_key, bron = _arbeidsmarktbron(parsed, f"{parsed.get('bron')} ({parsed.get('versie')})")  # "ROA, AIS tot 2030"
+    sis = parsed.get("sis") if isinstance(parsed.get("sis"), str) else None
     for blok in roa_blokken(parsed):
         gegeven = blok.get("herkomst")
         herkomst: dict = gegeven if isinstance(gegeven, dict) else {}
-        for onderdeel, naam in ROA_ONDERDELEN.items():
-            regio = herkomst.get(onderdeel) or blok.get("regio")
-            opleidingen = blok.get(onderdeel)
+        for onderdeel in ROA_ONDERDELEN:
+            sleutel, naam = onderdeel, roa_onderdeelnaam(onderdeel, sis)
+            if onderdeel == "schoolverlaters" and onderdeel not in blok and ROA_SCHOOLVERLATERS_OUD in blok:
+                # Een resultaat van vóór #1091 (editie 2025): de sleutel noemde het SIS-jaar zelf.
+                sleutel, naam = ROA_SCHOOLVERLATERS_OUD, "Schoolverlaters (SIS 2024)"
+            regio = herkomst.get(sleutel) or blok.get("regio")
+            opleidingen = blok.get(sleutel)
             for opleiding, indicatoren in opleidingen.items() if isinstance(opleidingen, dict) else ():
                 for indicator, waarden in indicatoren.items() if isinstance(indicatoren, dict) else ():
                     for soort, waarde in waarden.items() if isinstance(waarden, dict) else ():

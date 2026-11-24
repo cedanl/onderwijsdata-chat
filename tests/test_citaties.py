@@ -544,3 +544,23 @@ def test_m01_de_kop_kiest_tussen_twee_kolommen_met_dezelfde_waarde(m01_twee_kolo
     assert "Diplomasoort: Bachelor" in bachelor["selectie"]
     assert "Diplomasoort: Wo-master" in master["selectie"]
     assert bachelor["data_key"] == master["data_key"] == _M01_QUERY
+
+
+def test_de_roa_schoolverlaters_heten_naar_het_sis_jaar_van_het_resultaat():
+    """#1091: het SIS-jaar komt uit het resultaat (`sis`), niet uit de sleutel; een resultaat van vóór #1091 heeft de
+    sleutel `schoolverlaters_sis_2024` en houdt zijn meetwaarden."""
+    nieuw = json.loads(_ROA)
+    nieuw["sis"] = "SIS 2025"
+    nieuw["herkomst"] = {"schoolverlaters": "Nederland", "prognose_tot_2030": "provincie Gelderland"}
+    nieuw["schoolverlaters"] = nieuw.pop("schoolverlaters_sis_2024")
+
+    def werkloosheid(resultaat: str):
+        [waarde] = [w for w in meetwaarden(resultaat, "get_roa_benchmark") if w.maat == "werkloosheid"]
+        return waarde
+
+    assert werkloosheid(json.dumps(nieuw)).selectie == (
+        "Opleiding: Bachelor",
+        "Regio: Nederland",
+        "Schoolverlaters (SIS 2025)",
+    )
+    assert werkloosheid(_ROA).selectie == ("Opleiding: Bachelor", "Regio: Nederland", "Schoolverlaters (SIS 2024)")

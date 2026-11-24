@@ -745,7 +745,8 @@ opleidingssector; niet per instelling.
 | `sector` | string | Optioneel: een ROA-opleidingssector, bijv. `"Mbo4 - techniek en ict"`; zonder sector alle mbo/hbo/wo-niveaus |
 | `regio` | string | Optioneel: een arbeidsmarktregio (bijv. `"Midden-Utrecht"`) of provincie; zonder regio landelijk |
 
-- **Resultaat:** `versie`, `regio`, `schoolverlaters_sis_2024` en `prognose_tot_2030`.
+- **Resultaat:** `editie`, `sis` (het SIS-jaar van het geladen bestand, bijv. `SIS 2025`), `versie`, `regio`,
+  `schoolverlaters` en `prognose_tot_2030` (#1091; tot dan heette `schoolverlaters` `schoolverlaters_sis_2024`).
 - **Met een regio** ook `regiotype` en per onderdeel `herkomst`. Heeft ROA voor die regio geen cijfers voor een
   onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat.
 - **Een naam voor meer regio's** (#966): een provincie op haar eigen naam wordt de provincie (`Utrecht` →
