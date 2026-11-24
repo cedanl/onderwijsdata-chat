@@ -34,12 +34,12 @@ describe('huidige pagina in de navigatiebalk (#1175)', () => {
 
   it('zet aria-current="page" alleen op de actieve link', async () => {
     await render('/rapporten')
-    expect(huidig()).toEqual([['Home', null], ['Chat', null], ['Rapporten', 'page'], ['Dashboard', null]])
+    expect(huidig()).toEqual([['Home', null], ['Chat', null], ['Rapporten', 'page'], ['Dashboards', null]])
   })
 
   it('geldt ook voor een subroute van de pagina', async () => {
     await render('/dashboards?id=landelijk')
-    expect(huidig().filter(([, c]) => c === 'page')).toEqual([['Dashboard', 'page']])
+    expect(huidig().filter(([, c]) => c === 'page')).toEqual([['Dashboards', 'page']])
   })
 
   it('verbergt het icoon voor schermlezers', async () => {

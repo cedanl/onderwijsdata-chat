@@ -153,3 +153,29 @@ describe('"open" volgt de lijst (#1010)', () => {
     expect(voetlink()).toBe('Gebaseerd op open onderwijsdata')
   })
 })
+
+// #1148: vakjargon van IR-specialisten staat alleen in de IR-tekst; een bestuurder ziet het nergens op de homepage.
+const JARGON = /\betl\b|matching|ad-hoc|geharmoniseerd|black box/i
+
+describe('jargon op de homepage (#1148)', () => {
+  it('ontbreekt voor een bestuurder, met en zonder de bronnen achter een vlag', async () => {
+    for (const bronnen of [{}, { studiekeuze: true, wo_personeel: true }]) {
+      zetBronnenLijst(bronnen)
+      await render('Bestuurder')
+      expect(container.textContent).not.toMatch(JARGON)
+      expect(container.textContent).toContain('Wat je kunt')
+      expect(container.textContent).not.toContain('Functionaliteit')
+      act(() => root.unmount())
+      container.remove()
+      root = undefined
+    }
+  })
+
+  it('staat niet in de bestuurstekst zelf', () => {
+    const lijst = bronnenLijst({ studiekeuze: true, wo_personeel: true })
+    const b = HOME_TEKST.bestuur
+    const teksten = [...b.kop(lijst), b.intro(lijst), b.voordelenTitel, b.cta(lijst),
+      ...b.voordelen(lijst).flatMap(v => [v.title, v.desc])]
+    for (const t of teksten) expect(t).not.toMatch(JARGON)
+  })
+})

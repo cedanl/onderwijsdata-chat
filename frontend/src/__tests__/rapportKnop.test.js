@@ -86,7 +86,7 @@ describe('de rapportknop (#648)', () => {
     await mountChat({})
     expect(knop().hasAttribute('aria-disabled')).toBe(false)
     expect(knop().disabled).toBe(false)
-    expect(knop().textContent).toBe('Genereer rapport')
+    expect(knop().textContent).toBe('Maak rapport')
   })
 
   it.each([
@@ -108,7 +108,7 @@ describe('de rapportknop (#648)', () => {
   it('is uit terwijl het rapport wordt gemaakt', async () => {
     await mountChat({ reportBusy: true })
     expect(knop().disabled).toBe(true)
-    expect(knop().textContent).toBe('Rapport wordt gegenereerd…')
+    expect(knop().textContent).toBe('Rapport wordt gemaakt…')
     await act(async () => { knop().click() })
     expect(chat.checkReportStart).not.toHaveBeenCalled()
     expect(chat.generateReport).not.toHaveBeenCalled()
@@ -152,7 +152,7 @@ describe('het veld met de onderzoeksvraag (#751)', () => {
     expect(veld().value).toBe(WO)
     expect(document.activeElement).toBe(veld())
     expect(veld().selectionStart).toBe(WO.length)
-    // Nog geen rapport: dat start pas met Genereer.
+    // Nog geen rapport: dat start pas met Maak.
     expect(chat.generateReport).not.toHaveBeenCalled()
   })
 
@@ -162,12 +162,12 @@ describe('het veld met de onderzoeksvraag (#751)', () => {
     expect(veld().value).toBe('Hoeveel mbo-studenten per provincie?')
   })
 
-  it('Genereer stuurt de aangepaste tekst mee en sluit het veld', async () => {
+  it('Maak stuurt de aangepaste tekst mee en sluit het veld', async () => {
     await mountChat({ messages: BIJGESTUURD })
     await act(async () => { knop().click() })
     await typ(`${WO} Alleen voltijd.`)
 
-    await act(async () => { dialoogKnop('Genereer').click() })
+    await act(async () => { dialoogKnop('Maak').click() })
 
     expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', `${WO} Alleen voltijd.`)
     expect(dialoog()).toBeNull()
@@ -188,7 +188,7 @@ describe('het veld met de onderzoeksvraag (#751)', () => {
     await mountChat({ messages: BIJGESTUURD })
     await act(async () => { knop().click() })
     await typ('   ')
-    await act(async () => { dialoogKnop('Genereer').click() })
+    await act(async () => { dialoogKnop('Maak').click() })
     expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', '')
   })
 
@@ -208,7 +208,7 @@ describe('het veld met de onderzoeksvraag (#751)', () => {
     await mountChat({ messages: BIJGESTUURD })
     await act(async () => { knop().click() })
     await typ('Alleen voltijd')
-    await act(async () => { dialoogKnop('Genereer').click() })
+    await act(async () => { dialoogKnop('Maak').click() })
     expect(chat.generateReport).toHaveBeenCalledTimes(1)
     expect(veld().value).toBe('Alleen voltijd')
   })
@@ -236,7 +236,7 @@ describe('de checklist van beurten met data (#908)', () => {
     expect(chat.requestReportChecklist).toHaveBeenCalledTimes(1)
   })
 
-  it('staat boven het veld, en Genereer geeft de gekozen beurten en figuren door (#993)', async () => {
+  it('staat boven het veld, en Maak geeft de gekozen beurten en figuren door (#993)', async () => {
     await mountChat({ messages: BIJGESTUURD, reportChecklist: KLAAR })
     await act(async () => { knop().click() })
     const vakjes = dialoog().querySelectorAll('input[type="checkbox"]')
@@ -244,7 +244,7 @@ describe('de checklist van beurten met data (#908)', () => {
     expect([...vakjes].every(v => v.checked)).toBe(true)
 
     await act(async () => { vakjes[0].click() })
-    await act(async () => { dialoogKnop('Genereer').click() })
+    await act(async () => { dialoogKnop('Maak').click() })
 
     expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO, [2], [])
   })
@@ -253,7 +253,7 @@ describe('de checklist van beurten met data (#908)', () => {
     await mountChat({ messages: BIJGESTUURD, reportChecklist: { status: 'klaar', items: [] } })
     await act(async () => { knop().click() })
     expect(dialoog().querySelector('fieldset')).toBeNull()
-    await act(async () => { dialoogKnop('Genereer').click() })
+    await act(async () => { dialoogKnop('Maak').click() })
     expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO)
   })
 })

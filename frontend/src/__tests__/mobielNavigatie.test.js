@@ -86,7 +86,7 @@ describe('menu in de navbar (vervangt de tabbalk)', () => {
     await klik(knop('Menu'))
     const menu = container.querySelector('#navbar-menu')
     expect(knop('Menu').getAttribute('aria-expanded')).toBe('true')
-    expect([...menu.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Home', 'Chat', 'Rapporten', 'Dashboard'])
+    expect([...menu.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Home', 'Chat', 'Rapporten', 'Dashboards'])
     expect(menu.querySelector('a[aria-current="page"]').textContent).toBe('Chat')
   })
 
@@ -112,7 +112,7 @@ describe('menu in de navbar (vervangt de tabbalk)', () => {
     expect(items()).toContain('Gebaseerd op open onderwijsdata')
   })
 
-  it('laat Dashboard weg als de pagina uit staat, ook in de balk op desktop', async () => {
+  it('laat Dashboards weg als de pagina uit staat, ook in de balk op desktop', async () => {
     await render(nav({ dashboardsEnabled: false }))
     await klik(knop('Menu'))
     expect(container.textContent).not.toContain('Dashboard')

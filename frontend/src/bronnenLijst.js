@@ -4,24 +4,25 @@ import { useSyncExternalStore } from 'react'
 // lijst. De vaste bronnen, plus wat /api/config `bronnen` hier als aan meldt (tools/beschikbaarheid.py): de
 // Studiekeuzedatabase alleen met haar sleutel, WOPI van UNL alleen met zijn vlag. `financien` is data van DUO en voegt
 // geen naam toe.
+// - `sleutel`: vaste korte naam, voor wie per bron iets toevoegt (de rijen van het venster Databronnen, #1149);
 // - `alleenMet`: de sleutel in /api/config `bronnen` die true moet zijn;
 // - `opvraag: false`: de app vraagt daar niets op (het collegegeld staat als vaste tabel in tools/collegegeld.py);
 // - `gelicentieerd`: geen open data;
 // - `privacynoot`: wat de privacy-informatie over die bron zegt, naast de opsomming.
 const BRONNEN = Object.freeze([
-  { naam: 'CBS' },
-  { naam: 'DUO' },
-  { naam: 'RIO' },
-  { naam: 'UWV' },
-  { naam: 'ROA' },
-  { naam: 'de Onderwijsinspectie' },
+  { sleutel: 'cbs', naam: 'CBS' },
+  { sleutel: 'duo', naam: 'DUO' },
+  { sleutel: 'rio', naam: 'RIO' },
+  { sleutel: 'uwv', naam: 'UWV' },
+  { sleutel: 'roa', naam: 'ROA' },
+  { sleutel: 'inspectie', naam: 'de Onderwijsinspectie' },
   {
-    naam: 'de Studiekeuzedatabase (LCSK)', alleenMet: 'studiekeuze', gelicentieerd: true,
+    sleutel: 'lcsk', naam: 'de Studiekeuzedatabase (LCSK)', alleenMet: 'studiekeuze', gelicentieerd: true,
     privacynoot: 'De Studiekeuzedatabase is gelicentieerde data van LCSK, geen open data; de app vraagt haar op met een eigen sleutel.',
   },
-  { naam: 'UNL (WOPI)', alleenMet: 'wo_personeel' },
+  { sleutel: 'unl', naam: 'UNL (WOPI)', alleenMet: 'wo_personeel' },
   {
-    naam: 'wetten.nl (collegegeld)', opvraag: false,
+    sleutel: 'wetten', naam: 'wetten.nl (collegegeld)', opvraag: false,
     privacynoot: 'Het wettelijk collegegeld staat als vaste tabel in de app, overgenomen van wetten.nl; daarheen gaat geen opvraag.',
   },
 ].map(Object.freeze))

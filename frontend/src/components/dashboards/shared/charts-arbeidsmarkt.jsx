@@ -176,7 +176,7 @@ export function RoaSection({ data, dark }) {
     <>
       <SectionHeader
         title="Landelijk referentiekader (ROA)"
-        subtitle={`Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA, ${roaNaam(ROA_SIS, data)})`}
+        subtitle={`Landelijke gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA, ${roaNaam(ROA_SIS, data)})`}
       />
       <ChartCard>
         <Grafiek soort="bar" data={chartData} options={opts} hoogte={h} titel="Landelijk referentiekader (ROA)" categorie="Niveau" />
@@ -225,7 +225,7 @@ export function PrognoseSection({ data }) {
     <>
       <SectionHeader
         title="Arbeidsmarktprognose tot 2030 (ROA)"
-        subtitle="Nationale verwachtingen per opleidingsniveau — niet specifiek voor deze instelling of regio"
+        subtitle="Landelijke verwachtingen per opleidingsniveau — niet specifiek voor deze instelling of regio"
       />
       <ChartCard>
         <TabelScroll label="Arbeidsmarktprognose tot 2030" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
