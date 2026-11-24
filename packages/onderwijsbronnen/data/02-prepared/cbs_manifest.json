@@ -4,18 +4,18 @@
     "naam": "catalogus/bouw_artefact.py",
     "package_versie": "0.11.2"
   },
-  "catalogusrevisie": "5b4357cf3af22384",
+  "catalogusrevisie": "561c8522c682472c",
   "bestanden": {
     "cbs_datasets.json": {
-      "sha256": "53c148a792a117aafb118271f4e643a7bfaa9cbaa632d8e1bb9265da34f4db22",
+      "sha256": "c58a013c802b7ce2fa9e04a83fb9961510563b9f54336f9a188451c6ad3712b1",
       "records": 268
     },
     "cbs_datasets_ai.json": {
-      "sha256": "d5accafa3b4cf0535baf5c7eb62bd5c64288dbaaf45043611ea2cffcbebacc32",
+      "sha256": "7f2d30b7f7891d922429513163456adf219ad2f315997166b52cd1fa3fa6b877",
       "records": 268
     },
     "cbs_datasets_enriched.json": {
-      "sha256": "11cdf032728ae7bc2bb60b2d7df4f14e6a36a12b5fdcda44b0a9602ecc1db429",
+      "sha256": "94392fa3577b261b77b1c2edac9dfd0983f55482440284e3908713f125e0e0dc",
       "records": 268
     },
     "cbs_tableinfo.json": {
@@ -39,7 +39,7 @@
     "met_periodecodes": 241
   },
   "bronwijziging": {
-    "laatste_update_max": "2026-10-16",
+    "laatste_update_max": "2026-11-12",
     "metadata_modified_max": "2026-10-21T02:00:00"
   },
   "laatste_succesvolle_controle": "2026-10-21",

@@ -808,7 +808,8 @@ def _zoekbaar(entry: dict, vervolgvraag: bool) -> bool:
 
 
 def _context(entry: dict) -> dict:
-    """Het etiket voor een treffer uit VO_CONTEXT; op de treffer, nooit op het gecachete catalogusrecord."""
+    """Het etiket voor een treffer of de details van een record uit VO_CONTEXT; op de uitvoer, nooit op het gecachete
+    catalogusrecord. Een direct dataset-ID laadt zonder zoekpoort (#1096), dus ook daar draagt het etiket."""
     return {"context": scopeprofiel.VO_CONTEXT_ETIKET} if scopeprofiel.is_vo_context(entry) else {}
 
 
@@ -939,20 +940,30 @@ def _buiten_profiel(query: str) -> bool:
     return not ho_markers.vervolgcontext(query)
 
 
+def _buiten_scope(query: str) -> str | None:
+    """De `out_of_scope`-envelope als de zoekterm over po, so of vo gaat (#1093); anders None.
+
+    Vóór de zoektocht, niet erna: woorden als "leerlingen" of "examen" leveren mbo- en ho-treffers op, en een
+    MCP-client of de chat las die als antwoord op een po/vo-vraag. Een zoekterm over vervolgonderwijs blijft erbinnen,
+    en zo ook een zoekterm bij een beurt waarvan de vraag van de gebruiker over vervolgonderwijs gaat: het model zoekt
+    dan op "havo" voor de instroom in het hbo (#597). Na drie scopevragen voor één vraag is clarify_scope weg
+    (`_MAX_CLARIFY_RONDES` in agent/run.py), dus de tekst dekt beide gevallen.
+    """
+    if not _buiten_profiel(query) or ho_markers.beurt_over_vervolgonderwijs():
+        return None
+    return _envelop(
+        STATUS_OUT_OF_SCOPE,
+        melding=scopeprofiel.MELDING,
+        vervolgstap="Leg uit dat de assistent alleen mbo, hbo en wo behandelt; zoek niet verder.",
+        kandidaten=[],
+    )
+
+
 def _no_match(query: str, termen: list[str], zwak: list, geo_niveau: str | None) -> str:
     """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168).
 
-    Met zwakke suggesties is het `needs_clarification`, anders `no_match`; een vraag over po, so of vo is
-    `out_of_scope`. Na drie scopevragen voor één vraag is clarify_scope weg (`_MAX_CLARIFY_RONDES` in agent/run.py),
-    dus de tekst dekt beide gevallen.
+    Met zwakke suggesties is het `needs_clarification`, anders `no_match`.
     """
-    if _buiten_profiel(query):
-        return _envelop(
-            STATUS_OUT_OF_SCOPE,
-            melding=scopeprofiel.MELDING,
-            vervolgstap="Leg uit dat de assistent alleen mbo, hbo en wo behandelt; zoek niet verder.",
-            kandidaten=[],
-        )
     passend = [(s, h) for s, h in zwak if not geo_niveau or geodekking(h, geo_niveau) != "nee"]
     suggesties = [h for h in _gerangschikt(passend, None)[0] if _dataset_id(h) != "?"][:_MAX_SUGGESTIES]
     if not suggesties:
@@ -1072,6 +1083,9 @@ def _zoek(query: str, source: str, top_n: int, geo_niveau: str | None) -> str:
     hint = _volzin_hint(query, query_words, filtered_words)
     termen, nodig = _drempel(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
+    if buiten := _buiten_scope(query):
+        logger.info("search_catalog buiten scope %s source=%s", tekst_kenmerk(query, "query_"), source)
+        return buiten
     # De zoekpoort voor vo-context (#557, #877): de vraag van de gebruiker moet over vervolgonderwijs gaan, niet de
     # zoekterm (#597).
     vervolgvraag = ho_markers.vo_context_poort(query)
@@ -1311,12 +1325,17 @@ def _build_details(entry: dict, dataset_id: str, zonder: tuple[str, ...] = ()) -
         ]
     if not details:
         return json.dumps(
-            {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar."},
+            {
+                "bron": entry.get("bron", dataset_id),
+                **_context(entry),
+                "melding": "Geen kolomdetails beschikbaar.",
+            },
             ensure_ascii=False,
         )
     return json.dumps(
         {
             "bron": entry.get("bron", dataset_id),
+            **_context(entry),
             "status": status(entry),
             "koppelbaar_via": koppelbaar_via(entry),
             **details,

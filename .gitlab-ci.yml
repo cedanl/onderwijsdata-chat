@@ -341,7 +341,7 @@ ijkwaarden:ververs:
     - pip install --no-cache-dir uv
     - uv sync --frozen
 
-# Wekelijks (zondag): _laatste_update per CBS-tabel uit TableInfos, dan de keten die de catalogus consistent houdt
+# Wekelijks (zondag): _laatste_update en periode per CBS-tabel uit TableInfos, dan de keten die de catalogus consistent houdt
 # (afleiding, TableInfos-methodiek en perioden, validatie en publicatie naar package, site en manifest) en de tests van
 # het pakket. Faalt een stap, dan komt er geen MR en blijft het laatst-goede artefact op main staan.
 cbs:laatste-update:
@@ -362,7 +362,7 @@ cbs:laatste-update:
       GEWIJZIGD=$(git diff -U0 -- packages/onderwijsbronnen/data/02-prepared/cbs_datasets_ai.json | grep -c '^+.*_laatste_update' || true)
       uv run python scripts/pakketbot.py mr --branch bot/cbs-laatste-update \
         --titel "chore(onderwijsbronnen): _laatste_update van ${GEWIJZIGD} CBS-tabellen ($(date +%Y-%m-%d))" \
-        --toelichting "Wekelijkse controle van _laatste_update per CBS-tabel, met de afgeleide catalogus, het manifest en de site." \
+        --toelichting "Wekelijkse controle van _laatste_update en periode per CBS-tabel, met de afgeleide catalogus, het manifest en de site." \
         packages/onderwijsbronnen/data/02-prepared packages/onderwijsbronnen/src/onderwijsbronnen/cbs/data \
         packages/onderwijsbronnen/docs/cbs/data.json packages/onderwijsbronnen/docs/cbs/catalogus_manifest.json
 
