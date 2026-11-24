@@ -123,11 +123,11 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik, dat onder het
   pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en
   ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
-  (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
-  back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash
-  van een sessie waarmee je uitlogde in `revoked_tokens` tot zij verloopt, de tellers in `rate_limit_hits`
-  (hoogstens tien minuten), die onder een pseudoniem staan en dus geen accountnaam hebben om op te verwijderen, en de kopie in de browser van een ander
-  apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
+  (#786): een open chat daar sluit bij de volgende vraag. De tellers in `rate_limit_hits` gaan niet direct weg: ze
+  staan onder een pseudoniem en hebben geen accountnaam om op te verwijderen (hoogstens tien minuten). Wat blijft
+  verder: de serverlogs (zonder gesprekstekst, #475) en de back-ups van de beheerder, de hash van je accountnaam in
+  `revoked_users` tot je laatste sessie verlopen is, de hash van een sessie waarmee je uitlogde in `revoked_tokens` tot
+  zij verloopt, en de kopie in de browser van een ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
   teamaccount in `CHAT_USERS`), dan verdwijnt ook het werk van de anderen. Zonder eigen login (iedereen is dan
   `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404.
 

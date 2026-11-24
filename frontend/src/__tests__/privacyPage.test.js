@@ -235,7 +235,7 @@ describe('de privacytekst op B1 (#1139)', () => {
     await render(createElement(PrivacyPage))
     for (const tekst of [sectionText('Wat je zelf kunt doen'), oneLine(docsSection('Wat je zelf kunt doen'))]) {
       expect(tekst).toMatch(/tellers/)
-      expect(tekst).toMatch(/62 dagen/)
+      expect(tekst).toMatch(/tien minuten/)
     }
   })
 })

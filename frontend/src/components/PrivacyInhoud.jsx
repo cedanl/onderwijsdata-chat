@@ -167,21 +167,21 @@ export default function PrivacyInhoud() {
         <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
-          dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je tokengebruik (wat je vragen
-          het model kostten, één getal per dag). Niet erin: wat alleen in je browser staat.
+          dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald en het bewijs per antwoord.
+          Ook je tokengebruik zit erin: wat je vragen het model kostten, als één getal per dag. Niet erin: wat alleen in je browser
+          staat. Zonder eigen login kan het niet.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;.
           Typ daarna het woord &ldquo;verwijder&rdquo;. Dat kan niet ongedaan worden gemaakt, dus exporteer eerst.
           Dan verdwijnt alles wat de server onder je account bewaart. Dat zijn je gesprekken, rapporten en
-          dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je tokengebruik. Ook de
-          kopie in deze browser gaat weg. Je wordt uitgelogd, ook op een ander apparaat.
-        </li>
-        <li>
-          Wat blijft na het verwijderen: de serverlogs (zonder gesprekstekst) en de back-ups van de beheerder. Ook de
-          tellers van het inloggen en de limieten blijven staan, onder een pseudoniem, hoogstens tien minuten. Verder blijft een controlecode van je
-          accountnaam staan, tot je laatste sessie verlopen is. Een controlecode van een sessie waarmee je uitlogde
-          blijft staan tot zij verloopt. De kopie in de browser van een ander apparaat blijft staan tot je daar uitlogt.
+          dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je
+          tokengebruik. Ook de kopie in deze browser gaat weg. Je wordt uitgelogd, ook op een ander apparaat. De
+          tellers van het inloggen en de limieten gaan niet direct weg. Ze staan onder een pseudoniem en verdwijnen na
+          hoogstens tien minuten. Wat blijft verder: de serverlogs (zonder gesprekstekst) en de back-ups van de
+          beheerder. Ook blijft een controlecode van je accountnaam staan, tot je laatste sessie verlopen is. Een
+          controlecode van een sessie waarmee je uitlogde blijft staan tot zij verloopt. De kopie in de browser van een
+          ander apparaat blijft staan tot je daar uitlogt.
         </li>
         <li>Gebruik je een gedeeld account, dan verdwijnt ook het werk van de anderen. Zonder eigen login kan het niet.</li>
       </ul>
