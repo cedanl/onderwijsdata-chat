@@ -245,6 +245,7 @@ def test_de_taak_wordt_bij_het_afsluiten_geannuleerd(monkeypatch):
 
     async def loop():
         async with dashboard_opwarmen.opwarming(True) as taak:
+            assert taak is not None
             await asyncio.wait_for(begonnen.wait(), timeout=10)
             assert not taak.done()
         return taak
