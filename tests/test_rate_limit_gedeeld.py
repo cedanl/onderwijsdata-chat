@@ -178,6 +178,89 @@ def test_een_databasefout_valt_terug_op_het_geheugen_en_logt_een_keer(db, monkey
     assert "verbinding weg" not in meldingen[0].getMessage(), "alleen het soort fout, geen details"
 
 
+def _geen_geheugen(pod):
+    """Het geheugen van deze pod mag niet meetellen: de database gaf een antwoord."""
+
+    def fout(key):
+        pytest.fail("de pod telde in zijn eigen geheugen terwijl de database bereikbaar was")
+
+    pod._geheugen_toestaan = fout
+    return pod
+
+
+def test_een_vergrendelde_database_probeert_het_opnieuw_en_telt_niet_in_het_geheugen(db, monkeypatch):
+    """#1194: een voorbijgaande 'database is locked' liet een pod in zijn eigen geheugen tellen, zodat vier pods samen
+    één poging te veel doorlieten."""
+    aanroepen = []
+    slaap = []
+
+    def eerst_vergrendeld(*args, **kwargs):
+        aanroepen.append(args)
+        if len(aanroepen) == 1:
+            raise sqlite3.OperationalError("database is locked")
+        return 7_000
+
+    monkeypatch.setattr(db, "rate_limit_poging", eerst_vergrendeld)
+    monkeypatch.setattr("core.rate_limit.time.sleep", slaap.append)
+    pod = _geen_geheugen(_pod(max_attempts=1))
+    assert pod.probeer("anna") == 7, "de wachttijd komt uit de tweede poging naar de database"
+    assert len(aanroepen) == 2
+    assert sum(slaap) < 1
+
+
+def test_een_aanhoudend_vergrendelde_database_valt_begrensd_terug_op_het_geheugen(db, monkeypatch, caplog):
+    aanroepen = []
+    slaap = []
+
+    def vergrendeld(*args, **kwargs):
+        aanroepen.append(args)
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(db, "rate_limit_poging", vergrendeld)
+    monkeypatch.setattr("core.rate_limit.time.sleep", slaap.append)
+    pod = _pod(max_attempts=1)
+    with caplog.at_level(logging.WARNING, logger="core.rate_limit"):
+        assert pod.probeer("anna") is None
+    assert 1 < len(aanroepen) <= 3, "een paar keer opnieuw, niet eindeloos"
+    assert sum(slaap) < 1, "minder dan een seconde extra wachten"
+    assert pod.probeer("anna") is not None, "daarna telt het geheugen van deze pod"
+    assert any("telt per pod" in r.getMessage() for r in caplog.records)
+
+
+def test_een_onbereikbare_database_valt_terug_op_het_geheugen_per_pod(db, monkeypatch, tmp_path, caplog):
+    """De keuze bij een database die echt weg is (#1194): beschikbaarheid boven strengheid. Geen fout, geen herkansing,
+    en de limiet geldt per pod."""
+    monkeypatch.setattr(db, "_db_path", lambda: tmp_path / "bestaat-niet" / "test.db")
+    slaap = []
+    monkeypatch.setattr("core.rate_limit.time.sleep", slaap.append)
+    pod_a, pod_b = _pod(max_attempts=1), _pod(max_attempts=1)
+    with caplog.at_level(logging.WARNING, logger="core.rate_limit"):
+        assert pod_a.probeer("anna") is None
+        assert pod_a.probeer("anna") is not None
+        assert pod_b.probeer("anna") is None, "pod B kent de telling van pod A niet"
+        assert pod_b.probeer("anna") is not None
+    assert slaap == [], "een database die niet opent, is geen vergrendeling: meteen terugvallen"
+    assert any("telt per pod" in r.getMessage() for r in caplog.records)
+
+
+def test_een_mislukte_opruiming_gooit_een_getelde_poging_niet_weg(db, monkeypatch, caplog):
+    """De opruiming na het tellen stond in dezelfde `try`: faalde zij, dan telde de poging in de database én in het
+    geheugen (#1194)."""
+    nu = [1_000.0]
+    monkeypatch.setattr("core.rate_limit.time.monotonic", lambda: nu[0])
+
+    def kapot(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(db, "rate_limit_opruimen", kapot)
+    pod = _geen_geheugen(_pod(max_attempts=1, window_seconds=60))
+    nu[0] += 61
+    with caplog.at_level(logging.WARNING, logger="core.rate_limit"):
+        assert pod.probeer("anna") is None
+    assert _pod(max_attempts=1).probeer("anna") is not None, "de poging staat in de database"
+    assert not any("telt per pod" in r.getMessage() for r in caplog.records), "de telling lukte gewoon"
+
+
 def test_postgres_neemt_een_advisory_lock_per_bucket_en_sleutel(monkeypatch):
     import persistence.db as db
 
