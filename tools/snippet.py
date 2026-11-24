@@ -39,6 +39,7 @@ from .bron_ids import cbs_tabel_id
 from .canoniek import parse_filter_key
 from .duo import cijferresource, is_prognose
 from .herlaad import Receptbron
+from .outcome import outcome
 from .pakketversies import versiekop
 from .periode import STUDIEJAAR_LABEL
 from .plot import (
@@ -1043,9 +1044,15 @@ def _geladen_key(tool_name: str, result: str | None) -> str | None:
 
 
 def generate(tool_name: str, args: dict, result: str | None = None, recept_van: Receptbron | None = None) -> str | None:
-    """Genereer de snippet; `recept_van` levert de keten van een afgeleide key (#472, #624)."""
+    """Genereer de snippet; `recept_van` levert de keten van een afgeleide key (#472, #624).
+
+    Weigerde de scopegrens de stap (`buiten_scope`), dan kwam er geen data en is er geen code (#1103): die zou de
+    geweigerde tabel laden alsof de stap slaagde. De chatlus slaat zo'n stap ook zelf over (`agent.loop`).
+    """
     gen = _GENERATORS.get(tool_name)
     if gen is None:
+        return None
+    if result is not None and outcome(tool_name, result).get("status") == "buiten_scope":
         return None
     if isinstance(key := args.get("data_key"), str):
         # De key zoals tools.dispatch hem opzocht: `DUO:P01HOINGES:1` is `duo:p01hoinges:1` (#331, #945).

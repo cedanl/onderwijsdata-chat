@@ -1040,3 +1040,18 @@ def test_sankey_snippet_tekent_dezelfde_stromen_als_de_app(monkeypatch):
         [412, 98, 120],
     )
     assert fig.layout.title.text == "Stromen"
+
+
+@pytest.mark.parametrize(
+    ("tool", "args"),
+    [("get_cbs_data", {"dataset_id": "80040NED"}), ("get_rio_data", {"resource": "erkenningen"})],
+)
+def test_een_stap_die_de_scopegrens_weigerde_heeft_geen_snippet(tool, args):
+    """De scopegrens weigerde de opvraag (`buiten_scope`): er kwam geen data, dus ook geen code die haar laadt (#1103).
+    Ook buiten de chatlus, die de snippet al overslaat: `generate` toetst de uitkomst zelf."""
+    from tools import dispatch, outcome
+
+    result, _ = dispatch(tool, args)
+    assert outcome(tool, result)["status"] == "buiten_scope"
+
+    assert generate(tool, args, result) is None

@@ -18,11 +18,11 @@ import pytest
 from onderwijsbronnen import skdb
 from onderwijsbronnen.skdb import proefbestand
 
-from agent.codeverzoek import CODEKOP, GEEN_DATASTAP, is_codeverzoek
+from agent.codeverzoek import CODEKOP, GEEN_DATASTAP, codeblok, is_codeverzoek, onthoud
 from agent.stream import StreamResult
 from data import instellingen
-from tools import studiekeuze
-from tools.schemas import TOOL_GET_COLLEGEGELD, TOOL_GET_STUDIEKEUZE, TOOL_SEARCH_CATALOG
+from tools import dispatch, studiekeuze
+from tools.schemas import TOOL_GET_CBS_DATA, TOOL_GET_COLLEGEGELD, TOOL_GET_STUDIEKEUZE, TOOL_SEARCH_CATALOG
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -90,6 +90,9 @@ def _dispatch(name, args):
         return _COLLEGEGELD, None
     if name == TOOL_SEARCH_CATALOG:
         return _ZOEKEN, None
+    if name == TOOL_GET_CBS_DATA:
+        # De echte opvraag: de scopegrens weigert een vo-tabel vóór elke netwerkaanroep.
+        return dispatch(name, args)
     raise AssertionError(name)
 
 
@@ -174,3 +177,42 @@ def test_een_getal_in_het_codeblok_krijgt_geen_citatie(monkeypatch):
     )
     assert "30020" in _snippet(events) and "30020" in slot["content"]
     assert not any(c["getal"] in _snippet(events) for c in slot.get("citaties", []))
+
+
+# --- een stap die de scopegrens weigerde (#1103) -------------------------------------------------------------------
+
+_VO_TABEL = json.dumps({"dataset_id": "80040NED"})
+_VO_CODE = 'import cbsodata\nrijen = cbsodata.get_data("80040NED")'
+
+
+def test_een_geweigerde_stap_bewaart_geen_snippet():
+    """Ook als het event een snippet draagt: een stap buiten de scope laadde niets, dus er is geen code om te tonen."""
+    sessie: dict = {}
+    onthoud(
+        sessie,
+        {
+            "type": "tool_end",
+            "name": TOOL_GET_CBS_DATA,
+            "status": "buiten_scope",
+            "status_label": "CBS-opvraag geweigerd (buiten scope)",
+            "snippet": _VO_CODE,
+        },
+    )
+    blok = codeblok(sessie)
+    assert "80040NED" not in blok and "```python" not in blok
+    assert '"CBS-opvraag geweigerd (buiten scope)", heeft geen code' in blok
+
+
+def test_na_een_geweigerde_vo_tabel_geen_code_van_die_tabel(monkeypatch):
+    """Na 80040NED (vo, buiten de scope) geeft het codeverzoek de vaste zin, niet de code van de geweigerde tabel en
+    niet die van een eerdere stap."""
+    gesprek = _Gesprek(monkeypatch)
+    events, _ = gesprek.beurt("Hoe tevreden zijn studenten ICT bij de HU?", _stap(TOOL_GET_STUDIEKEUZE, _HU_ICT))
+    snippet = _snippet(events)
+    events, _ = gesprek.beurt("En de vo-leerlingen per leerjaar?", _stap(TOOL_GET_CBS_DATA, _VO_TABEL))
+    stap = next(e for e in events if e["type"] == "tool_end" and e["name"] == TOOL_GET_CBS_DATA)
+    assert stap["status"] == "buiten_scope" and "snippet" not in stap
+    _, slot = gesprek.beurt("Geef de code om dit zelf na te rekenen.", [_tekst("Zie hieronder.")])
+    inhoud = slot["content"]
+    assert "80040NED" not in inhoud and snippet not in inhoud and "```python" not in inhoud
+    assert "heeft geen code" in inhoud
