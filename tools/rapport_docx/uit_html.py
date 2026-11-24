@@ -7,7 +7,8 @@ cssselect geen CSS-selectors); een onderdeel dat een ouder rapport niet heeft, b
 
 De conclusie gaat eerst terug naar de Markdown waaruit reportHtml.js haar maakte (zoals proseMarkdown in de JS) en
 daarna naar blokken: kop, alinea, opsommingspunt of tabel. Een pipetabel (`| a | b |` met een `|---|---|`-regel
-eronder, prompts/system.md) stond in de HTML als tekstregels; hier wordt het weer een tabel.
+eronder, prompts/system.md) staat in de HTML als <table> (#1075; in een ouder rapport als tekstregels); hier wordt het
+weer een pipetabel en daarna een tabel.
 """
 
 import re
@@ -139,25 +140,69 @@ def _spaties(tekst: str | None) -> str:
     return re.sub(r"\s+", " ", tekst or "")
 
 
+_UITLIJNING = re.compile(r"text-align:\s*(left|right|center)")
+_SCHEIDINGSCEL = {"left": ":---", "right": "---:", "center": ":---:"}
+
+
+def _cel_markdown(cel) -> str:
+    """Een cel als één regel tekst, zoals celMarkdown in de JS: een | erin zou de tabel breken."""
+    return re.sub(r"\s+", " ", _prose_markdown(cel)).strip().replace("|", "/")
+
+
+def _uitlijning(cel) -> str:
+    gevonden = _UITLIJNING.search(cel.get("style") or "")
+    return _SCHEIDINGSCEL.get(gevonden.group(1), "---") if gevonden else "---"
+
+
+def _tabel_markdown(tabel) -> str:
+    """Een <table> uit reportHtml.js (#1075) terug naar een pipetabel met scheidingsregel (tabelMarkdown in de JS)."""
+    rijen = [tr for tr in tabel.iter("tr") if next(tr.iterancestors("table"), None) is tabel]
+    if not rijen:
+        return ""
+
+    def cellen(tr) -> list:
+        return [c for c in tr if isinstance(c.tag, str) and c.tag.lower() in ("th", "td")]
+
+    def regel(delen: list[str]) -> str:
+        return f"| {' | '.join(delen)} |"
+
+    kop, *rest = rijen
+    return "\n".join(
+        [
+            regel([_cel_markdown(c) for c in cellen(kop)]),
+            f"|{'|'.join(_uitlijning(c) for c in cellen(kop))}|",
+            *(regel([_cel_markdown(c) for c in cellen(tr)]) for tr in rest),
+        ]
+    )
+
+
 def _prose_markdown(el) -> str:
-    """De conclusie terug naar Markdown, zoals proseMarkdown in rapportUitHtml.js: koppen, vet, punten en regels."""
+    """De conclusie terug naar Markdown, zoals proseMarkdown in rapportUitHtml.js: koppen, vet, opsommingen (ook
+    genummerd), tabellen (#1075) en regels."""
     uit = _spaties(el.text)
     for kind in el:
         if isinstance(kind.tag, str):
-            binnen = _prose_markdown(kind)
             tag = kind.tag.lower()
-            if tag == "br":
-                uit += "\n"
-            elif tag in ("strong", "b"):
-                uit += f"**{binnen.strip()}**"
-            elif _KOP.match(tag):
-                uit += f"\n\n### {binnen.strip()}\n\n"
-            elif tag == "li":
-                uit += f"\n- {binnen.strip()}\n"
-            elif tag in ("p", "div", "ul", "ol"):
-                uit += f"\n\n{binnen}\n\n"
+            if tag == "table":
+                uit += f"\n\n{_tabel_markdown(kind)}\n\n"
+            elif tag == "ol":
+                items = [li for li in kind if isinstance(li.tag, str) and li.tag.lower() == "li"]
+                genummerd = "\n".join(f"{i}. {_prose_markdown(li).strip()}" for i, li in enumerate(items, 1))
+                uit += f"\n\n{genummerd}\n\n"
             else:
-                uit += binnen
+                binnen = _prose_markdown(kind)
+                if tag == "br":
+                    uit += "\n"
+                elif tag in ("strong", "b"):
+                    uit += f"**{binnen.strip()}**"
+                elif _KOP.match(tag):
+                    uit += f"\n\n### {binnen.strip()}\n\n"
+                elif tag == "li":
+                    uit += f"\n- {binnen.strip()}\n"
+                elif tag in ("p", "div", "ul"):
+                    uit += f"\n\n{binnen}\n\n"
+                else:
+                    uit += binnen
         uit += _spaties(kind.tail)
     return uit
 
