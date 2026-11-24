@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import json
 from typing import Any
 from unittest.mock import patch
@@ -505,7 +506,21 @@ def test_berekening_zonder_script_in_het_recept_blijft_een_eerlijke_kopie(clean_
     assert clean_packages == []
 
 
-def test_kpi_na_een_echte_berekening_herhaalt_het_script_via_de_sessie(clean_packages):
+@pytest.fixture
+def db(tmp_path, monkeypatch):
+    """Een eigen SQLite-bestand met tabellen, zoals in `test_recepten.py`: de recepten van de sessie staan in de database.
+
+    Zonder dit hangt de test af van de volgorde: alleen gedraaid vindt `recipe_for_key` geen tabel `data_recipes` (#1207).
+    """
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    return db
+
+
+def test_kpi_na_een_echte_berekening_herhaalt_het_script_via_de_sessie(clean_packages, db):
     """De keten van de app zelf: run_analysis in de sandbox, de sessie onthoudt de stap, de KPI-snippet herhaalt hem."""
     from agent import recepten
     from agent.session_data import record_data_key
