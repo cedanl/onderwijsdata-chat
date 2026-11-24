@@ -22,7 +22,7 @@ ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from onderwijsbronnen.cbs import __version__, contract
+from onderwijsbronnen.cbs import __version__, contract, periode
 from verrijk_catalogus import VEROUDERD, verrijking_stempel
 
 SCHEMA_VERSIE = 1
@@ -106,7 +106,7 @@ def valideer(prepared: Path) -> tuple[list[str], list[str]]:
         waarschuwingen.append(f"{v['afleiding_verouderd']} enriched-records met verouderde afleiding (refresh mislukt)")
     if v["perioden_verouderd"] or v["perioden_onbekend"]:
         waarschuwingen.append(f"perioden: {v['perioden_verouderd']} verouderd, {v['perioden_onbekend']} onbekend "
-                              "(laatste Perioden-controle mislukt)")
+                              "(laatste Perioden-controle mislukt, of de periode-tekst loopt achter op de tabel)")
     return fouten, waarschuwingen
 
 
@@ -115,13 +115,17 @@ def versheid(enriched: list[dict], tableinfo: list[dict]) -> dict:
 
     ``laatste_succesvolle_controle`` is de nieuwste deelcontrole; ``oudste_controle``
     laat zien of er records zijn die al lang niet gecontroleerd zijn.
+    ``perioden_verouderd`` telt een tabel waarvan de laatste Perioden-controle mislukte, en een actuele tabel waarvan
+    de `periode`-tekst achterloopt op haar laatste periode (#1070); een tabel telt één keer.
     """
     controles = [i["bronmeta"].get("gecontroleerd_op") for i in tableinfo if i["bronmeta"].get("gecontroleerd_op")]
     perioden = [i["perioden"].get("status") for i in tableinfo]
+    verouderd = {i["_cbs_id"] for i in tableinfo if i["perioden"].get("status") == "verouderd"}
+    verouderd |= {r["_cbs_id"] for r in enriched if not r.get("_archief") and periode.loopt_achter(r)}
     return {
         "oudste_controle": min(controles, default=None),
         "zonder_controle": len(tableinfo) - len(controles),
-        "perioden_verouderd": perioden.count("verouderd"),
+        "perioden_verouderd": len(verouderd),
         "perioden_onbekend": perioden.count("onbekend"),
         "afleiding_onvolledig": sum(1 for r in enriched if "_verrijking" not in r),
         "afleiding_verouderd": sum(1 for r in enriched if (r.get("_verrijking") or {}).get("status") == "verouderd"),

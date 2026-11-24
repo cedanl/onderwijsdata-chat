@@ -103,7 +103,7 @@ export const SUGGESTED = [
     ],
   },
   {
-    category: 'Rendement & Diplomering',
+    category: 'Rendement en diplomering',
     questions: [
       { tekst: 'Hoe heeft het aantal gediplomeerden van onze instelling zich de afgelopen jaren ontwikkeld?', sectoren: SECTOREN, profiel: true },
       { tekst: 'Hoeveel gediplomeerden levert onze instelling af ten opzichte van {variant}?', sectoren: SECTOREN, profiel: true, varianten: ANDERE_INSTELLINGEN },
@@ -116,7 +116,7 @@ export const SUGGESTED = [
     ],
   },
   {
-    category: 'Groei & Instroom',
+    category: 'Groei en instroom',
     questions: [
       { tekst: 'Hoe heeft het aantal inschrijvingen bij onze instelling zich de afgelopen vijf jaar ontwikkeld?', sectoren: SECTOREN, profiel: true },
       {
@@ -136,7 +136,7 @@ export const SUGGESTED = [
     ],
   },
   {
-    category: 'Regionale Context',
+    category: 'Regionale context',
     questions: [
       {
         tekst: 'Hoe verandert het aantal {variant}?',
@@ -150,7 +150,7 @@ export const SUGGESTED = [
   {
     // `bron`: alleen waar die bron hier antwoord geeft (/api/config `bronnen`, tools/beschikbaarheid.py, #956). De
     // financiën gaan over het bestuur van een mbo-, hbo- of wo-instelling; WOPI heeft alleen de universiteiten.
-    category: 'Financiën & Personeel',
+    category: 'Financiën en personeel',
     questions: [
       { tekst: 'Hoe staat onze instelling er financieel voor?', sectoren: SECTOREN, profiel: true, bron: 'financien' },
       { tekst: 'Hoe verhoudt de solvabiliteit van onze instelling zich tot de sector?', sectoren: SECTOREN, profiel: true, bron: 'financien' },

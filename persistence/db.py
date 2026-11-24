@@ -801,6 +801,15 @@ def deelt_staat() -> bool:
     return _USE_POSTGRES
 
 
+def tokengebruik_sleutel(gebruiker: str) -> str:
+    """De sleutel van `gebruiker` in `tokengebruik`: dezelfde als bij het boeken (`core.tokenbudget._sleutel`), zodat
+    export en verwijderen (#1074) precies de rijen van dit account vinden. Pas bij de aanroep geïmporteerd: tokenbudget
+    haalt de agent binnen, en die de persistence-laag."""
+    from core.tokenbudget import _sleutel
+
+    return _sleutel(gebruiker)
+
+
 def tokengebruik_boek(sleutel: str, dag: str, eenheden: int) -> None:
     """Tel `eenheden` op bij het gebruik van `sleutel` op `dag` (#678); atomisch, ook met twee pods tegelijk."""
     with _connection() as conn:

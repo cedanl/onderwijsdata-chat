@@ -2,23 +2,30 @@
 import { useEffect, useState } from 'react'
 import { fetchCatalogCounts } from '../api'
 import { useDialog } from '../hooks/useDialog'
+import { useBronnenLijst } from '../bronnenLijst'
 
 // Counts come from the catalog the app searches, so they cannot drift from it.
 const withCount = (n, text) => (n ? `${n} ${text}` : text)
 
-// Sources the chat reads through a tool of their own (#956). /api/catalog/counts only names them where that tool
-// answers here (WOPI behind its flag, the Studiekeuzedatabase where its key is set, #957), so a row only shows when the
-// counts name the source.
-const EIGEN_TOOL = [
-  ['UWV', 'Vacatures per provincie of gemeente (momentopname mei 2023)', 'data.overheid.nl', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
-  ['ROA', 'Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'doi.org', 'https://doi.org/10.34894/DVQTOG'],
-  ['UNL', 'Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'universiteitenvannederland.nl', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
-  ['LCSK', 'Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'lcsk.nl', 'https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/'],
-]
+// One row per source that bronnenLijst() names (#1149): the same list as the welcome text of the chat and the intro of
+// the homepage, so a source behind a key or flag (LCSK, WOPI) shows here exactly where it shows there. The counts only
+// fill in numbers; they no longer decide which rows show. The link text says what the link does (#1150).
+const RIJEN = {
+  cbs: counts => [withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'Bekijk de CBS-catalogus', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/'],
+  duo: counts => [withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'Bekijk de DUO-catalogus', 'https://onderwijsdata.duo.nl'],
+  rio: counts => [`Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} bestanden)` : ''}`, 'Bekijk de RIO-catalogus', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/'],
+  uwv: () => ['Vacatures per provincie of gemeente (momentopname mei 2023)', 'Bekijk de UWV-data', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
+  roa: () => ['Schoolverlaters (SIS 2024) en arbeidsmarktprognoses tot 2030', 'Bekijk de ROA-data', 'https://doi.org/10.34894/DVQTOG'],
+  inspectie: () => ['Oordelen van de Inspectie per mbo-instelling, en als context per vo-school', 'Bekijk de site van de Inspectie', 'https://www.onderwijsinspectie.nl'],
+  lcsk: () => ['Studiekeuzedatabase: studenttevredenheid (NSE), studiesucces, numerus fixus en doorstroom per hbo- en wo-opleiding', 'Bekijk de uitleg van LCSK', 'https://lcsk.nl/over-ons/studiekeuzedata-raadplegen/'],
+  unl: () => ['Personeel van de universiteiten (WOPI): fte en personen per universiteit', 'Bekijk de WOPI-cijfers van UNL', 'https://www.universiteitenvannederland.nl/downloadbare-gegevens-personeel'],
+  wetten: () => ['Het wettelijk collegegeld per studiejaar. Dit staat als vaste tabel in de app; de app vraagt hier niets op.', 'Bekijk de regeling op wetten.nl', 'https://wetten.overheid.nl/BWBR0024005'],
+}
 
 export default function DataSourcesModal({ onClose }) {
   const [counts, setCounts] = useState({})
   const dialogRef = useDialog(onClose)
+  const bronnen = useBronnenLijst()
   useEffect(() => {
     fetchCatalogCounts().then(setCounts).catch(() => {})
   }, [])
@@ -40,21 +47,19 @@ export default function DataSourcesModal({ onClose }) {
         <div className="modal-body">
           <table className="modal-table">
             <thead>
-              <tr><th>Bron</th><th>Inhoud</th><th>Catalogus</th></tr>
+              <tr><th>Bron</th><th>Inhoud</th><th>Meer weten</th></tr>
             </thead>
             <tbody>
-              {[
-                ['CBS', withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'catalogus/cbs', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/'],
-                ['RIO', `Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} resources)` : ''}`, 'catalogus/rio', 'https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/'],
-                ['DUO', withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
-                ...EIGEN_TOOL.filter(([bron]) => counts[bron]),
-              ].map(([bron, inhoud, catalogus, href]) => (
-                <tr key={bron}>
-                  <td><span className="source-name">{bron}</span></td>
-                  <td><span className="source-desc">{inhoud}</span></td>
-                  <td><a href={href} target="_blank" rel="noreferrer">{catalogus}</a></td>
-                </tr>
-              ))}
+              {bronnen.filter(({ sleutel }) => RIJEN[sleutel]).map(({ sleutel, naam }) => {
+                const [inhoud, linktekst, href] = RIJEN[sleutel](counts)
+                return (
+                  <tr key={sleutel}>
+                    <td><span className="source-name">{naam}</span></td>
+                    <td><span className="source-desc">{inhoud}</span></td>
+                    <td><a href={href} target="_blank" rel="noreferrer">{linktekst}</a></td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

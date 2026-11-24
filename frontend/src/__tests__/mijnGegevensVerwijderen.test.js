@@ -323,7 +323,7 @@ describe('confirming', () => {
 describe('on failure', () => {
   it.each([
     ['a 500', async () => response(500, { detail: 'boom' }), ['API 500', 'boom']],
-    ['a 404', async () => response(404, { detail: 'Zonder inloggen is er geen eigen account om te verwijderen.' }), ['API 404', 'Zonder inloggen']],
+    ['a 404', async () => response(404, { detail: 'Zonder inloggen is er geen eigen account om te exporteren of te verwijderen.' }), ['API 404', 'Zonder inloggen']],
     ['a network error', async () => { throw new TypeError('Failed to fetch') }, ['Failed to fetch']],
   ])('on %s shows a fixed Dutch sentence, keeps dialog, field and storage, and a second attempt works', async (_, eerste, ruw) => {
     vulLocalStorage()

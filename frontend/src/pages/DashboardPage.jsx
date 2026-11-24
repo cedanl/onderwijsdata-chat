@@ -40,9 +40,12 @@ export function effectieveInstelling(urlInstelling, profielInstelling) {
   return uitUrl || profielInstelling?.trim() || DEFAULT_INSTELLING
 }
 
+// Zonder instelling in de link en zonder profiel tonen de dashboards de voorbeeldinstelling (#1098): dat moet erbij staan.
+export const isVoorbeeldInstelling = (urlInstelling, profielInstelling) => !urlInstelling?.trim() && !profielInstelling?.trim()
+
 // De vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
 // onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
-export default function DashboardPage({ settings, instellingen = GEEN_INSTELLINGEN, bronnen = GEEN_BRONNEN, feedbackEnabled = false }) {
+export default function DashboardPage({ settings, instellingen = GEEN_INSTELLINGEN, bronnen = GEEN_BRONNEN, feedbackEnabled = false, onOpenSettings = null }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const id = searchParams.get('id')
   const builtins = vasteDashboards(bronnen)
@@ -56,6 +59,7 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
   })
 
   const instelling = effectieveInstelling(searchParams.get('instelling'), settings?.instelling)
+  const voorbeeld = isVoorbeeldInstelling(searchParams.get('instelling'), settings?.instelling)
   // Het niveau (mbo, hbo, wo) uit de lijst van /api/instellingen, of null voor vrije tekst die er niet in staat.
   const sector = useMemo(() => instellingType(instelling, instellingen), [instelling, instellingen])
   // De kaarten van Mijn instelling en Opleidingen beloven alleen wat het dashboard van dit niveau toont (#918, #957).
@@ -93,6 +97,8 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
           instelling={instelling}
           sector={sector}
           gekozenInstelling={settings?.instelling?.trim() || ''}
+          voorbeeld={voorbeeld}
+          onKiesInstelling={onOpenSettings}
           onBack={terug}
           onUpdate={() => {}}
           backLabel="Dashboards"
@@ -117,6 +123,8 @@ export default function DashboardPage({ settings, instellingen = GEEN_INSTELLING
         workbooks={dashboards}
         opgeslagen={opgeslagen}
         instelling={instelling}
+        voorbeeld={voorbeeld}
+        onKiesInstelling={onOpenSettings}
         onSelect={open}
         onDelete={handleDelete}
       />

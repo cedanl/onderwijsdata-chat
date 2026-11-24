@@ -222,12 +222,13 @@ describe('miniatuur van een vast dashboard (#933): laden, niet gevonden en fout'
     expect(miniatuur(MIJN).textContent).toBe('')
   })
 
-  it('zegt in de kaart dat de instelling niet gevonden is', async () => {
+  it('zegt in de kaart dat de instelling niet in het DUO-bestand staat (#1102)', async () => {
     payloads['/api/dashboard/regio'] = { gevonden: false, beschikbare_instellingen: ['Hogeschool Rotterdam'] }
     await toon(galerij('Hogeschool Nergens'))
     await inBeeld(MIJN)
     const melding = miniatuur(MIJN).querySelector('.wb-miniatuur-melding')
-    expect(melding.textContent).toContain('niet gevonden')
+    expect(melding.textContent).toContain('staat niet in het DUO-bestand')
+    expect(melding.textContent).not.toContain('niet gevonden')
     expect(melding.textContent).toContain('Hogeschool Nergens')
   })
 

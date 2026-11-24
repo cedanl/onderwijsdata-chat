@@ -36,7 +36,7 @@ from datetime import UTC, datetime
 from persistence import db
 
 from . import figuurstappen
-from .session_data import begrens_rekenbewijs, neem_beurtbewijs, voeg_rekenbewijs_toe
+from .session_data import begrens_rekenbewijs, met_vraag, neem_beurtbewijs, voeg_rekenbewijs_toe
 
 logger = logging.getLogger(__name__)
 
@@ -173,10 +173,12 @@ def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
     Een antwoord in die geschiedenis zonder rij is niet van de server: het telt niet als bewijs (`eerdere_antwoorden`,
     #876).
     """
-    for rij in rijen.values():
+    plaats = _vraag_per_antwoord(session)
+    for h, rij in rijen.items():
         for key, call in rij["lineage"].items():
             session.setdefault("data_provenance", {}).setdefault(key, call)
-        voeg_rekenbewijs_toe(session, rij["rekenbewijs"])
+        # Het bewijs van een bron zonder tabel draagt het nummer van zijn vraag: dat volgt de plaats van het antwoord (#1077).
+        voeg_rekenbewijs_toe(session, [met_vraag(b, plaats.get(h)) for b in rij["rekenbewijs"]])
         for key, bronnen in _bronnen(rij).items():
             session.setdefault("data_bronnen", {}).setdefault(key, bronnen)
         figuurstappen.voeg_toe(session, _figuren(rij))
@@ -191,6 +193,18 @@ def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
         else:
             zonder_rij.add(h)
     session[_ZONDER_RIJ] = zonder_rij
+
+
+def _vraag_per_antwoord(session: dict) -> dict[str, int]:
+    """Per antwoord in de geschiedenis (zijn tekst-hash) het nummer van de vraag waarop het volgt."""
+    plaats: dict[str, int] = {}
+    vragen = 0
+    for m in session.get("messages") or []:
+        if m["role"] == "user":
+            vragen += 1
+        else:
+            plaats.setdefault(tekst_hash(m["content"]), vragen)
+    return plaats
 
 
 def eerdere_antwoorden(berichten: list[dict], session: dict) -> list[str]:

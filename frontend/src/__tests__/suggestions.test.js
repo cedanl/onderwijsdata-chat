@@ -131,14 +131,14 @@ describe('the suggestion set', () => {
   })
 
   it('puts the vacancy question under the labour market', () => {
-    const regionaal = SUGGESTED.find(c => c.category === 'Regionale Context').questions
+    const regionaal = SUGGESTED.find(c => c.category === 'Regionale context').questions
     expect(regionaal.filter(q => /UWV/.test(q.tekst))).toEqual([])
   })
 })
 
 // #956: a question about the DUO finances or WOPI only where /api/config says that source answers here
 // (tools/beschikbaarheid.py), and WOPI only for a university.
-const FIN_PERSONEEL = 'Financiën & Personeel'
+const FIN_PERSONEEL = 'Financiën en personeel'
 describe('suggestions about a source that depends on the environment', () => {
   const ALLES = { financien: true, wo_personeel: true }
   const vragen = (sector, bronnen) => suggestionsFor(sector, { profiel: true, bronnen }).flatMap(c => c.questions)
@@ -255,5 +255,20 @@ describe('suggestions about the Studiekeuzedatabase', () => {
 
   it('leave the other sources alone', () => {
     expect(vragen('wo', true, { studiekeuze: true }).filter(q => /financieel|solvabiliteit|personeel/.test(q))).toEqual([])
+  })
+})
+
+// #1142: de categorieën in zinsopbouw, met "en" in plaats van "&".
+describe('category names', () => {
+  it('use sentence case and no ampersand', () => {
+    const namen = SUGGESTED.map(c => c.category)
+    expect(namen).toEqual([
+      'Arbeidsmarktmatch', 'Rendement en diplomering', 'Groei en instroom', 'Regionale context', 'Financiën en personeel',
+      'Studiekeuze',
+    ])
+    for (const naam of namen) {
+      expect(naam).not.toContain('&')
+      expect(naam.slice(1)).toBe(naam.slice(1).toLowerCase())
+    }
   })
 })

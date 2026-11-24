@@ -4,6 +4,12 @@ import PrivacyLink from '../components/PrivacyLink'
 import { GEGEVENS_VERWIJDERD } from '../components/MijnGegevensVerwijderen'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
+// Voor wie geen account heeft (#1109): de open bronnen zelf.
+const OPEN_BRONNEN = Object.freeze({
+  cbs: 'https://opendata.cbs.nl/statline/',
+  duo: 'https://onderwijsdata.duo.nl',
+})
+
 export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false, gegevensVerwijderd = false }) {
   useDocumentTitle(pageTitle('Inloggen'))
   const [username, setUsername] = useState('')
@@ -53,8 +59,14 @@ export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false
         </div>
 
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 6 }}>Inloggen</h1>
-        <p style={{ fontSize: '.9rem', color: 'var(--gray-500)', marginBottom: 28 }}>
-          Log in om verder te gaan met openEDUdata+.
+        <p className="login-uitleg" style={{ fontSize: '.9rem', color: 'var(--gray-600)', lineHeight: 1.5, marginBottom: 12 }}>
+          openEDUdata+ beantwoordt je vragen over het mbo, hbo en wo met open onderwijsdata. Het is een demo voor
+          onderwijsinstellingen: je logt in met je instellingsaccount via SURF SRAM. CEDA maakt de app, binnen Npuls.
+        </p>
+        <p className="login-open-bronnen" style={{ fontSize: '.85rem', color: 'var(--gray-600)', lineHeight: 1.5, marginBottom: 28 }}>
+          Geen account? Bekijk de open data zelf bij{' '}
+          <a href={OPEN_BRONNEN.cbs} target="_blank" rel="noreferrer">CBS StatLine</a> en{' '}
+          <a href={OPEN_BRONNEN.duo} target="_blank" rel="noreferrer">DUO open onderwijsdata</a>.
         </p>
 
         {(sessionExpired || gegevensVerwijderd) && (

@@ -45,6 +45,30 @@ describe('LoginPage', () => {
     expect(regel).toMatch(/min-height:\s*100vh;\s*min-height:\s*100dvh/)
   })
 
+  // #1109: wie op de inlogpagina landt, leest wat de app is en voor wie, en vindt zonder account de open bronnen.
+  it('says what openEDUdata+ is, for whom and by whom', () => {
+    const uitleg = container.querySelector('.login-uitleg').textContent
+    expect(uitleg).toContain('openEDUdata+')
+    expect(uitleg).toMatch(/demo voor onderwijsinstellingen/)
+    expect(uitleg).toContain('SURF SRAM')
+    expect(uitleg).toMatch(/CEDA/)
+    expect(uitleg).toMatch(/Npuls/)
+  })
+
+  it('links the open sources for people without an account, in a new tab', () => {
+    const links = [...container.querySelectorAll('.login-open-bronnen a')]
+    expect(links.map(a => a.textContent)).toEqual(['CBS StatLine', 'DUO open onderwijsdata'])
+    expect(links.map(a => a.getAttribute('href'))).toEqual(['https://opendata.cbs.nl/statline/', 'https://onderwijsdata.duo.nl'])
+    for (const a of links) {
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noreferrer')
+    }
+  })
+
+  it('keeps the privacy link (#477)', () => {
+    expect([...container.querySelectorAll('a, button')].some(el => /privacy/i.test(el.textContent))).toBe(true)
+  })
+
   it('offers password managers the right fields', () => {
     expect(container.querySelector('#login-username').getAttribute('autocomplete')).toBe('username')
     expect(container.querySelector('#login-password').getAttribute('autocomplete')).toBe('current-password')

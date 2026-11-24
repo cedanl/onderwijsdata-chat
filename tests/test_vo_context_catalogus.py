@@ -7,6 +7,7 @@ gemeenten maar geen gemeenteniveau, en DUO `voprognoses` loopt van 2024 tot 2043
 import json
 import re
 from importlib.resources import files
+from pathlib import Path
 
 import onderwijsbronnen
 import pytest
@@ -122,3 +123,14 @@ def test_voprognoses_bronvelden_gelijk_in_beide_bestanden(bestand):
     samengevoegd = _voprognoses()
     for veld in ("periode", "beschrijving", "doel", "voorbeeldvragen"):
         assert record[veld] == samengevoegd[veld], veld
+
+
+_DOCS_VO_CONTEXT = re.compile(r"^\| `(?P<id>\w+NED)` \(CBS\) \|.*\| (?P<periode>[^|]+?) \|$", re.MULTILINE)
+
+
+def test_databronnen_noemt_de_periode_van_de_catalogus_voor_elke_cbs_vo_contexttabel():
+    """De tabel "Vo-context voor vervolgonderwijs" in docs/databronnen.md loopt niet achter op de catalogus (#1070)."""
+    docs = (Path(__file__).parent.parent / "docs" / "databronnen.md").read_text(encoding="utf-8")
+    rijen = {m["id"]: m["periode"] for m in _DOCS_VO_CONTEXT.finditer(docs)}
+    assert len(rijen) == 9
+    assert rijen == {cbs_id: _cbs_record("cbs_datasets_ai.json", cbs_id)["periode"] for cbs_id in rijen}

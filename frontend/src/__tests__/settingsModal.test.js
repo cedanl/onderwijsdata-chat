@@ -94,6 +94,21 @@ describe('SettingsModal: Verwijder al mijn gegevens (#646)', () => {
   })
 })
 
+describe('SettingsModal: Exporteer al mijn gegevens alleen met een eigen account (#1118)', () => {
+  const exportButton = () => container.querySelector('.mijn-gegevens-export-btn')
+
+  it('offers it with a login of one\'s own, the same condition as Verwijder al mijn gegevens', async () => {
+    await render({ onLogout: vi.fn(), onGegevensVerwijderd: vi.fn() })
+    expect(exportButton().textContent).toBe('Exporteer al mijn gegevens')
+  })
+
+  it('does not offer it without one: the export of the shared guest would hold the work of every visitor', async () => {
+    await render({ onLogout: null, onGegevensVerwijderd: null })
+    expect(exportButton()).toBeNull()
+    expect(container.textContent).not.toContain('Exporteer al mijn gegevens')
+  })
+})
+
 describe('SettingsModal tap targets', () => {
   it('carries the class the 44px touch rule for its buttons hangs on (#490)', async () => {
     await render({})

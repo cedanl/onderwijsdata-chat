@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { DEFAULT_INSTELLING } from '../constants'
 import { korteDatum } from '../relatieveDatum'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
@@ -150,7 +149,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
     }
   }, [selected, opening, pendingId, missingId, openFout, setSearchParams])
 
-  const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
+  const instelling = settings?.instelling?.trim() || ''
 
   if (selected) {
     return (
@@ -235,7 +234,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
               Ga naar Chat
             </button>
             <p className="wb-gallery-leeg-tip">
-              Stel een vraag en klik op &ldquo;Genereer rapport&rdquo; om een rapport hier op te slaan.
+              Stel een vraag en klik op &ldquo;Maak rapport&rdquo; om een rapport hier op te slaan.
             </p>
           </div>
         ) : zichtbaar.length === 0 ? (

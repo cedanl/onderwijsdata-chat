@@ -1,4 +1,5 @@
 import { DashboardMiniatuur } from './dashboards/miniatuur'
+import VoorbeeldMelding from './VoorbeeldMelding'
 import { korteDatum } from '../relatieveDatum'
 
 // Opgeslagen dashboards uit de dashboardbouwer (#765): de bouwer is weg en ze openen niet meer, maar ze staan nog op
@@ -34,7 +35,7 @@ function OpgeslagenDashboards({ dashboards, onDelete }) {
   )
 }
 
-export default function DashboardGallery({ workbooks, opgeslagen = [], instelling, onSelect, onDelete }) {
+export default function DashboardGallery({ workbooks, opgeslagen = [], instelling, voorbeeld = false, onKiesInstelling, onSelect, onDelete }) {
   return (
     <div className="wb-gallery-page">
       <div className="wb-gallery-header">
@@ -43,6 +44,8 @@ export default function DashboardGallery({ workbooks, opgeslagen = [], instellin
           <div className="wb-gallery-sub">{workbooks.length} dashboard{workbooks.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
+
+      {voorbeeld && <VoorbeeldMelding instelling={instelling} onKies={onKiesInstelling} />}
 
       <div className="wb-grid">
         {workbooks.map(wb => (

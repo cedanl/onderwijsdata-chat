@@ -17,7 +17,7 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import bronstatus, config, foutmeldingen
+from core import bronstatus, config, foutmeldingen, openapi_schema
 from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
@@ -258,6 +258,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     mcp = McpEindpunt.uit_config()
     app = FastAPI(
         title="Onderwijsdata Chat",
+        version=app_versie(Config.APP_VERSION),
         docs_url="/api/docs" if docs else None,
         redoc_url="/redoc" if docs else None,
         openapi_url="/api/openapi.json" if docs else None,
@@ -265,6 +266,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     )
     # Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
     foutmeldingen.registreer(app)
+    openapi_schema.registreer(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=Config.get_parsed_cors_origins(),

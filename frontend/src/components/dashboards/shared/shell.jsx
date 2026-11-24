@@ -52,11 +52,12 @@ export function DashboardShell({ instelling, children, loading, data, error, onO
       <div className="dashboard-content" style={{ padding: 24 }}>
         <div className="chart-card" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
           <div style={{ fontSize: '.85rem', color: '#92400E', lineHeight: 1.6 }}>
-            <strong>&ldquo;{instelling}&rdquo;</strong> niet gevonden in DUO-data.
+            <strong>&ldquo;{instelling}&rdquo;</strong> staat niet in het DUO-bestand waarop dit dashboard steunt. Dat bestand
+            heeft niet elke instelling, dus de naam hoeft niet fout te zijn.
             {suggesties.length > 0 ? (
               <> Bedoel je misschien: {suggesties.slice(0,5).join(', ')}?</>
             ) : data.geen_suggesties && <> {data.geen_suggesties}</>}
-            <br />Pas de naam aan via <strong>Instellingen</strong>.
+            <br />Pas de naam aan of kies een andere instelling via <strong>Instellingen</strong>.
           </div>
         </div>
       </div>

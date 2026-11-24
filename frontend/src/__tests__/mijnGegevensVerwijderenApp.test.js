@@ -83,6 +83,7 @@ describe('App: Verwijder al mijn gegevens', APP_TEST, () => {
     await render()
     await openSettings()
     expect(deleteKnop()).toBeDefined()
+    expect(container.querySelector('.mijn-gegevens-export-btn')).not.toBeNull()
   })
 
   it('is not offered when login is off: every visitor is the shared guest', async () => {
@@ -90,8 +91,8 @@ describe('App: Verwijder al mijn gegevens', APP_TEST, () => {
     await render()
     await openSettings()
     expect(deleteKnop()).toBeUndefined()
-    // The export stays, as before (#645).
-    expect(container.querySelector('.mijn-gegevens-export-btn')).not.toBeNull()
+    // The export neither: the server refuses it without a login of one's own (#1118).
+    expect(container.querySelector('.mijn-gegevens-export-btn')).toBeNull()
   })
 
   it('after success empties the browser copy, the profile, the login and the recent list, keeps the model, and shows the login page', async () => {

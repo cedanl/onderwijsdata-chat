@@ -100,6 +100,10 @@ DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
 MAX_DASHBOARD_LOADS = int(os.getenv("MAX_DASHBOARD_LOADS", "4"))
 DASHBOARD_QUEUE_TIMEOUT_S = float(os.getenv("DASHBOARD_QUEUE_TIMEOUT_S", "30"))
 DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
+# Een lading die langer duurt staat met eindpunt en duur als INFO in het log (#1166): een koude lading haalt de bronnen
+# pas bij de eerste aanvraag (10-23 s), een warme antwoordt in tienden van seconden. Zo ziet een beheerder welk
+# eindpunt traag is, ook als de lading binnen DASHBOARD_TIMEOUT_S klaar is.
+DASHBOARD_TRAAG_S = float(os.getenv("DASHBOARD_TRAAG_S", "5"))
 # Personeel van de universiteiten uit het WOPI-bestand van UNL (#936, tools/wo_personeel.py): de tool
 # get_wo_personeel staat alleen in de toolset als deze vlag aan staat. Standaard uit; alleen manifests/test zet hem aan,
 # tot UNL schriftelijk bevestigt dat hergebruik mag (besluit 05-11 op #731). Playground en production niet.
