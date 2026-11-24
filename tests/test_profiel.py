@@ -1,7 +1,6 @@
 """Profiel van een geladen tabel zonder model (#59, #61): schema, statistiek en korrel, uit de cache."""
 
 import json
-import time
 from unittest.mock import patch
 
 import numpy as np
@@ -140,7 +139,8 @@ def test_een_cel_met_een_lijst_of_dict_telt_mee_als_tekst():
     assert p.dubbele_rijen_pct == 33.3
 
 
-def test_profiel_van_50k_rijen_binnen_een_seconde():
+def test_profiel_van_50k_rijen_werkt_per_kolom():
+    """Telt het werk, niet de klok (#1058): één pass per kolom, dus geen lus per rij of per cel."""
     rng = np.random.default_rng(59)
     n = 50_000
     df = pd.DataFrame(
@@ -153,9 +153,9 @@ def test_profiel_van_50k_rijen_binnen_een_seconde():
             "AANTAL": rng.integers(0, 5000, n),
         }
     )
-    start = time.perf_counter()
-    p = profileer(df)
-    assert time.perf_counter() - start < 1.0
+    with patch("tools.profiel._kolom", wraps=profiel._kolom) as per_kolom:
+        p = profileer(df)
+    assert per_kolom.call_count == len(df.columns) == 6
     assert p.rijen == n and p.kolommen["AANTAL"].lijkt_op == GETAL
 
 
