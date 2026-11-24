@@ -58,11 +58,30 @@ def test_version_volgt_de_release_uit_het_chart(client, monkeypatch):
     assert client.get("/api/version").json()["version"] == "2.1.0"
 
 
-def test_version_valt_zonder_chart_terug_op_pyproject(client, monkeypatch):
+def test_version_zonder_chart_is_een_ontwikkelversie_en_geen_release(client, monkeypatch):
+    """#1105: een lokale build zonder APP_VERSION heette gewoon de release uit pyproject.toml, net als playground."""
+    import tomllib
+    from pathlib import Path
+
     from config import Config
 
     monkeypatch.setattr(Config, "APP_VERSION", None)
-    assert client.get("/version").json()["version"].count(".") == 2
+    release = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())["project"]["version"]
+    versie = client.get("/version").json()["version"]
+    assert versie != release
+    assert versie.startswith(f"{release}+dev")
+    assert client.get("/api/version").json()["version"] == versie
+
+
+def test_version_met_chart_blijft_de_releasetag_zonder_dev(client, monkeypatch):
+    """De contracten blijven: version = chartversie = tag, commit kort; het ontwikkellabel raakt ze niet."""
+    from config import Config
+
+    monkeypatch.setattr(Config, "APP_VERSION", "2.8.0")
+    monkeypatch.setattr(Config, "GIT_COMMIT", "7d3488aa0da386a087f6363b3f2ffa40049f604b")
+    data = client.get("/version").json()
+    assert data["version"] == "2.8.0"
+    assert data["commit"] == "7d3488aa"
 
 
 def test_version_noemt_de_commit_uit_het_image(client, monkeypatch):

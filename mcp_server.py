@@ -67,6 +67,12 @@ MCP_TOOLS = (*CATALOGUS_TOOLS, *kernvragen.TOOLS)
 BEWIJS_SLEUTELS = ("bron", "dataset_id", "selectie", "maat", "waarde", "peildatum", "versie", "verwijzing")
 
 
+def _versie() -> str:
+    """Hetzelfde label als `/version` (core.appversie), zonder de config en agent.manifest te laden
+    (die trekken litellm mee, seconden opstarttijd voor een catalogus)."""
+    return app_versie(os.getenv("APP_VERSION"))
+
+
 def _functies() -> dict[str, dict[str, Any]]:
     return {s["function"]["name"]: s["function"] for s in (*TOOL_SCHEMAS, *kernvragen.SCHEMAS)}
 
@@ -267,7 +273,7 @@ def maak_server(uitvoerder: Uitvoerder = _direct):
         tekst, fout = await uitvoerder(params.name, params.arguments)
         return types.CallToolResult(content=[types.TextContent(type="text", text=tekst)], is_error=fout)
 
-    return Server(NAAM, version=app_versie(), instructions=INSTRUCTIES, on_list_tools=lijst, on_call_tool=aanroep)
+    return Server(NAAM, version=_versie(), instructions=INSTRUCTIES, on_list_tools=lijst, on_call_tool=aanroep)
 
 
 async def _serveer() -> None:

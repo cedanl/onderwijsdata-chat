@@ -187,7 +187,7 @@ class TestGeleverdeData:
     def test_wheel_data_gelijk_aan_bouwartefact(self, naam):
         assert filecmp.cmp(
             ROOT / "data/02-prepared" / naam,
-            ROOT / "src/onderwijsbronnen/cbs/data" / naam,
+            ROOT / "src/onderwijsbronnen/cbs/catalogusdata" / naam,
             shallow=False,
         )
 

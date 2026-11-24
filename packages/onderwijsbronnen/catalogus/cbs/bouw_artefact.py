@@ -1,6 +1,6 @@
 """
 Valideert de catalogusbestanden in data/02-prepared en publiceert ze als één
-consistent artefact naar het package (src/onderwijsbronnen/cbs/data) en de site (docs/cbs/).
+consistent artefact naar het package (src/onderwijsbronnen/cbs/catalogusdata) en de site (docs/cbs/).
 
 Alleen gevalideerde bestanden worden gepubliceerd. Faalt de validatie, dan blijft
 het laatst-goede artefact staan en eindigt het script met een foutmelding.
@@ -227,7 +227,7 @@ def main():
         sys.exit(1 if fouten else 0)
 
     try:
-        manifest = publiceer(prepared, ROOT / "src/onderwijsbronnen/cbs/data", None if args.no_docs else ROOT / "docs/cbs")
+        manifest = publiceer(prepared, ROOT / "src/onderwijsbronnen/cbs/catalogusdata", None if args.no_docs else ROOT / "docs/cbs")
     except ValueError as e:
         print(f"FOUT: {e}", file=sys.stderr)
         sys.exit(1)

@@ -48,9 +48,9 @@ def test_er_is_een_bron_voor_de_appversie(monkeypatch):
     from core.appversie import app_versie
 
     monkeypatch.setattr(Config, "APP_VERSION", "9.8.7")
-    assert app_versie() == "9.8.7"
+    assert app_versie(Config.APP_VERSION) == "9.8.7"
     monkeypatch.setattr(Config, "APP_VERSION", None)
-    assert app_versie().count(".") == 2
+    assert app_versie(Config.APP_VERSION).startswith("2.") and "+dev" in app_versie(Config.APP_VERSION)
 
 
 def test_het_schema_noemt_de_release_uit_het_chart(monkeypatch):

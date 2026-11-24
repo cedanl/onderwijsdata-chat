@@ -24,7 +24,7 @@ from pathlib import Path
 from litellm import get_supported_openai_params
 
 from config import Config
-from core.appversie import app_versie as _app_versie
+from core.appversie import app_versie as versielabel
 from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
 from core.pakketherkomst import korte_commit
@@ -48,8 +48,8 @@ def prompt_hash() -> str:
 
 @lru_cache(maxsize=1)
 def app_versie() -> str:
-    """De release van de app, zoals /version (core.appversie); onthouden voor de duur van het proces."""
-    return _app_versie()
+    """Het versielabel van /version: de release uit het chart (APP_VERSION), anders het ontwikkellabel (#1105)."""
+    return versielabel(Config.APP_VERSION)
 
 
 def _sampling(model: str) -> dict:

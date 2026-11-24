@@ -5,6 +5,7 @@ ASGI-transport (initialize, list_tools, call_tool), en losse HTTP-verzoeken voor
 """
 
 import json
+import os
 
 import anyio
 import httpx2
@@ -69,7 +70,7 @@ def via_mcp(app, actie, *, koppen=None):
 def test_initialize_noemt_naam_versie_en_instructies(maak_app):
     init, _ = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools())
     assert init.server_info.name == mcp_server.NAAM
-    assert init.server_info.version == app_versie()
+    assert init.server_info.version == app_versie(os.getenv("APP_VERSION"))
     assert init.instructions == mcp_server.INSTRUCTIES
 
 

@@ -15,7 +15,7 @@ from onderwijsbronnen import cbs as od
 
 ROOT = Path(__file__).parent.parent
 PREPARED = ROOT / "data/02-prepared"
-PACKAGE = ROOT / "src/onderwijsbronnen/cbs/data"
+PACKAGE = ROOT / "src/onderwijsbronnen/cbs/catalogusdata"
 
 
 @pytest.fixture

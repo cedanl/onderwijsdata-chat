@@ -157,11 +157,11 @@ async def ready_endpoint() -> JSONResponse:
 @_routes.get("/version", tags=["info"])
 @_routes.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
-    """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
+    """Release uit het chart (APP_VERSION), anders het ontwikkellabel `<pyproject>+dev[.<commit>]` (#1105); de commit waaruit het image is gebouwd (#231), de catalogus (#361)
     met de digest uit het manifest (#1029) en de dataversie van UWV en ROA (CH-46)."""
 
     return {
-        "version": await asyncio.to_thread(app_versie),
+        "version": await asyncio.to_thread(app_versie, Config.APP_VERSION),
         # GIT_COMMIT is volledig (de installatieregel van een snippet heeft dat nodig, #888); hier de korte vorm.
         "commit": korte_commit(Config.GIT_COMMIT) or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).
@@ -258,7 +258,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     mcp = McpEindpunt.uit_config()
     app = FastAPI(
         title="Onderwijsdata Chat",
-        version=app_versie(),
+        version=app_versie(Config.APP_VERSION),
         docs_url="/api/docs" if docs else None,
         redoc_url="/redoc" if docs else None,
         openapi_url="/api/openapi.json" if docs else None,

@@ -107,7 +107,7 @@ git push origin env/playground/2.2.0
 gh release create 2.2.0 --verify-tag --latest --title "Release 2.2.0 — …" --notes-file notes.md   # release notes in het Nederlands
 ```
 
-Verifiëren na de merge (`/version` is de bron van waarheid; `version` komt uit de chartversie = de tag, `commit` is de gebouwde commit):
+Verifiëren na de merge (`/version` is de bron van waarheid; `version` komt uit de chartversie = de tag, `commit` is de gebouwde commit). Een versie met `+dev` komt van een omgeving zonder `APP_VERSION` (lokaal, `make dev`, MCP via stdio): nooit een release, ook niet als het nummer ervoor gelijk is aan de laatste tag (#1105):
 
 ```bash
 kubectl --context playground get helmrelease onderwijsdata-chat -n services-onderwijsdata-chat \

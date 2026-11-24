@@ -24,7 +24,7 @@ _PO = re.compile(r"primair onderwijs|basisonderwijs", re.IGNORECASE)
 
 
 def _cbs_record(bestand: str, cbs_id: str) -> dict:
-    records = json.loads(files("onderwijsbronnen.cbs.data").joinpath(bestand).read_text(encoding="utf-8"))
+    records = json.loads(files("onderwijsbronnen.cbs.catalogusdata").joinpath(bestand).read_text(encoding="utf-8"))
     return next(r for r in records if r.get("_cbs_id") == cbs_id)
 
 

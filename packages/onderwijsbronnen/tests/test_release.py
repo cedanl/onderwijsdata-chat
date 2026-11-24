@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent
-MANIFEST = json.loads((ROOT / "src/onderwijsbronnen/cbs/data/cbs_manifest.json").read_text(encoding="utf-8"))
+MANIFEST = json.loads((ROOT / "src/onderwijsbronnen/cbs/catalogusdata/cbs_manifest.json").read_text(encoding="utf-8"))
 UV = shutil.which("uv")
 
 pytestmark = pytest.mark.skipif(UV is None, reason="uv niet beschikbaar")
@@ -44,13 +44,13 @@ def _controleer(lees):
 def test_wheel_bevat_catalogus_en_manifest_consistent(dist):
     wheel = next(dist.glob("*.whl"))
     with zipfile.ZipFile(wheel) as z:
-        _controleer(lambda n: z.read(f"onderwijsbronnen/cbs/data/{n}"))
+        _controleer(lambda n: z.read(f"onderwijsbronnen/cbs/catalogusdata/{n}"))
 
 
 def test_sdist_bevat_catalogus_en_manifest_consistent(dist):
     sdist = next(dist.glob("*.tar.gz"))
     with tarfile.open(sdist) as t:
-        prefix = next(m.name for m in t.getmembers() if m.name.endswith("src/onderwijsbronnen/cbs/data/cbs_manifest.json"))
+        prefix = next(m.name for m in t.getmembers() if m.name.endswith("src/onderwijsbronnen/cbs/catalogusdata/cbs_manifest.json"))
         basis = prefix.rsplit("/", 1)[0]
         _controleer(lambda n: t.extractfile(f"{basis}/{n}").read())
 

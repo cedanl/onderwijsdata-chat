@@ -14,7 +14,7 @@ import pytest
 from onderwijsbronnen import cbs
 from onderwijsbronnen.cbs import periode
 
-CATALOGUS = Path(cbs.__file__).parent / "data"
+CATALOGUS = Path(cbs.__file__).parent / "catalogusdata"
 sys.path.insert(0, str(Path(__file__).parent.parent / "catalogus" / "cbs"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 

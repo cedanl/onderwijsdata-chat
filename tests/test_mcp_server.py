@@ -5,6 +5,7 @@ list_tools, call_tool) over een in-memory verbinding. `mcp` is sinds #938 een ge
 """
 
 import json
+import os
 import urllib.parse
 
 import pytest
@@ -250,8 +251,20 @@ def _via_protocol(actie):
 def test_protocol_noemt_naam_versie_en_instructies():
     init, _ = _via_protocol(lambda sessie: sessie.list_tools())
     assert init.server_info.name == "onderwijscatalogus"
-    assert init.server_info.version == app_versie()
+    assert init.server_info.version == app_versie(os.getenv("APP_VERSION"))
     assert "search_catalog" in (init.instructions or "")
+
+
+def test_protocol_volgt_het_versielabel_van_version(monkeypatch):
+    """#1105: met APP_VERSION de release, zonder een ontwikkellabel dat nooit een release is (HTTP en stdio)."""
+    monkeypatch.setenv("APP_VERSION", "2.8.1-rc.3033+406a4f57")
+    init, _ = _via_protocol(lambda sessie: sessie.list_tools())
+    assert init.server_info.version == "2.8.1-rc.3033+406a4f57"
+
+    monkeypatch.delenv("APP_VERSION")
+    init, _ = _via_protocol(lambda sessie: sessie.list_tools())
+    assert "+dev" in init.server_info.version
+    assert init.server_info.version == mcp_server._versie()
 
 
 def test_protocol_toont_de_tools_met_hun_schema():

@@ -126,8 +126,8 @@ Het transport is stdio: de client start het proces zelf. Protocolberichten lopen
 over stderr. Er is geen API-sleutel nodig: de catalogus is openbaar en de server roept geen taalmodel
 aan. De eerste zoekactie laadt het instellingenregister van DUO (netwerk, enkele seconden); daarna is
 zoeken direct. Een datatool downloadt bij de eerste vraag het DUO-bestand van de maat (enkele seconden) en vraagt RIO
-naar fusies; daarna komt het bestand uit de begrensde cache van de app (`STORE_MAX_MB`). De server meldt zich als `onderwijscatalogus` met de versie uit `APP_VERSION` of
-`pyproject.toml`, zoals `/version`. `APP_URL` (optioneel) is de app waar `vervolg` heen wijst; zonder staat er
+naar fusies; daarna komt het bestand uit de begrensde cache van de app (`STORE_MAX_MB`). De server meldt zich als `onderwijscatalogus` met dezelfde versie als `/version`: `APP_VERSION`, en zonder die
+het ontwikkellabel (`<pyproject>+dev.<commit>`, #1105), dus via stdio op een lokale checkout nooit als release. `APP_URL` (optioneel) is de app waar `vervolg` heen wijst; zonder staat er
 playground.
 
 Zonder client testen kan met de MCP Inspector:

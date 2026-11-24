@@ -289,7 +289,7 @@ class TestGeleverdeData:
     def test_alle_datasets_aanwezig_en_wheel_gelijk(self):
         pad = "data/02-prepared/cbs_tableinfo.json"
         bouw = json.loads((ROOT / pad).read_text(encoding="utf-8"))
-        wheel = json.loads((ROOT / "src/onderwijsbronnen/cbs" / "data/cbs_tableinfo.json").read_text(encoding="utf-8"))
+        wheel = json.loads((ROOT / "src/onderwijsbronnen/cbs" / "catalogusdata/cbs_tableinfo.json").read_text(encoding="utf-8"))
         assert bouw == wheel
         assert {r["_cbs_id"] for r in bouw} == {r["_cbs_id"] for r in od.catalog()}
 
