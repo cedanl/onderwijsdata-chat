@@ -4,8 +4,8 @@ De definities en de uitvoering zijn zonder de mcp-package te toetsen; het protoc
 list_tools, call_tool) over een in-memory verbinding. `mcp` is sinds #938 een gewone dependency.
 """
 
-import os
 import json
+import os
 import urllib.parse
 
 import pytest

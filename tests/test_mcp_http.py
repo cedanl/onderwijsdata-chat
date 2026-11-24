@@ -4,8 +4,8 @@ Eind tot eind: de app uit server.create_app met haar lifespan, een echte MCP-cli
 ASGI-transport (initialize, list_tools, call_tool), en losse HTTP-verzoeken voor de statuscodes.
 """
 
-import os
 import json
+import os
 
 import anyio
 import httpx2
