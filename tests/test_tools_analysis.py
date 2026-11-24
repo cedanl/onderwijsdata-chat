@@ -13,6 +13,13 @@ def _put(key: str, data: list[dict]) -> None:
     store.put(key, pd.DataFrame(data), store.KeyMeta(bron="test", dataset=key, volledig=True))
 
 
+def _figuur(code: str, data_key: str) -> go.Figure:
+    """De figuur van een run_analysis met grafiek; zonder figuur faalt de test hier met de uitkomst als tekst."""
+    uitkomst = run_analysis(code=code, data_key=data_key)
+    assert isinstance(uitkomst, tuple), uitkomst
+    return uitkomst[1]
+
+
 def test_simple_sum():
     _put("test:an", [{"JAAR": 2021, "N": 100}, {"JAAR": 2021, "N": 200}])
     result = run_analysis(
@@ -176,6 +183,7 @@ def test_blocked_hardcoded_data():
         {'jaar': 2022, 'aantal': 31198, 'mannen': 15200, 'vrouwen': 15998},
     ]"""
     result = run_analysis(code=hardcoded)
+    assert isinstance(result, str)
     assert "hardcoded" in result.lower() or "overgetypte" in result.lower()
 
 
@@ -183,7 +191,7 @@ def test_figure_carries_the_plotted_rows_for_export():
     # #217: de CSV-export leest layout.meta.data; een run_analysis-figuur droeg die niet
     # en viel terug op de getekende traces (met binaire arrays als lege cellen).
     _put("test:an", [{"K": "Avans", "N": 24169}, {"K": "Fontys", "N": 24740}])
-    _, fig = run_analysis(
+    fig = _figuur(
         code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}",
         data_key="test:an",
     )
@@ -192,7 +200,7 @@ def test_figure_carries_the_plotted_rows_for_export():
 
 def test_figure_rows_split_grouped_traces_by_series():
     _put("test:an", [{"K": "a", "G": "VT", "N": 1}, {"K": "a", "G": "DT", "N": 2}])
-    _, fig = run_analysis(
+    fig = _figuur(
         code="figure = px.bar(df, x='K', y='N', color='G')\nresult = {'ok': True}",
         data_key="test:an",
     )
@@ -201,7 +209,7 @@ def test_figure_rows_split_grouped_traces_by_series():
 
 def test_broken_figure_gets_no_rows_so_the_export_refuses_it():
     _put("test:an", [{"K": "a", "N": 1}])
-    _, fig = run_analysis(
+    fig = _figuur(
         code="figure = go.Figure(go.Bar(x=['a', 'b'], y=[1]))\nresult = {'ok': len(df)}",
         data_key="test:an",
     )
@@ -210,7 +218,7 @@ def test_broken_figure_gets_no_rows_so_the_export_refuses_it():
 
 def test_figure_rows_turn_nan_into_an_empty_value():
     _put("test:an", [{"K": "a", "N": 1.0}, {"K": "b", "N": float("nan")}])
-    _, fig = run_analysis(
+    fig = _figuur(
         code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}",
         data_key="test:an",
     )
@@ -238,7 +246,7 @@ def test_een_script_vult_de_afrondingsnoot_niet():
 def test_heatmap_rows_carry_the_values_from_z_not_the_labels():
     # Een correlatiematrix heeft even lange x en y; die als punten lezen gaf rijen als ('a', 'a').
     _put("test:an", [{"A": 1, "B": 3}, {"A": 2, "B": 1}, {"A": 3, "B": 2}])
-    _, fig = run_analysis(code="figure = px.imshow(df.corr())\nresult = {'ok': True}", data_key="test:an")
+    fig = _figuur(code="figure = px.imshow(df.corr())\nresult = {'ok': True}", data_key="test:an")
     assert fig.layout.meta["data"] == [
         {"rij": "A", "kolom": "A", "waarde": 1.0},
         {"rij": "A", "kolom": "B", "waarde": -0.5},
@@ -249,7 +257,7 @@ def test_heatmap_rows_carry_the_values_from_z_not_the_labels():
 
 def test_non_square_heatmap_gets_a_row_per_cell():
     _put("test:an", [{"A": 1}])
-    _, fig = run_analysis(
+    fig = _figuur(
         code="figure = go.Figure(go.Heatmap(z=[[1, 2, 3]], x=['p', 'q', 'r'], y=['s']))\nresult = {'ok': len(df)}",
         data_key="test:an",
     )

@@ -30,6 +30,13 @@ def _clean_store():
     store.clear()
 
 
+def _meta(key: str) -> KeyMeta:
+    """De meta van een key die er moet zijn; zonder meta faalt de test hier, niet met een AttributeError."""
+    known = store.meta(key)
+    assert known is not None, key
+    return known
+
+
 def test_put_records_meta_and_without_meta_there_is_none():
     store.put("rio:x", pd.DataFrame({"a": [1]}), KeyMeta(bron="rio", dataset="x", volledig=False))
     store.put("los", pd.DataFrame({"a": [1]}))
@@ -43,7 +50,7 @@ def test_derive_inherits_the_parent_meta_and_names_the_parent():
 
     store.derive("rio:x", "rio:x:q", pd.DataFrame({"a": [1]}))
 
-    child = store.meta("rio:x:q")
+    child = _meta("rio:x:q")
     assert child.volledig is False and child.bron == "rio"
     assert child.afgeleid_van == "rio:x"
 
@@ -105,9 +112,9 @@ def _rio(rows: int) -> str:
 
 
 def test_a_full_rio_page_is_recorded_as_incomplete():
-    assert store.meta(_rio(RIO_PAGE_SIZE)).volledig is False
+    assert _meta(_rio(RIO_PAGE_SIZE)).volledig is False
     store.clear()
-    assert store.meta(_rio(3)).volledig is True
+    assert _meta(_rio(3)).volledig is True
 
 
 def test_query_data_on_an_incomplete_key_stays_incomplete():
@@ -116,8 +123,8 @@ def test_query_data_on_an_incomplete_key_stays_incomplete():
     derived = json.loads(query_data(key, filters={"id__gte": 10}))["data_key"]
 
     assert derived != key
-    assert store.meta(derived).volledig is False
-    assert store.meta(derived).afgeleid_van == key
+    assert _meta(derived).volledig is False
+    assert _meta(derived).afgeleid_van == key
 
 
 def test_run_analysis_on_an_incomplete_key_stays_incomplete():
@@ -125,8 +132,8 @@ def test_run_analysis_on_an_incomplete_key_stays_incomplete():
 
     derived = json.loads(run_analysis("result = df.head(3)", data_key=key))["data_key"]
 
-    assert store.meta(derived).volledig is False
-    assert store.meta(derived).afgeleid_van == key
+    assert _meta(derived).volledig is False
+    assert _meta(derived).afgeleid_van == key
 
 
 # ── Schooljaren per key (#187) ──
@@ -148,7 +155,7 @@ def test_get_duo_data_records_and_reports_the_available_schooljaren():
     result = json.loads(_duo_reeks())
 
     assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
-    known = store.meta(result["data_key"])
+    known = _meta(result["data_key"])
     assert known.periodekolom == "STUDIEJAAR" and known.schooljaren == (2024, 2025)
 
 
@@ -164,7 +171,7 @@ def test_query_data_records_the_schooljaren_of_its_selection_even_after_aggregat
         )
     )["data_key"]
 
-    assert store.meta(derived).schooljaren == (2024,)
+    assert _meta(derived).schooljaren == (2024,)
 
 
 def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
@@ -181,7 +188,7 @@ def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
         result = json.loads(get_cbs_data("85423NED"))
 
     assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
-    assert store.meta(result["data_key"]).periodekolom == "Perioden"
+    assert _meta(result["data_key"]).periodekolom == "Perioden"
 
 
 # ── Instellingen per key (#143) ──
@@ -201,7 +208,7 @@ def _duo_instellingen() -> str:
 
 
 def test_get_duo_data_records_the_institutions():
-    known = store.meta(json.loads(_duo_instellingen())["data_key"])
+    known = _meta(json.loads(_duo_instellingen())["data_key"])
     assert known.instellingskolom == "INSTELLINGSCODE_ACTUEEL"
     assert known.instellingen == ("25DW", "30TX")
 
@@ -217,4 +224,4 @@ def test_query_data_names_the_institution_next_to_its_code():
     )
 
     assert parsed["instellingen"] == {"30TX": "Aeres Hogeschool"}
-    assert store.meta(parsed["data_key"]).instellingen == ("30TX",)
+    assert _meta(parsed["data_key"]).instellingen == ("30TX",)

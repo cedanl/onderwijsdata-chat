@@ -45,7 +45,7 @@ async def health_check() -> dict:
     }
 
 
-async def readiness_check() -> dict:
+async def readiness_check() -> tuple[dict, int]:
     """
     Readiness probe endpoint.
     Returns 200 only if application is ready to serve traffic:

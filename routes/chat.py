@@ -4,6 +4,7 @@ import json
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
+from typing import TypeGuard
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -279,7 +280,7 @@ def _parse_history(raw: list) -> list[dict]:
     return kept
 
 
-def _task_busy(current_task: asyncio.Task | None) -> bool:
+def _task_busy(current_task: asyncio.Task | None) -> TypeGuard[asyncio.Task]:
     return current_task is not None and not current_task.done()
 
 

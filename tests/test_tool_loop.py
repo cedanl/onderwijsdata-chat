@@ -328,6 +328,7 @@ def test_stop_during_the_stream_keeps_the_text(monkeypatch):
         return object()
 
     async def fake_accumulate(stream, stop_event=None, emit=None):
+        assert stop_event is not None
         stop_event.set()
         return StreamResult(text="Half", tool_calls=[])
 

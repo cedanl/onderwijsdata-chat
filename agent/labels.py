@@ -68,7 +68,7 @@ def _dataset_ids(tekst: str) -> list[str]:
     return sorted(set(ids))
 
 
-def onbekende_datasets(tekst: str, genoemd: str = "") -> list[str]:
+def onbekende_datasets(tekst: str, genoemd: str = "") -> list[Probleem]:
     """Dataset-ID's in de tekst die niet in de catalogus staan, zoals een typfout in de bron.
 
     `genoemd` is wat de beurt zelf noemde: de vraag van de gebruiker en de toolresultaten. Een ID dat daar staat is niet

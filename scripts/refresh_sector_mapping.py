@@ -25,13 +25,14 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Voeg projectroot toe zodat imports werken
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import litellm
+from litellm.types.utils import ModelResponse
 from onderwijsbronnen import uwv
 
 from core.config import MODEL
@@ -114,10 +115,14 @@ def lees_antwoord(raw: str) -> dict[str, list[str]]:
 
 def classificeer_via_llm(indeling: str, prompt: str) -> dict[str, list[str]]:
     print(f"LLM classificeert clusters voor {indeling}...", flush=True)
-    response = litellm.completion(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=16000,
+    # Zonder stream=True en zonder acompletion geeft completion altijd een ModelResponse, nooit een stream of coroutine.
+    response = cast(
+        "ModelResponse",
+        litellm.completion(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=16000,
+        ),
     )
     inhoud = response.choices[0].message.content
     if not inhoud:
