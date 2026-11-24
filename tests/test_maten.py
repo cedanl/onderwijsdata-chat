@@ -173,6 +173,24 @@ def test_personen_hu_voltijd_per_studiejaar_met_de_onderdrukte_cel_als_ondergren
     assert known is not None and known.afgeleid_van == "duo:p01hoinges:3"
 
 
+def test_de_publicatieregel_status_van_get_duo_data_gaat_mee_naar_get_maat():
+    """#1092: het bestand heeft -1-cellen en geen 4-cellen, dus de regel '1-4 als 4' uit de beschrijving botst met de
+    data. get_duo_data zegt dat (`publicatieregel_status: conflict`); get_maat gaf de regel door zonder die status."""
+    from tools.duo import get_duo_data
+
+    geladen = json.loads(get_duo_data("p01hoinges", 3))
+    assert geladen["publicatieregels"] and geladen["publicatieregel_status"] == "conflict"
+    assert geladen["publicatieregel_waargenomen"]["cellen_met_4"] == 0
+    assert geladen["publicatieregel_waargenomen"]["cellen_min_een"] > 0
+
+    uit = _uit(get_maat("ingeschreven_personen_ho", "Hogeschool Utrecht"))
+
+    assert uit["publicatieregels"] == geladen["publicatieregels"]
+    for veld in ("publicatieregel_status", "publicatieregel_melding", "publicatieregel_waargenomen"):
+        assert uit[veld] == geladen[veld], veld
+    assert "geen 4-cellen maar wel -1-cellen" in uit["publicatieregel_melding"]
+
+
 def test_alle_vormen_telt_voltijd_en_deeltijd_samen_en_een_gevraagd_jaar_zonder_data_staat_erbij():
     uit = _uit(get_maat("ingeschreven_personen_ho", "HU", schooljaren=["2021/22", "2030/31"]))
     assert [r["AANTAL_INGESCHREVENEN"] for r in uit["rijen"]] == [350]

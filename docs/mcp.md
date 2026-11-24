@@ -58,7 +58,9 @@ sessieloze tools voor de kernvragen van SURF AI Chat. Elke aanroep haalt op en r
 bij een instelling met meer codes ook `instellingscodes`: de reeks telt over elke code, #1069),
 eventueel `opleiding` (code, naam), `reeks` (`schooljaar`, `aantal`; `null` als DUO alles onderdrukte) en `verloop`
 (`van`, `tot`, `verschil`, `procentuele_verandering`), plus de noten van `get_maat` (`noot`, `databewerking`,
-`publicatieregels`, `ontbrekende_schooljaren`) en `fusies`. Bij een vergelijking staat een noot die elke instelling
+`publicatieregels`, `ontbrekende_schooljaren`) en `fusies`. Bij de publicatieregels staat wat het geladen bestand
+ervan zegt, zoals in `get_duo_data`: `publicatieregel_status` (`volgt`, `conflict` of `niet_vast_te_stellen`),
+`publicatieregel_melding` en `publicatieregel_waargenomen` (#1092). Bij een vergelijking staat een noot die elke instelling
 heeft één keer bovenaan.
 
 **Grenzen.** Fail-closed zoals de chat: alleen mbo-, hbo- en wo-instellingen uit het register; een vo-school, een
