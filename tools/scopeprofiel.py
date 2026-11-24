@@ -51,10 +51,14 @@ def wet_buiten_scope(wet: str | None) -> bool:
 # Woorden waarmee een vraag po, so of vo noemt, buiten de scope van de chat (#355): voor de vervolgvragen
 # (agent/vervolgvragen.py), de scope-uitleg vóór het model (agent/po_vraag.py, #647; daar beslist een losse
 # "so" of "bo" niet) en de vaste scope-uitleg achteraf (agent/vaste_antwoorden.py). "groep 1" t/m "groep 8"
-# zijn de jaargroepen van de basisschool (BEV-12).
+# zijn de jaargroepen van de basisschool (BEV-12). Ook de alledaagse woorden (#1076): middelbare school of scholier,
+# brugklas, gymnasium, lyceum, kleuters, en samenstellingen als "basisschoolleerlingen" en "gymnasiumleerlingen". Het
+# Grafisch Lyceum is een mbo-instelling, geen vo-school.
 PO_SO_VO = re.compile(
-    r"\b(?:po|so|vo|vso|bo|sbo|vavo|vmbo|havo|vwo|basisonderwijs|basisschool|basisscholen|praktijkonderwijs"
-    r"|primair\s+onderwijs|speciaal\s+onderwijs|voortgezet(?:\s+speciaal)?\s+onderwijs|groep\s+[1-8])\b",
+    r"\b(?:po|so|vo|vso|bo|sbo|vavo|vmbo|havo|vwo|basisonderwijs|basisschool\w*|basisscholen|praktijkonderwijs"
+    r"|primair\s+onderwijs|speciaal\s+onderwijs|voortgezet(?:\s+speciaal)?\s+onderwijs|groep\s+[1-8]"
+    r"|middelbare\s+(?:school|scholen|scholier(?:en)?)|brugklas\w*|gymnasi(?:um|a|ast)\w*"
+    r"|(?<!grafisch\s)lyce(?:um|a)\w*|kleuters?)\b",
     re.IGNORECASE,
 )
 

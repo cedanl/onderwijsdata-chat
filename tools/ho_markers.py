@@ -47,9 +47,12 @@ _KORTE_MARKER = re.compile(rf"\b(?:{'|'.join(_KORT)})\b")
 _HOGER_ONDERWIJS = re.compile(r"hoger\s+onderwijs")
 
 # Een vo-niveau (#877): de onderwijssoort, of een leerling ervan ("havisten", "vmbo'ers", "vwo-leerlingen").
-# Geen vso: (v)so blijft dicht. "vo" en de soorten alleen als heel woord: "vooral", "vwoord" tellen niet.
+# Geen vso: (v)so blijft dicht. "vo" en de soorten alleen als heel woord: "vooral", "vwoord" tellen niet. Ook de
+# alledaagse woorden die `scopeprofiel.PO_SO_VO` sinds #1076 kent: middelbare scholieren, gymnasium, lyceum.
 _VO_NIVEAU = re.compile(
-    r"\b(?:vo|vmbo|havo|vwo|vavo|havist(?:en)?|voortgezet\s+onderwijs|middelbare\s+scho(?:ol|len))\b", re.IGNORECASE
+    r"\b(?:vo|vmbo|havo|vwo|vavo|havist(?:en)?|voortgezet\s+onderwijs|middelbare\s+(?:scho(?:ol|len)|scholier(?:en)?)"
+    r"|gymnasi(?:um|a|ast)\w*|lyce(?:um|a)\w*)\b",
+    re.IGNORECASE,
 )
 # Een vervolgdoel na het vo: het mbo of een roc, of een woord dat zegt dat leerlingen ergens heen gaan.
 _MBO = re.compile(r"\b(?:mbo|roc)\b", re.IGNORECASE)
@@ -64,7 +67,7 @@ _DOORSTROOM = re.compile(
 # Doorstroom binnen het vo ("van het vmbo naar de havo", "door naar de bovenbouw", "toegelaten tot het vwo") is geen
 # vervolgonderwijs.
 _VO_DOEL = re.compile(
-    r"\b(?:naar|tot)\s+(?:het\s+|de\s+|een\s+)?(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|voortgezet\s+onderwijs)\b",
+    r"\b(?:naar|tot)\s+(?:het\s+|de\s+|een\s+)?(?:vmbo|havo|vwo|vo|gymnasium|lyceum|bovenbouw|voortgezet\s+onderwijs)\b",
     re.IGNORECASE,
 )
 # Instroom in vervolgonderwijs als vervolgdoel naast een vo-niveau (#1039): de bovenbouw als voorspeller van de
@@ -74,7 +77,9 @@ _HO_INSTROOM = re.compile(rf"\b(?:instro\w*|eerstejaars\w*|{_TOEKOMSTIG}\s+(?:\w
 # Instroom binnen het vo: instroom of eerstejaars in, op of naar een vo-soort ("instroom in de havo", "eerstejaars op
 # het vwo", "eerstejaars in de brugklas"). Niet "van": "instroom van havisten" gaat over leerlingen die het vo verlaten.
 # Een bijvoeglijk naamwoord als "toekomstige" maakt er weer ho-instroom van.
-_VO_SOORT = r"(?:vmbo|havo|vwo|vo|gymnasium|bovenbouw|onderbouw|brugklas\w*|voortgezet\s+onderwijs|middelbare\s+school)"
+_VO_SOORT = (
+    r"(?:vmbo|havo|vwo|vo|gymnasium|lyceum|bovenbouw|onderbouw|brugklas\w*|voortgezet\s+onderwijs|middelbare\s+school)"
+)
 _VO_INSTROOM = re.compile(
     rf"\b(?:instro\w*|eerstejaars\w*)\s+(?:\w+\s+){{0,2}}?(?:in|op|naar)\s+(?:het\s+|de\s+|een\s+)?{_VO_SOORT}\b"
     # "Hoeveel instroom heeft het vmbo?"
@@ -91,8 +96,8 @@ _TERUGKEER = re.compile(
 )
 # Po en (v)so: wie die noemt, opent met een doorstroomwoord niets ("doorstroom van de basisschool naar het vwo").
 _PO_SO = re.compile(
-    r"\b(?:po|vso|sbo|basisonderwijs|basisschool|basisscholen|primair\s+onderwijs|speciaal\s+onderwijs"
-    r"|groep\s+[1-8])\b",
+    r"\b(?:po|vso|sbo|basisonderwijs|basisschool\w*|basisscholen|primair\s+onderwijs|speciaal\s+onderwijs"
+    r"|groep\s+[1-8]|kleuters?)\b",
     re.IGNORECASE,
 )
 
