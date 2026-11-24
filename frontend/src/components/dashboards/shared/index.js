@@ -8,7 +8,7 @@ export { buildSupplyDemandData, sortedEntries, yearOverYearDelta, buildPeerLines
 export { fmt, fmtProcent } from './getal'
 export { useDarkMode, dashboardFout, useRegioDashboardData, useNationaalDashboardData, useRendementDashboardData, useArbeidsmarktmatchDashboardData, useOpleidingenDashboardData, useRegioComputed } from './hooks'
 export { DemografieKpis, InstroomKpis, DiplomeringKpis, JaarNoot, eerstejaarsNoot, gediplomeerdenNoot } from './kpis'
-export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, POPULATIE_NATIONAAL, ROA_AIS, ROA_SIS, bronnenVan, bronBadge, roaPeilmoment } from './shell'
+export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, POPULATIE_NATIONAAL, ROA_AIS, bronnenVan, bronBadge, roaEditie, roaSis } from './shell'
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'
 export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendChart, InstroomRatioChart, buildMarktaandeelData, buildGroeiRankingData, MarktaandeelChart, GroeiRankingChart } from './charts-markt'
 export { RoaSection, PrognoseSection, UwvSection, MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF, MATCH_KAP } from './charts-arbeidsmarkt'
