@@ -168,18 +168,22 @@ def test_de_bewaking_draait_een_ronde_en_stopt_bij_het_afsluiten(monkeypatch):
 
 
 def test_een_fout_in_een_ronde_stopt_de_bewaking_niet(monkeypatch):
+    """Wacht op de tweede ronde, niet op de klok (#1195); de time-out is alleen een vangnet tegen hangen."""
     rondes = []
 
-    async def controleer(client):
-        rondes.append(1)
-        if len(rondes) == 1:
-            raise RuntimeError("onverwacht")
-
-    monkeypatch.setattr(bronstatus, "controleer", controleer)
-
     async def loop():
+        tweede = asyncio.Event()
+
+        async def controleer(client):
+            rondes.append(1)
+            if len(rondes) >= 2:
+                tweede.set()
+            if len(rondes) == 1:
+                raise RuntimeError("onverwacht")
+
+        monkeypatch.setattr(bronstatus, "controleer", controleer)
         async with bronstatus.bewaking(0.01):
-            await asyncio.sleep(0.15)
+            await asyncio.wait_for(tweede.wait(), timeout=5)
 
     asyncio.run(loop())
     assert len(rondes) >= 2
