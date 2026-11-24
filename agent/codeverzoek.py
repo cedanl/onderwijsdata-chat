@@ -71,13 +71,19 @@ def is_codeverzoek(vraag: str) -> bool:
 
 
 def onthoud(session: dict, event: dict) -> None:
-    """Na elk tool_end-event van een datastap: welke stap het was en haar snippet, of dat ze er geen heeft."""
+    """Na elk tool_end-event van een datastap: welke stap het was en haar snippet, of dat ze er geen heeft.
+
+    Een stap die de scopegrens weigerde (`buiten_scope`, #1103) laadde niets: geen snippet, ook als het event er een
+    draagt, en het label zegt dat ze geweigerd is.
+    """
     naam = event.get("name")
     if event.get("type") != "tool_end" or not isinstance(naam, str) or naam in _GEEN_DATASTAP:
         return
-    snippet = event.get("snippet")
+    geweigerd = event.get("status") == "buiten_scope"
+    snippet = None if geweigerd else event.get("snippet")
+    label = event.get("status_label") if geweigerd else None
     session[_SESSIESLEUTEL] = {
-        "label": LABELS.get(naam, naam),
+        "label": label if isinstance(label, str) and label else LABELS.get(naam, naam),
         "snippet": snippet if isinstance(snippet, str) and snippet.strip() else None,
     }
 

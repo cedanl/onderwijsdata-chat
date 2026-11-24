@@ -79,6 +79,12 @@ function StapCode({ code }) {
   )
 }
 
+// De code van een stap, of niets. Een stap die de scopegrens weigerde (`buiten_scope`, #1103) laadde geen data: een
+// snippet erbij zou de geweigerde tabel laden alsof de stap slaagde, dus die toont de kaart nooit.
+function stapcode(tool) {
+  return tool.status === 'buiten_scope' ? null : tool.snippet
+}
+
 // De hoogte van de open stappenlijst als de kop van de kaart in beeld staat (#609); 0 als de kaart boven of onder
 // het beeld ligt, of als er niets te meten is (jsdom). Met de kop in beeld verankert de browser de scroll aan de kop
 // en niet aan wat eronder wegvalt, dus dan compenseert ReasoningPanel zelf.
@@ -133,7 +139,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
     compensatie.current = 0
   }, [open])
   if (!tools?.length) return null
-  const hasSnippets = tools.some(t => t.snippet)
+  const hasSnippets = tools.some(stapcode)
   const toggle = () => { handmatig.current = true; setOpen(o => !o) }
 
   return (
@@ -151,7 +157,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
         <div className="reasoning-content">
           {markRecovered(tools).map((t, i) => (
             <ReasoningStep key={`${t.name}-${i}`} tool={t}>
-              {codePerStap && t.snippet && <StapCode code={t.snippet} />}
+              {codePerStap && stapcode(t) && <StapCode code={stapcode(t)} />}
             </ReasoningStep>
           ))}
           {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
@@ -161,7 +167,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
           {hasSnippets && !codePerStap && (
             <div className="reasoning-snippets">
               {tools.map((t, i) => (
-                t.snippet && (
+                stapcode(t) && (
                   <div key={`${t.name}-${i}`} className="reasoning-snippet-block">
                     <div className="reasoning-snippet-label">{t.label}</div>
                     <SyntaxHighlighter
@@ -169,7 +175,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
                       style={codeThema}
                       customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
                     >
-                      {t.snippet}
+                      {stapcode(t)}
                     </SyntaxHighlighter>
                   </div>
                 )

@@ -108,3 +108,27 @@ describe('Redenering: code per stap op een telefoon (#595)', () => {
     expect(container.querySelector('.reasoning-snippets').textContent).toContain('cbsodata.get_data')
   })
 })
+
+// #1103: een stap die de scopegrens weigerde (`buiten_scope`) laadde niets; een snippet erbij zou de geweigerde tabel
+// laden alsof de stap slaagde. Ook als het event er toch een draagt, toont de kaart geen code.
+describe('Redenering: geen code bij een stap buiten de scope (#1103)', () => {
+  const geweigerd = {
+    name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, status: 'buiten_scope',
+    status_label: 'CBS-opvraag geweigerd (buiten scope)', snippet: 'from onderwijsbronnen.cbs import data\ndata("80040NED")',
+  }
+  beforeEach(() => { chat.messages = beurt(stappen[0], geweigerd) })
+
+  it('geeft de stap op een telefoon geen "Bekijk code"', async () => {
+    smal = true
+    await mountChat()
+    expect(container.querySelector('.reasoning-step-code')).toBeNull()
+    expect(container.textContent).not.toContain('80040NED')
+  })
+
+  it('zet de code op een breed scherm niet in het blok onder de stappen', async () => {
+    smal = false
+    await mountChat()
+    expect(container.querySelector('.reasoning-snippets')).toBeNull()
+    expect(container.textContent).not.toContain('80040NED')
+  })
+})
