@@ -894,10 +894,14 @@ def _gemiddeld_per_sector(
 ) -> tuple[dict[str, int], list[int]]:
     """Gediplomeerden per sector, gemiddeld over de laatste _SECTOR_GEMIDDELD_JAREN jaren; sectoren zonder weg.
 
-    Met de jaren waarover gemiddeld is: de arbeidsmarktmatch noemt ze bij de score (#900)."""
+    De noemer is het aantal jaren in `jaren`: een jaar zonder rijen voor een sector telt als 0 (#1073). Eerder deelde
+    het gemiddelde alleen door de jaren waarin de sector rijen had, zodat een sector die er twee van de drie jaar was
+    (HU, TAAL_EN_CULTUUR: 52 en 76) op 64 per jaar kwam in plaats van 43. Met de jaren waarover gemiddeld is: de
+    arbeidsmarktmatch noemt ze bij de score (#900)."""
     jaren = sorted(df[jaar_col].dropna().unique())[-_SECTOR_GEMIDDELD_JAREN:]
     recent = df[df[jaar_col].isin(jaren)]
-    gem = recent.groupby([jaar_col, sector_col])[waarde_col].sum().groupby(sector_col).mean()
+    per_jaar = recent.groupby([sector_col, jaar_col])[waarde_col].sum().unstack(jaar_col)
+    gem = per_jaar.reindex(columns=jaren).fillna(0).mean(axis=1)
     per_sector = {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64)
     return per_sector, [int(j) for j in jaren]
 
