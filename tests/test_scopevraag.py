@@ -160,6 +160,45 @@ def test_een_uwv_vraag_zonder_plaats_laat_de_provinciekaart_aan_het_model():
     assert scopevraag("Welke beroepsclusters met openstaande vacatures in de zorg noemt UWV?") is None
 
 
+# Amsterdam heeft in het echte register meer instellingen in de naam; hier een hbo en twee wo.
+_AMSTERDAM = [
+    {"naam": "Hogeschool van Amsterdam", "type": "hbo", "aliassen": ["HvA"]},
+    {"naam": "Universiteit van Amsterdam", "type": "wo", "aliassen": ["UvA"]},
+    {"naam": "Vrije Universiteit Amsterdam", "type": "wo", "aliassen": ["VU"]},
+]
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "welke hogescholen in utrecht hebben de meeste uitval??",
+        "vergelijk de uitval van de hogescholen in utrecht",
+        "hoeveel studenten stoppen bij hogescholen in amsterdam",
+        "Welke universiteiten in Utrecht hebben de meeste studenten?",
+        "Hoeveel studenten hebben de roc's in Twente?",
+        "Hoeveel deelnemers hebben de rocs in Twente?",
+    ],
+)
+def test_een_vergelijking_van_alle_instellingen_in_een_plaats_krijgt_geen_plaatskaart(monkeypatch, vraag):
+    """De kaart bood één instelling of de woonplaats; de vergelijking van alle hogescholen in de plaats verdween (#1106).
+    Een meervoud (hogescholen, universiteiten, roc's) noemt het soort instelling al: het model krijgt de vraag zelf."""
+    register = [*_REGISTER, *_AMSTERDAM]
+    monkeypatch.setattr(module, "get_all", lambda: register)
+    monkeypatch.setattr(instelling, "get_all", lambda: register)
+    assert plaatsvraag(vraag) is None
+    kaart = scopevraag(vraag)
+    assert kaart is None or kaart.slot != "scope"
+
+
+@pytest.mark.parametrize(
+    "vraag", ["Hoeveel studenten heeft Utrecht?", "Hoeveel studenten heeft de hogeschool in Utrecht?"]
+)
+def test_zonder_meervoud_blijft_de_plaatskaart(vraag):
+    """Regressie #953: een telling bij een plaats, of één instelling van een soort, houdt de kaart."""
+    kaart = plaatsvraag(vraag)
+    assert kaart is not None and kaart.slot == "scope"
+
+
 def test_zonder_register_geen_scopevraag(monkeypatch):
     def offline():
         raise OSError("geen DUO-download")

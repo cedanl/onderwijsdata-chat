@@ -8,6 +8,8 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
   Groningen, Amsterdam, Twente), terwijl de vraag geen instelling noemt: de kaart vraagt instelling
   of woonplaats, met de instellingen uit het register als opties. Niet als de vraag de plaats al een gebied
   noemt ("provincie Utrecht") of over de arbeidsmarkt gaat (UWV-vacatures): dan dekt geen optie haar (#953).
+  Ook niet als ze een soort instelling in het meervoud noemt ("de hogescholen in Utrecht", #1106): dat is een
+  vergelijking van alle instellingen van die soort, en die vraag gaat zelf naar het model.
 - **maat**: een kort thema zonder maat ("studentenwelzijn", `interpretatie.is_vaag`): de kaart vraagt
   welke maat, met de catalogusrecords die `search_catalog` bovenaan zet als opties.
 - **fase** (#743): instroom in het hoger onderwijs zonder fase ("de instroom van de HvA"). Eerstejaars ho (DUO)
@@ -89,6 +91,9 @@ _GENERIEK = frozenset(
 # Een vraag over de arbeidsmarkt telt vacatures of beroepen, geen studenten of instellingen: de plaats is dan een
 # gebied voor UWV of ROA (#953). Geen "beroeps\w*": hoger beroepsonderwijs is een sector, geen arbeidsmarkt.
 _ARBEIDSMARKT = re.compile(r"\b(vacature\w*|uwv|arbeidsmarkt\w*|beroep(?:en|encluster\w*)?)\b", re.IGNORECASE)
+# Een soort instelling in het meervoud ("de hogescholen in Utrecht", "roc's in Twente") vraagt naar alle instellingen
+# van die soort in de plaats (#1106): een kaart met één instelling of de woonplaats liet die vergelijking weg.
+_MEERVOUD = re.compile(r"\b(?:hogescholen|universiteiten|roc(?:['’]?s))\b", re.IGNORECASE)
 _MIN_LETTERS = 4
 _MAX_INSTELLINGEN = 2
 _MAX_MATEN = 3
@@ -188,7 +193,7 @@ def _hoofdinstellingen(kandidaten: list[dict], volgorde: list[str]) -> list[dict
 def plaatsvraag(vraag: str, settings: dict | None = None) -> Kaart | None:
     """De scopekaart voor een telling bij een plaats die ook een instellingsnaam kan zijn; anders None."""
     settings = settings or {}
-    if not _MAAT.search(vraag) or _ARBEIDSMARKT.search(vraag):
+    if not _MAAT.search(vraag) or _ARBEIDSMARKT.search(vraag) or _MEERVOUD.search(vraag):
         return None
     register = _register()
     if not register or instelling.genoemde_namen(vraag):
