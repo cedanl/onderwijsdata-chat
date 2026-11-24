@@ -164,18 +164,21 @@ describe('downloadMijnGegevens', () => {
 })
 
 describe('SettingsModal: Exporteer al mijn gegevens', () => {
-  const modal = props => createElement(SettingsModal, { settings: {}, onSave: vi.fn(), onClose: vi.fn(), ...props })
+  // With a login of one's own App passes onGegevensVerwijderd; the export is offered under the same condition (#1118).
+  const modal = props => createElement(SettingsModal, { settings: {}, onSave: vi.fn(), onClose: vi.fn(), onGegevensVerwijderd: vi.fn(), ...props })
   // The dialog's InstellingPicker fetches the list of institutions too; only the export calls count here.
   const fetchWith = exportImpl => vi.fn(url => (url === '/api/instellingen' ? Promise.resolve(response(200, { body: '[]' })) : exportImpl(url)))
   const exportCalls = fetchMock => fetchMock.mock.calls.filter(([url]) => url !== '/api/instellingen')
 
-  it('sits directly above Uitloggen, as a native button the keyboard reaches', async () => {
+  it('sits above Verwijder al mijn gegevens and Uitloggen, as a native button the keyboard reaches', async () => {
     await render(modal({ onLogout: vi.fn() }))
     const button = exportButton()
     expect(button.tagName).toBe('BUTTON')
     expect(button.getAttribute('type')).toBe('button')
     expect(button.hasAttribute('tabindex')).toBe(false)
-    expect(button.parentElement.nextElementSibling).toBe(buttonByText('Uitloggen'))
+    const verwijderen = button.parentElement.nextElementSibling
+    expect(verwijderen.querySelector('.mijn-gegevens-verwijderen-btn')).not.toBeNull()
+    expect(verwijderen.nextElementSibling).toBe(buttonByText('Uitloggen'))
     button.focus()
     expect(document.activeElement).toBe(button)
   })
@@ -211,9 +214,15 @@ describe('SettingsModal: Exporteer al mijn gegevens', () => {
     expect(saveFile).not.toHaveBeenCalled()
   })
 
-  it('is offered without login too, when there is no Uitloggen', async () => {
-    await render(modal({ onLogout: null }))
+  it('is offered with a login of one\'s own', async () => {
+    await render(modal({ onLogout: vi.fn(), onGegevensVerwijderd: vi.fn() }))
     expect(exportButton().textContent).toBe(LABEL)
+  })
+
+  it('is not offered without a login of one\'s own: every visitor is the shared guest, and the server refuses it (#1118)', async () => {
+    await render(modal({ onLogout: null, onGegevensVerwijderd: null }))
+    expect(exportButton()).toBeNull()
+    expect(container.textContent).not.toContain(LABEL)
   })
 
   it('is not offered during onboarding, like Uitloggen', async () => {

@@ -204,10 +204,10 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
             Iets kwijt over openEDUdata+? <FeedbackLink>Geef feedback</FeedbackLink>
           </p>
         )}
-        {/* Everything the server keeps under this account as a file (#645); not during onboarding, like Uitloggen. */}
-        {!isOnboarding && <MijnGegevensExport />}
-        {/* Erase everything under this account (#646): only with a login of one's own; without one every visitor is
-            the shared guest, and the server refuses it. */}
+        {/* Export (#645) and erase (#646) everything under this account: only with a login of one's own (the callback
+            comes only then); without one every visitor is the shared guest, and the server refuses both (#1118). Not
+            during onboarding, like Uitloggen. */}
+        {onGegevensVerwijderd && !isOnboarding && <MijnGegevensExport />}
         {onGegevensVerwijderd && !isOnboarding && <MijnGegevensVerwijderen onVerwijderd={onGegevensVerwijderd} />}
         {/* The navbar hides its logout button up to 1024px; this dialog opens from the name in the header. */}
         {onLogout && !isOnboarding && (
