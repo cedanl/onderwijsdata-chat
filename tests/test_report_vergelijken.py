@@ -18,7 +18,6 @@ from agent.report_vergelijken import (
     OPLEIDINGSVORM,
     PEILDATUM,
     PERSONEN,
-    SLOT,
     vergelijken,
 )
 from tools import duo_meta, store
@@ -108,12 +107,12 @@ def test_een_item_per_dataset_in_de_vorm_van_het_definitieblok_en_de_slotzin_een
     items = vergelijken([_duo("p02ho1ejrs"), _duo("p01hoinges")])
 
     assert [i["begrip"] for i in items] == [f"{BEGRIP} (p02ho1ejrs)", f"{BEGRIP} (p01hoinges)", BEGRIP]
-    assert items[-1]["definitie"] == SLOT
-    assert not any(SLOT in i["definitie"] for i in items[:-1])
+    assert items[-1]["definitie"].startswith("Leg bij een verschil")
+    assert not any("Leg bij een verschil" in i["definitie"] for i in items[:-1])
 
 
 def test_een_feit_is_een_zin_zodat_het_rapport_er_een_bolletje_van_maakt():
-    for zin in (PEILDATUM, PERSONEN, INSCHRIJVINGEN, OPLEIDINGSVORM, SLOT):
+    for zin in (PEILDATUM, PERSONEN, INSCHRIJVINGEN, OPLEIDINGSVORM):
         assert zin.count(". ") == 0 and zin.endswith(".")
 
 
@@ -157,3 +156,66 @@ def test_het_rapport_zet_het_blok_na_de_teldefinitie():
     assert begrippen[0] == "Telling (p02ho1ejrs)"
     assert begrippen[-2:] == [f"{BEGRIP} (p02ho1ejrs)", BEGRIP]
     assert "hbo-masters" in spec.definities[-2]["definitie"]
+
+
+# ── De koepel bij de sector van het rapport (#1089) ──────────────────────────────────────────
+
+_VH = "Vereniging Hogescholen"
+_MBO_RAAD = "MBO Raad"
+_UNL = "Universiteiten van Nederland"
+
+
+def _slot(*datasets: dict) -> str:
+    return vergelijken(list(datasets))[-1]["definitie"]
+
+
+def test_een_mbo_rapport_noemt_de_mbo_raad_en_niet_de_vereniging_hogescholen():
+    # 85354NED: mbo-studenten (CBS), het geval van de audit.
+    slot = _slot(_cbs("85354NED", 10))
+
+    assert _MBO_RAAD in slot and _VH not in slot and _UNL not in slot
+
+
+def test_een_hbo_rapport_houdt_de_vereniging_hogescholen():
+    # 83286NED is een hbo-tabel; DUO's hoger onderwijs (p02ho1ejrs) gaat over hbo en wo, dat is het volgende geval.
+    slot = _slot(_cbs("83286NED", 10))
+
+    assert _VH in slot and _MBO_RAAD not in slot and _UNL not in slot
+
+
+def test_een_wo_rapport_noemt_unl_en_niet_de_vereniging_hogescholen():
+    slot = _slot(_cbs("83285NED", 10))
+
+    assert _UNL in slot and _VH not in slot and _MBO_RAAD not in slot
+
+
+def test_ho_gaat_over_hbo_en_wo_dus_beide_koepels():
+    slot = _slot(_duo("p02ho1ejrs"))
+
+    assert _VH in slot and _UNL in slot and _MBO_RAAD not in slot
+
+
+def test_een_gemengd_rapport_noemt_alle_betrokken_koepels_een_keer():
+    slot = _slot(_cbs("85354NED", 10), _cbs("83286NED", 10), _cbs("83285NED", 10))
+
+    assert slot.count(_MBO_RAAD) == slot.count(_VH) == slot.count(_UNL) == 1
+
+
+def test_zonder_bekende_sector_noemt_het_slot_geen_koepel_en_blijft_het_een_zin():
+    slot = _slot(_cbs("onbekend", 10))
+
+    assert not any(naam in slot for naam in (_VH, _MBO_RAAD, _UNL))
+    assert slot.startswith("Leg bij een verschil met eigen cijfers") and slot.count(". ") == 0 and slot.endswith(".")
+
+
+def test_het_slot_noemt_in_elk_geval_de_peildatum_de_telwijze_en_de_versie():
+    for slot in (_slot(_cbs("85354NED", 10)), _slot(_duo("p02ho1ejrs"))):
+        assert "peildatum" in slot and "telwijze" in slot and "versie van de data" in slot
+
+
+def test_het_rapport_van_een_mbo_dataset_noemt_de_vereniging_hogescholen_niet():
+    antwoord = json.dumps({"title": "Mbo-studenten", "conclusie": "Het aantal daalde."})
+
+    spec = _parse_spec_from_response(antwoord, [], {"datasets": [_cbs("85354NED", 10)], "topic": "Mbo-studenten"})
+
+    assert _VH not in " ".join(d["definitie"] for d in spec.definities)

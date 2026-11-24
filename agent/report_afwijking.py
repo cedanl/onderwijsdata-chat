@@ -5,7 +5,8 @@ rapport, maar niet vooraan: "Het veranderen van de onderzoeksvraag had veel prom
 genoemd moeten zijn." Code legt de vraag naast wat het rapport toont, waar dat verschil meetbaar is:
 
 - **periode**: een gevraagd bereik ("2016 tot 2025"), een begin ("vanaf 2016") of een aantal jaren ("de afgelopen
-  10 jaar") tegen de jaren op de tijdas van de grafieken;
+  10 jaar") tegen de jaren op de tijdas van de grafieken, of zonder zo'n tijdas (een rapport zonder grafiek, #1179)
+  tegen de schooljaren van de data die het rapport las;
 - **prognose**: een vraag naar een prognose, terwijl geen geladen bron een prognose is.
 
 Andere afwijkingen blijven tekst van het model. Wat gevraagd was, komt uit de woorden van de gebruiker: de bevestigde
@@ -77,9 +78,20 @@ def getekende_jaren(visualisaties: list[dict]) -> list[int]:
     return sorted(jaren)
 
 
-def _periode_afwijking(gevraagd: _Periode, jaren: list[int]) -> str | None:
+def datajaren(keys: list) -> list[int]:
+    """De startjaren in de data van `keys`, gesorteerd, uit wat de store van hun rijen weet; leeg als geen key ze kent."""
+    jaren: set[int] = set()
+    for key in keys:
+        if isinstance(key, str) and (known := store.meta(key)) and known.schooljaren:
+            jaren.update(known.schooljaren)
+    return sorted(jaren)
+
+
+def _periode_afwijking(gevraagd: _Periode, jaren: list[int], getoond_door: str) -> str | None:
+    """De regel als `jaren` de gevraagde periode niet dekt; `getoond_door` zegt waar ze vandaan komen ("de grafieken
+    tonen", "de data loopt van")."""
     eerste, laatste = periode.label(jaren[0]), periode.label(jaren[-1])
-    getoond = f"de grafieken tonen {eerste} t/m {laatste}"
+    getoond = f"{getoond_door} {eerste} t/m {laatste}"
     if gevraagd.jaren is not None:
         if len(jaren) >= gevraagd.jaren:
             return None
@@ -89,6 +101,15 @@ def _periode_afwijking(gevraagd: _Periode, jaren: list[int]) -> str | None:
     if not (te_laat or te_vroeg):
         return None
     return f"Gevraagd was {gevraagd.tekst}; {getoond}."
+
+
+def _periode_toets(gevraagd: _Periode, visualisaties: list[dict], keys: list[str]) -> str | None:
+    """De periode-afwijking tegen de grafieken, of zonder tijdas tegen de data van de keys; None als niets afwijkt."""
+    if jaren := getekende_jaren(visualisaties):
+        return _periode_afwijking(gevraagd, jaren, "de grafieken tonen")
+    if jaren := datajaren(keys):
+        return _periode_afwijking(gevraagd, jaren, "de data loopt van")
+    return None
 
 
 def _prognosebron(keys: list[str]) -> bool:
@@ -110,12 +131,13 @@ def afwijkingen(
 
     `vragen` in volgorde van voorrang: de bevestigde onderzoeksvraag alleen, of anders de vragen van de gebruiker van
     laatst naar eerst. De periode komt uit de eerste vraag die er een noemt; een prognose telt als een van de vragen
-    erom vraagt. `keys` zijn de keys die het rapport las en tekende.
+    erom vraagt. `keys` zijn de keys die het rapport las en tekende. Heeft het rapport geen grafiek met een tijdas, dan
+    toetst de periode de schooljaren van die keys; kent de store ze niet, dan komt er geen regel.
     """
     vandaag = vandaag or date.today()
     regels: list[str] = []
     gevraagd = next((p for v in vragen if v and (p := _periode(v))), None)
-    if gevraagd and (jaren := getekende_jaren(visualisaties)) and (regel := _periode_afwijking(gevraagd, jaren)):
+    if gevraagd and (regel := _periode_toets(gevraagd, visualisaties, keys)):
         regels.append(regel)
     if any(v and _vraagt_prognose(v, vandaag) for v in vragen) and not _prognosebron(keys):
         regels.append("Gevraagd was een prognose; dit rapport toont het verloop tot nu toe, geen prognose.")
