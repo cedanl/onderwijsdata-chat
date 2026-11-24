@@ -28,8 +28,8 @@ describe('foutMelding', () => {
   })
 
   it('laat de tekst staan die de server voor gebruikers schreef', () => {
-    const melding = foutMelding('Het Word-document kon niet worden gemaakt', metStatus(404, 'Werkboek niet gevonden'))
-    expect(melding).toBe('Het Word-document kon niet worden gemaakt: Werkboek niet gevonden')
+    const melding = foutMelding('Het Word-document kon niet worden gemaakt', metStatus(404, 'Rapport niet gevonden'))
+    expect(melding).toBe('Het Word-document kon niet worden gemaakt: Rapport niet gevonden')
   })
 
   it('toont een antwoord dat geen JSON was als serverfout, niet de parserfout', () => {
@@ -39,8 +39,8 @@ describe('foutMelding', () => {
   })
 
   it('laat een eigen Nederlandse fout zonder status staan en vangt een lege fout op', () => {
-    expect(foutMelding('Titel niet opgeslagen', new Error('Werkboek is nog niet geladen'))).toBe(
-      'Titel niet opgeslagen: Werkboek is nog niet geladen',
+    expect(foutMelding('Titel niet opgeslagen', new Error('Rapport is nog niet geladen'))).toBe(
+      'Titel niet opgeslagen: Rapport is nog niet geladen',
     )
     expect(foutMelding('Titel niet opgeslagen', new Error(''))).toBe('Titel niet opgeslagen. Probeer het opnieuw.')
     expect(foutMelding('Titel niet opgeslagen', undefined)).toBe('Titel niet opgeslagen. Probeer het opnieuw.')

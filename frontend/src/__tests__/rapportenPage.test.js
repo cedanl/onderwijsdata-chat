@@ -333,7 +333,7 @@ describe('RapportenPage with a list of summaries', () => {
   })
 
   it('says the report is gone when the server no longer has it', async () => {
-    server.load = () => Promise.reject(Object.assign(new Error('Werkboek niet gevonden'), { status: 404 }))
+    server.load = () => Promise.reject(Object.assign(new Error('Rapport niet gevonden'), { status: 404 }))
     await render()
     await act(async () => { server.resolve([kaart]) })
     await act(async () => { container.querySelector('.wb-card').click() })

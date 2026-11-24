@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { buildReportHtml } from '../reportHtml.js'
+import { buildReportHtml, PRINT_CSS } from '../reportHtml.js'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { PLOTLY_URL } from '../plotlyBron'
 import { metThema } from '../reportThema'
 import { runPage, runPageNaTekenen, luminance, contrast } from './helpers/pageRun'
@@ -840,5 +842,80 @@ describe('printstijl in Npuls-huisstijl (#1037)', () => {
     for (const { selector, tekst } of over) {
       expect(contrast(tekst, NPULS.wit), `${selector}: ${tekst}`).toBeGreaterThanOrEqual(4.5)
     }
+  })
+})
+
+// #1075: een pipetabel, een genummerde lijst en punten in de conclusie stonden als ruwe tekst in de viewer, de
+// HTML-download en de PDF (en <li> zonder <ul>). Nu echte <table>, <ol> en <ul>, zoals de Word-export al deed.
+// De vaste conclusie staat ook in tests/fixtures/rapport_docx: de Python-lezer krijgt dezelfde HTML.
+describe('tabel en lijsten in de conclusie (#1075)', () => {
+  const fixture = naam => readFileSync(join(__dirname, '..', '..', '..', 'tests', 'fixtures', 'rapport_docx', naam), 'utf-8')
+  const conclusie = fixture('conclusie-tabel.md').trimEnd()
+  const html = buildReportHtml({ ...fullSpec, conclusie })
+  const prose = new JSDOM(html).window.document.querySelector('.conf .prose')
+
+  it('maakt de HTML die de lezers van een bewaard rapport verwachten', () => {
+    expect(prose.innerHTML).toBe(fixture('conclusie-tabel.html').trimEnd())
+  })
+
+  it('maakt van een pipetabel een <table> met kopcellen en datacellen, zonder de ruwe regels', () => {
+    expect([...prose.querySelectorAll('thead th')].map(th => th.textContent)).toEqual(['Sector', 'Instroom'])
+    expect([...prose.querySelectorAll('tbody tr')].map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent)))
+      .toEqual([['Economie', '1.200'], ['Techniek', '950'], ['Zorg <b>x</b>', '1.100']])
+    expect(prose.querySelector('tbody td:nth-child(2)').style.textAlign).toBe('right')
+    expect(prose.querySelector('tbody td:nth-child(2) strong').textContent).toBe('1.200')
+    expect(prose.textContent).not.toContain('|')
+    expect(html).not.toContain('|---')
+  })
+
+  it('accepteert elke uitlijning en vult een korte rij aan tot de breedte van de kop', () => {
+    const t = buildReportHtml({ ...fullSpec, conclusie: '| a | b | c |\n|:--|:-:|--:|\n| 1 |\n| 1 | 2 | 3 | 4 |' })
+    const tabel = new JSDOM(t).window.document.querySelector('.prose table')
+    expect([...tabel.querySelectorAll('th')].map(th => th.style.textAlign)).toEqual(['left', 'center', 'right'])
+    expect([...tabel.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent)))
+      .toEqual([['1', '', ''], ['1', '2', '3']])
+  })
+
+  it('laat pipe-regels zonder scheidingsregel tekst', () => {
+    const t = buildReportHtml({ ...fullSpec, conclusie: '| a | b |\n| 1 | 2 |' })
+    expect(t).toContain('<div class="prose"><p>| a | b |<br>| 1 | 2 |</p></div>')
+  })
+
+  it('maakt van 1./2) regels een <ol> en van -/* regels een <ul>, zonder losse <li>', () => {
+    expect(prose.querySelector('ol').outerHTML).toBe('<ol><li>Eerst economie</li><li>Dan zorg</li></ol>')
+    expect([...prose.querySelectorAll('ul li')].map(li => li.textContent)).toEqual(['Een punt', 'Nog een <script>'])
+    expect([...prose.querySelectorAll('li')].every(li => ['UL', 'OL'].includes(li.parentElement.tagName))).toBe(true)
+    const kort = buildReportHtml({ ...fullSpec, conclusie: '1. a\n2. b' })
+    expect(kort).toContain('<div class="prose"><ol><li>a</li><li>b</li></ol></div>')
+  })
+
+  it('zet geen blok in een <p>', () => {
+    expect(prose.querySelectorAll('p table, p ol, p ul, p h3, p p')).toHaveLength(0)
+    expect([...prose.children].map(el => el.tagName)).toEqual(['H3', 'P', 'DIV', 'OL', 'UL', 'P'])
+  })
+
+  it('laat tekst van het model ge-escapet in cellen, punten en alinea’s; vet en koppen werken', () => {
+    const t = buildReportHtml({ ...fullSpec, conclusie: '### Kop <i>\n| <script>x</script> | **a & b** |\n|---|---|\n| <b>c</b> | d |\n\n- <img src=x onerror=1> **vet**\n1. & <svg>\n\ntekst <b>niet</b> & meer' })
+    const p = new JSDOM(t).window.document.querySelector('.conf .prose')
+    expect(p.querySelectorAll('script, img, svg, i, b')).toHaveLength(0)
+    expect(t).toContain('<h3>Kop &lt;i&gt;</h3>')
+    expect(t).toContain('<th>&lt;script&gt;x&lt;/script&gt;</th><th><strong>a &amp; b</strong></th>')
+    expect(t).toContain('<td>&lt;b&gt;c&lt;/b&gt;</td>')
+    expect(t).toContain('<ul><li>&lt;img src=x onerror=1&gt; <strong>vet</strong></li></ul><ol><li>&amp; &lt;svg&gt;</li></ol>')
+    expect(t).toContain('<p>tekst &lt;b&gt;niet&lt;/b&gt; &amp; meer</p>')
+  })
+
+  // Leesbaar in donker, in print en op een telefoon: randen, een vette kop, scrollen in plaats van uit de kaart
+  // lopen, en in print geen rij over twee pagina's.
+  it('heeft randen en een vette kop, scrolt op een telefoon en breekt in print geen rij af', () => {
+    const scherm = html.slice(html.indexOf('<style>'), html.indexOf('@media print{'))
+    expect(scherm).toContain('.tabel-scroll{overflow-x:auto;')
+    expect(scherm).toMatch(/\.prose th,\.prose td\{border:1px solid #E5E7EB;/)
+    expect(scherm).toMatch(/\.prose th\{font-weight:700;/)
+    expect(html).toContain('html.dark .prose th,html.dark .prose td{border-color:#374151}')
+    expect(html).toContain('html:not(.light) .prose th{color:#F9FAFB;background:#111827}')
+    expect(PRINT_CSS).toContain('.prose tr{break-inside:avoid;page-break-inside:avoid}')
+    expect(PRINT_CSS).toContain('.prose thead{display:table-header-group}')
+    expect(PRINT_CSS).toContain(`.prose th,.prose td{border-color:${NPULS.zwart}}`)
   })
 })

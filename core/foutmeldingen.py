@@ -19,6 +19,8 @@ from core.errors import log_interne_fout, melding_interne_fout
 
 ONGELDIGE_INVOER = "Ongeldige invoer. Controleer de gegevens en probeer opnieuw."
 NIET_GEVONDEN = "Niet gevonden"
+# Wat de gebruiker onder Rapporten ziet, niet de naam van de tabel erachter (#1140).
+RAPPORT_NIET_GEVONDEN = "Rapport niet gevonden"
 METHODE_NIET_TOEGESTAAN = "Methode niet toegestaan"
 
 # FastAPI's 400 voor een body die het niet kan lezen: ongeldige UTF-8 of JSON die te diep genest is (#1162).

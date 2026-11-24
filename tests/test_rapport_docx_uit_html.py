@@ -6,7 +6,7 @@ conclusie gaat daarna naar blokken, met een pipetabel als echte tabel.
 
 import pytest
 
-from tests.rapport_docx_hulp import RAPPORT_HTML, RAPPORT_JS
+from tests.rapport_docx_hulp import FIXTURES, RAPPORT_HTML, RAPPORT_JS
 from tools.rapport_docx.uit_html import Blok, conclusie_blokken, kan_docx, rapport_uit_html, veilige_url
 
 
@@ -111,3 +111,31 @@ def test_een_ouder_of_leeg_rapport_geeft_lege_onderdelen():
     assert leeg.onderzoeksvraag == "Alleen een vraag"
     assert (leeg.titel, leeg.meta, leeg.visualisaties, leeg.conclusie, leeg.bronnen) == ("", (), (), "", ())
     assert rapport_uit_html("").onderzoeksvraag == ""
+
+
+# #1075: de conclusie heeft nu echte <table>, <ol> en <ul> (reportHtml.js). Dezelfde vaste HTML als de JS-test
+# (rapportMarkdown.test.js): beide lezers geven de pipetabel en de lijstregels terug.
+CONCLUSIE_HTML = (FIXTURES / "conclusie-tabel.html").read_text(encoding="utf-8").strip()
+CONCLUSIE_TERUG = (FIXTURES / "conclusie-tabel.terug.md").read_text(encoding="utf-8").rstrip()
+
+
+def _met_conclusie(prose: str) -> str:
+    return f'<div class="vraag"></div><div class="card conf"><div class="prose">{prose}</div></div>'
+
+
+def test_een_tabel_en_lijsten_in_de_html_komen_terug_als_markdown():
+    assert rapport_uit_html(_met_conclusie(CONCLUSIE_HTML)).conclusie == CONCLUSIE_TERUG
+
+
+def test_een_html_tabel_wordt_weer_een_tabel_met_de_kop_als_eerste_rij():
+    blokken = conclusie_blokken(rapport_uit_html(_met_conclusie(CONCLUSIE_HTML)).conclusie)
+    assert [b.soort for b in blokken] == ["kop", "alinea", "tabel", "alinea", "punt", "punt", "alinea"]
+    tabel = blokken[2]
+    assert tabel.kop == ("Sector", "Instroom")
+    assert tabel.rijen == (("Economie", "**1.200**"), ("Techniek", "950"), ("Zorg <b>x</b>", "1.100"))
+    assert blokken[3].regels == ("1. Eerst economie", "2. Dan zorg")
+
+
+def test_een_tabel_zonder_uitlijning_en_een_cel_met_een_pipe():
+    html = _met_conclusie("<table><tr><th>a</th><th>b</th></tr><tr><td>1 | 2</td><td>3</td></tr></table>")
+    assert rapport_uit_html(html).conclusie == "| a | b |\n|---|---|\n| 1 / 2 | 3 |"
