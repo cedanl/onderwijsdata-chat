@@ -23,7 +23,7 @@ def test_de_match_noemt_peildatum_drempel_jaren_roa_versie_en_mapping():
     stand = arbeidsmarkt.uwv_stand(result["provincie"])
     assert stand is not None
     assert duiding["vacatures_peildatum"] == stand.peildatum == "2023-05-16"
-    assert duiding["roa_versie"] == "v20251218"
+    assert duiding["roa_versie"] == "v20260901"  # editie 2026 (#1091)
     assert duiding["min_gediplomeerden"] == dashboard._MATCH_MIN_GEDIPLOMEERDEN == 30
     assert duiding["sectormapping"]["herkomst"] == "LLM-classificatie, niet van UWV"
     # F3 (#951): wat de mapping niet vastlegt, belooft de payload niet ("model": "onbekend" stond erin).

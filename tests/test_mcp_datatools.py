@@ -169,6 +169,22 @@ def test_de_uitkomst_staat_vast_bij_de_bevroren_bron():
     assert uit["verloop"] == {"van": "2021/22", "tot": "2025/26", "verschil": 235, "procentuele_verandering": "+0,6%"}
 
 
+def test_de_publicatieregel_status_staat_er_net_als_in_get_duo_data():
+    """#1092: het bevroren bestand van de UU (p01hoinges 4) heeft geen 4-cellen en wel een -1-cel. get_duo_data meldt
+    dat de regel '1-4 als 4' daar botst met de data; de MCP-tool gaf de regel door zonder die status."""
+    store.clear()
+    geladen = _dispatch("get_duo_data", {"dataset_id": "p01hoinges", "resource": 4})
+    assert geladen["publicatieregel_status"] == "conflict"
+    assert geladen["publicatieregel_waargenomen"]["cellen_met_4"] == 0
+    assert geladen["publicatieregel_waargenomen"]["cellen_min_een"] > 0
+
+    uit = _mcp("aantallen_per_jaar", {"instelling": UU, "vorm": "voltijd"})
+
+    assert uit["publicatieregels"] == geladen["publicatieregels"]
+    for veld in ("publicatieregel_status", "publicatieregel_melding", "publicatieregel_waargenomen"):
+        assert uit[veld] == geladen[veld], veld
+
+
 def test_per_opleiding_is_dezelfde_uitkomst_als_de_chat():
     uit = _mcp("aantallen_per_jaar", {"instelling": UU, "opleiding": "B Rechtsgeleerdheid"})
     per_jaar, verloop = _chat_opleiding("21PD", "50400")

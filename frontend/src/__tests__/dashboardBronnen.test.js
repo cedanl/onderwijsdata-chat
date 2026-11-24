@@ -63,7 +63,7 @@ const UWV = {
 }
 const ROA = {
   bron: 'ROA', dataset: 'ais2030', titel: 'AIS tot 2030', url: 'https://doi.org/10.34894/DVQTOG',
-  editie: '2025', versie: 'v20251218', last_modified: null, peilmoment: 'editie 2025, versie v20251218', peildatum: null,
+  editie: '2026', sis: 'SIS 2025', versie: 'v20260826', last_modified: null, peilmoment: 'editie 2026, SIS 2025, versie v20260826', peildatum: null,
   voorlopig: false, voorlopig_jaren: [], opgehaald_op: OPGEHAALD,
 }
 
@@ -93,14 +93,14 @@ describe('bronregel (#904)', () => {
   })
 
   it('laat de versiecode van ROA uit de tekst en zet haar in een tooltip bij de bronlink', async () => {
-    expect(bronDetails(ROA)).toEqual(['editie 2025', 'opgehaald 5 november 2026'])
-    expect(bronVersiecode(ROA)).toBe('v20251218')
+    expect(bronDetails(ROA)).toEqual(['editie 2026, SIS 2025', 'opgehaald 5 november 2026'])
+    expect(bronVersiecode(ROA)).toBe('v20260826')
     expect(bronVersiecode(UWV)).toBeNull()
     expect(bronVersiecode(MBO_DIPL)).toBeNull() // "versie van 8 april 2026" is een datum, geen code
     await render(createElement(DashboardSources, { sources: [ROA] }))
     const link = container.querySelector('.dashboard-sources-list a')
-    expect(link.getAttribute('title')).toBe('Versiecode v20251218')
-    expect(container.textContent).not.toMatch(/v20251218/)
+    expect(link.getAttribute('title')).toBe('Versiecode v20260826')
+    expect(container.textContent).not.toMatch(/v20260826/)
   })
 
   it('laat weg wat de bron niet geeft, zoals de versie van een datastore-dump', () => {
@@ -135,7 +135,7 @@ describe('arbeidsmarkt: bronnen uit de payload (#904, #917)', () => {
     ])
     expect(links[0].href).toBe('https://onderwijsdata.duo.nl/dataset/gediplomeerde-mbo-studenten')
     expect(links[2].href).toBe('https://doi.org/10.34894/DVQTOG')
-    expect(details()[2]).toContain('editie 2025')
+    expect(details()[2]).toContain('editie 2026, SIS 2025')
     expect(details()[0]).toContain('cijfers 2025 voorlopig')
     expect(badge()).toBe('Bron: DUO, UWV & ROA')
   })
@@ -158,8 +158,10 @@ describe('arbeidsmarkt: bronnen uit de payload (#904, #917)', () => {
       createElement(PrognoseSection, { data: { arbeidsmarkt_prognose: prognose, bronnen: [ROA] } }),
     )))
 
-    expect(container.textContent).toContain('ROA, SIS 2024, editie 2025')
-    expect(container.textContent).toContain('ROA, AIS tot 2030, editie 2025')
+    // #1091: editie en SIS-jaar komen uit het bronblok, zoals de backend ze uit het geladen bestand haalt.
+    expect(container.textContent).toContain('ROA, SIS 2025, editie 2026')
+    expect(container.textContent).toContain('ROA, AIS tot 2030, editie 2026')
+    expect(container.textContent).not.toContain('SIS 2024')
     expect(container.textContent).not.toContain('AIS2030')
   })
 

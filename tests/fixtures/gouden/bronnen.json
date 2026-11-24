@@ -79,10 +79,11 @@
   "url": "https://duo.nl/open_onderwijsdata/images/2026-indicatoren-per-instelling.xlsx"
  },
  "roa-ais2030.csv.gz": {
+  "editie": "2026",
   "filter": "de indicatoren van get_roa_benchmark: Nederland per opleidingsniveau, en elke ho-categorie (niveau, sector, subsector, type) in Nederland, Groningen en provincie Groningen",
-  "opgehaald": "2026-11-05",
+  "opgehaald": "2026-11-24",
   "rijen": 541,
-  "url": "riodata roa.load('ais2030', 'arbeidsmarkt') (ROA AIS 2030)"
+  "url": "onderwijsbronnen roa.load('ais2030', 'arbeidsmarkt_editie2026') (ROA AIS 2030, editie 2026, AIStot2030_Arbeidsmarktinformatie_editie2026.csv)"
  },
  "uwv-vacatures.csv.gz": {
   "filter": "PROVINCIE = Flevoland; kolommen PEILDATUM, PROVINCIE, GEMEENTE, BEROEPENCLUSTER, AANTAL",

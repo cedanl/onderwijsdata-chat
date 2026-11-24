@@ -556,6 +556,10 @@ def _geslacht(p: Plan) -> dict | str:
     return uit
 
 
+# Wat get_duo_data naast de publicatieregels zegt over het geladen bestand (tools/duo_meta.metadata).
+_PUBLICATIEREGEL_STATUS = ("publicatieregel_status", "publicatieregel_melding", "publicatieregel_waargenomen")
+
+
 def _duo(p: Plan) -> dict | str:
     r = p.recept
     assert not isinstance(r, CbsRecepten)
@@ -585,7 +589,9 @@ def _duo(p: Plan) -> dict | str:
     if isinstance(r, DuoBreedRecept):
         key, rijen = _met_totaal(key, p)
     uit = {"data_key": key, "rijen": rijen, "bestand": geladen.get("resource_titel"), "recept": _recept(p)}
-    for veld in ("databewerking", "beschikbare_schooljaren", "publicatieregels"):
+    # De publicatieregel met wat de data ervan zegt (#1092): zonder status las een client de regel '1-4 als 4' ook waar
+    # het bestand hem tegenspreekt (get_duo_data: `publicatieregel_status: conflict`).
+    for veld in ("databewerking", "beschikbare_schooljaren", "publicatieregels", *_PUBLICATIEREGEL_STATUS):
         if geladen.get(veld) is not None or gekozen.get(veld) is not None:
             uit[veld] = gekozen.get(veld) if gekozen.get(veld) is not None else geladen.get(veld)
     return uit

@@ -309,13 +309,18 @@ def test_sector_mapping_manifest_zonder_velden_is_onbekend(tmp_path, inhoud):
     }
 
 
+# De thema's zoals editie 2026 ze spelt; de app leest ze uit het bestand (#1091).
+_SIS_THEMA = "Schoolverlatersinformatie (SIS 2025)"
+_PROGNOSE_THEMA = "Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering"
+
+
 def test_roa_prognose_in_het_dashboard_is_landelijk():
     """Per niveau staan er 48 regio's; zonder filter won de typering van de laatst gelezen regio (#441)."""
     rijen = pd.DataFrame(
         [
             {
                 "regionaam": r,
-                "thema": arbeidsmarkt._ROA_PROGNOSE,
+                "thema": _PROGNOSE_THEMA,
                 "aggregatieniveau": arbeidsmarkt._ROA_NIVEAU,
                 "detailniveau": "Mbo4",
                 "onderwerp": "ITA toekomstige arbeidsmarktsituatie in 2030",
@@ -337,7 +342,7 @@ def test_roa_prognose_geeft_de_baanopeningen_en_de_instroom_als_aantal():
     def rij(onderwerp, aantal=None, typering=None):
         return {
             "regionaam": "Nederland",
-            "thema": arbeidsmarkt._ROA_PROGNOSE,
+            "thema": _PROGNOSE_THEMA,
             "aggregatieniveau": arbeidsmarkt._ROA_NIVEAU,
             "detailniveau": "Mbo4",
             "onderwerp": onderwerp,

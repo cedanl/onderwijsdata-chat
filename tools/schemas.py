@@ -1,10 +1,15 @@
 from typing import Any
 
 from core.config import RIO_PAGE_SIZE
-from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
+from data.arbeidsmarkt import SECTOR_CLUSTER_MAP, roa_bestand, roa_sis
 from data.roa_koppeling import ONDERDELEN as ROA_ONDERDELEN
 
 from . import beschikbaarheid
+
+# De editie en het SIS-jaar van het ROA-bestand dat de app laadt, uit het schema in de catalogus (#1091).
+_ROA_BESTAND = roa_bestand()
+_ROA_EDITIE = f"editie {_ROA_BESTAND.editie}"
+_ROA_SIS = roa_sis(_ROA_BESTAND.themas) or "SIS"
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
@@ -885,7 +890,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_GET_ROA_BENCHMARK,
             "description": (
-                "ROA (AIS 2030): schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, buiten de "
+                f"ROA (AIS 2030, {_ROA_EDITIE}): schoolverlaters ({_ROA_SIS}: werkloosheid, vast dienstverband, buiten de "
                 "vakrichting; alleen landelijk) en de prognose tot 2030 (landelijk, of per arbeidsmarktregio "
                 "of provincie), per opleidingsniveau mbo2-4, bachelor en master, of voor één opleidingssector. "
                 "Voor hbo/wo-opleidingen: geef het DUO-onderdeel mee; dan ook de ROA-subsector (per regio) en de "

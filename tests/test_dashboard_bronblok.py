@@ -84,23 +84,26 @@ def test_uwv_is_de_momentopname_met_de_peildatum_uit_de_data():
 def test_roa_draagt_de_editie_uit_de_data(monkeypatch):
     roa = arbeidsmarkt._roa()  # de bevroren snapshot van arbeidsmarkt_fixtures
     arbeidsmarkt._roa.cache_clear()
-    roa.attrs["schema"] = {"editie": "2025"}
+    # Een editie die de catalogus niet noemt: het schema van het geladen bestand gaat voor.
+    roa.attrs["schema"] = {"editie": "2027"}
     monkeypatch.setattr("onderwijsbronnen.roa.load", lambda *a, **k: roa)
 
     result = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))["ais2030"]
 
     assert result["titel"] == "AIS tot 2030"
-    assert result["editie"] == "2025"
-    assert result["versie"] == "v20251218"  # de kolom versie van het bestand
-    assert result["peilmoment"] == "editie 2025, versie v20251218"
+    assert result["editie"] == "2027"
+    assert result["sis"] == "SIS 2025"  # uit het thema van het bestand (#1091)
+    assert result["versie"] == "v20260901"  # de kolom versie van het bestand
+    assert result["peilmoment"] == "editie 2027, SIS 2025, versie v20260901"
     assert result["url"] == "https://doi.org/10.34894/DVQTOG"
 
 
-def test_roa_zonder_editie_in_het_schema_noemt_de_versie_uit_de_data():
+def test_roa_zonder_editie_in_het_schema_noemt_de_editie_van_de_catalogus():
     roa = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))["ais2030"]
 
-    assert roa["editie"] is None
-    assert roa["peilmoment"] == "versie v20251218"
+    # De bevroren snapshot heeft geen schema: de editie is die van het bestand dat de app opvroeg (#1091).
+    assert (roa["editie"], roa["sis"]) == (arbeidsmarkt.roa_bestand().editie, "SIS 2025") == ("2026", "SIS 2025")
+    assert roa["peilmoment"] == "editie 2026, SIS 2025, versie v20260901"
 
 
 def test_een_mbo_dashboard_noemt_geen_ho_bestanden_en_meldt_voorlopige_cijfers():

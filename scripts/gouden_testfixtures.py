@@ -268,7 +268,9 @@ def _roa(bronnen: dict) -> None:
 
     from data import arbeidsmarkt as a
 
-    df = roa.load("ais2030", "arbeidsmarkt")
+    bestand = a.roa_bestand()  # dezelfde editie als de app (#1091)
+    df = roa.load("ais2030", bestand.resource)
+    themas = [a.roa_sis_thema(df), a.roa_prognose_thema(df)]
     niveaus = [n for ns in a.ROA_NIVEAUS.values() for n in ns]
     landelijk = (
         (df["regionaam"] == a.ROA_LANDELIJK)
@@ -283,12 +285,13 @@ def _roa(bronnen: dict) -> None:
     )
     df = df.loc[
         (landelijk | ho)
-        & df["thema"].isin([a._ROA_SIS, a._ROA_PROGNOSE])
+        & df["thema"].isin(themas)
         & df["onderwerp"].isin([*a.ROA_SIS_INDICATOREN, *a.ROA_PROGNOSE_INDICATOREN]),
         ROA_KOLOMMEN,
     ]
     _csv(df, ROA)
-    bronnen[ROA] = {"url": "riodata roa.load('ais2030', 'arbeidsmarkt') (ROA AIS 2030)",
+    bronnen[ROA] = {"url": f"onderwijsbronnen roa.load('ais2030', '{bestand.resource}') (ROA AIS 2030, editie "
+                           f"{bestand.editie}, {bestand.bestandsnaam})", "editie": bestand.editie,
                     "filter": "de indicatoren van get_roa_benchmark: Nederland per opleidingsniveau, en elke "
                               "ho-categorie (niveau, sector, subsector, type) in Nederland, Groningen en provincie "
                               "Groningen", "rijen": len(df)}  # fmt: skip
