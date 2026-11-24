@@ -27,7 +27,7 @@ DELETES: dict[str, str] = {
 
 def verwijder_alles(username: str) -> dict[str, int]:
     """Verwijder alle rijen van deze gebruiker; per soort het aantal verwijderde rijen."""
-    parameters = {soort: username for soort in DELETES} | {"tokengebruik": db.tokengebruik_sleutel(username)}
+    parameters = dict.fromkeys(DELETES, username) | {"tokengebruik": db.tokengebruik_sleutel(username)}
     with db._connection() as conn:
         aantallen = {soort: db._execute(conn, sql, (parameters[soort],)).rowcount for soort, sql in DELETES.items()}
         conn.commit()
