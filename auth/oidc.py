@@ -86,6 +86,9 @@ def is_oidc_configured() -> bool:
 
 
 def _redirect_uri() -> str:
+    # Alleen bereikbaar als is_oidc_configured() waar is, en die eist SERVER_URL; de guard maakt dat expliciet.
+    if Config.SERVER_URL is None:
+        raise RuntimeError("SERVER_URL ontbreekt: OIDC is niet geconfigureerd")
     return Config.SERVER_URL.rstrip("/") + "/" + Config.SERVER_REDIRECT.lstrip("/")
 
 

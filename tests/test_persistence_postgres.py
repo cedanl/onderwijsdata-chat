@@ -14,8 +14,9 @@ def fake_psycopg2(monkeypatch):
     can be exercised without the real (optional) driver installed."""
     psycopg2 = types.ModuleType("psycopg2")
     extras = types.ModuleType("psycopg2.extras")
-    extras.RealDictCursor = object
-    psycopg2.extras = extras
+    # vars(): een ModuleType kent geen attributen vooraf, dus `extras.RealDictCursor = …` is voor ty onbekend.
+    vars(extras)["RealDictCursor"] = object
+    vars(psycopg2)["extras"] = extras
     monkeypatch.setitem(sys.modules, "psycopg2", psycopg2)
     monkeypatch.setitem(sys.modules, "psycopg2.extras", extras)
     monkeypatch.setattr(db, "_USE_POSTGRES", True)

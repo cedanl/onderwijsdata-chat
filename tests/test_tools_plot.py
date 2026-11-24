@@ -105,6 +105,7 @@ def test_result_message_names_the_actual_chart_type():
 def test_dutch_number_separators_on_the_layout():
     # #22: Nederlandse getalnotatie (30.083 i.p.v. 30,083) in labels en assen.
     _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert fig is not None
     assert fig.layout.separators == ",."
 
 
@@ -119,6 +120,7 @@ def test_dutch_number_value_labels():
 
 def test_highlight_gives_one_group_the_accent_color_and_the_rest_grey():
     _, fig = create_plot(_ROWS_GROUPED, "bar", "jaar", "waarde", "T", color_by="groep", highlight="A")
+    assert fig is not None
     colors = {trace.name: trace.marker.color for trace in fig.data}
     assert colors["A"] != colors["B"]
     assert colors["B"] == "#B0B0B0"
@@ -126,6 +128,7 @@ def test_highlight_gives_one_group_the_accent_color_and_the_rest_grey():
 
 def test_value_labels_shown_for_a_small_number_of_points():
     _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert fig is not None
     assert fig.data[0].text is not None
     assert list(fig.data[0].text) == ["100", "120", "110"]
 
@@ -133,6 +136,7 @@ def test_value_labels_shown_for_a_small_number_of_points():
 def test_value_labels_omitted_for_many_points_to_avoid_overlap():
     rows = [{"jaar": str(2000 + i), "waarde": i} for i in range(30)]
     _, fig = create_plot(rows, "bar", "jaar", "waarde", "T")
+    assert fig is not None
     assert fig.data[0].text is None
 
 
@@ -296,6 +300,7 @@ _HAN = [
 def test_tijdreeks_zonder_typeverzoek_wordt_een_lijn(kolom):
     rows = [{kolom: r["STUDIEJAAR"], "aantal": r["aantal"]} for r in _HAN]
     msg, fig = create_plot(rows, "auto", kolom, "aantal", "T")
+    assert fig is not None
     assert fig.data[0].type == "scatter" and fig.data[0].mode.startswith("lines")
     assert "lijngrafiek" in msg.lower()
 
@@ -304,12 +309,14 @@ def test_tijdreeks_zonder_typeverzoek_wordt_een_lijn(kolom):
 def test_jaartallen_op_de_as_zonder_tussenwaarden_of_duizendtalpunt(chart_type):
     # Audit 10: de HAN-grafiek toonde 2.023,5 / 2.024 / 2.024,5 op de x-as.
     _, fig = create_plot(_HAN, chart_type, "STUDIEJAAR", "aantal", "T")
+    assert fig is not None
     assert fig.layout.xaxis.type == "category"
     assert fig.layout.xaxis.categoryorder == "category ascending"
 
 
 def test_geen_tijdas_houdt_een_gewone_as():
     _, fig = create_plot([{"regio": "A", "n": 1}, {"regio": "B", "n": 2}], "bar", "regio", "n", "T")
+    assert fig is not None
     assert fig.layout.xaxis.type is None
 
 

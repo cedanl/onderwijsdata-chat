@@ -614,8 +614,11 @@ def test_loaders_record_the_call_that_a_snippet_needs(zonder_scopegrens):
     with patch("tools.rio.fetch", return_value=_ROWS):
         get_rio_data("erkenningen", {"plaatsnaam": "Utrecht"})
 
-    assert store.meta("duo:p01hoinges:3").laad == ("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
-    assert store.meta("rio:erkenningen:plaatsnaam=Utrecht").laad == (
+    duo_meta = store.meta("duo:p01hoinges:3")
+    rio_meta = store.meta("rio:erkenningen:plaatsnaam=Utrecht")
+    assert duo_meta is not None and rio_meta is not None
+    assert duo_meta.laad == ("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+    assert rio_meta.laad == (
         "get_rio_data",
         {"resource": "erkenningen", "filters": {"plaatsnaam": "Utrecht"}},
     )

@@ -101,7 +101,7 @@ def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
     """Aantal gemaskeerde cellen per kolom; kolommen zonder cellen vallen weg."""
     if cells is None or cells.empty:
         return {}
-    return {col: int(n) for col, n in cells.sum().items() if n}
+    return {str(col): int(n) for col, n in cells.sum().items() if n}
 
 
 def record_sentinel_cells(key: str, cells: pd.DataFrame, groepen: bool = False) -> None:
