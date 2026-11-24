@@ -1,5 +1,6 @@
 """Het rapport als Word-document (#1038): het sjabloon, de inhoud en de grafieken, teruggelezen met python-docx."""
 
+import re
 import zipfile
 from datetime import UTC, datetime
 from io import BytesIO
@@ -9,7 +10,7 @@ from docx import Document
 from docx.oxml.ns import qn
 from docxtpl import DocxTemplate
 
-from tests.rapport_docx_hulp import RAPPORT_HTML, png
+from tests.rapport_docx_hulp import FIXTURES, RAPPORT_HTML, png
 from tools.rapport_docx import render as render_module
 from tools.rapport_docx.afbeeldingen import (
     MAX_AANTAL,
@@ -163,6 +164,25 @@ def test_conclusie_met_koppen_vet_punten_en_een_echte_tabel():
     assert all(r.bold for c in tabel.rows[0].cells for r in c.paragraphs[0].runs if r.text)
     assert [r.text for r in tabel.rows[1].cells[1].paragraphs[0].runs if r.bold] == ["475.460"]
     assert "| Jaar |" not in _tekst(doc)
+
+
+def test_een_conclusie_met_een_html_tabel_en_lijsten_wordt_een_echte_tabel():
+    """#1075: de conclusie heeft nu een <table>, <ol> en <ul>; Word maakt er dezelfde tabel en punten van."""
+    prose = (FIXTURES / "conclusie-tabel.html").read_text(encoding="utf-8").strip()
+    html = re.sub(r'<div class="prose">.*?</div>\s*</div>', f'<div class="prose">{prose}</div></div>', RAPPORT_HTML, 1, re.S)
+    doc, _ = _document(html)
+    (tabel,) = doc.tables
+    assert [[c.text for c in rij.cells] for rij in tabel.rows] == [
+        ["Sector", "Instroom"],
+        ["Economie", "1.200"],
+        ["Techniek", "950"],
+        ["Zorg <b>x</b>", "1.100"],
+    ]
+    assert all(r.bold for c in tabel.rows[0].cells for r in c.paragraphs[0].runs if r.text)
+    alineas = _alineas(doc)
+    assert ("List Bullet", "Een punt") in alineas
+    assert ("List Bullet", "Nog een <script>") in alineas
+    assert "| Sector |" not in _tekst(doc)
 
 
 def test_een_lege_sectie_staat_niet_in_het_document():

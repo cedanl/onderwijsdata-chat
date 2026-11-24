@@ -54,6 +54,20 @@ describe('het rapport kan zichzelf afdrukken', () => {
   })
 })
 
+// #1075: de PDF is het afgedrukte rapport, dus de tekst van de PDF is de tekst van het document dat print() krijgt.
+// Een pipetabel in de conclusie stond daar als `| Sector | …`; nu is het een tabel met de printregels hierboven.
+describe('een tabel in de conclusie in de PDF (#1075)', () => {
+  const metTabel = buildReportHtml({ ...spec, conclusie: '| Sector | Instroom |\n|---|---:|\n| Economie | 1.200 |\n| Zorg | 900 |' })
+
+  it('drukt een echte tabel af, niet de pipe-regels', () => {
+    const doc = new DOMParser().parseFromString(metTabel, 'text/html')
+    expect(doc.body.textContent).not.toContain('| Sector')
+    expect(doc.body.textContent).not.toContain('|---')
+    expect([...doc.querySelectorAll('.conf .prose th')].map(th => th.textContent)).toEqual(['Sector', 'Instroom'])
+    expect(PRINT_CSS).toContain('.prose tr{break-inside:avoid;page-break-inside:avoid}')
+  })
+})
+
 describe('de knop "Opslaan als PDF"', () => {
   let root
   let container

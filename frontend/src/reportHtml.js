@@ -17,14 +17,85 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#39;')
 }
 
-// Koppen in de conclusie vallen onder de sectiekop (h2), dus allemaal h3: één h1 per rapport (#424).
+// De conclusie is Markdown van het model, al ge-escapet (escapeHtml vóór mdToHtml): hier komt geen tag van het model
+// binnen. Een kleine blokparser per regel (#1075): koppen, pipetabellen, genummerde en gewone opsommingen en alinea's,
+// zoals de Word-export ze ook kent (tools/rapport_docx). Koppen in de conclusie vallen onder de sectiekop (h2), dus
+// allemaal h3: één h1 per rapport (#424). Binnen een blok wordt **vet** <strong>; een regelovergang in een alinea <br>.
+const MD_KOP = /^#{1,3} (.+)$/
+const MD_GENUMMERD = /^\s*\d+[.)] (.+)$/
+const MD_PUNT = /^\s*[-*] (.+)$/
+// Dezelfde regel als _SCHEIDING in tools/rapport_docx/uit_html.py.
+const MD_SCHEIDING = /^\|(\s*:?-+:?\s*\|)+$/
+
+const mdInline = tekst => tekst.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+const isPipe = regel => regel.startsWith('|') && regel.endsWith('|') && regel.length > 1
+const mdCellen = regel => regel.slice(1, -1).split('|').map(c => c.trim())
+
+function mdUitlijning(scheiding) {
+  return mdCellen(scheiding).map(c => {
+    const links = c.startsWith(':')
+    const rechts = c.endsWith(':')
+    if (links && rechts) return 'center'
+    if (rechts) return 'right'
+    if (links) return 'left'
+    return ''
+  })
+}
+
+// Een rij krijgt de breedte van de kop, net als _tabel in uit_html.py: te kort aangevuld, te lang afgekapt.
+function mdTabel(regels) {
+  const kop = mdCellen(regels[0])
+  const uitlijning = mdUitlijning(regels[1])
+  const cel = (tag, tekst, i) => {
+    const stijl = uitlijning[i] ? ` style="text-align:${uitlijning[i]}"` : ''
+    return `<${tag}${stijl}>${mdInline(tekst)}</${tag}>`
+  }
+  const rij = (tag, cellen) => `<tr>${kop.map((_, i) => cel(tag, cellen[i] ?? '', i)).join('')}</tr>`
+  const body = regels.slice(2).map(r => rij('td', mdCellen(r))).join('')
+  return `<div class="tabel-scroll"><table><thead>${rij('th', kop)}</thead>${body ? `<tbody>${body}</tbody>` : ''}</table></div>`
+}
+
 function mdToHtml(src) {
-  return String(src)
-    .replace(/^#{1,3} (.+)$/gm, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>')
+  const regels = String(src).replace(/\r\n?/g, '\n').split('\n')
+  const blokken = []
+  let alinea = []
+  const sluitAlinea = () => {
+    if (alinea.length) blokken.push(`<p>${alinea.map(mdInline).join('<br>')}</p>`)
+    alinea = []
+  }
+  const lijst = (patroon, tag, i) => {
+    const items = []
+    while (i < regels.length && patroon.test(regels[i])) items.push(regels[i++].match(patroon)[1].trim())
+    blokken.push(`<${tag}>${items.map(it => `<li>${mdInline(it)}</li>`).join('')}</${tag}>`)
+    return i
+  }
+  let i = 0
+  while (i < regels.length) {
+    const regel = regels[i].trim()
+    if (isPipe(regel) && MD_SCHEIDING.test((regels[i + 1] || '').trim())) {
+      let eind = i + 2
+      while (eind < regels.length && isPipe(regels[eind].trim())) eind++
+      sluitAlinea()
+      blokken.push(mdTabel(regels.slice(i, eind).map(r => r.trim())))
+      i = eind
+    } else if (MD_KOP.test(regel)) {
+      sluitAlinea()
+      blokken.push(`<h3>${mdInline(regel.match(MD_KOP)[1])}</h3>`)
+      i++
+    } else if (MD_GENUMMERD.test(regels[i])) {
+      sluitAlinea()
+      i = lijst(MD_GENUMMERD, 'ol', i)
+    } else if (MD_PUNT.test(regels[i])) {
+      sluitAlinea()
+      i = lijst(MD_PUNT, 'ul', i)
+    } else {
+      if (regel) alinea.push(regel)
+      else sluitAlinea()
+      i++
+    }
+  }
+  sluitAlinea()
+  return blokken.join('')
 }
 
 function bullets(items) {
@@ -68,6 +139,8 @@ const DARK_RULES = [
   ['.def', 'border-bottom-color:#374151'],
   ['.vis-note', 'background:#111827;border-left-color:#1D4ED8'],
   ['.manifest,.footer', 'border-top-color:#374151'],
+  ['.prose th,.prose td', 'border-color:#374151'],
+  ['.prose th', 'color:#F9FAFB;background:#111827'],
 ]
 
 // Elke selector in een lijst krijgt het voorvoegsel: `.a,.b` wordt `html.dark .a,html.dark .b`.
@@ -159,6 +232,11 @@ export const PRINT_CSS = `@media print{
     .scope-row{grid-template-columns:1fr 1fr}
     .manifest,.footer{break-inside:avoid}
     a,strong,.prose strong{color:${blauw}}
+    .tabel-scroll{overflow:visible}
+    .prose th,.prose td{border-color:${zwart}}
+    .prose th{color:${zwart};font-weight:600;background:${NPULS.wit}}
+    .prose thead{display:table-header-group}
+    .prose tr{break-inside:avoid;page-break-inside:avoid}
   }`
 // Het bericht van de app ('edudata:print', WorkbookPrint.jsx): het rapport staat in een sandbox-frame met een
 // opaque origin, dus de app kan print() niet zelf aanroepen. Alleen een bericht van de app zelf telt (#634). Vóór het afdrukken: licht thema en grafieken op
@@ -259,7 +337,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   const conclusieHtml = conclusieProse
     ? `<div class="card conf">
         <h2 class="section-label">Conclusie</h2>
-        <div class="prose"><p>${conclusieProse}</p></div>
+        <div class="prose">${conclusieProse}</div>
       </div>`
     : ''
 
@@ -326,7 +404,12 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .conf{background:#fff}
   .prose{line-height:1.7;color:#374151}
   .prose h1,.prose h2,.prose h3{font-weight:700;margin:1em 0 .4em;color:#111827}
-  .prose li{margin:.3em 0 .3em 1.4em}
+  .prose ul,.prose ol{margin:.5em 0;padding-left:1.4em}
+  .prose li{margin:.3em 0}
+  .tabel-scroll{overflow-x:auto;margin:.75em 0}
+  .prose table{border-collapse:collapse;width:100%;font-size:.88rem;line-height:1.45}
+  .prose th,.prose td{border:1px solid #E5E7EB;padding:6px 10px;text-align:left;vertical-align:top;overflow-wrap:normal}
+  .prose th{font-weight:700;color:#111827;background:#F9FAFB}
   .prose strong{color:#111827}
   .prose p{margin:.5em 0}
   .bronnen{margin-left:20px}

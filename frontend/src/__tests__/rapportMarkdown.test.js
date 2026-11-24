@@ -6,6 +6,8 @@ import { describe, it, expect } from 'vitest'
 import { buildReportHtml } from '../reportHtml'
 import { kanMarkdown, rapportUitHtml } from '../rapportUitHtml'
 import { rapportMarkdown, GRAFIEK_REGEL } from '../rapportMarkdown'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const figuur = JSON.stringify({ data: [{ type: 'bar', x: ['2023'], y: [475460] }], layout: { meta: { afrondingsnoot: 'Afgerond op tientallen.' } } })
 
@@ -116,5 +118,29 @@ describe('de tekst uit een bewaard rapport', () => {
     expect(kanMarkdown(buildReportHtml(volledig))).toBe(true)
     expect(kanMarkdown('<p>rapport</p>')).toBe(false)
     expect(kanMarkdown(undefined)).toBe(false)
+  })
+})
+
+// #1075: de conclusie heeft nu echte <table>, <ol> en <ul>; de Markdown krijgt de pipetabel en de lijstregels terug.
+// tests/test_rapport_docx_uit_html.py leest dezelfde HTML met de Python-tweeling.
+describe('een conclusie met tabel en lijsten terug naar Markdown (#1075)', () => {
+  const fixture = naam => readFileSync(join(__dirname, '..', '..', '..', 'tests', 'fixtures', 'rapport_docx', naam), 'utf-8')
+  const terug = fixture('conclusie-tabel.terug.md').trimEnd()
+
+  it('geeft de pipetabel, 1./2. en - regels terug', () => {
+    const conclusie = fixture('conclusie-tabel.md').trimEnd()
+    expect(rapportUitHtml(buildReportHtml({ title: 'T', onderzoeksvraag: 'Hoe?', conclusie })).conclusie).toBe(terug)
+  })
+
+  it('leest de vaste HTML zoals de Python-tweeling', () => {
+    const html = `<div class="vraag"></div><div class="card conf"><div class="prose">${fixture('conclusie-tabel.html').trimEnd()}</div></div>`
+    expect(rapportUitHtml(html).conclusie).toBe(terug)
+  })
+
+  it('zet de tabel in de Markdown-download, zonder HTML-tags', () => {
+    const md = markdownVan({ title: 'T', datum: '1 december 2026', onderzoeksvraag: 'Hoe?', conclusie: fixture('conclusie-tabel.md') })
+    expect(md).toContain('| Sector | Instroom |\n|---|---:|\n| Economie | **1.200** |')
+    expect(md).toContain('1. Eerst economie\n2. Dan zorg\n\n- Een punt\n- Nog een <script>')
+    expect(md).not.toMatch(/<\/?(table|tr|td|th|ol|ul|li|p|div)\b/i)
   })
 })

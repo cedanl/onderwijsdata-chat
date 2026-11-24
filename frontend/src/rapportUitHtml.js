@@ -45,18 +45,48 @@ function visualisatie(el) {
 }
 
 // De conclusie terug naar Markdown: reportHtml.js maakte van koppen h3, van **vet** <strong>, van een opsomming
-// <li> en van regels <br>/<p>. Alleen die vormen komen terug; de rest is tekst.
+// <ul>/<ol> met <li> (een ouder rapport: <li> zonder lijst), van een pipetabel een <table> (#1075; een ouder rapport:
+// tekstregels) en van regels <br>/<p>. Alleen die vormen komen terug; de rest is tekst.
+const isElement = (kind, tag) => kind.nodeType === window.Node.ELEMENT_NODE && kind.tagName === tag
+
+// Een cel als één regel tekst: een | erin zou de tabel breken.
+const celMarkdown = cel => proseMarkdown(cel).replace(/\s+/g, ' ').trim().replace(/\|/g, '/')
+
+function uitlijning(cel) {
+  const waarde = (cel.getAttribute('style') || '').match(/text-align:\s*(left|right|center)/)?.[1]
+  return { left: ':---', right: '---:', center: ':---:' }[waarde] || '---'
+}
+
+function tabelMarkdown(tabel) {
+  const rijen = alle(tabel, 'tr').filter(tr => tr.closest('table') === tabel)
+  if (!rijen.length) return ''
+  const cellen = tr => [...tr.children].filter(c => c.tagName === 'TH' || c.tagName === 'TD')
+  const regel = delen => `| ${delen.join(' | ')} |`
+  const [kop, ...rest] = rijen
+  return [
+    regel(cellen(kop).map(celMarkdown)),
+    `|${cellen(kop).map(uitlijning).join('|')}|`,
+    ...rest.map(tr => regel(cellen(tr).map(celMarkdown))),
+  ].join('\n')
+}
+
 function proseMarkdown(node) {
   let uit = ''
   for (const kind of node.childNodes) {
     if (kind.nodeType === window.Node.TEXT_NODE) uit += kind.textContent.replace(/\s+/g, ' ')
     if (kind.nodeType !== window.Node.ELEMENT_NODE) continue
+    if (kind.tagName === 'TABLE') { uit += `\n\n${tabelMarkdown(kind)}\n\n`; continue }
+    if (kind.tagName === 'OL') {
+      const items = [...kind.children].filter(li => isElement(li, 'LI'))
+      uit += `\n\n${items.map((li, i) => `${i + 1}. ${proseMarkdown(li).trim()}`).join('\n')}\n\n`
+      continue
+    }
     const binnen = proseMarkdown(kind)
     if (kind.tagName === 'BR') uit += '\n'
     else if (kind.tagName === 'STRONG' || kind.tagName === 'B') uit += `**${binnen.trim()}**`
     else if (/^H[1-6]$/.test(kind.tagName)) uit += `\n\n### ${binnen.trim()}\n\n`
     else if (kind.tagName === 'LI') uit += `\n- ${binnen.trim()}\n`
-    else if (['P', 'DIV', 'UL', 'OL'].includes(kind.tagName)) uit += `\n\n${binnen}\n\n`
+    else if (['P', 'DIV', 'UL'].includes(kind.tagName)) uit += `\n\n${binnen}\n\n`
     else uit += binnen
   }
   return uit
