@@ -34,7 +34,6 @@ from data.dashboard_financien import load_dashboard_financien
 from data.dashboard_opleidingen import load_dashboard_opleidingen
 from data.dashboard_personeel import load_dashboard_personeel
 from data.instellingen import get_all as get_all_instellingen
-from routes.instellingen import _in_een_plaats
 from tools import beschikbaarheid
 
 logger = logging.getLogger(__name__)
@@ -77,6 +76,11 @@ def _mislukt(eindpunt: str, e: Exception) -> None:
 
 
 async def _opwarmen() -> None:
+    # Hier en niet bovenaan: `routes` laadt `core.auth`, dat bij een login zonder CHAT_SECRET of een ongeldige
+    # sessieduur al bij het laden weigert; dan eindigde de start in een traceback in plaats van de ene melding van
+    # Config.validate (#1164).
+    from routes.instellingen import _in_een_plaats
+
     begin = time.monotonic()
     try:
         # Het register bouwt zich uit DUO-bestanden: dat hoort bij de opwarming, en dus in de executor.

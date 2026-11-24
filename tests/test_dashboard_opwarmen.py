@@ -6,7 +6,11 @@ time-outs zijn alleen een vangnet tegen hangen.
 
 import asyncio
 import logging
+import os
+import subprocess
+import sys
 import threading
+from pathlib import Path
 
 import httpx
 import pytest
@@ -25,6 +29,7 @@ REGISTER = [
     {"naam": "Universiteit Utrecht", "type": "wo", "provincie": "Utrecht"},
 ]
 GEHEIM = "Instelling Die Niet In Het Log Mag"
+ROOT = Path(__file__).resolve().parent.parent
 
 LADERS = (
     "load_dashboard_regio",
@@ -241,7 +246,7 @@ def test_de_taak_wordt_bij_het_afsluiten_geannuleerd(monkeypatch):
         await asyncio.Event().wait()
 
     Laders(monkeypatch)
-    monkeypatch.setattr(dashboard_opwarmen, "_in_een_plaats", hangt)
+    monkeypatch.setattr(routes_instellingen, "_in_een_plaats", hangt)
 
     async def loop():
         async with dashboard_opwarmen.opwarming(True) as taak:
@@ -252,6 +257,45 @@ def test_de_taak_wordt_bij_het_afsluiten_geannuleerd(monkeypatch):
 
     taak = asyncio.run(asyncio.wait_for(loop(), timeout=10))
     assert taak.cancelled()
+
+
+def test_de_module_laadt_zonder_routes_en_de_loginconfiguratie():
+    """server.py importeert deze module. `routes` laadt `core.auth`, dat bij een login zonder CHAT_SECRET of een
+    ongeldige sessieduur al bij het laden weigert: dan eindigde de start in een traceback in plaats van de ene melding
+    van Config.validate (#1164, tests/test_logging_opstart.py). De module laadt `routes` dus pas in de taak."""
+    basis = {k: v for k, v in os.environ.items() if k not in ("CHAT_SECRET", "OIDC_PROVIDER", "SESSION_TTL_HOURS")}
+    code = "import sys, core.dashboard_opwarmen; print(sorted({'routes', 'core.auth'} & set(sys.modules)))"
+    uitslag = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        env={**basis, "CHAT_USERS": "admin:pw", "APP_ENV": "test"},
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert uitslag.returncode == 0, uitslag.stderr
+    assert uitslag.stdout.strip().splitlines()[-1] == "[]"
+
+
+def test_server_laadt_de_opwarming_pas_na_de_configuratiecontrole(tmp_path):
+    """server.py importeert een deel van core vóór de logging-setup en Config.validate; de opwarming trekt de
+    dashboardbronnen (en pandas) mee en hoort, zoals routes, daarna. Een verkeerde configuratie stopt dus eerst."""
+    basis = {k: v for k, v in os.environ.items() if k not in ("CHAT_SECRET", "OIDC_PROVIDER", "SESSION_TTL_HOURS")}
+    code = (
+        "import sys\ntry:\n    import server\nexcept SystemExit:\n    print('core.dashboard_opwarmen' in sys.modules)\n"
+    )
+    uitslag = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        env={**basis, "CHAT_USERS": "admin:pw", "APP_ENV": "local", "DATABASE_PATH": str(tmp_path / "start.db")},
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert "Configuration validation failed" in uitslag.stdout + uitslag.stderr
+    assert uitslag.stdout.strip().splitlines()[-1] == "False"
 
 
 # ── In de lifespan van de app ────────────────────────────────────────────────

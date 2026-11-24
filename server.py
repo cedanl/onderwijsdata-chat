@@ -17,7 +17,7 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import bronstatus, config, dashboard_opwarmen, foutmeldingen, openapi_schema
+from core import bronstatus, config, foutmeldingen, openapi_schema
 from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
@@ -41,6 +41,7 @@ except ConfigError as e:
 
 import health
 from auth.oidc import is_oidc_configured
+from core import dashboard_opwarmen  # hier, na Config.validate, zoals routes: laadt de dashboardbronnen
 from persistence import db as persistence_db
 from routes import (
     auth_router,
