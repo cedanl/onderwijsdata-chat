@@ -169,7 +169,7 @@ def test_conclusie_met_koppen_vet_punten_en_een_echte_tabel():
 def test_een_conclusie_met_een_html_tabel_en_lijsten_wordt_een_echte_tabel():
     """#1075: de conclusie heeft nu een <table>, <ol> en <ul>; Word maakt er dezelfde tabel en punten van."""
     prose = (FIXTURES / "conclusie-tabel.html").read_text(encoding="utf-8").strip()
-    html = re.sub(r'<div class="prose">.*?</div>\s*</div>', f'<div class="prose">{prose}</div></div>', RAPPORT_HTML, 1, re.S)
+    html = re.sub(r'<div class="prose">.*?</div>\s*</div>', f'<div class="prose">{prose}</div></div>', RAPPORT_HTML, count=1, flags=re.S)
     doc, _ = _document(html)
     (tabel,) = doc.tables
     assert [[c.text for c in rij.cells] for rij in tabel.rows] == [
