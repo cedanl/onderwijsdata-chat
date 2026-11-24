@@ -31,7 +31,14 @@ from tools import (
     studiekeuze,
     wo_personeel,
 )
-from tools.arbeidsmarkt import DATASET, ROA_ID, ROA_ONDERDELEN, roa_blokken
+from tools.arbeidsmarkt import (
+    DATASET,
+    ROA_ID,
+    ROA_ONDERDELEN,
+    ROA_SCHOOLVERLATERS_OUD,
+    roa_blokken,
+    roa_onderdeel_in_zin,
+)
 from tools.catalog import bron_titel, documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
@@ -165,27 +172,41 @@ def _roaregio(regio: object) -> str:
     return "landelijk" if regio == ROA_LANDELIJK else str(regio)
 
 
+def _roaonderdelen(herkomst: dict, sis: str | None) -> list[tuple[str, str]]:
+    """De onderdelen in `herkomst` als (sleutel, naam in een zin). Een resultaat van vóór #1091 heeft de sleutel
+    `schoolverlaters_sis_2024` en geen `sis`: die schoolverlaters heten naar SIS 2024, zoals in de citaties."""
+    onderdelen = []
+    for onderdeel in ROA_ONDERDELEN:
+        sleutel, naam = onderdeel, roa_onderdeel_in_zin(onderdeel, sis)
+        if onderdeel == "schoolverlaters" and onderdeel not in herkomst and ROA_SCHOOLVERLATERS_OUD in herkomst:
+            sleutel, naam = ROA_SCHOOLVERLATERS_OUD, "schoolverlaters (SIS 2024)"
+        onderdelen.append((sleutel, naam))
+    return onderdelen
+
+
 def _roaherkomst(result: str) -> str:
     """Per onderdeel van een ROA-resultaat de regio waar zijn cijfers op slaan, uit `herkomst` (#1100).
 
-    "schoolverlaters (SIS 2024): landelijk, prognose tot 2030: Midden-Utrecht": een landelijke terugval leest zo niet
+    "schoolverlaters (SIS 2025): landelijk, prognose tot 2030: Midden-Utrecht": een landelijke terugval leest zo niet
     als regionaal cijfer. Leeg zonder `herkomst`: een landelijke vraag heeft maar één regio, die de regel al noemt.
     """
     parsed = _json(result)
     if parsed.get("dataset") != ROA_ID:
         return ""
+    sis = parsed.get("sis") if isinstance(parsed.get("sis"), str) else None
     regios: dict[str, dict[str, None]] = {}
     for blok in roa_blokken(parsed):
         if isinstance(herkomst := blok.get("herkomst"), dict):
-            for onderdeel in ROA_ONDERDELEN:
-                if herkomst.get(onderdeel):
-                    regios.setdefault(onderdeel, {})[_roaregio(herkomst[onderdeel])] = None
-    delen = [
-        f"{naam[0].lower()}{naam[1:]}: {' en '.join(regios[onderdeel])}"
-        for onderdeel, naam in ROA_ONDERDELEN.items()
-        if onderdeel in regios
-    ]
+            for sleutel, naam in _roaonderdelen(herkomst, sis):
+                if herkomst.get(sleutel):
+                    regios.setdefault(naam, {})[_roaregio(herkomst[sleutel])] = None
+    delen = [f"{naam}: {' en '.join(regio)}" for naam, regio in regios.items()]
     return f", {', '.join(delen)}" if delen else ""
+
+
+def _met_roaherkomst(regels: list[Bronregel], regio: str) -> list[Bronregel]:
+    """De ROA-regels met de regio per onderdeel erachter; de andere regels ongewijzigd."""
+    return [(tekst + regio, dataset) if dataset == ROA_ID else (tekst, dataset) for tekst, dataset in regels]
 
 
 def _registerbron(tool: str, result: str) -> list[Bronregel]:
@@ -258,14 +279,14 @@ def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     # geen tweede regel. Een selectie op die tabel heeft wel de regel uit de store.
     bestand = _bestandsbron(tool, result)
     datasets = [] if bestand else [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
-    if tool == TOOL_GET_ROA_BENCHMARK and (regio := _roaherkomst(result)):
-        datasets = [(tekst + regio, dataset) if dataset == ROA_ID else (tekst, dataset) for tekst, dataset in datasets]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
     # peildatum of versie, al in `datasets`. Een tool met een eigen bronregel (het collegegeld, #970) heeft die al.
     buiten_de_store = [
         (w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron and not w.data_key and not bestand
     ]
+    if tool == TOOL_GET_ROA_BENCHMARK and (regio := _roaherkomst(result)):
+        datasets, buiten_de_store = _met_roaherkomst(datasets, regio), _met_roaherkomst(buiten_de_store, regio)
     return datasets + buiten_de_store + _registerbron(tool, result) + bestand
 
 

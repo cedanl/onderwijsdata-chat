@@ -748,7 +748,9 @@ opleidingssector; niet per instelling.
 - **Resultaat:** `editie`, `sis` (het SIS-jaar van het geladen bestand, bijv. `SIS 2025`), `versie`, `regio`,
   `schoolverlaters` en `prognose_tot_2030` (#1091; tot dan heette `schoolverlaters` `schoolverlaters_sis_2024`).
 - **Met een regio** ook `regiotype` en per onderdeel `herkomst`. Heeft ROA voor die regio geen cijfers voor een
-  onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat.
+  onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat,
+  met het onderdeel in woorden: "ROA heeft voor Midden-Utrecht geen cijfers voor schoolverlaters (SIS 2025); daar staan
+  de landelijke cijfers." De app zet die zin als vaste regel "**Regio:** …" onder het antwoord (#1100).
 - **Een naam voor meer regio's** (#966): een provincie op haar eigen naam wordt de provincie (`Utrecht` →
   `provincie Utrecht`), een naam die ook een arbeidsmarktregio is wordt die regio (`Groningen`). Draagt een andere
   ROA-regio dezelfde naam als heel woord (`Midden-Utrecht`, `provincie Groningen`, `Noord-/Midden-/Zuid-Limburg`), dan

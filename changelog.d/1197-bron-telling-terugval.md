@@ -6,6 +6,7 @@
   voorlopig", voor "bijgewerkt door CBS". Een tabel met alleen definitieve jaren of zonder status houdt haar regel
   (#1097).
 - Geeft ROA voor een regio geen cijfers voor een onderdeel en vallen die terug op landelijk, dan staat die zin als
-  vaste regel "**Regio:** …" onder het antwoord, één keer, ook als het model hem al schreef. De ROA-bronregel noemt per
-  onderdeel de regio van de cijfers: "schoolverlaters (SIS 2024): landelijk, prognose tot 2030: Midden-Utrecht"
-  (#1100).
+  vaste regel "**Regio:** …" onder het antwoord, één keer, ook als het model hem al schreef. De zin noemt het onderdeel
+  in woorden in plaats van de sleutel: "ROA heeft voor Midden-Utrecht geen cijfers voor schoolverlaters (SIS 2025);
+  daar staan de landelijke cijfers." De ROA-bronregel noemt per onderdeel de regio van de cijfers: "schoolverlaters
+  (SIS 2025): landelijk, prognose tot 2030: Midden-Utrecht" (#1100).
