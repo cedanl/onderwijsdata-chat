@@ -17,8 +17,28 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import collegegeld, financien, inspectie, inspectie_vo, mbo_indicatoren, store, studiekeuze, wo_personeel
-from tools.arbeidsmarkt import DATASET
+import pandas as pd
+
+from data.arbeidsmarkt import ROA_LANDELIJK
+from tools import (
+    collegegeld,
+    financien,
+    inspectie,
+    inspectie_vo,
+    mbo_indicatoren,
+    periode,
+    store,
+    studiekeuze,
+    wo_personeel,
+)
+from tools.arbeidsmarkt import (
+    DATASET,
+    ROA_ID,
+    ROA_ONDERDELEN,
+    ROA_SCHOOLVERLATERS_OUD,
+    roa_blokken,
+    roa_onderdeel_in_zin,
+)
 from tools.catalog import bron_titel, documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
@@ -28,6 +48,7 @@ from tools.schemas import (
     TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
 )
@@ -78,26 +99,114 @@ def _dag(iso: str) -> str:
     return f"{dag}-{maand}-{jaar}"
 
 
-def _actualiteit(known: KeyMeta) -> str:
-    """Hoe actueel een CBS-tabel is: wanneer CBS hem bijwerkte en wanneer de app hem ophaalde (#864)."""
+# De kolom met de CBS-status per rij (Definitief, Voorlopig, Nader voorlopig), zoals figuurbron en manifest haar lezen.
+_PERIODESTATUS = "Periodestatus"
+_PERIODEKOLOM = "Perioden"
+_CBS_JAARCODE = re.compile(r"(\d{4})(SJ|JJ)00")
+
+
+def _jaarlabel(waarde: object) -> str:
+    """Een CBS-periode als jaar: 2025SJ00 wordt 2025/26 (`periode.label`), 2025JJ00 wordt 2025; anders de waarde zelf."""
+    tekst = str(waarde).strip()
+    if not (code := _CBS_JAARCODE.fullmatch(tekst)):
+        return tekst
+    return periode.label(int(code[1])) if code[2] == "SJ" else code[1]
+
+
+def _opsomming(delen: list[str]) -> str:
+    return delen[0] if len(delen) == 1 else f"{', '.join(delen[:-1])} en {delen[-1]}"
+
+
+def _voorlopig(known: KeyMeta, df: object) -> str:
+    """De jaren met een voorlopige CBS-status in de geladen rijen, als "cijfers 2025/26 voorlopig" (#1097).
+
+    Voorlopige cijfers kan CBS nog herzien; de Periodestatus staat per rij in de tabel. Leeg bij een andere bron, een
+    tabel zonder statuskolom of met alleen definitieve jaren. "Nader voorlopig" is ook nog niet definitief.
+    """
+    if known.bron != "cbs" or not isinstance(df, pd.DataFrame) or _PERIODESTATUS not in df.columns:
+        return ""
+    voorlopig = df[df[_PERIODESTATUS].astype(str).str.contains("voorlopig", case=False, na=False)]
+    if voorlopig.empty:
+        return ""
+    kolom = next((k for k in (known.periodekolom, _PERIODEKOLOM) if k and k in df.columns), None)
+    if kolom is None:
+        return ", cijfers deels voorlopig"
+    jaren = sorted({str(w).strip() for w in voorlopig[kolom].dropna().unique()})
+    return f", cijfers {_opsomming([_jaarlabel(j) for j in jaren])} voorlopig" if jaren else ", cijfers deels voorlopig"
+
+
+def _actualiteit(known: KeyMeta, df: object = None) -> str:
+    """Hoe actueel een CBS-tabel is: welke jaren nog voorlopig zijn (#1097), wanneer CBS hem bijwerkte en wanneer de
+    app hem ophaalde (#864)."""
     if known.bron != "cbs":
         return ""
     bijgewerkt = f"bijgewerkt door CBS op {_dag(known.bijgewerkt_op)}, " if known.bijgewerkt_op else ""
-    return f", {bijgewerkt}opgehaald op {known.opgehaald_op.astimezone():%d-%m-%Y}"
+    return f"{_voorlopig(known, df)}, {bijgewerkt}opgehaald op {known.opgehaald_op.astimezone():%d-%m-%Y}"
 
 
-def _metabron(known: KeyMeta) -> Bronregel:
-    """Een geladen dataset in woorden, met zijn ID, uit haar meta: ook als de store de tabel kwijt is (#986)."""
+def _metabron(known: KeyMeta, df: object = None) -> Bronregel:
+    """Een geladen dataset in woorden, met zijn ID, uit haar meta: ook als de store de tabel kwijt is (#986).
+
+    `df` zijn de geladen rijen, als de store ze nog heeft: daaruit komen de voorlopige CBS-jaren (#1097)."""
     tekst = meta_in_woorden(known)
     # Zonder catalogustitel is de titel het ID al.
     tekst = tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"
-    return tekst + _actualiteit(known), str(known.dataset)
+    return tekst + _actualiteit(known, df), str(known.dataset)
 
 
 def _datasetbron(key: str) -> Bronregel | None:
     """De geladen dataset achter een key in woorden, met zijn ID; None als hij onbekend is (CH-30)."""
-    known = store.meta(laadkey(key))
-    return _metabron(known) if known else None
+    known = store.meta(bron := laadkey(key))
+    return _metabron(known, store.gezien(bron)) if known else None
+
+
+def _json(result: str) -> dict:
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _roaregio(regio: object) -> str:
+    return "landelijk" if regio == ROA_LANDELIJK else str(regio)
+
+
+def _roaonderdelen(herkomst: dict, sis: str | None) -> list[tuple[str, str]]:
+    """De onderdelen in `herkomst` als (sleutel, naam in een zin). Een resultaat van vóór #1091 heeft de sleutel
+    `schoolverlaters_sis_2024` en geen `sis`: die schoolverlaters heten naar SIS 2024, zoals in de citaties."""
+    onderdelen = []
+    for onderdeel in ROA_ONDERDELEN:
+        sleutel, naam = onderdeel, roa_onderdeel_in_zin(onderdeel, sis)
+        if onderdeel == "schoolverlaters" and onderdeel not in herkomst and ROA_SCHOOLVERLATERS_OUD in herkomst:
+            sleutel, naam = ROA_SCHOOLVERLATERS_OUD, "schoolverlaters (SIS 2024)"
+        onderdelen.append((sleutel, naam))
+    return onderdelen
+
+
+def _roaherkomst(result: str) -> str:
+    """Per onderdeel van een ROA-resultaat de regio waar zijn cijfers op slaan, uit `herkomst` (#1100).
+
+    "schoolverlaters (SIS 2025): landelijk, prognose tot 2030: Midden-Utrecht": een landelijke terugval leest zo niet
+    als regionaal cijfer. Leeg zonder `herkomst`: een landelijke vraag heeft maar één regio, die de regel al noemt.
+    """
+    parsed = _json(result)
+    if parsed.get("dataset") != ROA_ID:
+        return ""
+    sis = parsed.get("sis") if isinstance(parsed.get("sis"), str) else None
+    regios: dict[str, dict[str, None]] = {}
+    for blok in roa_blokken(parsed):
+        if isinstance(herkomst := blok.get("herkomst"), dict):
+            for sleutel, naam in _roaonderdelen(herkomst, sis):
+                if herkomst.get(sleutel):
+                    regios.setdefault(naam, {})[_roaregio(herkomst[sleutel])] = None
+    delen = [f"{naam}: {' en '.join(regio)}" for naam, regio in regios.items()]
+    return f", {', '.join(delen)}" if delen else ""
+
+
+def _met_roaherkomst(regels: list[Bronregel], regio: str) -> list[Bronregel]:
+    """De ROA-regels met de regio per onderdeel erachter; de andere regels ongewijzigd."""
+    return [(tekst + regio, dataset) if dataset == ROA_ID else (tekst, dataset) for tekst, dataset in regels]
 
 
 def _registerbron(tool: str, result: str) -> list[Bronregel]:
@@ -176,6 +285,8 @@ def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     buiten_de_store = [
         (w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron and not w.data_key and not bestand
     ]
+    if tool == TOOL_GET_ROA_BENCHMARK and (regio := _roaherkomst(result)):
+        datasets, buiten_de_store = _met_roaherkomst(datasets, regio), _met_roaherkomst(buiten_de_store, regio)
     return datasets + buiten_de_store + _registerbron(tool, result) + bestand
 
 
@@ -257,11 +368,11 @@ def vastgelegde_bronnen(key: str) -> list[dict[str, str]]:
 
     Alleen labels en de tekst die al onder een antwoord staat: geen rijen, geen tekst van de gebruiker. De link volgt
     bij het lezen uit de dataset (`documentatie_url`). Leeg als de store de key niet kent."""
-    return [_vastlegging(known) for known in koppeling(key)]
+    return [_vastlegging(k, known) for k, known in store.bronnen(key)]
 
 
-def _vastlegging(known: KeyMeta) -> dict[str, str]:
-    regel, dataset = _metabron(known)
+def _vastlegging(key: str, known: KeyMeta) -> dict[str, str]:
+    regel, dataset = _metabron(known, store.gezien(key))
     return {"bron": known.bron, "dataset": str(dataset), "regel": regel}
 
 

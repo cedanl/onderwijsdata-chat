@@ -24,6 +24,13 @@ from .selectie import data_keys, laadkey, stapkeys
 _KOP = "**Telling**"
 # De eigen Definities-paragraaf van het model, tot de volgende vetgedrukte kop of het einde.
 _EIGEN_DEFINITIES = re.compile(r"\n*\*\*Definities\*\*\n.*?(?=\n\n\*\*[^*\n]+\*\*|\Z)", re.DOTALL)
+# Een Telling-blok in de tekst, van de app of van het model zelf (#1083): de kop met de regels die direct volgen, en een
+# opsomming na een lege regel. Een volgende alinea of vetgedrukte kop hoort er niet meer bij.
+_EIGEN_TELLING = re.compile(
+    r"^[ \t]*\*\*Telling(?::\*\*|\*\*:?)[^\n]*"
+    r"(?:\n(?![ \t]*(?:\n|\Z))[^\n]*|\n(?:[ \t]*\n)+(?=[ \t]*[-*+][ \t])[^\n]*)*\n*",
+    re.MULTILINE,
+)
 
 
 def _ondergrens(key: str) -> bool:
@@ -245,15 +252,27 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     return f"{_KOP}\n" + "\n".join(regels) if regels else ""
 
 
+def zonder_telling(tekst: str) -> str:
+    """De tekst zonder Telling-blok, van de app of van het model (#1083).
+
+    Voor een eigen blok van het model dat het blok uit code vervangt, en voor de historie naar het model: daar is het
+    blok van de app een herhaling die het model overnam en die ruimte kost.
+    """
+    uit, aantal = _EIGEN_TELLING.subn("", tekst)
+    return uit.rstrip() if aantal else tekst
+
+
 def met_telling(tekst: str, tool_results: list[str]) -> str:
     """Het antwoord met het telling-blok eronder.
 
     Met een teldefinitie uit de bron vervalt de eigen Definities-paragraaf van het model:
-    één definitieblok, uit de bron. Bij TU Delft spraken ze elkaar tegen (#402).
+    één definitieblok, uit de bron. Bij TU Delft spraken ze elkaar tegen (#402). Een eigen Telling-blok van het model
+    vervalt voor het blok uit code, zodat er één staat (#1083); geeft de code geen blok, dan blijft dat van het model.
     """
-    blok = telling_blok(tool_results, tekst)
-    if not blok or not tekst.strip():
+    eigen = zonder_telling(tekst)
+    blok = telling_blok(tool_results, eigen)
+    if not blok or not eigen.strip():
         return tekst
     if _teldefinities(tool_results):
-        tekst = _EIGEN_DEFINITIES.sub("", tekst)
-    return f"{tekst.rstrip()}\n\n{blok}"
+        eigen = _EIGEN_DEFINITIES.sub("", eigen)
+    return f"{eigen.rstrip()}\n\n{blok}"

@@ -10,7 +10,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from agent import beurtbewijs, rapportselectie, recepten
 from agent import run as agent_run
-from agent.history import afgebroken_beurt, trim
+from agent.history import afgebroken_beurt, trim, zonder_vaste_blokken
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from agent.timebox import harde_grens
@@ -118,7 +118,27 @@ def _open_conversation(
     _reset_session(session)
     session["messages"] = _parse_history(messages)
     session["data_keys"] = list(data_keys or [])
-    beurtbewijs.zet_terug(session, bewijs or {})
+    beurtbewijs.zet_terug(session, _op_modeltekst(messages, bewijs or {}))
+
+
+def _op_modeltekst(raw: list, bewijs: dict[str, dict]) -> dict[str, dict]:
+    """Het bewijs gesleuteld op de tekst zoals `_parse_history` haar in de historie zet (#1083).
+
+    Een rij hoort bij de hash van de tekst die de client bewaarde (beurtbewijs); in de historie staat het antwoord
+    zonder Uitgangspunt-regel en Telling-blok. Zonder deze omzetting vond `zet_terug` de rij van zo'n antwoord niet,
+    en telde het niet meer als bewijs.
+    """
+    if not bewijs:
+        return bewijs
+    omgezet: dict[str, str] = {}
+    for m in raw if isinstance(raw, list) else []:
+        if isinstance(m, dict) and m.get("role") == "assistant" and isinstance(m.get("content"), str):
+            kaal = zonder_vaste_blokken(m)["content"]
+            omgezet.setdefault(beurtbewijs.tekst_hash(m["content"]), beurtbewijs.tekst_hash(kaal))
+    uit: dict[str, dict] = {}
+    for h, rij in bewijs.items():
+        uit.setdefault(omgezet.get(h, h), rij)
+    return uit
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -147,7 +167,8 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         # Stopknop of tijdsgrens: wat er al stond plus de markering, geen beurt voor het rapport.
         messages.append(afgebroken_beurt(response_text))
     elif not clarified:
-        messages.append({"role": "assistant", "content": response_text})
+        # De historie houdt het antwoord zonder Uitgangspunt en Telling, zoals na heropenen (#1083); de beurt houdt alles.
+        messages.append(zonder_vaste_blokken({"role": "assistant", "content": response_text}))
         turn_tool_calls = session.get("_last_turn_tool_calls", [])
         session["_last_turn_tool_calls"] = []
         turns: list = session.get("turns", [])
@@ -254,8 +275,11 @@ def _parse_history(raw: list) -> list[dict]:
         if not isinstance(m, dict) or m.get("role") not in valid_roles or not isinstance(m.get("content"), str):
             continue
         content = m["content"]
-        if m["role"] == "assistant" and m.get("afgebroken") is True:
-            content = afgebroken_beurt(content)["content"]
+        if m["role"] == "assistant":
+            # De Uitgangspunt-regel en het Telling-blok zet de app zelf bij elk antwoord: ze tellen niet mee (#1083).
+            content = zonder_vaste_blokken({"role": "assistant", "content": content})["content"]
+            if m.get("afgebroken") is True:
+                content = afgebroken_beurt(content)["content"]
         if content.strip():
             result.append({"role": m["role"], "content": content})
     kept: list[dict] = []

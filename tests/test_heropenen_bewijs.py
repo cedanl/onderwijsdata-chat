@@ -147,6 +147,28 @@ def test_herverbonden_voor_de_put_telt_de_klaarstaande_rij(db, monkeypatch):
     assert "controle" not in eind
 
 
+def test_een_antwoord_met_telling_blok_houdt_zijn_rij_na_heropenen(db, monkeypatch):
+    """#1083: de historie houdt het antwoord zonder Telling-blok, de rij hoort bij de tekst mét blok. Het antwoord telt
+    na heropenen toch als bewijs: de rij volgt de tekst zoals ze in de historie staat."""
+    blok = "**Telling**\n- DUO: telt personen op de peildatum 1 oktober."
+    monkeypatch.setattr(run_module, "met_telling", lambda tekst, results: f"{tekst}\n\n{blok}")
+    sessie = chat._new_session(username="alice")
+    rij = json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 28355}]})
+    eind = _beurt(monkeypatch, sessie, _VRAAG, [_zoek(), _tekst(_ANTWOORD)], rij)
+    assert eind["content"] == f"{_ANTWOORD}\n\n{blok}"
+    monkeypatch.setattr(run_module, "met_telling", lambda tekst, results: tekst)
+    frame = _frame(eind["content"])
+    put_route.upsert_conversation("c1", put_route.ConversationUpsert(title="HU", timestamp=1, messages=frame), "alice")
+    beurtbewijs.wis()
+
+    heropend = _heropen(frame)
+
+    assert heropend["messages"][1]["content"] == _ANTWOORD
+    eind = _herhaal_met_andere_data(monkeypatch, heropend)
+    assert eind["content"] == "Het waren 28.355 personen."
+    assert "controle" not in eind
+
+
 # ── Zonder rij: telt niet (besluit 1) ────────────────────────────────────────
 
 

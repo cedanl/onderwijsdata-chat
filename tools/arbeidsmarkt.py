@@ -47,6 +47,13 @@ def roa_onderdeelnaam(sleutel: str, sis: str | None) -> str:
     return f"{naam} ({sis})" if sleutel == "schoolverlaters" and sis else naam
 
 
+def roa_onderdeel_in_zin(sleutel: str, sis: str | None) -> str:
+    """De naam van een onderdeel midden in een zin: "schoolverlaters (SIS 2025)", "prognose tot 2030" (#1100). Zo
+    staat onder het antwoord en in de bronregel geen sleutel als `schoolverlaters_sis_2024`."""
+    naam = roa_onderdeelnaam(sleutel, sis)
+    return naam[:1].lower() + naam[1:]
+
+
 _ROA_KOLOMMEN = ["ONDERDEEL", "REGIO", "OPLEIDING", "INDICATOR", "PERCENTAGE", "AANTAL", "TYPERING"]
 # Zoveel beroepenclusters in het resultaat; het totaal staat er altijd bij.
 _MAX_CLUSTERS = 15
@@ -210,7 +217,10 @@ def _roa_onderdelen(categorieen: dict[str, str], regio: str) -> dict:
         uit[onderdeel] = waarden or f(categorieen, landelijk)
         uit["herkomst"][onderdeel] = regio if waarden else landelijk
     if terugval := [k for k, r in uit["herkomst"].items() if r == landelijk]:
-        uit["terugval"] = f"ROA heeft voor {regio} geen {' en '.join(terugval)}; daar staan de landelijke cijfers."
+        # De onderdelen in woorden, met het SIS-jaar van het bestand: deze zin staat ook onder het antwoord (#1100).
+        sis = arbeidsmarkt.roa_sis_label()
+        namen = " en ".join(roa_onderdeel_in_zin(k, sis) for k in terugval)
+        uit["terugval"] = f"ROA heeft voor {regio} geen cijfers voor {namen}; daar staan de landelijke cijfers."
     return uit
 
 

@@ -283,6 +283,16 @@ def get(key: str):
         return value
 
 
+def gezien(key: str):
+    """De data achter `key` zoals ze geladen is, of None: zonder haar de jongste te maken of te laten verlopen.
+
+    Voor code die alleen beschrijft wat een antwoord las, zoals de voorlopige CBS-jaren in de bronregel (#1097): een
+    bronregel opmaken mag geen key uit de store halen.
+    """
+    with _slot:
+        return _cache.get(key)
+
+
 def readonly(key: str):
     """The model-boundary accessor: never returns the shared cached object itself.
 

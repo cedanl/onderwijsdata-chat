@@ -28,6 +28,10 @@ KOP = "**Uitgangspunt:**"
 # Meer instellingen is een vergelijking of een overzicht: een opsomming daarvan is geen uitgangspunt.
 _MAX_INSTELLINGEN = 3
 _JAARTAL = re.compile(r"(?<!\w)(\d{4})(?!\d)")
+# Een Uitgangspunt-regel in de tekst, van de app of van het model zelf: de kop en de rest van haar alinea (#1083).
+_EIGEN_UITGANGSPUNT = re.compile(
+    r"^[ \t]*\*\*Uitgangspunt(?::\*\*|\*\*:)[^\n]*(?:\n(?![ \t]*(?:\n|\Z))[^\n]*)*\n*", re.MULTILINE
+)
 
 
 @dataclass
@@ -213,7 +217,23 @@ def uitgangspunt(vraag: str, tekst: str, steps: list[tuple[str, str]]) -> str | 
     return f"{KOP} {SCHEIDING.join(weergave)}"
 
 
+def zonder_uitgangspunt(tekst: str) -> str:
+    """De tekst zonder Uitgangspunt-regel (kop tot het einde van haar alinea), van de app of van het model (#1083).
+
+    Voor een eigen regel van het model die de regel uit code vervangt, en voor de historie naar het model: daar is de
+    regel van de app een herhaling die het model overnam.
+    """
+    uit, aantal = _EIGEN_UITGANGSPUNT.subn("", tekst)
+    return uit.rstrip() if aantal else tekst
+
+
 def met_uitgangspunt(tekst: str, vraag: str, steps: list[tuple[str, str]]) -> str:
-    """Het antwoord met de Uitgangspunt-regel ervoor, als de selectie iets vastlegt dat de gebruiker niet noemde."""
-    regel = uitgangspunt(vraag, tekst, steps) if tekst.strip() else None
-    return f"{regel}\n\n{tekst}" if regel else tekst
+    """Het antwoord met de Uitgangspunt-regel ervoor, als de selectie iets vastlegt dat de gebruiker niet noemde.
+
+    Schreef het model zelf een Uitgangspunt-regel, dan vervalt die voor de regel uit code: één regel, uit de
+    toolstappen (#1083). Geeft de code geen regel, dan blijft die van het model staan: dan plakt de app er geen
+    tweede bij, en is er niets om te vervangen.
+    """
+    eigen = zonder_uitgangspunt(tekst)
+    regel = uitgangspunt(vraag, eigen, steps) if eigen.strip() else None
+    return f"{regel}\n\n{eigen}" if regel else tekst
