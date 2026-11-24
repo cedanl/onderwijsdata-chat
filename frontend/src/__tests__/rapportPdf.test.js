@@ -60,7 +60,7 @@ describe('een tabel in de conclusie in de PDF (#1075)', () => {
   const metTabel = buildReportHtml({ ...spec, conclusie: '| Sector | Instroom |\n|---|---:|\n| Economie | 1.200 |\n| Zorg | 900 |' })
 
   it('drukt een echte tabel af, niet de pipe-regels', () => {
-    const doc = new DOMParser().parseFromString(metTabel, 'text/html')
+    const doc = new window.DOMParser().parseFromString(metTabel, 'text/html')
     expect(doc.body.textContent).not.toContain('| Sector')
     expect(doc.body.textContent).not.toContain('|---')
     expect([...doc.querySelectorAll('.conf .prose th')].map(th => th.textContent)).toEqual(['Sector', 'Instroom'])
