@@ -33,7 +33,7 @@ from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalc
 from .datasetcontext import herstel_data_voor_beurt
 from .genoemde_bronnen import genoemde_bronnen
 from .getalnotatie import heeft_tabel, nl_notatie, versienummers
-from .history import afgeronde_stappen, trim
+from .history import afgeronde_stappen, trim, zonder_vaste_blokken
 from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import interpretatie_bij, is_vervolgvraag
 from .loop import LoopResult, ToolCall, tenzij_gestopt, tool_loop
@@ -643,7 +643,8 @@ async def run(
         if kaart is not None:
             return await _vaste_verduidelijking(kaart, messages, session, emit)
 
-    history, was_trimmed = trim(list(messages))
+    # Zonder de Uitgangspunt-regel en het Telling-blok van eerdere antwoorden: die zet de app er zelf bij (#1083).
+    history, was_trimmed = trim([zonder_vaste_blokken(m) for m in messages])
     initial_history_len = len(history)
     if was_trimmed:
         await emit(
