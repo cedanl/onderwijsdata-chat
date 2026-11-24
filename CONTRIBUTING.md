@@ -39,7 +39,7 @@ interface (`BRON`, `catalogusrecords()`, `laad`, `metadata()`, `tests/test_bronc
 
 **Ruff en ty slaan `packages/` over, bewust.** De pakketten hadden als losse repo's geen lint of typecontrole: ruff
 geeft er 248 bevindingen en wil 93 bestanden anders opmaken, ty geeft 93 diagnostics. Opnemen zou `ty-baseline.txt`
-(nu 78) boven het plafond van het afbouwplan (≤100 eind 2026, #391) tillen en de `git blame` van de pakketten
+(nu 24) boven het plafond van het afbouwplan (≤100 eind 2026, #391) tillen en de `git blame` van de pakketten
 overschrijven met een opmaakcommit. De dekking van de chat (`fail_under`) telt de pakketregels ook niet mee; de
 pakkettests laten hun eigen dekking zien in het log. Wil je een pakket opruimen, doe dat per pakket in een eigen MR
 (ruim eerst de bevindingen op, haal het pakket dan uit `extend-exclude` en `[tool.ty.src]` in `pyproject.toml`).

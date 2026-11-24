@@ -45,8 +45,8 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=6.0",
     "ruff>=0.15.16",
-    # <0.0.100: ty 0.0.108 meldt nieuwe diagnostics (tests/, tools/duo.py) boven het plafond van ty-baseline (#391); optillen in een eigen MR.
-    "ty>=0.0.48,<0.0.100",
+    # Gepind op één patchversie: een nieuwe ty meldt vaak nieuwe diagnostics; optillen in een eigen MR met triage (#1206).
+    "ty>=0.0.108,<0.0.109",
 ]
 # Alleen voor demo/narrate.py (TTS-narratie van de demo-video): piper-tts trekt
 # onnxruntime mee (~185 MB) — niet in elke venv of de productie-image.
@@ -113,7 +113,7 @@ ignore = [
 invalid-argument-type = "warn"
 
 # Bewust uitgesloten, zelfde besluit als bij ruff: de pakketten hadden als losse repo's geen typecontrole. Hun 93
-# diagnostics zouden ty-baseline.txt (nu 78) boven het plafond van het afbouwplan tillen (≤100 eind 2026, #391). De chat
+# diagnostics zouden ty-baseline.txt (nu 24) boven het plafond van het afbouwplan tillen (≤100 eind 2026, #391). De chat
 # blijft tegen de geïnstalleerde pakketten typechecken.
 [tool.ty.src]
 exclude = ["packages"]
