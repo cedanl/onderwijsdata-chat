@@ -81,9 +81,9 @@ function RankingTable({ alleInstellingen, instelling, populatie, dark }) {
   const eigenIdx = alleInstellingen.findIndex(i => i.naam.toLowerCase() === instelling.toLowerCase())
   const { label: tick } = darkColors(dark)
   return (
-    <ChartCard title="Nationale ranking" subtitle={`Totaal ingeschrevenen — ${populatie}`}>
-      <TabelScroll label="Nationale ranking" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
-        <caption className="sr-only">Nationale ranking naar totaal ingeschrevenen</caption>
+    <ChartCard title="Landelijke ranking" subtitle={`Totaal ingeschrevenen — ${populatie}`}>
+      <TabelScroll label="Landelijke ranking" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem', color: tick }}>
+        <caption className="sr-only">Landelijke ranking naar totaal ingeschrevenen</caption>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th scope="col" style={{ textAlign: 'left', padding: '6px 8px' }}>#</th>

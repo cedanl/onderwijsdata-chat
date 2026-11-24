@@ -145,7 +145,7 @@ for (const breedte of [390, 1280]) {
         const knop = page.locator('.make-rapport-btn')
         await (smal ? knop.tap() : knop.click())
         await expect(page.locator('.report-progress')).toBeVisible()
-        await expect(knop).toHaveText('Rapport wordt gegenereerd…')
+        await expect(knop).toHaveText('Rapport wordt gemaakt…')
         await expect.poll(() => typeof server.rapportKlaar).toBe('function')
         server.rapportKlaar()
 

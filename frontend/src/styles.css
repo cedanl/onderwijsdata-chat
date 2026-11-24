@@ -1770,7 +1770,7 @@ html.dark .suggested-btn:hover {
   .chat-statusrij .run-progress { background: var(--white); margin: 0; }
   .chat-statusrij .run-progress-note { background: var(--white); border-radius: var(--radius-sm); margin: 4px 0 0; padding: 2px 11px; width: fit-content; max-width: 100%; }
   .chat-main:has(.run-progress-group) .chat-messages { padding-bottom: 72px; }
-  /* 'Genereer rapport' onder het laatste antwoord, in plaats van een vaste actierij boven het invoerveld. */
+  /* 'Maak rapport' onder het laatste antwoord, in plaats van een vaste actierij boven het invoerveld. */
   .chat-rapport-rij { display: flex; justify-content: flex-start; padding-left: 2px; }
   .sidebar-model { margin-top: 16px; }
   .sidebar-model .sidebar-section-title { margin-bottom: 8px; }

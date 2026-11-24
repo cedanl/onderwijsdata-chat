@@ -656,7 +656,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   useEffect(() => {
     if (!reportSpec || sessionEndedSince(tokenAtMount)) return
     const htmlContent = buildReportHtml(reportSpec, { instelling: settings?.instelling })
-    const description = `Rapport door ${reportSpec.auteur || 'onbekend'} · gegenereerd op ${reportSpec.datum || ''}`
+    const description = `Rapport door ${reportSpec.auteur || 'onbekend'} · gemaakt op ${reportSpec.datum || ''}`
     saveWorkbookWithSync({
       title: reportSpec.title || 'Rapport',
       description,
@@ -731,7 +731,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
         <polyline points="14 2 14 8 20 8" />
         <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
       </svg>
-      {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
+      {reportBusy ? 'Rapport wordt gemaakt…' : 'Maak rapport'}
     </button>
   )
 
@@ -903,7 +903,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                 weg, met één klik in plaats van zelf een vraag verzinnen (#551). */}
             {hasMessages && !busy && reportState === 'needs_reload' && (
               <p className="report-reload-hint">
-                De data van dit gesprek is niet meer geladen. Stel een vraag om haar opnieuw te laden, dan kun je een rapport genereren.
+                De data van dit gesprek is niet meer geladen. Stel een vraag om haar opnieuw te laden, dan kun je een rapport maken.
                 {lastDataQuestion(restoredMessages) && (
                   <button type="button" className="message-continue" disabled={reportBusy}
                     onClick={() => verstuur(lastDataQuestion(restoredMessages))}>

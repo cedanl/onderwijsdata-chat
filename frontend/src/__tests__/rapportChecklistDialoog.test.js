@@ -50,7 +50,7 @@ afterEach(async () => {
 
 const set = () => container.querySelector('fieldset')
 const vakjes = () => [...container.querySelectorAll('input[type="checkbox"]')]
-const genereer = () => [...container.querySelectorAll('button')].find(b => b.textContent === 'Genereer')
+const genereer = () => [...container.querySelectorAll('button')].find(b => b.textContent === 'Maak')
 const veld = () => container.querySelector('textarea')
 const klik = el => act(async () => { el.click() })
 

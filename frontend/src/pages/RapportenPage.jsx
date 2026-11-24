@@ -234,7 +234,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
               Ga naar Chat
             </button>
             <p className="wb-gallery-leeg-tip">
-              Stel een vraag en klik op &ldquo;Genereer rapport&rdquo; om een rapport hier op te slaan.
+              Stel een vraag en klik op &ldquo;Maak rapport&rdquo; om een rapport hier op te slaan.
             </p>
           </div>
         ) : zichtbaar.length === 0 ? (
