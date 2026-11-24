@@ -44,6 +44,14 @@ def geen_bronbewaking(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def geen_dashboard_opwarming(monkeypatch):
+    """Een test die de app start (lifespan) warmt de dashboards niet op (#1166): dat laadt live DUO-, CBS- en
+    UWV-data. tests/test_dashboard_opwarmen.py zet hem zelf aan, met nagebootste laders."""
+    monkeypatch.setenv("DASHBOARD_WARMUP", "0")
+    monkeypatch.setattr("core.config.DASHBOARD_WARMUP", False)
+
+
+@pytest.fixture(autouse=True)
 def clear_store():
     store.clear()
     recepten.wis()

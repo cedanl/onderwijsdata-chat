@@ -17,7 +17,7 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import bronstatus, config, foutmeldingen, openapi_schema
+from core import bronstatus, config, dashboard_opwarmen, foutmeldingen, openapi_schema
 from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
@@ -217,13 +217,18 @@ async def on_shutdown() -> None:
 
 def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsyncContextManager[None]]:
     """Start en stop van de app, met daartussen de sessiemanager van /mcp (#706): die heeft een taakgroep nodig die zo
-    lang leeft als de app. Een gemounte app krijgt geen eigen lifespan, dus de app start hem zelf."""
+    lang leeft als de app. Een gemounte app krijgt geen eigen lifespan, dus de app start hem zelf. Na de start warmen
+    de dashboards op de achtergrond op (#1166); de start wacht daar niet op."""
 
     @contextlib.asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         await on_startup()
         try:
-            async with bronstatus.bewaking(config.BRONSTATUS_INTERVAL_S), mcp.draai():
+            async with (
+                bronstatus.bewaking(config.BRONSTATUS_INTERVAL_S),
+                dashboard_opwarmen.opwarming(config.DASHBOARDS_ENABLED and config.DASHBOARD_WARMUP),
+                mcp.draai(),
+            ):
                 yield
         finally:
             await on_shutdown()

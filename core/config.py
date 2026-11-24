@@ -104,6 +104,9 @@ DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
 # pas bij de eerste aanvraag (10-23 s), een warme antwoordt in tienden van seconden. Zo ziet een beheerder welk
 # eindpunt traag is, ook als de lading binnen DASHBOARD_TIMEOUT_S klaar is.
 DASHBOARD_TRAAG_S = float(os.getenv("DASHBOARD_TRAAG_S", "5"))
+# Na een start de dashboards op de achtergrond opwarmen (#1166, core/dashboard_opwarmen.py), zodat de eerste gebruiker
+# niet 10-23 s wacht. Alleen met ENABLE_DASHBOARDS; standaard aan, `0` of `false` zet het uit.
+DASHBOARD_WARMUP = os.getenv("DASHBOARD_WARMUP", "true").strip().lower() not in ("0", "false")
 # Personeel van de universiteiten uit het WOPI-bestand van UNL (#936, tools/wo_personeel.py): de tool
 # get_wo_personeel staat alleen in de toolset als deze vlag aan staat. Standaard uit; alleen manifests/test zet hem aan,
 # tot UNL schriftelijk bevestigt dat hergebruik mag (besluit 05-11 op #731). Playground en production niet.
