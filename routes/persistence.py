@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, Strict, StrictInt, StrictStr, StringConst
 from agent import beurtbewijs, recepten
 from core import opslagquotum
 from core.auth import get_current_user
+from core.foutmeldingen import RAPPORT_NIET_GEVONDEN
 from core.persoonsgegevens import veilige_gesprekstitel
 from persistence import db as persistence_db
 
@@ -147,7 +148,7 @@ def list_workbooks(username: str = Depends(get_current_user)) -> list[dict]:
 def get_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
     workbook = persistence_db.get_workbook(username, wb_id)
     if workbook is None:
-        raise HTTPException(status_code=404, detail="Werkboek niet gevonden")
+        raise HTTPException(status_code=404, detail=RAPPORT_NIET_GEVONDEN)
     # Openen telt als gebruik: de bewaartermijn van het werkboek begint opnieuw (#485).
     persistence_db.werkboek_geopend(username, wb_id)
     return workbook

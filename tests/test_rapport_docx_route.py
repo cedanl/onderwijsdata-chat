@@ -99,7 +99,7 @@ def test_een_rapport_van_een_ander_is_niet_gevonden(client):
     vreemd = client.post("/api/workbooks/r1/docx")
     onbekend = client.post("/api/workbooks/bestaat-niet/docx")
     assert vreemd.status_code == onbekend.status_code == 404
-    assert vreemd.json() == onbekend.json() == {"detail": "Werkboek niet gevonden"}
+    assert vreemd.json() == onbekend.json() == {"detail": "Rapport niet gevonden"}
 
 
 def test_zonder_inloggen_geen_document(client):
@@ -109,12 +109,12 @@ def test_zonder_inloggen_geen_document(client):
     assert client.post("/api/workbooks/r1/docx").status_code == 401
 
 
-def test_een_werkboek_zonder_rapport(client):
+def test_een_opgeslagen_item_zonder_rapport(client):
     _als(client, "anna")
     _bewaar(client, html="<p>geen rapport</p>")
     response = client.post("/api/workbooks/r1/docx")
     assert response.status_code == 422
-    assert response.json() == {"detail": "Dit werkboek heeft geen rapport om als Word-document te downloaden."}
+    assert response.json() == {"detail": "Dit is geen rapport, dus er is geen Word-document van te maken."}
 
 
 @pytest.mark.parametrize(

@@ -36,7 +36,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Gegevens | Tabel | Tot wanneer |
 |---|---|---|
 | Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
-| Rapporten en dashboards (werkboeken) | `workbooks` | 365 dagen nadat het werkboek voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
+| Rapporten en dashboards | `workbooks` | 365 dagen nadat het rapport of dashboard voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
@@ -55,7 +55,9 @@ organisatie en instelling staan tijdens de sessie in het geheugen van de server 
 `SESSION_MAX_HOURS`).
 
 Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taak wat over zijn termijn is
-(`python -m persistence.opschonen`, een CronJob in de Helm-chart; aan op test en playground, niet op productie). De
+(`python -m persistence.opschonen`, een CronJob in de Helm-chart). Ze staat aan in de manifests van `test`,
+`playground`, `staging-otc` en `production-otc` (`opschonen.enabled` in `manifests/<omgeving>/values.yaml`; de
+OTC-omgevingen zijn nog niet uitgerold, #674). Op `development` en in de vervallen map `production` is ze uit. De
 termijnen staan in de tabel hierboven: gesprekken en feedback 90 dagen, rapporten en dashboards 365 dagen, langer
 omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te stellen met
 `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7
@@ -68,7 +70,7 @@ de back-ups hierboven.
 
 ## Wat in je browser staat
 
-- `localStorage`: een kopie van de gesprekken en het lopende gesprek, de werkboeken, de dashboardchat, het profiel
+- `localStorage`: een kopie van de gesprekken en het lopende gesprek, de rapporten, het profiel
   (instelling, functie, weergave) en het sessietoken. Uitloggen wist dit alles (`SESSION_DATA_KEYS` en het profiel,
   `frontend/src/App.jsx`), en "Verwijder al mijn gegevens" ook.
 - `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
@@ -87,8 +89,9 @@ de back-ups hierboven.
 
 Op INFO en hoger staan van een vraag, een antwoord, toolargumenten en fouttekst alleen de lengte en een hash in het
 log (`core.logging_util.tekst_kenmerk`, #475, #502), naast tijdstippen, toolnamen en het model. Alleen op DEBUG,
-dat niet standaard aanstaat, staat tekst in het log (SECURITY.md S19). De bewaartermijn van het logplatform van SDP
-is een open punt.
+dat niet standaard aanstaat, staat tekst in het log (SECURITY.md S19). De app schrijft geen toegangslog van uvicorn
+(`logging_config.py`, #1114): dat zette per verzoek het client-adres en het volledige pad, met gespreks- en rapport-ID's,
+in het log. De bewaartermijn van het logplatform van SDP is een open punt.
 
 ## Wat je zelf kunt doen
 
@@ -115,14 +118,16 @@ is een open punt.
   eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404 (#1118).
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
-  gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
-  (gesprekken, rapporten en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik,
-  dat onder het pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en
+  gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen met je accountnaam
+  (`conversations`, `workbooks`, `feedback`, `algemene_feedback`, `data_recipes` en `beurtbewijs`: gesprekken, rapporten
+  en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik, dat onder het
+  pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en
   ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
-  (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
-  back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash
-  van een sessie waarmee je uitlogde in `revoked_tokens` tot zij verloopt, en de kopie in de browser van een ander
-  apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
+  (#786): een open chat daar sluit bij de volgende vraag. De tellers in `rate_limit_hits` gaan niet direct weg: ze
+  staan onder een pseudoniem en hebben geen accountnaam om op te verwijderen (hoogstens tien minuten). Wat blijft
+  verder: de serverlogs (zonder gesprekstekst, #475) en de back-ups van de beheerder, de hash van je accountnaam in
+  `revoked_users` tot je laatste sessie verlopen is, de hash van een sessie waarmee je uitlogde in `revoked_tokens` tot
+  zij verloopt, en de kopie in de browser van een ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
   teamaccount in `CHAT_USERS`), dan verdwijnt ook het werk van de anderen. Zonder eigen login (iedereen is dan
   `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404.
 

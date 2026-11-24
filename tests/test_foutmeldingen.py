@@ -164,7 +164,7 @@ def test_server_onbekend_werkboek_houdt_de_eigen_melding_van_de_route(server_cli
     resp = server_client.get("/api/workbooks/bestaat-niet-424242")
 
     assert resp.status_code == 404
-    assert resp.content == b'{"detail":"Werkboek niet gevonden"}'
+    assert resp.content == b'{"detail":"Rapport niet gevonden"}'
 
 
 # ── Een onverwachte fout (#1154) ─────────────────────────────────────────────

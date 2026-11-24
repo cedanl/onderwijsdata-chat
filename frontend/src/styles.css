@@ -2010,6 +2010,7 @@ html.dark .suggested-btn:hover {
 .privacy-text h2 { font-size: 1.1rem; margin: 28px 0 8px; }
 .privacy-text p, .privacy-text li { color: var(--gray-700); font-size: .92rem; }
 .privacy-page-lead { color: var(--muted-text); }
+.privacy-text .privacy-kern { font-weight: 600; margin-bottom: 8px; }
 .privacy-text ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 /* Text button that opens the popup (login page, settings dialog). */
 .privacy-link { color: var(--gray-600); text-decoration: underline; padding: 0; }

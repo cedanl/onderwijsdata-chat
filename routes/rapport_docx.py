@@ -14,6 +14,7 @@ from fastapi.responses import Response
 
 from core.auth import get_current_user
 from core.bestandsnaam import rapportdeel
+from core.foutmeldingen import RAPPORT_NIET_GEVONDEN
 from core.openapi_schema import bijlage
 from core.rate_limit import RateLimiter
 from persistence import db as persistence_db
@@ -24,8 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["persistence"])
 
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-NIET_GEVONDEN = "Werkboek niet gevonden"
-GEEN_RAPPORT = "Dit werkboek heeft geen rapport om als Word-document te downloaden."
+GEEN_RAPPORT = "Dit is geen rapport, dus er is geen Word-document van te maken."
 
 # Een Word-document kost rekentijd; per gebruiker een ruime grens, want gasten delen één naam.
 _limiter = RateLimiter(max_attempts=30, window_seconds=60, naam="rapport_docx")
@@ -39,7 +39,7 @@ def bestandsnaam(titel: str) -> str:
 def _maak(username: str, wb_id: str, content_type: str | None, lichaam: bytes) -> tuple[str, bytes, int, int]:
     werkboek = persistence_db.get_workbook(username, wb_id)
     if werkboek is None:
-        raise HTTPException(status_code=404, detail=NIET_GEVONDEN)
+        raise HTTPException(status_code=404, detail=RAPPORT_NIET_GEVONDEN)
     html = werkboek.get("html_content")
     if not kan_docx(html):
         raise HTTPException(status_code=422, detail=GEEN_RAPPORT)
