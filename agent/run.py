@@ -52,6 +52,7 @@ from .stream import Emit
 from .tabelnoot import met_tabelnoot
 from .tekens import zonder_citaatkop
 from .telling import met_telling
+from .terugval import met_terugval
 from .timebox import harde_grens, timebox
 from .uitgangspunt import met_uitgangspunt
 from .vaste_antwoorden import (
@@ -458,7 +459,8 @@ async def _vroeg_einde(
 
 def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
     """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling, de voetnoot onder een
-    tabel met onderdrukte cellen (#811) en de regel over de bronkeuze van een vaste maat (#667).
+    tabel met onderdrukte cellen (#811), de regel over een landelijke ROA-terugval (#1100) en de regel over de
+    bronkeuze van een vaste maat (#667).
 
     Elk antwoord krijgt een CBS-periodecode als jaar (2023SJ00 wordt 2023/24, #989). Alleen een antwoord dat niet
     Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536); de taal komt van `geschreven_taal`,
@@ -469,7 +471,7 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     if geschreven_taal(antwoord) != "en":
         tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier, versienummers(bronnen)), in_je_vorm)
     tekst = met_tabelnoot(met_telling(tekst, result.tool_results), result.tool_results)
-    return met_bronregel(tekst, result.steps)
+    return met_bronregel(met_terugval(tekst, result.tool_results), result.steps)
 
 
 def _vast_antwoord(result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict) -> str | None:

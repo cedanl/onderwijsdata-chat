@@ -19,6 +19,7 @@ from collections.abc import Callable
 
 import pandas as pd
 
+from data.arbeidsmarkt import ROA_LANDELIJK
 from tools import (
     collegegeld,
     financien,
@@ -30,7 +31,7 @@ from tools import (
     studiekeuze,
     wo_personeel,
 )
-from tools.arbeidsmarkt import DATASET
+from tools.arbeidsmarkt import DATASET, ROA_ID, ROA_ONDERDELEN, roa_blokken
 from tools.catalog import bron_titel, documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
@@ -40,6 +41,7 @@ from tools.schemas import (
     TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
 )
@@ -151,6 +153,41 @@ def _datasetbron(key: str) -> Bronregel | None:
     return _metabron(known, store.gezien(bron)) if known else None
 
 
+def _json(result: str) -> dict:
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _roaregio(regio: object) -> str:
+    return "landelijk" if regio == ROA_LANDELIJK else str(regio)
+
+
+def _roaherkomst(result: str) -> str:
+    """Per onderdeel van een ROA-resultaat de regio waar zijn cijfers op slaan, uit `herkomst` (#1100).
+
+    "schoolverlaters (SIS 2024): landelijk, prognose tot 2030: Midden-Utrecht": een landelijke terugval leest zo niet
+    als regionaal cijfer. Leeg zonder `herkomst`: een landelijke vraag heeft maar één regio, die de regel al noemt.
+    """
+    parsed = _json(result)
+    if parsed.get("dataset") != ROA_ID:
+        return ""
+    regios: dict[str, dict[str, None]] = {}
+    for blok in roa_blokken(parsed):
+        if isinstance(herkomst := blok.get("herkomst"), dict):
+            for onderdeel in ROA_ONDERDELEN:
+                if herkomst.get(onderdeel):
+                    regios.setdefault(onderdeel, {})[_roaregio(herkomst[onderdeel])] = None
+    delen = [
+        f"{naam[0].lower()}{naam[1:]}: {' en '.join(regios[onderdeel])}"
+        for onderdeel, naam in ROA_ONDERDELEN.items()
+        if onderdeel in regios
+    ]
+    return f", {', '.join(delen)}" if delen else ""
+
+
 def _registerbron(tool: str, result: str) -> list[Bronregel]:
     """Een opzoeking in het RIO-register (get_rio_instelling) laadt niets in de store, maar leest wel data."""
     if tool != TOOL_GET_RIO_INSTELLING:
@@ -221,6 +258,8 @@ def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     # geen tweede regel. Een selectie op die tabel heeft wel de regel uit de store.
     bestand = _bestandsbron(tool, result)
     datasets = [] if bestand else [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
+    if tool == TOOL_GET_ROA_BENCHMARK and (regio := _roaherkomst(result)):
+        datasets = [(tekst + regio, dataset) if dataset == ROA_ID else (tekst, dataset) for tekst, dataset in datasets]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
     # peildatum of versie, al in `datasets`. Een tool met een eigen bronregel (het collegegeld, #970) heeft die al.
