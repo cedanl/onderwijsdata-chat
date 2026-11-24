@@ -30,19 +30,29 @@ _LADERS = [
     dashboard.load_dashboard_arbeidsmarktmatch,
 ]
 
+# Een rij per thema: een bestand zonder herkend prognose- of SIS-thema is een fout, geen lege tabel (#1091).
 _ROA = pd.DataFrame(
     [
         {
             "regionaam": "Nederland",
-            "thema": "Schoolverlatersinformatie (SIS 2024)",
+            "thema": thema,
             "aggregatieniveau": "opleidingsniveau (ONR2019)",
             "detailniveau": "Bachelor",
-            "onderwerp": "werkloosheid",
-            "perc": 3.0,
+            "onderwerp": onderwerp,
+            "perc": perc,
             "aantal": None,
-            "typering": None,
+            "typering": typering,
             "versie": "2024",
         }
+        for thema, onderwerp, perc, typering in (
+            ("Schoolverlatersinformatie (SIS 2025)", "werkloosheid", 3.0, None),
+            (
+                "Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering",
+                "ITA toekomstige arbeidsmarktsituatie in 2030",
+                None,
+                "redelijk",
+            ),
+        )
     ]
 )
 

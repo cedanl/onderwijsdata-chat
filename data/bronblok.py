@@ -8,7 +8,7 @@ hij staat in `niet_beschikbaar` (#901). Per dataset één regel, in de volgorde 
   noemt (`catalogus_titel`).
 - `editie`, `last_modified` en `peilmoment`: de versie van wat er geladen is. DUO: `last_modified` per bestand (#717)
   en het peilmoment in de woorden van de bronregel in de chat ("versie van 08-04-2026"). ROA: de editie uit het schema
-  van riodata en de kolom `versie` van het bestand. UWV: geen editie; de momentopname heeft een peildatum.
+  van riodata, het SIS-jaar uit de thema's van het bestand (`sis`, #1091) en de kolom `versie` van het bestand. UWV: geen editie; de momentopname heeft een peildatum.
   LCSK (de Studiekeuzedatabase, dashboard Opleidingen): het versienummer van de export als editie, en als peilmoment
   versie, exportdatum, NSE-jaar en 1cijferHO-jaar; `vermelding` is de bronregel met de zin die LCSK verplicht stelt.
 - `peildatum`: DUO de teldatum uit de DUO-beschrijving ("1 oktober"), UWV de PEILDATUM uit de data.
@@ -24,6 +24,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 import onderwijsbronnen
 
+from data import arbeidsmarkt
 from tools import bestandsversie
 from tools.scopeprofiel import dataset_id
 
@@ -61,9 +62,15 @@ def _uwv(meldingen: list[Mapping]) -> dict:
 
 
 def _roa(meldingen: list[Mapping]) -> dict:
-    editie, versie = meldingen[0].get("editie"), meldingen[0].get("versie")
-    delen = [f"editie {editie}" if editie else None, f"versie {versie}" if versie else None]
-    return {"editie": editie, "versie": versie, "peilmoment": ", ".join(d for d in delen if d) or None}
+    """Editie, SIS-jaar en versie van het geladen bestand, in dezelfde woorden als de bronregel in de chat (#1091)."""
+    melding = meldingen[0]
+    editie, sis, versie = melding.get("editie"), melding.get("sis"), melding.get("versie")
+    return {
+        "editie": editie,
+        "sis": sis,
+        "versie": versie,
+        "peilmoment": arbeidsmarkt.roa_peiltekst(editie, sis, versie),
+    }
 
 
 def _lcsk(meldingen: list[Mapping]) -> dict:

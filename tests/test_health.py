@@ -124,6 +124,8 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
     assert roa["periode"] == (
         "Edities 2025 en 2026 (2026 is de nieuwste; DataverseNL-release 2026-09-18). Prognoses tot 2030."
     )
+    # De editie en het SIS-jaar van het bestand dat de app laadt, voor het venster Databronnen (#1091).
+    assert (roa["editie"], roa["sis"]) == ("2026", "SIS 2025")
     assert client.get("/api/version").json()["arbeidsmarkt"] == arbeidsmarkt
 
 
@@ -227,7 +229,13 @@ def test_version_zonder_arbeidsmarktrecord_geeft_200(client, monkeypatch):
     finally:
         arbeidsmarktversie.cache_clear()
     assert resp.status_code == 200
-    assert resp.json()["arbeidsmarkt"][1] == {"bron": "ROA", "dataset": "ais2030", "periode": None}
+    assert resp.json()["arbeidsmarkt"][1] == {
+        "bron": "ROA",
+        "dataset": "ais2030",
+        "periode": None,
+        "editie": None,
+        "sis": None,
+    }
 
 
 async def _gezond() -> bool:

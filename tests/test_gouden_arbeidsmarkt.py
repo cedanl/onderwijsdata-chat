@@ -1,7 +1,7 @@
 """Gouden tests voor get_uwv_vacatures en get_roa_benchmark op bevroren bronnen (#870).
 
-De bronnen zijn op 02-11-2026 via riodata opgehaald met `scripts/gouden_testfixtures.py` (zie
-`tests/fixtures/gouden/bronnen.json`); de fixture `gouden` zet ze klaar en sluit het netwerk af. De verwachte waarden
+De bronnen zijn op 02-11-2026 via riodata opgehaald met `scripts/gouden_testfixtures.py`, ROA (editie 2026) opnieuw op
+24-11-2026 (#1091; zie `tests/fixtures/gouden/bronnen.json`); de fixture `gouden` zet ze klaar en sluit het netwerk af. De verwachte waarden
 zijn met pandas op de bevroren bestanden nagerekend, buiten de tools om; de berekening staat bij elke test.
 """
 
@@ -49,39 +49,41 @@ def test_uwv_vacatures_in_een_gemeente():
     assert uit["clusters_getoond"] == "de 15 grootste van 241 beroepenclusters"
 
 
-# Bron: ROA AIS 2030 (riodata roa.load("ais2030", "arbeidsmarkt"), versie v20251218), opgehaald 02-11-2026,
-# gefilterd op regionaam Nederland, aggregatieniveau "opleidingsniveau (ONR2019)" en de indicatoren van de tool.
+# Bron: ROA AIS 2030, editie 2026 (onderwijsbronnen roa.load("ais2030", "arbeidsmarkt_editie2026"), versie v20260901,
+# thema's "Schoolverlatersinformatie (SIS 2025)" en "Risicoindicatoren en arbeidsmarktprognoses tot 2030,
+# actualisering"), opgehaald 24-11-2026 (#1091; daarvoor editie 2025), gefilterd op regionaam Nederland,
+# aggregatieniveau "opleidingsniveau (ONR2019)" en de indicatoren van de tool.
 # Nagelezen met pandas: r = pd.read_csv(gz); r.pivot_table(index="detailniveau", columns="onderwerp",
 # values=["perc", "aantal"]) en de kolom typering:
 #                   werkloosheid  vast dienstverband  buiten vakrichting  baanopeningen  instroom  ITA 2030
-#   Mbo2                       5                  81                  48         101500    130800  matig
-#   Mbo3                       2                  86                  37         141000    168300  matig
-#   Mbo4                       3                  81                  34         325800    358700  redelijk
-#   Bachelor                   4                  65                  25         435600    533700  matig
-#   Master, doctor             4                  49                  24         337900    285200  goed
+#   Mbo2                       5                  78                  50         103900    130800  matig
+#   Mbo3                       2                  84                  37         141300    168300  matig
+#   Mbo4                       3                  80                  34         335200    358700  redelijk
+#   Bachelor                   5                  62                  26         452700    533700  redelijk
+#   Master, doctor             4                  49                  24         348600    285200  goed
 _SIS = {
-    "Mbo2": (5, 81, 48),
-    "Mbo3": (2, 86, 37),
-    "Mbo4": (3, 81, 34),
-    "Bachelor": (4, 65, 25),
+    "Mbo2": (5, 78, 50),
+    "Mbo3": (2, 84, 37),
+    "Mbo4": (3, 80, 34),
+    "Bachelor": (5, 62, 26),
     "Master, doctor": (4, 49, 24),
 }
 _PROGNOSE = {
-    "Mbo2": (101500, 130800, "matig"),
-    "Mbo3": (141000, 168300, "matig"),
-    "Mbo4": (325800, 358700, "redelijk"),
-    "Bachelor": (435600, 533700, "matig"),
-    "Master, doctor": (337900, 285200, "goed"),
+    "Mbo2": (103900, 130800, "matig"),
+    "Mbo3": (141300, 168300, "matig"),
+    "Mbo4": (335200, 358700, "redelijk"),
+    "Bachelor": (452700, 533700, "redelijk"),  # editie 2025: matig
+    "Master, doctor": (348600, 285200, "goed"),
 }
 
 
 def test_roa_benchmark_landelijk_per_opleidingsniveau():
     uit = json.loads(get_roa_benchmark())
 
-    assert (uit["regio"], uit["versie"]) == ("Nederland", "v20251218")
+    assert (uit["regio"], uit["versie"], uit["editie"], uit["sis"]) == ("Nederland", "v20260901", "2026", "SIS 2025")
     assert {
         niveau: tuple(w[i]["perc"] for i in ("werkloosheid", "vast dienstverband", "buiten de vakrichting"))
-        for niveau, w in uit["schoolverlaters_sis_2024"].items()
+        for niveau, w in uit["schoolverlaters"].items()
     } == _SIS
     assert {
         niveau: (
@@ -102,17 +104,17 @@ def test_roa_benchmark_landelijk_per_opleidingsniveau():
 #   Groningen, ITA 2030: Bachelor matig, Master, doctor redelijk; Master - journalistiek, gedrag en maatschappij
 #                        matig; Master - economie en recht redelijk; Bachelor - economie en recht matig
 #   Nederland (werkloosheid, vast dienstverband, buiten de vakrichting in %; baanopeningen tot 2030; ITA 2030):
-#     Master - journalistiek, gedrag en maatschappij   5  39  30   33300  matig
-#     Master - psychologie (type)                       5  41  20   14000  matig
-#     Master - recht (type)                             7  52  19   28100  redelijk
-#     Bachelor - recht (type)                           5  57  27    6900  slecht
+#     Master - journalistiek, gedrag en maatschappij   6  39  30   35400  matig
+#     Master - psychologie (type)                       5  41  20   15200  matig
+#     Master - recht (type)                             7  52  19   28300  redelijk
+#     Bachelor - recht (type)                           3  55  26    7200  slecht
 #   Opleidingstypen staan er alleen voor Nederland: geen rij voor Groningen.
 _ITA = "ITA toekomstige arbeidsmarktsituatie in 2030"
 _GM = "Master - journalistiek, gedrag en maatschappij"
 
 
 def _sis(blok: dict, naam: str) -> tuple:
-    w = blok["schoolverlaters_sis_2024"][naam]
+    w = blok["schoolverlaters"][naam]
     return tuple(w[i]["perc"] for i in ("werkloosheid", "vast dienstverband", "buiten de vakrichting"))
 
 
@@ -122,14 +124,14 @@ def test_rug_gedrag_en_maatschappij_in_groningen_krijgt_de_mastersubsector_regio
     # Het niveau: alleen ho, de prognose voor Groningen, de schoolverlaters landelijk.
     assert set(uit["prognose_tot_2030"]) == {"Bachelor", "Master, doctor"}
     assert uit["prognose_tot_2030"]["Master, doctor"][_ITA]["typering"] == "redelijk"
-    assert uit["herkomst"] == {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "Groningen"}
+    assert uit["herkomst"] == {"schoolverlaters": "Nederland", "prognose_tot_2030": "Groningen"}
     ho = uit["ho_opleiding"]
     assert ho["koppeling"]["Master, doctor"]["subsector"] == _GM
     assert set(ho["koppeling"]["Bachelor"]) == {"ongekoppeld"}
     # De subsector: de prognose van Groningen, de schoolverlaters van Nederland.
     assert ho["categorie"]["prognose_tot_2030"][_GM][_ITA]["typering"] == "matig"
-    assert ho["categorie"]["herkomst"] == {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "Groningen"}
-    assert _sis(ho["categorie"], _GM) == (5, 39, 30)
+    assert ho["categorie"]["herkomst"] == {"schoolverlaters": "Nederland", "prognose_tot_2030": "Groningen"}
+    assert _sis(ho["categorie"], _GM) == (6, 39, 30)
 
 
 def test_rug_opleidingstypen_zijn_landelijk_en_de_tool_zegt_dat():
@@ -141,9 +143,9 @@ def test_rug_opleidingstypen_zijn_landelijk_en_de_tool_zegt_dat():
         "Master - psychologie",
         "Master - sociale en maatschappijwetenschappen",
     ]
-    assert typen["herkomst"] == {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "Nederland"}
+    assert typen["herkomst"] == {"schoolverlaters": "Nederland", "prognose_tot_2030": "Nederland"}
     assert _sis(typen, "Master - psychologie") == (5, 41, 20)
-    assert typen["prognose_tot_2030"]["Master - psychologie"]["verwachte baanopeningen tot 2030"]["aantal"] == 14000
+    assert typen["prognose_tot_2030"]["Master - psychologie"]["verwachte baanopeningen tot 2030"]["aantal"] == 15200
     meldingen = " ".join(ho["meldingen"])
     assert "Opleidingstype alleen landelijk" in meldingen and "niet voor Groningen" in meldingen
     assert "GEDRAG_EN_MAATSCHAPPIJ is voor Bachelor niet aan een ROA-categorie te koppelen" in meldingen
@@ -160,7 +162,7 @@ def test_rug_recht_krijgt_het_opleidingstype_recht_en_niet_de_hele_subsector():
     }
     assert set(ho["opleidingstype"]["prognose_tot_2030"]) == {"Bachelor - recht", "Master - recht"}
     assert _sis(ho["opleidingstype"], "Master - recht") == (7, 52, 19)
-    assert _sis(ho["opleidingstype"], "Bachelor - recht") == (5, 57, 27)
+    assert _sis(ho["opleidingstype"], "Bachelor - recht") == (3, 55, 26)
     assert ho["opleidingstype"]["prognose_tot_2030"]["Master - recht"][_ITA]["typering"] == "redelijk"
     assert not any("onderverdeling" in m for m in ho["meldingen"])
 
@@ -179,7 +181,7 @@ def test_landelijk_onderdeel_zonder_melding_over_de_regio():
     ho = json.loads(get_roa_benchmark(onderdeel="Gedrag en maatschappij"))["ho_opleiding"]
 
     assert ho["onderdeel"] == "GEDRAG_EN_MAATSCHAPPIJ"
-    assert ho["categorie"]["prognose_tot_2030"][_GM]["verwachte baanopeningen tot 2030"]["aantal"] == 33300
+    assert ho["categorie"]["prognose_tot_2030"][_GM]["verwachte baanopeningen tot 2030"]["aantal"] == 35400
     assert not any("alleen landelijk" in m for m in ho["meldingen"])
 
 

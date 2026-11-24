@@ -34,8 +34,19 @@ ROA_ID = "ais2030"
 # De vaste dataset en bron achter elke arbeidsmarkttool: de aanroep noemt geen dataset-ID (#577).
 DATASET = {TOOL_GET_UWV_VACATURES: UWV_ID, TOOL_GET_ROA_BENCHMARK: ROA_ID}
 _BRON = {TOOL_GET_UWV_VACATURES: "uwv", TOOL_GET_ROA_BENCHMARK: "roa"}
-# De onderdelen van een ROA-resultaat, met hun naam voor de tabel en de citaties.
-ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
+# De onderdelen van een ROA-resultaat, met hun naam voor de tabel en de citaties. Het SIS-jaar hoort bij de editie
+# en komt uit het geladen bestand (`sis` in het resultaat, #1091): de sleutel heette `schoolverlaters_sis_2024`.
+ROA_ONDERDELEN = {"schoolverlaters": "Schoolverlaters", "prognose_tot_2030": "Prognose tot 2030"}
+ROA_SCHOOLVERLATERS_OUD = "schoolverlaters_sis_2024"  # de sleutel in een resultaat van vóór #1091
+
+
+def roa_onderdeelnaam(sleutel: str, sis: str | None) -> str:
+    """De naam van een onderdeel; bij de schoolverlaters met het SIS-jaar van het bestand erbij
+    ("Schoolverlaters (SIS 2025)")."""
+    naam = ROA_ONDERDELEN[sleutel]
+    return f"{naam} ({sis})" if sleutel == "schoolverlaters" and sis else naam
+
+
 _ROA_KOLOMMEN = ["ONDERDEEL", "REGIO", "OPLEIDING", "INDICATOR", "PERCENTAGE", "AANTAL", "TYPERING"]
 # Zoveel beroepenclusters in het resultaat; het totaal staat er altijd bij.
 _MAX_CLUSTERS = 15
@@ -75,15 +86,15 @@ def _slug(tekst: str) -> str:
 
 def peilmoment(tool: str) -> str | None:
     """Wanneer de momentopname achter een arbeidsmarkttool is genomen, in de woorden van de bron (#577):
-    de peildatum van UWV, de versie van ROA. None voor een andere tool."""
+    de peildatum van UWV, de editie, het SIS-jaar en de versie van ROA (#1091). None voor een andere tool."""
     if tool == TOOL_GET_UWV_VACATURES:
         return f"peildatum {arbeidsmarkt.uwv_peildatum()}"
     if tool == TOOL_GET_ROA_BENCHMARK:
-        return f"versie {arbeidsmarkt.roa_versie()}"
+        return arbeidsmarkt.roa_peilmoment()
     return None
 
 
-def _bewaar(key: str, tabel: pd.DataFrame, tool: str, args: dict, peilmoment: str) -> None:
+def _bewaar(key: str, tabel: pd.DataFrame, tool: str, args: dict, peilmoment: str | None) -> None:
     """De tabel achter een resultaat in de store, met haar laadaanroep en peilmoment (#577)."""
     meta = store.KeyMeta(bron=_BRON[tool], dataset=DATASET[tool], laad=(tool, args), peilmoment=peilmoment)
     store.put(key, tabel, meta)
@@ -95,13 +106,13 @@ def _uwv_tabel(stand: arbeidsmarkt.UwvStand) -> pd.DataFrame:
     return pd.DataFrame([{**plaats, "BEROEPENCLUSTER": c, "VACATURES": n} for c, n in stand.clusters.items()])
 
 
-def _roa_tabel(onderdelen: dict) -> pd.DataFrame:
+def _roa_tabel(onderdelen: dict, sis: str | None) -> pd.DataFrame:
     """Elk ROA-cijfer als rij: onderdeel, de regio van dat onderdeel (een landelijke terugval heet landelijk),
     opleiding, indicator en de waarde als percentage, aantal of typering."""
     herkomst = onderdelen.get("herkomst") or {}
     rijen = [
         {
-            "ONDERDEEL": naam,
+            "ONDERDEEL": roa_onderdeelnaam(sleutel, sis),
             "REGIO": herkomst.get(sleutel) or onderdelen["regio"],
             "OPLEIDING": opleiding,
             "INDICATOR": indicator,
@@ -109,7 +120,7 @@ def _roa_tabel(onderdelen: dict) -> pd.DataFrame:
             "AANTAL": waarden.get("aantal"),
             "TYPERING": waarden.get("typering"),
         }
-        for sleutel, naam in ROA_ONDERDELEN.items()
+        for sleutel in ROA_ONDERDELEN
         for opleiding, indicatoren in (onderdelen.get(sleutel) or {}).items()
         for indicator, waarden in indicatoren.items()
     ]
@@ -186,7 +197,7 @@ def _roa_onderdelen(categorieen: dict[str, str], regio: str) -> dict:
     zodat een landelijk cijfer niet als regionaal wordt gelezen.
     """
     ophalen = {
-        "schoolverlaters_sis_2024": arbeidsmarkt.roa_schoolverlaters,
+        "schoolverlaters": arbeidsmarkt.roa_schoolverlaters,
         "prognose_tot_2030": arbeidsmarkt.roa_prognose,
     }
     landelijk = arbeidsmarkt.ROA_LANDELIJK
@@ -308,13 +319,13 @@ def get_roa_benchmark(sector: str | None = None, regio: str | None = None, onder
             resultaat["aanname"] = _regio_aanname(regio, regionaam, andere)
         if ho:
             resultaat["ho_opleiding"] = _ho_opleiding(ho, regionaam)
-        versie = arbeidsmarkt.roa_versie()
+        versie, editie, sis = arbeidsmarkt.roa_versie(), arbeidsmarkt.roa_editie(), arbeidsmarkt.roa_sis_label()
+        peil = arbeidsmarkt.roa_peilmoment()
     except Exception as e:
         return fouten.bronfout("ROA", e)
     args = {k: v for k, v in (("sector", sector), ("regio", regio), ("onderdeel", ho)) if v}
     key = ":".join(["roa", _slug(regionaam), *(_slug(v) for v in (sector, ho) if v)])
-    tabel = pd.concat([_roa_tabel(blok) for blok in roa_blokken(resultaat)], ignore_index=True)
-    _bewaar(key, tabel, TOOL_GET_ROA_BENCHMARK, args, f"versie {versie}")
-    return _json(
-        {"bron": f"ROA, {catalogus_titel(ROA_ID)}", "dataset": ROA_ID, "data_key": key, "versie": versie, **resultaat}
-    )
+    tabel = pd.concat([_roa_tabel(blok, sis) for blok in roa_blokken(resultaat)], ignore_index=True)
+    _bewaar(key, tabel, TOOL_GET_ROA_BENCHMARK, args, peil)
+    kop = {"bron": f"ROA, {catalogus_titel(ROA_ID)}", "dataset": ROA_ID, "data_key": key, "editie": editie}
+    return _json(kop | {"sis": sis, "versie": versie, **resultaat})

@@ -12,6 +12,8 @@ omgevingen uit staan.
   en provincie (12, als 'provincie Utrecht'), alleen als typering; de schoolverlatersinformatie
   alleen landelijk (#450). Onder het niveau deelt ROA in naar sector en subsector (ook regionaal) en
   opleidingstype (alleen landelijk); de code in de kolom `waarde` geeft die hiërarchie (#745).
+  Het bestand is de editie die de catalogus de nieuwste noemt (`roa_bestand`, #1091), en de thema's van
+  schoolverlaters en prognose komen uit dat bestand.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import json
 import logging
 import math
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from fractions import Fraction
@@ -51,8 +54,12 @@ ROA_AGGREGATIE = {
     "subsector": "    opleidingssubsector (ONR2019)",
     "type": "      opleidingstype (ONR2019)",
 }
-_ROA_SIS = "Schoolverlatersinformatie (SIS 2024)"
-_ROA_PROGNOSE = "Risicoindicatoren en arbeidsmarktprognoses tot 2030"
+# De thema's van de schoolverlatersinformatie en de prognose, zoals elke editie ze spelt: "Schoolverlatersinformatie
+# (SIS 2024)" en "Risicoindicatoren en arbeidsmarktprognoses tot 2030" in editie 2025, "(SIS 2025)" en "…tot 2030,
+# actualisering" in editie 2026 (#1091). Het thema komt uit het geladen bestand, niet uit vaste tekst: een vaste tekst
+# gaf bij een nieuwe editie een lege tabel.
+_ROA_SIS_PATROON = re.compile(r"^Schoolverlatersinformatie \((SIS \d{4})\)$")
+_ROA_PROGNOSE_PATROON = re.compile(r"^Risicoindicatoren en arbeidsmarktprognoses tot 2030(?:, actualisering)?$")
 ROA_SIS_INDICATOREN = ("werkloosheid", "vast dienstverband", "buiten de vakrichting")
 ROA_PROGNOSE_INDICATOREN = (
     "ITA toekomstige arbeidsmarktsituatie in 2030",
@@ -240,18 +247,98 @@ def vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str,
 
 
 _ROA_ID = "ais2030"
+_ROA_SOORT = "arbeidsmarkt"  # het arbeidsmarktbestand van AIS 2030, met prognose en schoolverlatersinformatie
+# Een bewuste pin op een oudere editie: de resourcenaam uit roa_resources.json (bijv. "arbeidsmarkt" = editie 2025) en
+# de reden, die ook in docs/databronnen.md staat. None: de app laadt de editie die de catalogus de nieuwste noemt
+# (#1091; tot dan laadde ze "arbeidsmarkt", editie 2025, terwijl de catalogus 2026 als nieuwste markeerde).
+ROA_PIN: str | None = None
+ROA_PIN_REDEN: str | None = None
+
+
+class RoaThemaOnbekend(ValueError):
+    """Het geladen ROA-bestand heeft geen thema dat de app herkent: een fout, geen lege tabel (#1091)."""
+
+
+@dataclass(frozen=True)
+class RoaBestand:
+    """Het ROA-bestand dat de app laadt, volgens de catalogus (`roa_resources.json`)."""
+
+    resource: str  # de resourcenaam voor roa.load ("arbeidsmarkt_editie2026")
+    editie: str | None  # "2026"
+    bestandsnaam: str | None
+    themas: tuple[str, ...]  # de thema's uit het gevalideerde schema
+    pin: str | None = None  # de reden van een bewuste pin; None bij de nieuwste editie
+
+
+def _roa_resources() -> list[dict]:
+    from onderwijsbronnen import roa
+
+    record = next((r for r in roa.catalog() if r.get("_roa_id") == _ROA_ID), None)
+    if record is None:
+        raise ValueError(f"ROA-dataset {_ROA_ID} staat niet in de catalogus")
+    return [x for x in record.get("_resources") or [] if (x.get("schema") or {}).get("soort") == _ROA_SOORT]
+
+
+def roa_bestand() -> RoaBestand:
+    """Het arbeidsmarktbestand van AIS 2030 dat dashboards, get_roa_benchmark en de snippet laden (#1091): de editie
+    die de catalogus `meest_recente_editie` noemt, of de pin in ROA_PIN met haar reden. Eén plek, zodat dashboard,
+    chat, snippet en het venster Databronnen dezelfde editie noemen."""
+    resources = _roa_resources()
+    if ROA_PIN:
+        gekozen = [x for x in resources if x["naam"] == ROA_PIN]
+    else:
+        gekozen = [x for x in resources if x["schema"].get("meest_recente_editie")]
+    if len(gekozen) != 1:
+        namen = [x["naam"] for x in resources]
+        raise ValueError(f"geen eenduidig ROA-bestand ({ROA_PIN or 'meest_recente_editie'}) in {namen}")
+    schema = gekozen[0]["schema"]
+    return RoaBestand(
+        resource=gekozen[0]["naam"],
+        editie=schema.get("editie"),
+        bestandsnaam=schema.get("bestandsnaam"),
+        themas=tuple(schema.get("themas") or ()),
+        pin=ROA_PIN_REDEN if ROA_PIN else None,
+    )
+
+
+def roa_sis(themas: Iterable[str]) -> str | None:
+    """Het SIS-jaar ("SIS 2025") uit de thema's van een ROA-bestand of zijn schema; None zonder SIS-thema."""
+    return next((m.group(1) for t in themas if (m := _ROA_SIS_PATROON.match(str(t)))), None)
+
+
+def _themas(df: pd.DataFrame) -> tuple[str, ...]:
+    """De thema's van het geladen bestand, één keer per lading uitgerekend."""
+    themas = df.attrs.get("roa_themas")
+    if themas is None:
+        themas = tuple(sorted(df["thema"].dropna().astype(str).unique()))
+        df.attrs["roa_themas"] = themas
+    return themas
+
+
+def _thema(df: pd.DataFrame, patroon: re.Pattern, onderdeel: str) -> str:
+    """Het thema van een onderdeel in het geladen bestand; RoaThemaOnbekend als er geen (of meer dan één) is."""
+    gevonden = [t for t in _themas(df) if patroon.match(t)]
+    if len(gevonden) != 1:
+        raise RoaThemaOnbekend(
+            f"ROA-bestand zonder eenduidig thema voor {onderdeel} (gevonden: {gevonden or 'geen'}); "
+            f"thema's in het bestand: {list(_themas(df))}"
+        )
+    return gevonden[0]
 
 
 @actualiteit.Lading
 def _roa() -> pd.DataFrame:
     from onderwijsbronnen import roa
 
-    df = roa.load(_ROA_ID, "arbeidsmarkt")
+    bestand = roa_bestand()
+    df = roa.load(_ROA_ID, bestand.resource)
     brongebruik.meld(
         {
             "bron": "ROA",
             "dataset": _ROA_ID,
-            "editie": (df.attrs.get("schema") or {}).get("editie"),  # de editie van het bestand, uit riodata
+            # De editie van het bestand, uit het schema van onderwijsbronnen; de catalogus als het schema ontbreekt.
+            "editie": (df.attrs.get("schema") or {}).get("editie") or bestand.editie,
+            "sis": roa_sis(_themas(df)),  # "SIS 2025", uit de thema's van het bestand
             "versie": _versie(df),
             "opgehaald_op": actualiteit.nu().isoformat(),
         }
@@ -266,6 +353,29 @@ def _versie(df: pd.DataFrame) -> str:
 
 def roa_versie() -> str:
     return _versie(_roa())
+
+
+def roa_editie() -> str | None:
+    """De editie van het geladen ROA-bestand ("2026"): uit zijn schema, anders uit de catalogus."""
+    return (_roa().attrs.get("schema") or {}).get("editie") or roa_bestand().editie
+
+
+def roa_sis_label() -> str:
+    """Het SIS-jaar van het geladen bestand ("SIS 2025"); RoaThemaOnbekend zonder SIS-thema."""
+    return roa_sis([roa_sis_thema()]) or ""
+
+
+def roa_peiltekst(editie: str | None, sis: str | None, versie: str | None) -> str | None:
+    """Het peilmoment van een ROA-bestand ("editie 2026, SIS 2025, versie v20260901"), in de bronregel van de chat en
+    in het bronblok van de dashboards (#1091). Een deel dat er niet is, valt weg; None als er niets is."""
+    delen = [f"editie {editie}" if editie else None, sis, f"versie {versie}" if versie else None]
+    return ", ".join(d for d in delen if d) or None
+
+
+def roa_peilmoment() -> str | None:
+    """Het peilmoment van het geladen ROA-bestand (roa_peiltekst)."""
+    df = _roa()
+    return roa_peiltekst(roa_editie(), roa_sis(_themas(df)), _versie(df))
 
 
 def _getal(waarde) -> float | int | None:
@@ -387,11 +497,21 @@ def roa_opleidingstypen(subsector: str) -> list[str]:
     return volgorde["detailniveau"].astype(str).tolist()
 
 
+def roa_sis_thema(df: pd.DataFrame | None = None) -> str:
+    """Het SIS-thema van het geladen bestand ("Schoolverlatersinformatie (SIS 2025)"); RoaThemaOnbekend zonder."""
+    return _thema(_roa() if df is None else df, _ROA_SIS_PATROON, "de schoolverlatersinformatie")
+
+
+def roa_prognose_thema(df: pd.DataFrame | None = None) -> str:
+    """Het prognosethema van het geladen bestand; RoaThemaOnbekend zonder."""
+    return _thema(_roa() if df is None else df, _ROA_PROGNOSE_PATROON, "de prognose tot 2030")
+
+
 def roa_schoolverlaters(categorieen: tuple[str, ...] | dict[str, str], regio: str = ROA_LANDELIJK) -> dict:
     """Schoolverlatersinformatie per categorie; losse namen zijn opleidingsniveaus, een dict noemt de laag."""
-    return roa_waarden(categorieen, ROA_SIS_INDICATOREN, _ROA_SIS, regio)
+    return roa_waarden(categorieen, ROA_SIS_INDICATOREN, roa_sis_thema(), regio)
 
 
 def roa_prognose(categorieen: tuple[str, ...] | dict[str, str], regio: str = ROA_LANDELIJK) -> dict:
     """De prognose tot 2030 per categorie; losse namen zijn opleidingsniveaus, een dict noemt de laag."""
-    return roa_waarden(categorieen, ROA_PROGNOSE_INDICATOREN, _ROA_PROGNOSE, regio)
+    return roa_waarden(categorieen, ROA_PROGNOSE_INDICATOREN, roa_prognose_thema(), regio)

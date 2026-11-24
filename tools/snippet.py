@@ -244,11 +244,14 @@ def _roa_laadregels(args: dict) -> list[str]:
     """
     regio = args.get("regio") or "Nederland"
     niveau = "opleidingssector (ONR2019)" if args.get("sector") else "opleidingsniveau (ONR2019)"
+    # Hetzelfde bestand als de app: de editie die de catalogus de nieuwste noemt, of de pin (#1091).
+    bestand = arbeidsmarkt.roa_bestand()
     regels = [
         "import pandas as pd",
         "from onderwijsbronnen import roa",
         "",
-        'df = roa.load("ais2030", "arbeidsmarkt")',
+        f"# ROA AIS 2030, editie {bestand.editie}: het bestand dat de app laadt.",
+        f'df = roa.load("ais2030", {_lit(bestand.resource)})',
         f'df = df[df["regionaam"].str.lower().isin([{_lit(regio.lower())}, "nederland", "provincie " + {_lit(regio.lower())}])]',
     ]
     if onderdeel := args.get("onderdeel"):

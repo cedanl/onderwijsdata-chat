@@ -1028,7 +1028,8 @@ def _roa_prognose(onderwijs_type: str) -> dict:
 
 
 def _roa_schoolverlaters(onderwijs_type: str) -> dict:
-    """ROA-schoolverlatersinformatie (SIS 2024) per opleidingsniveau, in hele procenten, landelijk."""
+    """ROA-schoolverlatersinformatie (het SIS-jaar van het geladen bestand) per opleidingsniveau, in hele procenten,
+    landelijk. Een bestand zonder SIS-thema is een fout (RoaThemaOnbekend) en staat in niet_beschikbaar (#1091)."""
     try:
         waarden = arbeidsmarkt.roa_schoolverlaters(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception as e:
