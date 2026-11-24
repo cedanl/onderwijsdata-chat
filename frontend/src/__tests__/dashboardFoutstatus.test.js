@@ -123,6 +123,12 @@ describe('DashboardShell', () => {
     await render(createElement(DashboardShell, { instelling: 'Hogeschool Utrect', data: met }))
     expect(container.textContent).toContain('Bedoel je misschien: Hogeschool Utrecht?')
 
+    // #1102: een instelling die niet in het bestand staat, hoeft geen tikfout te zijn: de melding zegt niet dat de naam
+    // fout is.
+    expect(container.textContent).toContain('staat niet in het DUO-bestand waarop dit dashboard steunt')
+    expect(container.textContent).toContain('de naam hoeft niet fout te zijn')
+    expect(container.textContent).not.toContain('niet gevonden')
+
     const reden = 'Geen instellingsnaam lijkt hierop. Zoek op de naam, een afkorting of de instellingscode (BRIN).'
     const zonder = { gevonden: false, beschikbare_instellingen: [], geen_suggesties: reden }
     await render(createElement(DashboardShell, { instelling: 'XYZ', data: zonder }))

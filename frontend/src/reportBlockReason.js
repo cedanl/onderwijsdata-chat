@@ -1,4 +1,4 @@
-// Waarom "Genereer rapport" nu niet kan starten, als één korte reden (#648). Een tik zonder reden en zonder rapport
+// Waarom "Maak rapport" nu niet kan starten, als één korte reden (#648). Een tik zonder reden en zonder rapport
 // leek een kapotte knop. Dezelfde woorden als bij een vraag (sendBlockReason.js) voor wat bij beide speelt; wat
 // vanzelf overgaat, begint met "Even wachten:".
 const REDENEN = {

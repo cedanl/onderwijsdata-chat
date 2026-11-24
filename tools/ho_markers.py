@@ -177,6 +177,13 @@ def vo_deel_poort() -> bool:
     return opent_vo_context(vraag) and bool(_VO_NIVEAU.search(vraag) or _VSV.search(vraag))
 
 
+def beurt_over_vervolgonderwijs() -> bool:
+    """Gaat de vraag van de gebruiker in deze beurt over vervolgonderwijs (`vervolgcontext`)? Buiten een beurt niet: daar
+    beslist alleen de zoekterm."""
+    vraag = _beurtvraag.get()
+    return vraag is not None and vervolgcontext(vraag)
+
+
 def vo_context_poort(zoekterm: str) -> bool:
     """Gaat de zoekpoort voor vo-context open (#557, #877)? Op de vraag van de gebruiker als er een beurt loopt,
     anders op de zoekterm (#597)."""

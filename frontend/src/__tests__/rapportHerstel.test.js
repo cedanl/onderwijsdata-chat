@@ -95,7 +95,7 @@ describe('herstel na een geweigerd rapport (#515)', () => {
     await act(async () => { knop('Opnieuw proberen').click() })
     expect(chat.generateReport).not.toHaveBeenCalled()
 
-    const genereer = [...container.querySelectorAll('.onderzoeksvraag-dialoog button')].find(b => b.textContent === 'Genereer')
+    const genereer = [...container.querySelectorAll('.onderzoeksvraag-dialoog button')].find(b => b.textContent === 'Maak')
     await act(async () => { genereer.click() })
     expect(chat.generateReport).toHaveBeenCalledWith('tester', VRAAG)
     expect(chat.send).not.toHaveBeenCalled()

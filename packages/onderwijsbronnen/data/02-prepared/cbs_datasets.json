@@ -2,7 +2,7 @@
   {
     "leverancier": "CBS",
     "bron": "Gediplomeerden; onderwijssoort, woonregio",
-    "periode": "2011/'12-2023/'24",
+    "periode": "2011/'12-2024/'25",
     "onderwijstype": [
       "Allen"
     ],
@@ -52,7 +52,7 @@
   {
     "leverancier": "CBS",
     "bron": "Leerlingen en studenten; onderwijssoort, woonregio",
-    "periode": "2011/'12-2024/'25",
+    "periode": "2011/'12-2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -102,7 +102,7 @@
   {
     "leverancier": "CBS",
     "bron": "Gediplomeerden en afgestudeerden; onderwijssoort, vanaf 1900",
-    "periode": "1900/'01 - 2023/'24",
+    "periode": "1900/'01 - 2024/'25",
     "onderwijstype": [
       "Allen"
     ],
@@ -1528,7 +1528,7 @@
   {
     "leverancier": "CBS",
     "bron": "Leerlingen en studenten; onderwijssoort, vanaf 1900",
-    "periode": "1900/'01 - 2024/'25",
+    "periode": "1900/'01 - 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -2850,7 +2850,7 @@
   {
     "leverancier": "CBS",
     "bron": "Onderwijsinstellingen; grootte, soort, levensbeschouwelijke grondslag",
-    "periode": "1990/'91 - 2024/'25",
+    "periode": "1990/'91 - 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3005,7 +3005,7 @@
   {
     "leverancier": "CBS",
     "bron": "(Speciaal) basisonderwijs en speciale scholen; leerlingen, schoolregio",
-    "periode": "2000/'01-2024/'25",
+    "periode": "2000/'01-2025/'26",
     "onderwijstype": [
       "PO"
     ],
@@ -3056,7 +3056,7 @@
   {
     "leverancier": "CBS",
     "bron": "Schooladvies en herziening advies basisonderwijs; achtergrondkenmerken",
-    "periode": "2014/'15-2023/'24",
+    "periode": "2014/'15-2024/'25",
     "onderwijstype": [
       "PO"
     ],
@@ -3361,7 +3361,7 @@
   {
     "leverancier": "CBS",
     "bron": "Vo en vso; doorstroom en uitstroom, achtergrondkenmerken",
-    "periode": "2015/'16 naar 2016/'17 t/m 2022/'23 naar 2023/'24",
+    "periode": "2010/'11 naar 2011/'12 t/m 2024/'25 naar 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3411,7 +3411,7 @@
   {
     "leverancier": "CBS",
     "bron": "Vo-cohorten; hoogst behaald diploma, achtergrondkenmerken",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020",
     "onderwijstype": [
       "Allen"
     ],
@@ -3746,7 +3746,7 @@
   {
     "leverancier": "CBS",
     "bron": "Instromers mbo; bedrijfstakken 1 jaar eerder",
-    "periode": "2018/19-2024/25",
+    "periode": "2018/19-2025/26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3793,7 +3793,7 @@
   {
     "leverancier": "CBS",
     "bron": "Instromers mbo; maatschappelijke positie 1 jaar eerder, persoonskenmerken",
-    "periode": "2018/19-2024/'25",
+    "periode": "2018/19-2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3840,7 +3840,7 @@
   {
     "leverancier": "CBS",
     "bron": "Mbo door- en uitstroom, achtergrondkenmerken",
-    "periode": "2022/'23 naar studiejaar 2023/'24",
+    "periode": "2011/'12 naar 2012/'13 t/m 2024/'25 naar 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3887,7 +3887,7 @@
   {
     "leverancier": "CBS",
     "bron": "Gepromoveerden; ervaringen en duur promotietraject",
-    "periode": "2019",
+    "periode": "2019 en 2025",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -3972,7 +3972,7 @@
   {
     "leverancier": "CBS",
     "bron": "Werkzame gepromoveerden; arbeidskenmerken",
-    "periode": "2019",
+    "periode": "2019 en 2025",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -4073,7 +4073,7 @@
   {
     "leverancier": "CBS",
     "bron": "Studeren in het buitenland; studiepuntmobiliteit hbo en wo",
-    "periode": "2022 - 2025",
+    "periode": "2022 - 2026",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -4468,7 +4468,7 @@
   {
     "leverancier": "CBS",
     "bron": "Wetenschappelijk onderwijs; promoties, studierichting",
-    "periode": "2017/'18 - 2023/'24",
+    "periode": "2016/'17-2024/'25",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -4861,7 +4861,7 @@
   {
     "leverancier": "CBS",
     "bron": "Hbo-cohorten; eerste hbo-diploma, studierichting",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "Allen"
     ],
@@ -4969,7 +4969,7 @@
   {
     "leverancier": "CBS",
     "bron": "Ho-cohorten; behaalde hbo- en wo-diploma's",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "Allen"
     ],
@@ -5156,7 +5156,7 @@
   {
     "leverancier": "CBS",
     "bron": "Wo-cohorten; eerste wo-diploma, studierichting",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "Allen"
     ],
@@ -5264,7 +5264,7 @@
   {
     "leverancier": "CBS",
     "bron": "Wo-cohorten; hoogst behaalde wo-diploma, vooropleiding",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "Allen"
     ],
@@ -6768,7 +6768,7 @@
   {
     "leverancier": "CBS",
     "bron": "Leven lang ontwikkelen; onderwijskenmerken",
-    "periode": "2021 - 2024",
+    "periode": "2021 - 2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -7651,7 +7651,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7698,7 +7698,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7745,7 +7745,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; uitkering na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7792,7 +7792,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7839,7 +7839,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7885,7 +7885,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7932,7 +7932,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -7979,7 +7979,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2006/'07-2022/'2023",
+    "periode": "2006/'07-2023/'2024",
     "onderwijstype": [
       "Allen"
     ],
@@ -8025,7 +8025,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; uitkering na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -8072,7 +8072,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2006/'07 - 2022/'23",
+    "periode": "2006/'07 - 2023/'24",
     "onderwijstype": [
       "Allen"
     ],
@@ -8118,7 +8118,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogstbehaald onderwijsniveau en regio",
-    "periode": "2013 - 2024",
+    "periode": "2013 - 2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -8296,7 +8296,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogst behaald onderwijsniveau en herkomst",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -8342,7 +8342,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogstbehaald onderwijsniveau en onderwijsrichting",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -8476,7 +8476,7 @@
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst",
-    "periode": "2012/'13 - 2023/'24",
+    "periode": "2012/'13 - 2024/'25",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8545,7 +8545,7 @@
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters (VSV); terugkeer in onderwijs na schoolverlaten",
-    "periode": "2007/'08-2021/'22",
+    "periode": "2007/'08-2022/'23",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8633,7 +8633,7 @@
   {
     "leverancier": "CBS",
     "bron": "VSV; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8697,7 +8697,7 @@
   {
     "leverancier": "CBS",
     "bron": "VSV; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8761,7 +8761,7 @@
   {
     "leverancier": "CBS",
     "bron": "VSV; uitkeringen na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8825,7 +8825,7 @@
   {
     "leverancier": "CBS",
     "bron": "VSV met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8889,7 +8889,7 @@
   {
     "leverancier": "CBS",
     "bron": "VSV werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -8952,7 +8952,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; onderwijsniveau",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -9180,7 +9180,7 @@
   {
     "leverancier": "CBS",
     "bron": "Binding met de arbeidsmarkt, beroeps- en niet-beroepsbevolking; onderwijs",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -9225,7 +9225,7 @@
   {
     "leverancier": "CBS",
     "bron": "Vacatures; overheid en onderwijs",
-    "periode": "1997 - 2025",
+    "periode": "1997 1e kwartaal - 2026 3e kwartaal",
     "onderwijstype": [
       "Allen"
     ],
@@ -9973,7 +9973,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsmarktsituatie jongeren (15 tot 27 jaar); persoonskenmerken",
-    "periode": "2005-2024",
+    "periode": "2005-2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -10020,7 +10020,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; jongeren",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -10248,7 +10248,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; kerncijfers",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [],
     "doel": "Kerncijfers over arbeidsparticipatie, werkloosheid en niet-beroepsbevolking voor Nederland, uitgesplitst naar geslacht en leeftijd. Onmisbaar voor beleidsmonitoring van de arbeidsmarkt.",
     "frequentie": "Kwartaal",
@@ -10474,7 +10474,7 @@
   {
     "leverancier": "CBS",
     "bron": "Werkloosheidsduur; per kwartaal en jaar",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [],
     "doel": "Duur van werkloosheid uitgesplitst naar geslacht, leeftijd en herkomst. Inzicht in hardnekkige versus conjuncturele werkloosheid — relevant voor activeringsprogramma's en sociale zekerheid.",
     "frequentie": "Kwartaal",
@@ -10612,7 +10612,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; gemeenten",
-    "periode": "2014-2023",
+    "periode": "2014 - 2023",
     "onderwijstype": [],
     "doel": "Arbeidsparticipatie en werkloosheid per gemeente. Biedt inzicht in regionale arbeidsmarktverschillen — bruikbaar voor beleid op het gebied van regionale economie en sociale zekerheid.",
     "frequentie": "Jaarlijks",
@@ -10726,7 +10726,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolkingsontwikkeling; per maand",
-    "periode": "1995-2026",
+    "periode": "Januari 1995 - september 2026",
     "onderwijstype": [],
     "doel": "Maandelijkse ontwikkeling van de Nederlandse bevolking: geboorten, sterfgevallen, immigratie en emigratie. Biedt actuele en historische demografische kerncijfers voor heel Nederland.",
     "frequentie": "Maandelijks",
@@ -10821,7 +10821,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolkingsontwikkeling; regio per maand",
-    "periode": "2002-2026",
+    "periode": "Januari 2002 - september 2026",
     "onderwijstype": [],
     "doel": "Maandelijkse bevolkingsontwikkeling per regio (gemeente, provincie, COROP). Inzicht in regionale demografische trends: krimp, groei, migratiebewegingen.",
     "frequentie": "Maandelijks",
@@ -10979,7 +10979,7 @@
   {
     "leverancier": "CBS",
     "bron": "Immi- en emigratie; nationaliteit",
-    "periode": "2010-2024",
+    "periode": "2010-2025",
     "onderwijstype": [],
     "doel": "Immigratie- en emigratiecijfers per nationaliteit. Inzicht in migratiestromen naar Nederland — relevant voor integratiebeleid, arbeidsmarkt en demografische planning.",
     "frequentie": "Jaarlijks",
@@ -11068,7 +11068,7 @@
   {
     "leverancier": "CBS",
     "bron": "Bevolking; leeftijd, burgerlijke staat",
-    "periode": "1950-2025",
+    "periode": "1950 - 2026",
     "onderwijstype": [],
     "doel": "Lange tijdreeks van de Nederlandse bevolking naar leeftijd en burgerlijke staat. Toont vergrijzing, ontgroening en huishoudenssamenstelling over meer dan 70 jaar.",
     "frequentie": "Jaarlijks",
@@ -11710,7 +11710,7 @@
   {
     "leverancier": "CBS",
     "bron": "Overheidsfinanciën; kerncijfers",
-    "periode": "1995-2024",
+    "periode": "1995 - 2025; 1999 kw I - 2026 kw II",
     "onderwijstype": [],
     "doel": "Kerncijfers over de overheidsfinanciën: inkomsten, uitgaven, overheidstekort en staatsschuld als percentage van het BBP. Essentieel voor analyses van begrotingsbeleid en financiële sturing.",
     "frequentie": "Jaarlijks",
@@ -11949,7 +11949,7 @@
   {
     "leverancier": "CBS",
     "bron": "BBP; kwartalen, waarden",
-    "periode": "1995-2025",
+    "periode": "1995 - 2025, KwI 1995 - KwIII 2026",
     "onderwijstype": [],
     "doel": "Bruto binnenlands product (BBP) per kwartaal in lopende en constante prijzen. Toont de economische groei van Nederland — onmisbaar als context voor beleidseffectiviteit en financiële sturing.",
     "frequentie": "Kwartaal",
@@ -13637,7 +13637,7 @@
   {
     "leverancier": "CBS",
     "bron": "Welvaart van huishoudens; kerncijfers",
-    "periode": "2011-2024",
+    "periode": "2011 t/m 2024",
     "onderwijstype": [],
     "doel": "Kerncijfers over inkomen, vermogen en bestedingen van huishoudens. Biedt inzicht in de welvaartsontwikkeling van Nederlandse huishoudens — relevant voor brede-welvaartmonitoring.",
     "frequentie": "Jaarlijks",
@@ -14103,7 +14103,7 @@
   {
     "leverancier": "CBS",
     "bron": "Levensverwachting vanaf 1861",
-    "periode": "1861-2024",
+    "periode": "1861 - 2025",
     "onderwijstype": [],
     "doel": "Levensverwachting bij geboorte en op hogere leeftijden voor mannen en vrouwen, vanaf 1861. Toont de langetermijnontwikkeling van gezondheid in Nederland — kernindicator voor brede welvaart.",
     "frequentie": "Jaarlijks",
@@ -14166,7 +14166,7 @@
   {
     "leverancier": "CBS",
     "bron": "Regionale kerncijfers Nederland",
-    "periode": "1995-2026",
+    "periode": "Jaarcijfers 1995 - 2026",
     "onderwijstype": [],
     "doel": "Brede set van kerncijfers per gemeente, wijk en buurt: bevolking, woningen, arbeid, inkomen en meer. Geschikt voor vergelijkende regionale analyses en monitor brede welvaart op lokaal niveau.",
     "frequentie": "Jaarlijks",
@@ -16548,7 +16548,7 @@
   {
     "leverancier": "CBS",
     "bron": "Jongeren; voortijdig schoolverlaters, geslacht, herkomst",
-    "periode": "2003 - 2025",
+    "periode": "2013-2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -20131,7 +20131,7 @@
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters; geslacht, woonregio",
-    "periode": "2012/'13 - 2023/'24",
+    "periode": "2012/'13 - 2024/'25",
     "onderwijstype": [
       "Allen"
     ],

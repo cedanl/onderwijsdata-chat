@@ -109,7 +109,8 @@ export default function PrivacyInhoud() {
           gaat om inloggen, een bericht of feedback sturen, een Word-document maken en de koppeling voor andere
           AI-apps gebruiken. Dat is één rij per poging, hoogstens tien minuten lang. Bij het inloggen staat daar ook
           je IP-adres bij. Alles staat onder een pseudoniem (een code waar je accountnaam of adres niet uit terug te
-          halen is). De server maakt dat pseudoniem met een eigen geheim.
+          halen is). De server maakt dat pseudoniem met een eigen geheim. Het getal per dag hoort toch bij je account:
+          het zit in de export, en gaat weg als je al je gegevens verwijdert.
         </li>
         <li>
           <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is. Je gesprekken
@@ -166,19 +167,19 @@ export default function PrivacyInhoud() {
         <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
-          dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald en het bewijs per antwoord. Niet erin:
-          wat alleen in je browser staat.
+          dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je tokengebruik (wat je vragen
+          het model kostten, één getal per dag). Niet erin: wat alleen in je browser staat.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;.
           Typ daarna het woord &ldquo;verwijder&rdquo;. Dat kan niet ongedaan worden gemaakt, dus exporteer eerst.
           Dan verdwijnt alles wat de server onder je account bewaart. Dat zijn je gesprekken, rapporten en
-          dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald en het bewijs per antwoord. Ook de
+          dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je tokengebruik. Ook de
           kopie in deze browser gaat weg. Je wordt uitgelogd, ook op een ander apparaat.
         </li>
         <li>
           Wat blijft na het verwijderen: de serverlogs (zonder gesprekstekst) en de back-ups van de beheerder. Ook de
-          tellers blijven staan, onder een pseudoniem, hoogstens 62 dagen. Verder blijft een controlecode van je
+          tellers van het inloggen en de limieten blijven staan, onder een pseudoniem, hoogstens tien minuten. Verder blijft een controlecode van je
           accountnaam staan, tot je laatste sessie verlopen is. Een controlecode van een sessie waarmee je uitlogde
           blijft staan tot zij verloopt. De kopie in de browser van een ander apparaat blijft staan tot je daar uitlogt.
         </li>

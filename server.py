@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import logging
 import sys
-import tomllib
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -18,7 +17,8 @@ load_dotenv()
 
 # JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
-from core import bronstatus, config, foutmeldingen
+from core import bronstatus, config, foutmeldingen, openapi_schema
+from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
@@ -154,21 +154,14 @@ async def ready_endpoint() -> JSONResponse:
     return JSONResponse(content=result, status_code=status_code)
 
 
-_PYPROJECT = Path(__file__).parent / "pyproject.toml"
-
-
 @_routes.get("/version", tags=["info"])
 @_routes.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
     """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
     met de digest uit het manifest (#1029) en de dataversie van UWV en ROA (CH-46)."""
 
-    def _read() -> str:
-        with open(_PYPROJECT, "rb") as f:
-            return tomllib.load(f)["project"]["version"]
-
     return {
-        "version": Config.APP_VERSION or await asyncio.to_thread(_read),
+        "version": await asyncio.to_thread(app_versie),
         # GIT_COMMIT is volledig (de installatieregel van een snippet heeft dat nodig, #888); hier de korte vorm.
         "commit": korte_commit(Config.GIT_COMMIT) or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).
@@ -265,6 +258,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     mcp = McpEindpunt.uit_config()
     app = FastAPI(
         title="Onderwijsdata Chat",
+        version=app_versie(),
         docs_url="/api/docs" if docs else None,
         redoc_url="/redoc" if docs else None,
         openapi_url="/api/openapi.json" if docs else None,
@@ -272,6 +266,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     )
     # Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
     foutmeldingen.registreer(app)
+    openapi_schema.registreer(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=Config.get_parsed_cors_origins(),

@@ -41,3 +41,10 @@ export function alsFiguur(soort, data, { titel, categorie, waardeAs } = {}) {
     },
   }
 }
+
+// De waardekolommen van de tabel noemen de eenheid van de as (#1101): een tabel die naar een spreadsheet gaat, houdt
+// alleen de kopregel mee, en "0, -5, 5" is dan niet te onderscheiden van aantallen. De labelkolommen blijven staan.
+export function metEenheid(tabel, eenheid) {
+  if (!tabel || !eenheid) return tabel
+  return { ...tabel, kolommen: tabel.kolommen.map((kolom, i) => (i < tabel.labels ? kolom : `${kolom} (${eenheid})`)) }
+}

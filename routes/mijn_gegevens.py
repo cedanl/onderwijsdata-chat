@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from agent import beurtbewijs, recepten
 from core import auth
 from core.auth import get_current_user
+from core.openapi_schema import bijlage
 from persistence import export, verwijderen
 
 from .auth import vergeet_oidc_gebruiker
@@ -23,19 +24,32 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["mijn-gegevens"])
 
-GEEN_EIGEN_ACCOUNT = "Zonder inloggen is er geen eigen account om te verwijderen."
+GEEN_EIGEN_ACCOUNT = "Zonder inloggen is er geen eigen account om te exporteren of te verwijderen."
 
 
 def bestandsnaam(nu: datetime) -> str:
     return f"openedudata-mijn-gegevens-{nu:%Y-%m-%d}.json"
 
 
-@router.get("/api/mijn-gegevens/export")
-def exporteer(username: str = Depends(get_current_user)) -> StreamingResponse:
-    """Alle gesprekken, werkboeken, feedback en datarecepten van deze gebruiker als JSON-bijlage (#645).
+def eigen_account(username: str = Depends(get_current_user)) -> str:
+    """De ingelogde gebruiker; zonder login 404: dan is iedereen de gedeelde `gast`, en die wist of exporteert niet het
+    werk van alle bezoekers (#1118). AUTH_ENABLED wordt bij elke aanroep gelezen."""
+    if not auth.AUTH_ENABLED:
+        raise HTTPException(status_code=404, detail=GEEN_EIGEN_ACCOUNT)
+    return username
+
+
+@router.get(
+    "/api/mijn-gegevens/export",
+    response_class=StreamingResponse,
+    responses=bijlage("application/json", "Alle gegevens van dit account als JSON-bijlage."),
+)
+def exporteer(username: Annotated[str, Depends(eigen_account)]) -> StreamingResponse:
+    """Alle gesprekken, werkboeken, feedback, datarecepten, het bewijs per antwoord en het tokengebruik van deze
+    gebruiker als JSON-bijlage (#645, #1074).
 
     De export bevat persoonsgegevens (accountnaam, vrije tekst): alleen met het eigen token en nooit in
-    een cache. Hij wordt rij voor rij geschreven; breekt hij halverwege af, dan ziet de browser een
+    een cache. Zonder login 404, zoals bij verwijderen (#1118). Hij wordt rij voor rij geschreven; breekt hij halverwege af, dan ziet de browser een
     onvolledige download.
     """
     nu = datetime.now(UTC)
@@ -44,14 +58,6 @@ def exporteer(username: str = Depends(get_current_user)) -> StreamingResponse:
         "Cache-Control": "no-store",
     }
     return StreamingResponse(export.export_json_chunks(username, nu), media_type="application/json", headers=headers)
-
-
-def eigen_account(username: str = Depends(get_current_user)) -> str:
-    """De ingelogde gebruiker; zonder login 404: dan is iedereen de gedeelde `gast`, en die wist niet het werk van
-    alle bezoekers. AUTH_ENABLED wordt bij elke aanroep gelezen."""
-    if not auth.AUTH_ENABLED:
-        raise HTTPException(status_code=404, detail=GEEN_EIGEN_ACCOUNT)
-    return username
 
 
 class Bevestiging(BaseModel):

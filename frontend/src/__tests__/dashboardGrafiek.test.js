@@ -14,9 +14,10 @@ vi.mock('react-chartjs-2', async () => {
   const Canvas = ({ data, options, ...canvas }) => maak('canvas', { role: 'img', ...canvas })
   return { Line: Canvas, Bar: Canvas }
 })
-import { alsFiguur, waardeAsTitel } from '../components/dashboards/shared/grafiek-figuur'
+import { alsFiguur, metEenheid, waardeAsTitel } from '../components/dashboards/shared/grafiek-figuur'
 import { figuurBeschrijving } from '../figuurBeschrijving'
 import { figuurTabel } from '../figuurTabel'
+import FiguurTabel from '../components/FiguurTabel'
 import { ChartCard, Grafiek, horizontalBarOpts, buildIndexChartOpts, SectorTrendChart } from '../components/dashboards/shared/index'
 import { pasStandaardenToe, FONT_GROOTTE, labelRegels } from '../components/dashboards/shared/chart-opts'
 
@@ -57,6 +58,31 @@ describe('alsFiguur (#905)', () => {
   it('leest de titel van de waardeas uit de opties, ook van een liggende grafiek', () => {
     expect(waardeAsTitel(buildIndexChartOpts(false))).toBe('% verandering ten opzichte van het startjaar')
     expect(waardeAsTitel(horizontalBarOpts(false))).toBeUndefined()
+  })
+})
+
+describe('waardentabel met eenheid (#1101)', () => {
+  const EENHEID = '% verandering ten opzichte van 2021/22'
+
+  it('zet de eenheid achter elke waardekolom en laat de labelkolom staan', () => {
+    const tabel = figuurTabel(alsFiguur('line', LIJN))
+    expect(metEenheid(tabel, EENHEID).kolommen).toEqual([
+      'Jaar', `Hogeschool Utrecht (${EENHEID})`, `Regio (${EENHEID})`,
+    ])
+    expect(metEenheid(tabel, EENHEID).rijen).toEqual(tabel.rijen)
+  })
+
+  it('laat een tabel zonder eenheid zoals hij is', () => {
+    const tabel = figuurTabel(alsFiguur('line', LIJN))
+    expect(metEenheid(tabel, undefined)).toBe(tabel)
+    expect(metEenheid(null, EENHEID)).toBeNull()
+  })
+
+  it('toont een waarde die op nul afrondt als 0, nooit als -0', async () => {
+    const tabel = { kolommen: ['Jaar', 'Reeks'], labels: 1, rijen: [['2023', -0], ['2024', -0.0004], ['2025', -3], ['2026', 4.5]] }
+    await render(createElement(FiguurTabel, { tabel }))
+    const cellen = [...container.querySelectorAll('tbody td.getal')].map(td => td.textContent)
+    expect(cellen).toEqual(['0', '0', '-3', '4,5'])
   })
 })
 
@@ -120,7 +146,7 @@ afterEach(async () => {
 describe('Grafiek in een ChartCard (#905)', () => {
   it('geeft het canvas een naam met de cijfers en zet de waarden ingeklapt eronder', async () => {
     await render(createElement(ChartCard, { title: 'Ingeschrevenen per jaar' },
-      createElement(Grafiek, { soort: 'line', data: LIJN, options: buildIndexChartOpts(false), hoogte: 200 })))
+      createElement(Grafiek, { soort: 'line', data: LIJN, options: buildIndexChartOpts(false), hoogte: 200, eenheidInKop: true })))
     const canvas = container.querySelector('canvas')
     expect(canvas.getAttribute('role')).toBe('img')
     expect(canvas.getAttribute('aria-label')).toMatch(/^Lijngrafiek: Ingeschrevenen per jaar\. .*Hogeschool Utrecht: 3 punten/)
@@ -130,6 +156,20 @@ describe('Grafiek in een ChartCard (#905)', () => {
     // De titel is een kop onder de sectiekop (h2), niet een div met een aria-label zonder rol.
     expect(container.querySelector('h3.chart-title').textContent).toBe('Ingeschrevenen per jaar')
     expect(container.querySelector('.chart-card').hasAttribute('aria-label')).toBe(false)
+    // De waardekolommen noemen de eenheid van de as (#1101): in een spreadsheet blijft alleen de kopregel over.
+    const koppen = [...details.querySelectorAll('th')].map(th => th.textContent)
+    expect(koppen).toEqual([
+      'Jaar',
+      'Hogeschool Utrecht (% verandering ten opzichte van het startjaar)',
+      'Regio (% verandering ten opzichte van het startjaar)',
+    ])
+  })
+
+  it('zet de astitel niet in de kolomkoppen als de grafiek dat niet vraagt', async () => {
+    await render(createElement(ChartCard, { title: 'Ingeschrevenen per jaar' },
+      createElement(Grafiek, { soort: 'line', data: LIJN, options: buildIndexChartOpts(false), hoogte: 200 })))
+    const koppen = [...container.querySelectorAll('details.waarden-details th')].map(th => th.textContent)
+    expect(koppen).toEqual(['Jaar', 'Hogeschool Utrecht', 'Regio'])
   })
 
   it('heeft een knop Abs/% met een vaste naam en aria-pressed', async () => {

@@ -198,7 +198,7 @@ def test_get_onder_api_blijft_ongewijzigd_naast_head(tmp_path):
 def test_head_komt_niet_in_het_schema(tmp_path):
     paden = _app_met_eigen_routes(tmp_path).openapi()["paths"]
 
-    assert paden["/{full_path}"].keys() == {"get"}
+    assert "/{full_path}" not in paden
     assert not [pad for pad, ops in paden.items() if "head" in ops]
 
 

@@ -6,7 +6,7 @@ import {
   wisselBeurt, wisselFiguur,
 } from '../rapportKeuze'
 
-// Before a report (#751): the research question it answers, filled in and open to change (#732). Genereer, or Enter
+// Before a report (#751): the research question it answers, filled in and open to change (#732). Maak, or Enter
 // as in the chat input, sends the text along; an empty field sends none, and the server takes the first question.
 // Escape or Annuleren closes without a report.
 //
@@ -57,7 +57,7 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
   const teVeel = keuze && figurenAan.length > MAX_FIGUREN
   const [open, setOpen] = useState(!klein || teVeel)
   const fout = nietsGekozen ? NIETS_GEKOZEN : teVeel ? teVeelFiguren(figurenAan.length) : null
-  // Until the list is in, Genereer would send the whole conversation: it comes in a moment, or the request fails.
+  // Until the list is in, Maak would send the whole conversation: it comes in a moment, or the request fails.
   const wacht = checklist?.status === 'laden'
 
   // Too many figures on opens the list, so the figures to switch off are in view; nothing closes it but the user.
@@ -158,7 +158,7 @@ export default function OnderzoeksvraagDialoog({ voorstel, max, checklist, onGen
           <div className="confirm-actions">
             <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
             <button type="submit" className="confirm-primary" aria-disabled={wacht || Boolean(fout) || undefined}
-              aria-describedby={fout ? foutId : undefined}>Genereer</button>
+              aria-describedby={fout ? foutId : undefined}>Maak</button>
           </div>
         </form>
       </div>

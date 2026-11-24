@@ -111,4 +111,6 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
             headers={"Cache-Control": "no-cache"},
         )
 
-    app.router.add_api_route("/{full_path:path}", serve_spa, methods=["GET"], route_class_override=_SpaRoute)
+    app.router.add_api_route(
+        "/{full_path:path}", serve_spa, methods=["GET"], include_in_schema=False, route_class_override=_SpaRoute
+    )

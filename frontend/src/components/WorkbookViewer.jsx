@@ -11,6 +11,7 @@ import RapportExportMenu from './RapportExportMenu'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 import DashboardPrintkop from './DashboardPrintkop'
+import VoorbeeldMelding from './VoorbeeldMelding'
 
 // De vaste dashboards (Chart.js en alle dashboardcode) laden pas als er een opent: de rapportenroute gebruikt deze
 // viewer ook en had ze anders altijd mee (#907).
@@ -34,7 +35,7 @@ function DashboardLaadt() {
 // save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
 // frame follows (#568). sector: the level (mbo, hbo, wo) of `instelling` when the list knows it, for a dashboard card
 // that only exists for one level (#973).
-export default function WorkbookViewer({ workbook, instelling, sector = null, gekozenInstelling = '', onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
+export default function WorkbookViewer({ workbook, instelling, sector = null, gekozenInstelling = '', voorbeeld = false, onKiesInstelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
   const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -192,6 +193,7 @@ export default function WorkbookViewer({ workbook, instelling, sector = null, ge
             return (
               <>
                 <DashboardPrintkop titel={workbook.title} instelling={instelling} />
+                {voorbeeld && <VoorbeeldMelding instelling={instelling} onKies={onKiesInstelling} />}
                 <Suspense fallback={<DashboardLaadt />}><BuiltinDash instelling={instelling} sector={sector} /></Suspense>
               </>
             )

@@ -6,9 +6,12 @@ er wel, maar als één DUO-alinea; wat tussen bron en eigen administratie meesta
 inschrijvingen, wat niet meetelt, opleidingsvorm, afronding) moest de lezer er zelf uit halen. Hier staat het per
 dataset waarop het rapport rust, alleen wat de metadata van de geladen key zegt: test_report_vergelijken leest elke
 zin na in de teldefinitie van DUO.
+
+De slotzin noemt de koepel van de sector van het rapport: de MBO Raad bij mbo, de Vereniging Hogescholen bij hbo,
+Universiteiten van Nederland bij wo, en bij een rapport over meer sectoren alle betrokken koepels (#1089).
 """
 
-from tools import store
+from tools import catalog, store
 from tools.duo import OPLEIDINGSVORM_DATASETS
 from tools.store import KeyMeta
 
@@ -30,10 +33,21 @@ OPLEIDINGSVORM = (
     "Voltijd, deeltijd en duaal staan in aparte rijen en een totaal telt ze samen, tenzij het rapport één "
     "opleidingsvorm kiest."
 )
+# De koepel die bij een sector hoort; een rapport noemt alleen de koepels van de sectoren waarover zijn data gaat (#1089).
+KOEPELS = {"mbo": "de MBO Raad", "hbo": "de Vereniging Hogescholen", "wo": "Universiteiten van Nederland"}
 SLOT = (
-    "Leg bij een verschil met eigen cijfers of een andere publicatie, zoals die van de Vereniging Hogescholen, eerst "
+    "Leg bij een verschil met eigen cijfers of een andere publicatie{koepels} eerst "
     "de peildatum, de telwijze en de versie van de data naast elkaar; de versie staat bij de bronnen."
 )
+
+
+def _slot(sectoren: set[str]) -> str:
+    """De slotzin met de koepels van de sectoren (mbo, hbo, wo) van het rapport; zonder bekende sector zonder koepel."""
+    namen = [naam for sector, naam in KOEPELS.items() if sector in sectoren]
+    if not namen:
+        return SLOT.format(koepels="")
+    opsomming = " en ".join([", ".join(namen[:-1]), namen[-1]] if len(namen) > 1 else namen)
+    return SLOT.format(koepels=f", zoals die van {opsomming},")
 
 
 def _duo(known: KeyMeta) -> list[str]:
@@ -68,14 +82,16 @@ def vergelijken(datasets: list[dict]) -> list[dict]:
     """
     items: list[dict] = []
     gezien: set[str] = set()
+    sectoren: set[str] = set()
     for ds in datasets:
         known = store.meta(ds["data_key"])
         if known is None or known.dataset in gezien:
             continue
         gezien.add(known.dataset)
+        sectoren.update(catalog.sectoren(known.dataset))
         zinnen = _duo(known) if known.bron == "duo" else _cbs(known) if known.bron == "cbs" else []
         if zinnen:
             items.append({"begrip": f"{BEGRIP} ({known.dataset})", "definitie": " ".join(zinnen)})
     if items:
-        items.append({"begrip": BEGRIP, "definitie": SLOT})
+        items.append({"begrip": BEGRIP, "definitie": _slot(sectoren)})
     return items

@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, field
 
 from tools import fouten, herlaad, store
-from tools.schemas import TOOL_COMPUTE_KPI, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
+from tools.schemas import TOOL_COMPUTE_KPI, TOOL_GET_MBO_INDICATOREN, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
 from . import recepten
 from .bronvermelding import vastgelegde_bronnen
@@ -16,6 +16,9 @@ from .bronvermelding import vastgelegde_bronnen
 # Rekentools waarvan de uitkomst in de chat al uit de data kwam: bewijs voor het rapport (#397).
 # query_data alleen met aggregatie: een rijenselectie staat al in de datasetcontext.
 _REKENTOOLS = frozenset({TOOL_COMPUTE_KPI, TOOL_RUN_ANALYSIS})
+# Tools zonder tabel in de store (geen data_key) waarvan het toolresultaat zelf het bewijs is: het rapport mag de getallen
+# erin noemen, en het bewijs hoort bij de beurt waarin ze ontstonden (#1077). De mbo-indicatoren per instelling.
+BEWIJSTOOLS = frozenset({TOOL_GET_MBO_INDICATOREN})
 _MAX_REKENBEWIJS = 30
 
 # Wat lineage, rekenbewijs en bronregels sinds de vorige afgeronde beurt kregen: de inhoud van haar rij in
@@ -26,8 +29,23 @@ _NIEUW_REKENBEWIJS = "_nieuw_rekenbewijs"
 _NIEUWE_BRONNEN = "_nieuwe_bronnen"
 
 
+def is_bewijs_zonder_tabel(bewijs: dict) -> bool:
+    """Of een item uit het rekenbewijs het resultaat van een `BEWIJSTOOLS`-tool is: het rust op geen key."""
+    return bewijs.get("tool") in BEWIJSTOOLS
+
+
+def met_vraag(bewijs: dict, vraag: int | None) -> dict:
+    """Het item met het nummer van zijn vraag, of zonder nummer als dat onbekend is (een antwoord buiten de geschiedenis).
+
+    Een item van een bron met een tabel in de store heeft er geen en blijft zoals het was."""
+    if "vraag" not in bewijs:
+        return bewijs
+    zonder = {k: v for k, v in bewijs.items() if k != "vraag"}
+    return {**zonder, "vraag": vraag} if vraag else zonder
+
+
 def _rekent(call: dict) -> bool:
-    if call.get("name") in _REKENTOOLS:
+    if call.get("name") in _REKENTOOLS | BEWIJSTOOLS:
         return True
     return call.get("name") == TOOL_QUERY_DATA and bool((call.get("arguments") or {}).get("aggregate"))
 
@@ -196,6 +214,9 @@ def record_rekenbewijs(session: dict, tool_result: str, call: dict) -> None:
     Een KPI of afgeleid getal (som, verschil) dat compute_kpi of run_analysis gaf, is in de
     rapportfase anders geen bewijs: die controleert alleen zijn eigen toolresultaten.
     Alleen het toolresultaat telt, nooit de vrije antwoordtekst.
+
+    Hetzelfde geldt voor een tool zonder tabel in de store (`BEWIJSTOOLS`, #1077): haar cijfers staan nergens anders. Zo'n
+    item krijgt het nummer van de vraag waarbij het ontstond (`vraag`), want er is geen key die het aan een beurt bindt.
     """
     if not _rekent(call) or fouten.code(tool_result) is not None:
         return
@@ -206,6 +227,8 @@ def record_rekenbewijs(session: dict, tool_result: str, call: dict) -> None:
     if not isinstance(parsed, dict) or "fout" in parsed:
         return
     nieuw = {"tool": call["name"], "argumenten": call.get("arguments") or {}, "resultaat": tool_result}
+    if call["name"] in BEWIJSTOOLS:
+        nieuw["vraag"] = len(gebruikersvragen(session))
     voeg_rekenbewijs_toe(session, [nieuw])
     voeg_rekenbewijs_toe(session, [nieuw], sleutel=_NIEUW_REKENBEWIJS)
 

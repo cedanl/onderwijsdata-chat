@@ -2,7 +2,7 @@
   {
     "leverancier": "CBS",
     "bron": "Gediplomeerden; onderwijssoort, woonregio",
-    "periode": "2011/'12-2023/'24",
+    "periode": "2011/'12-2024/'25",
     "onderwijstype": [
       "Allen"
     ],
@@ -141,13 +141,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "704eecf8ef398521",
-      "bronrevisie": "249a7681648587e5"
+      "bronrevisie": "a23fc2a23c05cc2d"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Leerlingen en studenten; onderwijssoort, woonregio",
-    "periode": "2011/'12-2024/'25",
+    "periode": "2011/'12-2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -290,13 +290,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "257f8fd569950744",
-      "bronrevisie": "a23fc2a23c05cc2d"
+      "bronrevisie": "ce3aaa24aae7193a"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Gediplomeerden en afgestudeerden; onderwijssoort, vanaf 1900",
-    "periode": "1900/'01 - 2023/'24",
+    "periode": "1900/'01 - 2024/'25",
     "onderwijstype": [
       "Allen"
     ],
@@ -2102,13 +2102,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "dd8863a128df4475",
-      "bronrevisie": "a0d1331cdbf5d9b5"
+      "bronrevisie": "24cb523160f08f01"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Leerlingen en studenten; onderwijssoort, vanaf 1900",
-    "periode": "1900/'01 - 2024/'25",
+    "periode": "1900/'01 - 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3784,13 +3784,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "cf6ba006e6b3de68",
-      "bronrevisie": "24cb523160f08f01"
+      "bronrevisie": "960b8da063e20f1c"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Onderwijsinstellingen; grootte, soort, levensbeschouwelijke grondslag",
-    "periode": "1990/'91 - 2024/'25",
+    "periode": "1990/'91 - 2025/'26",
     "onderwijstype": [
       "Allen"
     ],
@@ -3910,7 +3910,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "009a779127f960b9",
-      "bronrevisie": "43e5dd518f6f4bb5"
+      "bronrevisie": "83ff98da3b82f86f"
     }
   },
   {
@@ -4229,7 +4229,7 @@
   {
     "leverancier": "CBS",
     "bron": "(Speciaal) basisonderwijs en speciale scholen; leerlingen, schoolregio",
-    "periode": "2000/'01-2024/'25",
+    "periode": "2000/'01-2025/'26",
     "onderwijstype": [
       "PO"
     ],
@@ -4374,13 +4374,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "9b879d2d54eb9db2",
-      "bronrevisie": "9a6a4db39d4fc1f2"
+      "bronrevisie": "fd26eb51c0caf34b"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Schooladvies en herziening advies basisonderwijs; achtergrondkenmerken",
-    "periode": "2014/'15-2023/'24",
+    "periode": "2014/'15-2024/'25",
     "onderwijstype": [
       "PO"
     ],
@@ -4540,7 +4540,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "0a61a8d0ce0cd86f",
-      "bronrevisie": "7d71465f63d61306"
+      "bronrevisie": "6fef27e077605737"
     }
   },
   {
@@ -4985,10 +4985,6 @@
       "Perioden": "tijd-dimensie",
       "AantalLeerlingen_1": "meetwaarde (aantal)"
     },
-    "_periode_waarden": [
-      "2011/'12",
-      "2025/'26"
-    ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
       "Onderwijssoort": "Onderwijssoort",
@@ -4996,6 +4992,10 @@
       "Regiokenmerken": "Regiokenmerken",
       "Perioden": "Perioden"
     },
+    "_periode_waarden": [
+      "2011/'12",
+      "2025/'26"
+    ],
     "_verrijking": {
       "versie": 2,
       "inputhash": "001490fecb19f8dc",
@@ -5133,10 +5133,6 @@
       "Perioden": "tijd-dimensie",
       "AantalLeerlingen_1": "meetwaarde (aantal)"
     },
-    "_periode_waarden": [
-      "2011/'12",
-      "2025/'26"
-    ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
       "Onderwijssoort in detail": "OnderwijssoortInDetail",
@@ -5145,6 +5141,10 @@
       "Geboorteland (ouders)": "GeboortelandOuders",
       "Perioden": "Perioden"
     },
+    "_periode_waarden": [
+      "2011/'12",
+      "2025/'26"
+    ],
     "_verrijking": {
       "versie": 2,
       "inputhash": "4f256b66d4c614d7",
@@ -5154,7 +5154,7 @@
   {
     "leverancier": "CBS",
     "bron": "Vo en vso; doorstroom en uitstroom, achtergrondkenmerken",
-    "periode": "2015/'16 naar 2016/'17 t/m 2022/'23 naar 2023/'24",
+    "periode": "2010/'11 naar 2011/'12 t/m 2024/'25 naar 2025/'26",
     "onderwijstype": [
       "VO"
     ],
@@ -5329,13 +5329,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "dbe2def92bc5efee",
-      "bronrevisie": "30e4a67c6a8d7c04"
+      "bronrevisie": "e0d526ef41e2576f"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Vo-cohorten; hoogst behaald diploma, achtergrondkenmerken",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020",
     "onderwijstype": [
       "VO"
     ],
@@ -5483,7 +5483,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "542052bddb6e2f4f",
-      "bronrevisie": "1c2159e5c10d724b"
+      "bronrevisie": "9a1c41b6d61aef1a"
     }
   },
   {
@@ -6404,7 +6404,7 @@
   {
     "leverancier": "CBS",
     "bron": "Instromers mbo; bedrijfstakken 1 jaar eerder",
-    "periode": "2018/19-2024/25",
+    "periode": "2018/19-2025/26",
     "onderwijstype": [
       "MBO"
     ],
@@ -6548,13 +6548,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "bd3608b45d97bf1d",
-      "bronrevisie": "a5aefe68c3904060"
+      "bronrevisie": "6bcf5988ccb68cf2"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Instromers mbo; maatschappelijke positie 1 jaar eerder, persoonskenmerken",
-    "periode": "2018/19-2024/'25",
+    "periode": "2018/19-2025/'26",
     "onderwijstype": [
       "MBO"
     ],
@@ -6717,13 +6717,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "4c1927a9d96f0479",
-      "bronrevisie": "07963e548ae935fb"
+      "bronrevisie": "bcc828b116cb51be"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Mbo door- en uitstroom, achtergrondkenmerken",
-    "periode": "2022/'23 naar studiejaar 2023/'24",
+    "periode": "2011/'12 naar 2012/'13 t/m 2024/'25 naar 2025/'26",
     "onderwijstype": [
       "MBO"
     ],
@@ -6894,13 +6894,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "0aeff32d1d6befb7",
-      "bronrevisie": "9c43976e1c01e795"
+      "bronrevisie": "39561033da80b334"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Gepromoveerden; ervaringen en duur promotietraject",
-    "periode": "2019",
+    "periode": "2019 en 2025",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -7059,13 +7059,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "2487e684c22a624d",
-      "bronrevisie": "9858de8443ae7000"
+      "bronrevisie": "fa75248f29651b95"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Werkzame gepromoveerden; arbeidskenmerken",
-    "periode": "2019",
+    "periode": "2019 en 2025",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -7238,13 +7238,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "ab80f2415d1d0c0f",
-      "bronrevisie": "9858de8443ae7000"
+      "bronrevisie": "fa75248f29651b95"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Studeren in het buitenland; studiepuntmobiliteit hbo en wo",
-    "periode": "2022 - 2025",
+    "periode": "2022 - 2026",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -7777,13 +7777,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "1cf226cf84e36c55",
-      "bronrevisie": "c22cfa945643ee45"
+      "bronrevisie": "584ba796a0658908"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Wetenschappelijk onderwijs; promoties, studierichting",
-    "periode": "2017/'18 - 2023/'24",
+    "periode": "2016/'17-2024/'25",
     "onderwijstype": [
       "WO"
     ],
@@ -7813,7 +7813,7 @@
     "_cbs_id": "83966NED",
     "_thema": "Hoger onderwijs",
     "_archief": false,
-    "_laatste_update": "2025-03-28",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Aantal promoties per studierichting en geslacht in het wetenschappelijk onderwijs. Inzicht in onderzoeksoutput en diversiteit in de academische pipeline.",
     "_dimensies": [
       "Geslacht",
@@ -7864,19 +7864,19 @@
       "Perioden": "tijd-dimensie",
       "Promoties_1": "meetwaarde (aantal)"
     },
-    "_periode_waarden": [
-      "2016/'17",
-      "2023/'24"
-    ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
       "Studierichting": "Studierichting",
       "Perioden": "Perioden"
     },
+    "_periode_waarden": [
+      "2016/'17",
+      "2024/'25"
+    ],
     "_verrijking": {
       "versie": 2,
       "inputhash": "312f31675d262b01",
-      "bronrevisie": "d4727f45abd73bbb"
+      "bronrevisie": "79f096225e39709a"
     }
   },
   {
@@ -8811,7 +8811,7 @@
   {
     "leverancier": "CBS",
     "bron": "Hbo-cohorten; eerste hbo-diploma, studierichting",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "HBO"
     ],
@@ -9033,13 +9033,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "f1330b8dea2dc9a0",
-      "bronrevisie": "a32fe656cf13d52d"
+      "bronrevisie": "9ee1f35baad14956"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Ho-cohorten; behaalde hbo- en wo-diploma's",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -9335,13 +9335,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "9d979e989b32810f",
-      "bronrevisie": "a32fe656cf13d52d"
+      "bronrevisie": "9ee1f35baad14956"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Wo-cohorten; eerste wo-diploma, studierichting",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "WO"
     ],
@@ -9562,13 +9562,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "f4f9c116da902043",
-      "bronrevisie": "a32fe656cf13d52d"
+      "bronrevisie": "9ee1f35baad14956"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Wo-cohorten; hoogst behaalde wo-diploma, vooropleiding",
-    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2023",
+    "periode": "2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022",
     "onderwijstype": [
       "WO"
     ],
@@ -9828,7 +9828,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "c8a76009b68a4322",
-      "bronrevisie": "a32fe656cf13d52d"
+      "bronrevisie": "9ee1f35baad14956"
     }
   },
   {
@@ -11939,7 +11939,7 @@
   {
     "leverancier": "CBS",
     "bron": "Leven lang ontwikkelen; onderwijskenmerken",
-    "periode": "2021 - 2024",
+    "periode": "2021 - 2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -12075,7 +12075,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "04bdb89e3575d409",
-      "bronrevisie": "bbd21e11f238db0c"
+      "bronrevisie": "054b23e199b655aa"
     }
   },
   {
@@ -13339,7 +13339,7 @@
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "MBO"
     ],
@@ -13499,13 +13499,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "dcb3e807f33c6202",
-      "bronrevisie": "68658ef44d2e1f34"
+      "bronrevisie": "371140a481dff546"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "MBO"
     ],
@@ -13670,13 +13670,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "b4b21f955e0736f0",
-      "bronrevisie": "68658ef44d2e1f34"
+      "bronrevisie": "371140a481dff546"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo; uitkering na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "MBO"
     ],
@@ -13833,13 +13833,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "ff3e795bff72e1d6",
-      "bronrevisie": "68658ef44d2e1f34"
+      "bronrevisie": "371140a481dff546"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "MBO"
     ],
@@ -14010,13 +14010,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "11eb2ab152b070e6",
-      "bronrevisie": "68658ef44d2e1f34"
+      "bronrevisie": "371140a481dff546"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers mbo werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "MBO"
     ],
@@ -14177,13 +14177,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "955efd0e7f8a3426",
-      "bronrevisie": "b465b8f107e235e3"
+      "bronrevisie": "06f23660c459aade"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -14334,13 +14334,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "5a26516d4ccc7093",
-      "bronrevisie": "6678b10d91dc470e"
+      "bronrevisie": "d9bcc3e8d5d32f66"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -14496,13 +14496,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "7ba8892d4f8efda4",
-      "bronrevisie": "6678b10d91dc470e"
+      "bronrevisie": "d9bcc3e8d5d32f66"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2006/'07-2022/'2023",
+    "periode": "2006/'07-2023/'2024",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -14656,13 +14656,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "2bab7d08f47db884",
-      "bronrevisie": "cfcad3384f85861d"
+      "bronrevisie": "7750f7702525bfd7"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho; uitkering na verlaten onderwijs",
-    "periode": "2006/'07-2022/'23",
+    "periode": "2006/'07-2023/'24",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -14810,13 +14810,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "fa7bf4e223fad108",
-      "bronrevisie": "6678b10d91dc470e"
+      "bronrevisie": "d9bcc3e8d5d32f66"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Uitstromers ho werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2006/'07 - 2022/'23",
+    "periode": "2006/'07 - 2023/'24",
     "onderwijstype": [
       "HBO",
       "WO"
@@ -14971,13 +14971,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "2ddbdc326d5bf028",
-      "bronrevisie": "106c78266e44dda4"
+      "bronrevisie": "57c079c9f52f9804"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogstbehaald onderwijsniveau en regio",
-    "periode": "2013 - 2024",
+    "periode": "2013 - 2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -15010,7 +15010,7 @@
     "_cbs_id": "85525NED",
     "_thema": "Onderwijsniveau bevolking",
     "_archief": false,
-    "_laatste_update": "2025-11-07",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Hoogst behaald onderwijsniveau van de bevolking per regio, geslacht en leeftijd. Basisset voor het in kaart brengen van opleidingsniveau per gemeente of provincie.",
     "_dimensies": [
       "Geslacht",
@@ -15253,7 +15253,7 @@
     },
     "_periode_waarden": [
       "2013",
-      "2024"
+      "2025"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -15264,13 +15264,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "47bdc34f76911248",
-      "bronrevisie": "67f8babfbef57195"
+      "bronrevisie": "25ee4f34729da240"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogst behaald onderwijsniveau en herkomst",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -15299,7 +15299,7 @@
     "_cbs_id": "85453NED",
     "_thema": "Onderwijsniveau bevolking",
     "_archief": false,
-    "_laatste_update": "2026-08-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Hoogst behaald onderwijsniveau van de bevolking uitgesplitst naar herkomst en geslacht. Inzicht in opleidingskloof tussen herkomstgroepen in Nederland.",
     "_dimensies": [
       "Geslacht",
@@ -15399,7 +15399,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -15412,13 +15412,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "96160f0ad34d0f83",
-      "bronrevisie": "d5a33785184d4916"
+      "bronrevisie": "0a7ad77c397f216c"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolking; hoogstbehaald onderwijsniveau en onderwijsrichting",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -15447,7 +15447,7 @@
     "_cbs_id": "85313NED",
     "_thema": "Onderwijsniveau bevolking",
     "_archief": false,
-    "_laatste_update": "2026-08-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Hoogst behaald onderwijsniveau én -richting van de bevolking. Inzicht in welke studierichtingen het meest voorkomen in de beroepsbevolking.",
     "_dimensies": [
       "Geslacht",
@@ -15538,7 +15538,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -15550,7 +15550,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "40c2cf3aea3f0fe3",
-      "bronrevisie": "51b5ef17a7ccb89f"
+      "bronrevisie": "0a7ad77c397f216c"
     }
   },
   {
@@ -15805,7 +15805,7 @@
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst",
-    "periode": "2012/'13 - 2023/'24",
+    "periode": "2012/'13 - 2024/'25",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -15951,13 +15951,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "6bf071c851ed13a4",
-      "bronrevisie": "7a23d1c0b9a85181"
+      "bronrevisie": "8d93a4bcdb65466a"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters (VSV); terugkeer in onderwijs na schoolverlaten",
-    "periode": "2007/'08-2021/'22",
+    "periode": "2007/'08-2022/'23",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16156,13 +16156,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "5df9fbde5c2f87a5",
-      "bronrevisie": "5079a92cb7bd5454"
+      "bronrevisie": "021fa2be79df41e1"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "VSV; arbeidsmarktpositie na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16320,13 +16320,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "b34bb61dd6fb9611",
-      "bronrevisie": "81f76eefdea1b201"
+      "bronrevisie": "04c56232b1aec297"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "VSV; arbeidskenmerken na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16479,13 +16479,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "f0c797fbaaee23fb",
-      "bronrevisie": "030f7527bc4be343"
+      "bronrevisie": "15688b39452305eb"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "VSV; uitkeringen na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16635,13 +16635,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "46f10aebf9582a56",
-      "bronrevisie": "030f7527bc4be343"
+      "bronrevisie": "15688b39452305eb"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "VSV met werk; bedrijfstak na verlaten onderwijs",
-    "periode": "2007/'08-2022/'23",
+    "periode": "2007/'08-2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16804,13 +16804,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "351b64edc91e0bf2",
-      "bronrevisie": "030f7527bc4be343"
+      "bronrevisie": "15688b39452305eb"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "VSV werkzaam als werknemers; uurloon na verlaten onderwijs",
-    "periode": "2007/'08 - 2022/'23",
+    "periode": "2007/'08 - 2023/'24",
     "onderwijstype": [
       "VO",
       "MBO"
@@ -16966,13 +16966,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "445bae6c7091de2e",
-      "bronrevisie": "81f76eefdea1b201"
+      "bronrevisie": "04c56232b1aec297"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; onderwijsniveau",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -17002,7 +17002,7 @@
     "_cbs_id": "85266NED",
     "_thema": "Onderwijs",
     "_archief": false,
-    "_laatste_update": "2026-07-30",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Arbeidsparticipatie en werkloosheidspercentage van de bevolking, uitgesplitst naar onderwijsniveau, geslacht en leeftijd.",
     "_dimensies": [
       "Geslacht",
@@ -17304,7 +17304,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -17315,13 +17315,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "abdd6b30cb350860",
-      "bronrevisie": "316d145ecdb7b3e3"
+      "bronrevisie": "e8a20b87441609ff"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Binding met de arbeidsmarkt, beroeps- en niet-beroepsbevolking; onderwijs",
-    "periode": "2013 - 2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -17349,7 +17349,7 @@
     "_cbs_id": "85650NED",
     "_thema": "Onderwijs",
     "_archief": false,
-    "_laatste_update": "2026-08-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Binding van de bevolking met de arbeidsmarkt, uitgesplitst naar onderwijsniveau, onderwijsrichting, geslacht en leeftijd.",
     "_dimensies": [
       "Arbeidspositie",
@@ -17438,7 +17438,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Arbeidspositie": "Arbeidspositie",
@@ -17450,13 +17450,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "321e42f8d3cb8412",
-      "bronrevisie": "51b5ef17a7ccb89f"
+      "bronrevisie": "0a7ad77c397f216c"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Vacatures; overheid en onderwijs",
-    "periode": "1997 - 2025",
+    "periode": "1997 1e kwartaal - 2026 3e kwartaal",
     "onderwijstype": [
       "Allen"
     ],
@@ -17485,7 +17485,7 @@
     "_cbs_id": "80857NED",
     "_thema": "Onderwijs",
     "_archief": false,
-    "_laatste_update": "2026-07-30",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Aantal vacatures in de sectoren overheid en onderwijs per kwartaal. Geschikt voor analyse van arbeidsmarktspanning en lerarentekort.",
     "_dimensies": [
       "Overheidssectoren",
@@ -17548,7 +17548,7 @@
     },
     "_periode_waarden": [
       "1997 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Overheidssectoren": "Overheidssectoren",
@@ -17557,7 +17557,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "19eb3e3d89bcc42d",
-      "bronrevisie": "c294a952155aeb5b"
+      "bronrevisie": "6deb59f2cdd5d211"
     }
   },
   {
@@ -18620,7 +18620,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsmarktsituatie jongeren (15 tot 27 jaar); persoonskenmerken",
-    "periode": "2005-2024",
+    "periode": "2005-2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -18650,7 +18650,7 @@
       "Hoe ontwikkelt het aandeel uitkeringsontvangers onder jongeren zich over de jaren?"
     ],
     "_archief": false,
-    "_laatste_update": "2025-11-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Jongeren op de arbeidsmarkt uitgesplitst naar geslacht, leeftijd en positie in huishouden. Meetwaarden: onderwijsdeelname, kenmerken arbeid, uitkering, UWV-registratie.",
     "_dimensies": [
       "Geslacht",
@@ -18743,7 +18743,7 @@
     },
     "_periode_waarden": [
       "2005",
-      "2024"
+      "2025"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -18757,13 +18757,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "9642dac06a2e727f",
-      "bronrevisie": "5cc84870f88acb83"
+      "bronrevisie": "8cd53554ce0a9335"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; jongeren",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [
       "Allen"
     ],
@@ -18793,7 +18793,7 @@
       "Wat is de trend in arbeidsdeelname van jongeren de afgelopen 5 jaar?"
     ],
     "_archief": false,
-    "_laatste_update": "2026-08-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Beroepsbevolking, werkloosheidspercentage en arbeidsparticipatie van jongeren (15 tot 25 jaar), uitgesplitst naar geslacht en onderwijsdeelname. Kwartaalcijfers.",
     "_dimensies": [
       "Geslacht",
@@ -19084,7 +19084,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -19095,13 +19095,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "38f476cdf43e54c6",
-      "bronrevisie": "d5a33785184d4916"
+      "bronrevisie": "0a7ad77c397f216c"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; kerncijfers",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [],
     "doel": "Kerncijfers over arbeidsparticipatie, werkloosheid en niet-beroepsbevolking voor Nederland, uitgesplitst naar geslacht en leeftijd. Onmisbaar voor beleidsmonitoring van de arbeidsmarkt.",
     "frequentie": "Kwartaal",
@@ -19129,7 +19129,7 @@
     "_cbs_id": "85264NED",
     "_thema": "Arbeidsmarkt",
     "_archief": false,
-    "_laatste_update": "2026-07-30",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Kerncijfers over arbeidsparticipatie, werkloosheid en niet-beroepsbevolking voor Nederland, uitgesplitst naar geslacht en leeftijd. Onmisbaar voor beleidsmonitoring van de arbeidsmarkt.",
     "_dimensies": [
       "Geslacht",
@@ -19434,7 +19434,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
@@ -19445,13 +19445,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "abdd6b30cb350860",
-      "bronrevisie": "765db12fd98cfe4d"
+      "bronrevisie": "e8a20b87441609ff"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Werkloosheidsduur; per kwartaal en jaar",
-    "periode": "2013-2025",
+    "periode": "2013 - 2026",
     "onderwijstype": [],
     "doel": "Duur van werkloosheid uitgesplitst naar geslacht, leeftijd en herkomst. Inzicht in hardnekkige versus conjuncturele werkloosheid — relevant voor activeringsprogramma's en sociale zekerheid.",
     "frequentie": "Kwartaal",
@@ -19478,7 +19478,7 @@
     "_cbs_id": "85312NED",
     "_thema": "Arbeidsmarkt",
     "_archief": false,
-    "_laatste_update": "2026-08-13",
+    "_laatste_update": "2026-11-12",
     "samenvatting": "Duur van werkloosheid uitgesplitst naar geslacht, leeftijd en herkomst. Inzicht in hardnekkige versus conjuncturele werkloosheid — relevant voor activeringsprogramma's en sociale zekerheid.",
     "_dimensies": [
       "Werkloosheidsduur",
@@ -19543,7 +19543,7 @@
     },
     "_periode_waarden": [
       "2013 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Werkloosheidsduur": "Werkloosheidsduur",
@@ -19553,7 +19553,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "c78f2139bfa12190",
-      "bronrevisie": "d5a33785184d4916"
+      "bronrevisie": "0a7ad77c397f216c"
     }
   },
   {
@@ -19721,7 +19721,7 @@
   {
     "leverancier": "CBS",
     "bron": "Arbeidsdeelname; gemeenten",
-    "periode": "2014-2023",
+    "periode": "2014 - 2023",
     "onderwijstype": [],
     "doel": "Arbeidsparticipatie en werkloosheid per gemeente. Biedt inzicht in regionale arbeidsmarktverschillen — bruikbaar voor beleid op het gebied van regionale economie en sociale zekerheid.",
     "frequentie": "Jaarlijks",
@@ -19954,13 +19954,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "d73d2ef3688b1e8d",
-      "bronrevisie": "50fd426b00657137"
+      "bronrevisie": "f1079655f268b1f7"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolkingsontwikkeling; per maand",
-    "periode": "1995-2026",
+    "periode": "Januari 1995 - september 2026",
     "onderwijstype": [],
     "doel": "Maandelijkse ontwikkeling van de Nederlandse bevolking: geboorten, sterfgevallen, immigratie en emigratie. Biedt actuele en historische demografische kerncijfers voor heel Nederland.",
     "frequentie": "Maandelijks",
@@ -19988,7 +19988,7 @@
     "_cbs_id": "83474NED",
     "_thema": "Demografie",
     "_archief": false,
-    "_laatste_update": "2026-09-30",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Maandelijkse ontwikkeling van de Nederlandse bevolking: geboorten, sterfgevallen, immigratie en emigratie. Biedt actuele en historische demografische kerncijfers voor heel Nederland.",
     "_dimensies": [
       "Perioden"
@@ -20088,7 +20088,7 @@
     },
     "_periode_waarden": [
       "1995 januari",
-      "2026 augustus"
+      "2026 september"
     ],
     "_dimensie_sleutels": {
       "Perioden": "Perioden"
@@ -20096,13 +20096,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "4fd96aa8f8dcb80a",
-      "bronrevisie": "638875e54f047971"
+      "bronrevisie": "61685cf1e14fa8a7"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolkingsontwikkeling; regio per maand",
-    "periode": "2002-2026",
+    "periode": "Januari 2002 - september 2026",
     "onderwijstype": [],
     "doel": "Maandelijkse bevolkingsontwikkeling per regio (gemeente, provincie, COROP). Inzicht in regionale demografische trends: krimp, groei, migratiebewegingen.",
     "frequentie": "Maandelijks",
@@ -20132,7 +20132,7 @@
     "_cbs_id": "37230ned",
     "_thema": "Demografie",
     "_archief": false,
-    "_laatste_update": "2026-09-30",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Maandelijkse bevolkingsontwikkeling per regio (gemeente, provincie, COROP). Inzicht in regionale demografische trends: krimp, groei, migratiebewegingen.",
     "_dimensies": [
       "Regio's",
@@ -20337,7 +20337,7 @@
     },
     "_periode_waarden": [
       "2002 januari",
-      "2026 augustus"
+      "2026 september"
     ],
     "_dimensie_sleutels": {
       "Regio's": "RegioS",
@@ -20346,13 +20346,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "8a7fece02c2dde9c",
-      "bronrevisie": "64d8ae2bf35ea7e1"
+      "bronrevisie": "49f91d12ed45b7e9"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Immi- en emigratie; nationaliteit",
-    "periode": "2010-2024",
+    "periode": "2010-2025",
     "onderwijstype": [],
     "doel": "Immigratie- en emigratiecijfers per nationaliteit. Inzicht in migratiestromen naar Nederland — relevant voor integratiebeleid, arbeidsmarkt en demografische planning.",
     "frequentie": "Jaarlijks",
@@ -20562,13 +20562,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "9b1ec3f173a4e60d",
-      "bronrevisie": "015de802827470ea"
+      "bronrevisie": "4534dd004bc1b1c2"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Bevolking; leeftijd, burgerlijke staat",
-    "periode": "1950-2025",
+    "periode": "1950 - 2026",
     "onderwijstype": [],
     "doel": "Lange tijdreeks van de Nederlandse bevolking naar leeftijd en burgerlijke staat. Toont vergrijzing, ontgroening en huishoudenssamenstelling over meer dan 70 jaar.",
     "frequentie": "Jaarlijks",
@@ -20682,7 +20682,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "3dee10d0140303db",
-      "bronrevisie": "038f41d96c70b456"
+      "bronrevisie": "57d0e5acc9617a64"
     }
   },
   {
@@ -21553,7 +21553,7 @@
   {
     "leverancier": "CBS",
     "bron": "Overheidsfinanciën; kerncijfers",
-    "periode": "1995-2024",
+    "periode": "1995 - 2025; 1999 kw I - 2026 kw II",
     "onderwijstype": [],
     "doel": "Kerncijfers over de overheidsfinanciën: inkomsten, uitgaven, overheidstekort en staatsschuld als percentage van het BBP. Essentieel voor analyses van begrotingsbeleid en financiële sturing.",
     "frequentie": "Jaarlijks",
@@ -21870,13 +21870,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "585b3a4a3354480d",
-      "bronrevisie": "6376683456a96594"
+      "bronrevisie": "55dbda1104c071f3"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "BBP; kwartalen, waarden",
-    "periode": "1995-2025",
+    "periode": "1995 - 2025, KwI 1995 - KwIII 2026",
     "onderwijstype": [],
     "doel": "Bruto binnenlands product (BBP) per kwartaal in lopende en constante prijzen. Toont de economische groei van Nederland — onmisbaar als context voor beleidseffectiviteit en financiële sturing.",
     "frequentie": "Kwartaal",
@@ -21903,7 +21903,7 @@
     "_cbs_id": "85879NED",
     "_thema": "Macro-economie",
     "_archief": false,
-    "_laatste_update": "2026-09-23",
+    "_laatste_update": "2026-10-30",
     "samenvatting": "Bruto binnenlands product (BBP) per kwartaal in lopende en constante prijzen. Toont de economische groei van Nederland — onmisbaar als context voor beleidseffectiviteit en financiële sturing.",
     "_dimensies": [
       "Soort gegevens",
@@ -24001,7 +24001,7 @@
     },
     "_periode_waarden": [
       "1995 1e kwartaal",
-      "2026 2e kwartaal"
+      "2026 3e kwartaal"
     ],
     "_dimensie_sleutels": {
       "Soort gegevens": "SoortGegevens",
@@ -24010,13 +24010,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "0c8cefa9532eea02",
-      "bronrevisie": "4beb658ff8492dd8"
+      "bronrevisie": "ee1c2f64d26c7d6e"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Welvaart van huishoudens; kerncijfers",
-    "periode": "2011-2024",
+    "periode": "2011 t/m 2024",
     "onderwijstype": [],
     "doel": "Kerncijfers over inkomen, vermogen en bestedingen van huishoudens. Biedt inzicht in de welvaartsontwikkeling van Nederlandse huishoudens — relevant voor brede-welvaartmonitoring.",
     "frequentie": "Jaarlijks",
@@ -24192,7 +24192,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "776f6523a0256c22",
-      "bronrevisie": "1261d81d37310cb0"
+      "bronrevisie": "3fc3ce3ff1f20138"
     }
   },
   {
@@ -24730,7 +24730,7 @@
   {
     "leverancier": "CBS",
     "bron": "Levensverwachting vanaf 1861",
-    "periode": "1861-2024",
+    "periode": "1861 - 2025",
     "onderwijstype": [],
     "doel": "Levensverwachting bij geboorte en op hogere leeftijden voor mannen en vrouwen, vanaf 1861. Toont de langetermijnontwikkeling van gezondheid in Nederland — kernindicator voor brede welvaart.",
     "frequentie": "Jaarlijks",
@@ -24861,13 +24861,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "eeca93ebe6f79af1",
-      "bronrevisie": "694445f62eb17ea8"
+      "bronrevisie": "a3c32c9382e89af0"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Regionale kerncijfers Nederland",
-    "periode": "1995-2026",
+    "periode": "Jaarcijfers 1995 - 2026",
     "onderwijstype": [],
     "doel": "Brede set van kerncijfers per gemeente, wijk en buurt: bevolking, woningen, arbeid, inkomen en meer. Geschikt voor vergelijkende regionale analyses en monitor brede welvaart op lokaal niveau.",
     "frequentie": "Jaarlijks",
@@ -27892,13 +27892,13 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "e855eb0f9f9d70b8",
-      "bronrevisie": "4590b49d453375b3"
+      "bronrevisie": "fd53f439aea80b01"
     }
   },
   {
     "leverancier": "CBS",
     "bron": "Jongeren; voortijdig schoolverlaters, geslacht, herkomst",
-    "periode": "2003 - 2025",
+    "periode": "2013-2025",
     "onderwijstype": [
       "Allen"
     ],
@@ -27990,10 +27990,6 @@
       "Perioden": "tijd-dimensie",
       "Jongeren18Tot25Jaar_1": "meetwaarde (x 1 000)"
     },
-    "_periode_waarden": [
-      "2013",
-      "2025"
-    ],
     "_dimensie_sleutels": {
       "Geslacht": "Geslacht",
       "Geboorteland (ouders)": "GeboortelandOuders",
@@ -28001,10 +27997,14 @@
       "Voortijdig schoolverlater": "VoortijdigSchoolverlater",
       "Perioden": "Perioden"
     },
+    "_periode_waarden": [
+      "2013",
+      "2025"
+    ],
     "_verrijking": {
       "versie": 2,
       "inputhash": "8677c99b51ec3308",
-      "bronrevisie": "42f6c5f4355943dd"
+      "bronrevisie": "739c4c2b7e379162"
     }
   },
   {
@@ -35240,7 +35240,7 @@
   {
     "leverancier": "CBS",
     "bron": "Voortijdig schoolverlaters; geslacht, woonregio",
-    "periode": "2012/'13 - 2023/'24",
+    "periode": "2012/'13 - 2024/'25",
     "onderwijstype": [
       "Allen"
     ],
@@ -35381,7 +35381,7 @@
     "_verrijking": {
       "versie": 2,
       "inputhash": "940dd29a5c0a6500",
-      "bronrevisie": "4330f1e64aff104b"
+      "bronrevisie": "ec8aa362c6bdacd6"
     }
   },
   {

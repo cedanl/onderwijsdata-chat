@@ -18,7 +18,6 @@ leveringsvoorwaarden, docs/dashboards.md). Het taalmodel komt er niet aan te pas
 
 from __future__ import annotations
 
-import difflib
 import logging
 
 from onderwijsbronnen import skdb
@@ -28,7 +27,7 @@ from core.logging_util import foutkenmerk
 from tools import studiekeuze
 
 from . import bronblok, instellingen
-from .dashboard import _GEEN_SUGGESTIES, _MAX_SUGGESTIONS, BronNietBeschikbaar
+from .dashboard import _GEEN_SUGGESTIES, _MAX_SUGGESTIONS, BronNietBeschikbaar, tikfout_suggesties
 
 logger = logging.getLogger(__name__)
 
@@ -242,10 +241,7 @@ def _export() -> tuple[skdb.Export, dict]:
 def _niet_gevonden(instelling: str, register: list[dict], eerst: str | None = None) -> dict:
     """Een naam die het register niet kent: de namen die erop lijken, zoals bij Mijn instelling (#901, #929). `eerst`
     is de registernaam van de instelling die de export onder deze naam kent (#980)."""
-    namen = {i["naam"].lower(): i["naam"] for i in register}
-    dichtst = [
-        namen[n] for n in difflib.get_close_matches(instelling.lower(), list(namen), n=_MAX_SUGGESTIONS, cutoff=0.5)
-    ]
+    dichtst = tikfout_suggesties(instelling, (i["naam"] for i in register))
     if eerst:
         dichtst = [eerst, *(n for n in dichtst if n != eerst)][:_MAX_SUGGESTIONS]
     uit = {"instelling": instelling, "gevonden": False, "beschikbare_instellingen": dichtst}

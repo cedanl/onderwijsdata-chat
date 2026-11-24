@@ -6,9 +6,11 @@ ook niet met tachtig rapporten van een paar MB HTML (#633). Gesprekken en werkbo
 lijst van ids en daarna één voor één; een verbinding blijft alleen open voor één query, niet over een
 `yield` heen, zodat een trage download geen plek in de Postgres-pool vasthoudt (#508).
 
-Elke query filtert op `username = ?`. Niet in de export: andermans rijen, ingetrokken tokens en de
-`localStorage` van de browser. Kolomnamen zijn die van de database (`html_content`, zoals
-`GET /api/workbooks/{id}`).
+Elke query filtert op `username = ?`, behalve die van `tokengebruik`: dat staat onder een pseudoniem van de naam
+(#1112), dus filtert die op `sleutel = ?` met dat pseudoniem en geeft alleen `dag` en `eenheden`, niet de sleutel
+(#1074). Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser. Kolomnamen zijn
+die van de database (`html_content`, zoals `GET /api/workbooks/{id}`). Een nieuwe soort komt achteraan en verhoogt
+`SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe.
 """
 
 import json
@@ -119,6 +121,14 @@ def beurtbewijs(username: str) -> Iterator[dict]:
         yield row
 
 
+def tokengebruik(username: str) -> Iterator[dict]:
+    """Hoeveel de vragen van het account het model kostten, één getal per dag (#678, #1074); zonder de sleutel."""
+    yield from _rijen(
+        "SELECT dag, eenheden FROM tokengebruik WHERE sleutel = ? ORDER BY dag",
+        (db.tokengebruik_sleutel(username),),
+    )
+
+
 SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "conversations": conversations,
     "workbooks": workbooks,
@@ -126,6 +136,7 @@ SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "algemene_feedback": algemene_feedback,
     "data_recipes": data_recipes,
     "beurtbewijs": beurtbewijs,
+    "tokengebruik": tokengebruik,
 }
 
 

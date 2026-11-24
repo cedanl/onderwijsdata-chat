@@ -8,6 +8,10 @@ rapporteert alleen over de beurten die de gebruiker aanliet. Alles in code, zond
 ontstond (`session["data_vraag"]`, #733). Een key hoort bij de beurt waarin hij voor het eerst ontstond. Een beurt die
 alleen data van een eerdere beurt hergebruikt, heeft geen eigen regel.
 
+**Een bron zonder tabel in de store** (`session_data.BEWIJSTOOLS`, #1077) heeft geen key; haar bewijs draagt het nummer van de
+vraag waarbij het ontstond. Zo staat een beurt met alleen zo'n bron in de checklist, met haar bronregel, en gaat haar bewijs
+alleen mee als de gebruiker die beurt aanliet. Een item zonder geldig nummer hoort bij geen beurt en gaat niet mee.
+
 **Geen checklist** zonder bewijs per beurt: heeft een key van het gesprek geen vraagnummer (een gesprek van vóór #875,
 of een antwoord dat de geschiedenis niet meer haalt), dan weten we niet bij welke beurt hij hoort en blijft het
 huidige gedrag staan, het hele gesprek. Een selectie bij zo'n gesprek wordt geweigerd, niet geraden.
@@ -38,9 +42,10 @@ from dataclasses import dataclass
 from core.errors import Gebruikersfout
 
 from . import figuurstappen
+from .bronvermelding import bronnen_van
 from .datasetcontext import build_recipe, sources_from_recipe
 from .selectie import stapkeys
-from .session_data import data_lineage, gebruikersvragen, is_vraag, rekenbewijs
+from .session_data import data_lineage, gebruikersvragen, is_bewijs_zonder_tabel, is_vraag, rekenbewijs
 
 # Een vraag in de checklist: genoeg om de beurt te herkennen, op één regel. De volledige tekst blijft in het gesprek.
 MAX_VRAAG_TEKENS = 200
@@ -84,23 +89,24 @@ def beurten_met_data(session: dict) -> list[dict]:
                     "beurten": sorted(_beurten_van(stap, nummers)),
                 }
             )
+    zonder_tabel = _bewijs_zonder_tabel(session) if nummers else {}
     vragen = gebruikersvragen(session)
     return [
         {
             "beurt": nummer,
             "vraag": _kort(vragen[nummer - 1]),
-            "bronnen": _bronnen(session, keys),
+            "bronnen": _bronnen(session, per_beurt.get(nummer, []), zonder_tabel.get(nummer, [])),
             "bouwt_voort_op": sorted(
                 {
                     vorig
-                    for key in keys
+                    for key in per_beurt.get(nummer, [])
                     for ouder in _voorouders(session, key)
                     if (vorig := nummers.get(ouder)) is not None and vorig != nummer
                 }
             ),
             "figuren": figuren.get(nummer, []),
         }
-        for nummer, keys in sorted(per_beurt.items())
+        for nummer in sorted({*per_beurt, *zonder_tabel})
     ]
 
 
@@ -166,9 +172,11 @@ def beperk(session: dict, beurten: frozenset[int]) -> dict:
     klopt. Een witte lijst: alleen de velden die het rapport leest.
     """
     nummers = _vraagnummers(session)
-    if not nummers or not set(beurten) <= set(nummers.values()):
+    zonder_tabel = _bewijs_zonder_tabel(session)
+    alle = {*nummers.values(), *zonder_tabel}
+    if not nummers or not set(beurten) <= alle:
         raise Gebruikersfout(VEROUDERDE_SELECTIE)
-    uit = set(nummers.values()) - beurten
+    uit = alle - beurten
     gekozen = [key for key in session["data_keys"] if nummers[key] in beurten]
     # De keys waarop het rapport rust: de gekozen en waar zij van afstammen (hun herkomst, zie boven).
     toegestaan = {*gekozen, *(ouder for key in gekozen for ouder in _voorouders(session, key))}
@@ -180,7 +188,20 @@ def beperk(session: dict, beurten: frozenset[int]) -> dict:
         "data_keys": gekozen,
         "data_vraag": {key: nummers[key] - sum(1 for u in uit if u < nummers[key]) for key in gekozen},
         "data_provenance": {key: call for key, call in provenance.items() if key in toegestaan},
-        "rekenbewijs": [b for b in rekenbewijs(session) if _rust_op(b) <= toegestaan and _rust_op(b)],
+        "rekenbewijs": [
+            *(
+                b
+                for b in rekenbewijs(session)
+                if not is_bewijs_zonder_tabel(b) and _rust_op(b) <= toegestaan and _rust_op(b)
+            ),
+            # Zonder key hoort het bewijs bij zijn beurt; de nummers volgen de overgebleven vragen.
+            *(
+                {**b, "vraag": nummer - sum(1 for u in uit if u < nummer)}
+                for nummer, bewijs in zonder_tabel.items()
+                if nummer in beurten
+                for b in bewijs
+            ),
+        ],
         # De figuren die op de overgebleven beurten rusten; welke ervan in het rapport komen, kiest de gebruiker.
         "figuurstappen": [
             s for s in figuurstappen.stappen(session) if (b := _beurten_van(s, nummers)) and b <= beurten
@@ -212,9 +233,23 @@ def _voorouders(session: dict, key: str) -> list[str]:
     return ouders
 
 
-def _bronnen(session: dict, keys: list[str]) -> list[str]:
+def _bronnen(session: dict, keys: list[str], zonder_tabel: list[dict]) -> list[str]:
     datasets = [{"data_key": key, "herkomst": data_lineage(session, key)} for key in keys]
-    return sources_from_recipe(build_recipe(datasets))
+    regels = sources_from_recipe(build_recipe(datasets))
+    zonder_key = bronnen_van([(b["tool"], b["resultaat"]) for b in zonder_tabel])
+    return [*regels, *(regel for regel in zonder_key if regel not in regels)]
+
+
+def _bewijs_zonder_tabel(session: dict) -> dict[int, list[dict]]:
+    """Het rekenbewijs van bronnen zonder tabel per beurt, naar het nummer van hun vraag; een item zonder geldig nummer
+    hoort bij geen beurt (#1077)."""
+    aantal = len(gebruikersvragen(session))
+    per_beurt: dict[int, list[dict]] = {}
+    for bewijs in rekenbewijs(session):
+        vraag = bewijs.get("vraag")
+        if is_bewijs_zonder_tabel(bewijs) and type(vraag) is int and 1 <= vraag <= aantal:
+            per_beurt.setdefault(vraag, []).append(bewijs)
+    return per_beurt
 
 
 def _rust_op(bewijs: dict) -> set[str]:

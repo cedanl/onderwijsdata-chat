@@ -15,6 +15,7 @@ from fastapi.responses import Response
 from core.auth import get_current_user
 from core.bestandsnaam import rapportdeel
 from core.foutmeldingen import RAPPORT_NIET_GEVONDEN
+from core.openapi_schema import bijlage
 from core.rate_limit import RateLimiter
 from persistence import db as persistence_db
 from tools.rapport_docx import AfbeeldingFout, kan_docx, lees_grafieken, rapport_uit_html, render_docx
@@ -51,7 +52,11 @@ def _maak(username: str, wb_id: str, content_type: str | None, lichaam: bytes) -
     return werkboek.get("title") or rapport.titel, docx, len(grafieken), len(rapport.visualisaties)
 
 
-@router.post("/api/workbooks/{wb_id}/docx")
+@router.post(
+    "/api/workbooks/{wb_id}/docx",
+    response_class=Response,
+    responses=bijlage(DOCX_TYPE, "Het rapport als bewerkbaar Word-document."),
+)
 async def rapport_docx(wb_id: str, request: Request, username: str = Depends(get_current_user)) -> Response:
     if (wacht := await asyncio.to_thread(_limiter.probeer, username)) is not None:
         raise HTTPException(

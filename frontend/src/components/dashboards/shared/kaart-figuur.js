@@ -27,12 +27,19 @@ export function kaartLayout(layout, dark) {
   }
 }
 
-// De naam van de eigen instelling staat als tekst bij de ster; in het donkere thema licht, anders onleesbaar.
+// Het thema over de sporen van de server (data/kaart_regio.py, #1079): de provincies krijgen land en grens van het thema,
+// de naam van de eigen instelling staat als tekst bij de ster (licht in het donkere thema, anders onleesbaar) en het
+// aantal naast een plaats met meer instellingen in de tekstkleur.
 export function kaartData(data, dark) {
   const t = dark ? THEMA.donker : THEMA.licht
-  return (data ?? []).map(trace => (String(trace?.mode ?? '').includes('text')
-    ? { ...trace, textfont: { ...trace.textfont, size: 13, color: t.eigen } }
-    : trace))
+  return (data ?? []).map(trace => {
+    if (trace?.type === 'choropleth') {
+      return { ...trace, colorscale: [[0, t.land], [1, t.land]], marker: { ...trace.marker, line: { ...trace.marker?.line, color: t.grens } } }
+    }
+    if (trace?.meta === 'eigen') return { ...trace, textfont: { ...trace.textfont, size: 13, color: t.eigen } }
+    if (trace?.meta === 'aantal') return { ...trace, textfont: { ...trace.textfont, size: 13, color: t.tekst } }
+    return trace
+  })
 }
 
 const rijenVan = figuur => (Array.isArray(figuur?.layout?.meta?.data) ? figuur.layout.meta.data : [])
@@ -42,13 +49,24 @@ export const zonderLocatie = figuur => {
   return Array.isArray(namen) ? namen.filter(n => typeof n === 'string' && n) : []
 }
 
-// De toegankelijke naam van de kaart (#588): wat er staat, niet hoe het eruitziet.
+// De instellingen per plaats, in de volgorde van de rijen: "Utrecht (3 instellingen): A (eigen instelling), B, C".
+function perPlaats(rijen) {
+  const plaatsen = new Map()
+  for (const r of rijen) {
+    const namen = plaatsen.get(r.Plaats) ?? []
+    namen.push(r.Rol === 'eigen instelling' ? `${r.Instelling} (eigen instelling)` : r.Instelling)
+    plaatsen.set(r.Plaats, namen)
+  }
+  return [...plaatsen].map(([plaats, namen]) => `${plaats}${namen.length > 1 ? ` (${namen.length} instellingen)` : ''}: ${namen.join(', ')}`)
+}
+
+// De toegankelijke naam van de kaart (#588): wat er staat, niet hoe het eruitziet. Instellingen in dezelfde plaats
+// liggen op één punt, dus de naam telt ze per plaats (#1079).
 export function kaartBeschrijving(figuur, landelijk = false) {
   const rijen = rijenVan(figuur)
   const gebied = gebiedTekst(landelijk)
   if (!rijen.length) return `Kaart van de instellingen in ${gebied}.`
-  const namen = rijen.map(r => (r.Rol === 'eigen instelling' ? `${r.Instelling} (eigen instelling)` : r.Instelling))
-  return `Kaart met ${rijen.length} ${rijen.length === 1 ? 'instelling' : 'instellingen'} in ${gebied}, op benaderde plaatscoördinaten: ${namen.join(', ')}.`
+  return `Kaart met ${rijen.length} ${rijen.length === 1 ? 'instelling' : 'instellingen'} in ${gebied}, op benaderde plaatscoördinaten. ${perPlaats(rijen).join('. ')}.`
 }
 
 // De punten als tabel (FiguurTabel): alle kolommen zijn labels, geen getallen.

@@ -33,7 +33,7 @@ from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
 from agent.recepten import van_session
 from agent.report_afwijking import afwijkingen
-from agent.report_bronnen import gebruikte_datasets
+from agent.report_bronnen import bewijsbronnen, gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_figuren import maak_figuren
@@ -41,7 +41,7 @@ from agent.report_periode import titelperiode
 from agent.report_titel import rapporttitel, rapportvraag
 from agent.report_vergelijken import vergelijken
 from agent.selectie import stapkeys
-from agent.session_data import gebruikersvragen, rekenbewijs
+from agent.session_data import gebruikersvragen, is_bewijs_zonder_tabel, rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
@@ -216,7 +216,7 @@ def _build_system_prompt(context: dict) -> str:
     )
     berekeningen = "\n".join(
         f"- {b['tool']}({json.dumps(b['argumenten'], ensure_ascii=False, default=str)}): "
-        f"{b['resultaat'][:_MAX_BEWIJS_TEKENS]}"
+        f"{b['resultaat'] if is_bewijs_zonder_tabel(b) else b['resultaat'][:_MAX_BEWIJS_TEKENS]}"
         for b in context.get("berekeningen") or []
     )
     berekeningen_section = (
@@ -387,6 +387,8 @@ async def _genereer(
     spec = _parse_spec_from_response(
         result.text, figures, gebruikt, author, figuurbronnen, periode=figuurperioden, voorbehoud=vast.voorbehoud
     )
+    # Een bron zonder tabel in de store (de mbo-indicatoren) staat erbij als het rapport een getal uit haar uitvoer noemt (#1077).
+    spec.bronnen = [*spec.bronnen, *(b for b in bewijsbronnen(bewijs, result.text) if b not in spec.bronnen)]
     keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(
         model or MODEL, keys, model_versie=getattr(result, "model_versie", None), username=session.get("username")

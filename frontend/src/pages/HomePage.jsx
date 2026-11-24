@@ -61,38 +61,38 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
       <section className="section">
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div className="section-label">Functionaliteit</div>
+            <div className="section-label">Wat je kunt</div>
             <h2 className="section-title">Geen databewerking, wel controle</h2>
-            <p className="section-sub" style={{ margin: '0 auto' }}>Eén bron voor alle onderwijsvragen. Al gekoppeld, al geharmoniseerd, altijd herleidbaar naar de brondata.</p>
+            <p className="section-sub" style={{ margin: '0 auto' }}>Eén plek voor je vragen over onderwijs. De bronnen zijn al gekoppeld, en elk cijfer is terug te vinden in de brondata.</p>
           </div>
           <div className="grid grid-2 gap-6">
             <div className="feature-card">
               <div className="feature-icon blue">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
               </div>
-              <h3>Al gekoppeld en geharmoniseerd</h3>
-              <p>Geen ETL en geen matching-werk: de bronnen zijn al ontsloten en klaar voor analyse. Waar definities tussen bronnen verschillen, noemt het antwoord welke dataset en definitie het gebruikt.</p>
+              <h3>De bronnen zijn al gekoppeld</h3>
+              <p>Je hoeft zelf geen bestanden op te halen of samen te voegen: de data staat klaar. Gebruiken twee bronnen een andere definitie? Dan noemt het antwoord welke dataset en definitie het gebruikt.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon teal">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               </div>
-              <h3>Ad-hoc vragen, zonder wachtrij</h3>
+              <h3>Elke vraag, zonder wachtrij</h3>
               <p>Stel je vraag in gewone taal en krijg een onderbouwd antwoord. Geen wachtrij voor een dashboard dat eerst gebouwd moet worden.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon purple">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               </div>
-              <h3>Reproduceerbare, uitlegbare methodiek</h3>
-              <p>Elk antwoord toont welke bronnen zijn gebruikt en hoe de berekening tot stand kwam. Verdedigbaar tegenover auditors en bestuur, en zelf te reproduceren.</p>
+              <h3>Je ziet hoe een antwoord tot stand komt</h3>
+              <p>Elk antwoord toont welke bronnen zijn gebruikt en hoe de berekening ging. Zo kun je het uitleggen aan bestuur of accountant, en het zelf nog eens doen.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon blue">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               </div>
-              <h3>Ruwe data, jouw analyse</h3>
-              <p>Volledige controle over de onderliggende data. Exporteer wat je nodig hebt en stel je eigen analyse samen, geen black box.</p>
+              <h3>De data zelf, voor je eigen analyse</h3>
+              <p>Je ziet de data achter elk antwoord. Download wat je nodig hebt en maak er je eigen analyse mee. Niets blijft verborgen.</p>
             </div>
           </div>
         </div>

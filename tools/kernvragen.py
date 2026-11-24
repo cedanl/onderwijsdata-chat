@@ -100,7 +100,7 @@ SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_VERGELIJK,
             "description": (
-                f"Vergelijk twee tot {MAX_INSTELLINGEN} instellingen: per instelling het aantal studenten, eerstejaars "
+                f"Vergelijk 2 tot {MAX_INSTELLINGEN} instellingen: per instelling het aantal studenten, eerstejaars "
                 "of inschrijvingen per studiejaar (DUO, 1 oktober) met het verloop, en de volgorde in het laatste "
                 "jaar dat ze allemaal hebben. Mbo met mbo, of hbo en wo onderling; met `opleiding` dezelfde opleiding "
                 "bij elke instelling. Neem de getallen letterlijk over en reken niet zelf."
@@ -374,7 +374,7 @@ def _profielen(namen: Any) -> list[dict] | str:
             "wo-instellingen uit het register, op officiële naam, afkorting of instellingscode. Geen gok."
         )
     if not 2 <= len(profielen) <= MAX_INSTELLINGEN:
-        return f"Vergelijk twee tot {MAX_INSTELLINGEN} verschillende instellingen; dit zijn er {len(profielen)}."
+        return f"Vergelijk 2 tot {MAX_INSTELLINGEN} verschillende instellingen; dit zijn er {len(profielen)}."
     if len({p["sector"] == "mbo" for p in profielen.values()}) > 1:
         return (
             "Mbo en hbo/wo vergelijk ik niet naast elkaar: DUO telt ze in andere bestanden met een andere definitie. "

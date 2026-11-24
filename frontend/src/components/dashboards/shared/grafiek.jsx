@@ -3,7 +3,7 @@ import { Bar, Line } from 'react-chartjs-2'
 import WaardenTabel from '../../WaardenTabel'
 import { figuurBeschrijving } from '../../../figuurBeschrijving'
 import { figuurTabel } from '../../../figuurTabel'
-import { alsFiguur, waardeAsTitel } from './grafiek-figuur'
+import { alsFiguur, metEenheid, waardeAsTitel } from './grafiek-figuur'
 
 // De titel van de kaart om een grafiek heen (ChartCard); de grafiek noemt hem in haar beschrijving.
 export const GrafiekTitel = createContext(null)
@@ -14,14 +14,16 @@ const SOORTEN = { line: Line, bar: Bar }
 // role="img" (react-chartjs-2) en krijgt hier zijn naam, een zin met de cijfers (#588); daaronder de waarden als
 // ingeklapte tabel (#664), voor wie geen tooltip kan of wil gebruiken. `titel` gaat voor de titel van de kaart;
 // `categorie` noemt de labelkolom van de tabel (anders 'Jaar' of 'Categorie'); `plugins` zijn inline-plugins van
-// Chart.js (DREMPELLIJNEN).
-export function Grafiek({ soort, data, options, hoogte, titel, categorie, plugins }) {
+// Chart.js (DREMPELLIJNEN). `eenheidInKop` zet de titel van de waardeas achter elke waardekolom van de tabel (#1101):
+// voor een grafiek waarvan de waarden geen aantallen zijn (een procentuele verandering), want een tabel die naar een
+// spreadsheet gaat houdt alleen de kopregel. Niet voor elke grafiek: een astitel is niet altijd een eenheid.
+export function Grafiek({ soort, data, options, hoogte, titel, categorie, plugins, eenheidInKop = false }) {
   const kaartTitel = useContext(GrafiekTitel)
   const naam = titel ?? kaartTitel
   const waardeAs = waardeAsTitel(options)
   const figuur = useMemo(() => alsFiguur(soort, data, { titel: naam, categorie, waardeAs }), [soort, data, naam, categorie, waardeAs])
   const beschrijving = useMemo(() => figuurBeschrijving(figuur), [figuur])
-  const tabel = useMemo(() => figuurTabel(figuur), [figuur])
+  const tabel = useMemo(() => metEenheid(figuurTabel(figuur), eenheidInKop ? waardeAs : undefined), [figuur, waardeAs, eenheidInKop])
   const Soort = SOORTEN[soort]
   return (
     <>

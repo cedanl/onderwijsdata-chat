@@ -31,7 +31,7 @@ test('vraag, antwoord en rapport met het nepmodel', async ({ page }) => {
   await page.locator('.make-rapport-btn').click()
   const dialoog = page.getByRole('dialog')
   await expect(dialoog).toBeVisible()
-  await dialoog.getByRole('button', { name: 'Genereer' }).click()
+  await dialoog.getByRole('button', { name: 'Maak', exact: true }).click()
 
   // Het rapport wordt bewaard en opent in de viewer (ChatPage: saveWorkbookWithSync, dan openRapport).
   const frame = page.locator('iframe.wb-iframe')

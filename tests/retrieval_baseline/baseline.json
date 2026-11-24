@@ -1,12 +1,12 @@
 {
-  "catalogus_digest": "f10c6b6d34ec",
+  "catalogus_digest": "203929283b32",
   "catalogusversie": [
     {
       "pakket": "onderwijsbronnen",
       "versie": "0.11.2",
       "commit": null,
       "manifest": {
-        "catalogusrevisie": "5b4357cf3af22384",
+        "catalogusrevisie": "561c8522c682472c",
         "consistent": true,
         "aantal": 268,
         "laatste_succesvolle_controle": "2026-10-21",
@@ -186,7 +186,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-11-19",
+  "gemeten_op": "2026-11-23",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 22,
@@ -201,8 +201,8 @@
         0.6521,
         0.9313
       ],
-      "recall_at_5_vraag": 0.7,
-      "mrr_vraag": 0.6183,
+      "recall_at_5_vraag": 0.75,
+      "mrr_vraag": 0.62,
       "onbeantwoordbaar_geslaagd": [
         1,
         2
@@ -345,8 +345,8 @@
         0.6627,
         0.8556
       ],
-      "recall_at_5_vraag": 0.7222,
-      "mrr_vraag": 0.5712,
+      "recall_at_5_vraag": 0.7407,
+      "mrr_vraag": 0.5718,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
@@ -396,7 +396,7 @@
       "recall_at_5_vraag": null,
       "mrr_vraag": null,
       "onbeantwoordbaar_geslaagd": [
-        0,
+        7,
         7
       ],
       "kritiek_geslaagd": [
