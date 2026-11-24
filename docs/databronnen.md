@@ -17,6 +17,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 | Pakket | `onderwijsbronnen.cbs` (tot #910 het pakket `onderwijsdata`), in deze repo onder `packages/onderwijsbronnen`; de versie staat in `/version` onder `catalogus`, met de commit waaruit hij komt (#888) |
 | Granulariteit | Nationaal, regionaal, per onderwijstype |
 | Tijdreeksen | Beschikbaar voor de meeste datasets |
+| Periode in de catalogus | Volgt de tabel zelf (#1070): `85776NED` (uitstromers ho; arbeidsmarktpositie na verlaten onderwijs) loopt 2006/'07-2023/'24 |
 
 **Voorbeeldvragen:**
 - *"Hoeveel studenten zaten er in 2022 in het mbo?"*
