@@ -117,6 +117,26 @@ describe('PrivacyPage', () => {
     }
   })
 
+  // #1074: the tokengebruik per day belongs to the account: it is in the export and goes with the delete, not in what
+  // stays. #1118: without a login of one's own there is no export either.
+  it('names the tokengebruik among what is exported and deleted, and no export without a login, in the app and the docs', async () => {
+    await render(createElement(PrivacyPage))
+    const appBullets = sectionElements('Wat je zelf kunt doen').flatMap(el => [...el.querySelectorAll('li')]).map(li => oneLine(li.textContent))
+    const docsBullets = docsSection('Wat je zelf kunt doen').split(/^- /m).map(oneLine)
+    for (const bullets of [appBullets, docsBullets]) {
+      const exporteren = bullets.find(b => b.includes('Exporteer al mijn gegevens'))
+      const verwijderen = bullets.find(b => b.includes('Verwijder al mijn gegevens'))
+      expect(exporteren).toMatch(/tokengebruik/)
+      expect(exporteren).toMatch(/Zonder eigen login/)
+      const [weg, blijft] = verwijderen.split('Wat blijft')
+      expect(weg).toMatch(/tokengebruik/)
+      expect(blijft).not.toMatch(/tokengebruik|teller/i)
+    }
+    expect(sectionText('Wat de server bewaart')).toMatch(/zit in de export, en gaat weg als je al je gegevens verwijdert/)
+    const rij = readDocs().split('\n').find(regel => regel.includes('| `tokengebruik` |'))
+    expect(rij).toMatch(/eerder als de gebruiker al zijn gegevens verwijdert, en in de export/)
+  })
+
   // #1112, #1117: the counters of the budget and the limits are named: what they hold, under what key, how long.
   it('names the counters of the budget and the limits, in the app and the docs', async () => {
     await render(createElement(PrivacyPage))

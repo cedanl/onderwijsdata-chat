@@ -42,7 +42,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987) en de stappen achter de figuren (tool, argumenten, het script van een analyse en de titel van de figuur, #993), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
-| Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`, geen kale hash, #1112); geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget); de nachtelijke taak ruimt ze op (#1113) |
+| Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`, geen kale hash, #1112); geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget); de nachtelijke taak ruimt ze op (#1113); eerder als de gebruiker al zijn gegevens verwijdert, en in de export (#1074) |
 | Tellers van de limieten (inloggen, berichten, feedback, Word-export, `/mcp`): één rij per meegetelde poging, onder een pseudoniem van de accountnaam, bij het inloggen samen met het IP-adres, of van het IP-adres (een HMAC met een geheim van de server, geen kale hash, #1117); geen inhoud. Alleen met PostgreSQL: lokaal telt het geheugen | `rate_limit_hits` | tot de poging uit het venster van de limiet valt (1 tot 10 minuten); verlopen rijen ruimt de nachtelijke taak op (#1113) en elke start van de app |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
@@ -110,11 +110,14 @@ is een open punt.
   niet.
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback,
-  datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
+  datarecepten, het bewijs per antwoord en je tokengebruik (`tokengebruik`: per dag `dag` en `eenheden`, zonder het
+  pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Niet erin: wat alleen in je browser staat. Zonder
+  eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404 (#1118).
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
-  (gesprekken, rapporten en dashboards, al je feedback, datarecepten en het bewijs per antwoord), en
+  (gesprekken, rapporten en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik,
+  dat onder het pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en
   ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
   (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
   back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash

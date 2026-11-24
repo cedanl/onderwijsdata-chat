@@ -1,8 +1,9 @@
 """Exporteer al mijn gegevens (#645, deel 1 van #485): alles onder het eigen account, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met gesprekken, werkboeken, feedback van alle soorten en datarecepten.
+Twee accounts in CHAT_USERS, elk met gesprekken, werkboeken, feedback van alle soorten, datarecepten en tokengebruik.
 De export van Anna bevat precies haar rijen; geen tekst die alleen van Bert is, staat erin. Tokens worden
-direct gemaakt, niet via de login: de login-limiter telt over de hele testrun mee.
+direct gemaakt, niet via de login: de login-limiter telt over de hele testrun mee. Zonder login (iedereen is `gast`)
+is er geen eigen account en geen export (#1118).
 """
 
 import json
@@ -13,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from core.tokenbudget import _sleutel
 from persistence import db, export
 
 _SOORTEN = [
@@ -22,6 +24,7 @@ _SOORTEN = [
     "algemene_feedback",
     "data_recipes",
     "beurtbewijs",
+    "tokengebruik",
 ]
 _EXPORT = "/api/mijn-gegevens/export"
 
@@ -93,6 +96,9 @@ def _vul(gebruiker: str, uniek: str) -> None:
             }
         },
     )
+    # Het verbruik van het model staat onder een pseudoniem, niet onder de naam (#1112); de export en het verwijderen
+    # vinden het via dezelfde sleutel (#1074).
+    db.tokengebruik_boek(_sleutel(gebruiker), "2026-11-02", 1234)
 
 
 def _export(client: TestClient, gebruiker: str) -> tuple[dict, str]:
@@ -129,11 +135,31 @@ def test_bijlage_met_datum_json_en_nooit_in_een_cache(client):
     assert json.loads(response.text)["exported_at"].startswith(vandaag)
 
 
-def test_een_gebruiker_zonder_gegevens_krijgt_zes_lege_lijsten(client):
+def test_een_gebruiker_zonder_gegevens_krijgt_zeven_lege_lijsten(client):
     _vul("anna", "ANNA-UNIEK")
     data, _ = _export(client, "leeg")
     assert data["username"] == "leeg"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
+
+
+def test_zonder_login_404_zoals_bij_verwijderen(app_client):
+    """#1118: zonder login is iedereen de gedeelde `gast`; diens export zou het werk van alle bezoekers bevatten."""
+    from routes.mijn_gegevens import GEEN_EIGEN_ACCOUNT
+
+    client = app_client(herlaad=("core.auth",))
+    from core import auth
+
+    assert not auth.AUTH_ENABLED
+    _vul(auth.FALLBACK_USER, "GAST-UNIEK")
+
+    response = client.get(_EXPORT)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": GEEN_EIGEN_ACCOUNT}
+    assert "GAST-UNIEK" not in response.text
+    verwijderd = client.request("DELETE", "/api/mijn-gegevens", json={"bevestig": "verwijder"})
+    assert verwijderd.status_code == 404
+    assert verwijderd.json() == response.json()
 
 
 # ── Inhoud en isolatie ───────────────────────────────────────────────────────
@@ -150,8 +176,27 @@ def test_alleen_de_eigen_rijen_per_soort(client):
     assert [f["tekst"] for f in data["algemene_feedback"]] == ["algemeen-ANNA-UNIEK"]
     assert [(r["conv_id"], r["data_key"]) for r in data["data_recipes"]] == [("anna-c1", "key-ANNA-UNIEK")]
     assert [(r["conv_id"], r["tekst_hash"]) for r in data["beurtbewijs"]] == [("anna-c1", "hash-ANNA-UNIEK")]
+    assert data["tokengebruik"] == [{"dag": "2026-11-02", "eenheden": 1234}]
     assert "BERT" not in body
     assert "bert" not in body
+
+
+def test_tokengebruik_per_dag_op_volgorde_zonder_de_sleutel(client):
+    """#1074: het verbruik per dag hoort bij het account; de sleutel (een pseudoniem, #1112) gaat niet mee."""
+    for dag, eenheden in (("2026-11-05", 50), ("2026-10-30", 7), ("2026-11-01", 300)):
+        db.tokengebruik_boek(_sleutel("anna"), dag, eenheden)
+    db.tokengebruik_boek(_sleutel("anna"), "2026-11-01", 20)
+    db.tokengebruik_boek(_sleutel("bert"), "2026-11-03", 999)
+
+    data, body = _export(client, "anna")
+
+    assert data["tokengebruik"] == [
+        {"dag": "2026-10-30", "eenheden": 7},
+        {"dag": "2026-11-01", "eenheden": 320},
+        {"dag": "2026-11-05", "eenheden": 50},
+    ]
+    for geheim in (_sleutel("anna"), _sleutel("bert"), "999", "2026-11-03"):
+        assert geheim not in body
 
 
 def test_json_kolommen_zijn_ontleed(client):
@@ -253,7 +298,7 @@ def test_de_stukken_vormen_samen_de_json(tmp_path, monkeypatch):
     assert len(stukken) > 1
     data = json.loads("".join(stukken))
     assert data["exported_at"] == "2026-10-20T09:30:00+00:00"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
 
 
 def test_werkboeken_een_voor_een(client, monkeypatch):
@@ -286,7 +331,8 @@ def test_werkboeken_een_voor_een(client, monkeypatch):
 
 
 def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
-    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam."""
+    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam; `tokengebruik` kent alleen
+    het pseudoniem van de naam (#1112) en filtert daarop."""
     queries: list[tuple[str, tuple]] = []
 
     def vang(sql, params):
@@ -295,7 +341,10 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
 
     monkeypatch.setattr(export, "_rijen", vang)
     list(export.export_json_chunks("anna"))
-    assert len(queries) == 6
-    for sql, params in queries:
+    assert len(queries) == 7
+    *op_naam, tokengebruik = queries
+    for sql, params in op_naam:
         assert re.search(r"WHERE username = \?", sql)
         assert "anna" in params
+    assert re.search(r"FROM tokengebruik WHERE sleutel = \?", tokengebruik[0])
+    assert tokengebruik[1] == (_sleutel("anna"),)

@@ -97,7 +97,8 @@ export default function PrivacyInhoud() {
           <strong>Tellers</strong>: de server telt hoeveel een account het model kostte (één getal per dag, 62 dagen)
           en hoe vaak een account of IP-adres in korte tijd inlogt, een bericht stuurt of de koppeling aanroept (één
           rij per poging, hoogstens tien minuten; bij het inloggen samen met je IP-adres). Ze staan onder een
-          pseudoniem dat de server met een eigen geheim maakt, niet onder je accountnaam of adres.
+          pseudoniem dat de server met een eigen geheim maakt, niet onder je accountnaam of adres. Het getal per dag
+          hoort toch bij je account: het zit in de export, en gaat weg als je al je gegevens verwijdert.
         </li>
         <li>
           <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is: je
@@ -148,14 +149,15 @@ export default function PrivacyInhoud() {
         <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
-          dashboards, feedback, datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat.
+          dashboards, feedback, datarecepten, het bewijs per antwoord en je tokengebruik (wat je vragen het model
+          kostten, één getal per dag). Niet erin: wat alleen in je browser staat. Zonder eigen login kan het niet.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;,
           nadat je het woord &ldquo;verwijder&rdquo; hebt getypt. Dat kan niet ongedaan worden gemaakt; exporteer
           eerst. Dan verdwijnt alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, al
-          je feedback, de datarecepten en het bewijs per antwoord), en ook de kopie in deze browser; je wordt
-          uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en de back-ups van de
+          je feedback, de datarecepten, het bewijs per antwoord en je tokengebruik), en ook de kopie in deze browser;
+          je wordt uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en de back-ups van de
           beheerder, een hash van je accountnaam tot je laatste sessie verlopen is, een hash van een sessie waarmee je
           uitlogde tot zij verloopt, en de kopie in de browser van een ander apparaat tot je daar uitlogt.
           Gebruik je een gedeeld account, dan verdwijnt ook het werk van de anderen. Zonder eigen login kan het niet.

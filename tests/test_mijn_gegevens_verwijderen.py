@@ -1,6 +1,6 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met rijen van alle zes soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
+Twee accounts in CHAT_USERS, elk met rijen van alle zeven soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
 nergens nog een rij, staan die van Bert er ongewijzigd, zijn al haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
 """
@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent import beurtbewijs, recepten
 from core import foutmeldingen
+from core.tokenbudget import _sleutel
 from persistence import db, export, verwijderen
 from tests.test_mijn_gegevens_export import _vul
 
@@ -27,6 +28,7 @@ _SOORTEN = [
     "algemene_feedback",
     "data_recipes",
     "beurtbewijs",
+    "tokengebruik",
 ]
 _ALLES_NUL = dict.fromkeys(_SOORTEN, 0)
 # Anna's rijen per soort na _vul_anna: elk aantal anders, zodat een verwisselde sleutel opvalt.
@@ -37,6 +39,7 @@ _ANNA = {
     "algemene_feedback": 5,
     "data_recipes": 1,
     "beurtbewijs": 2,
+    "tokengebruik": 3,
 }
 # Bert's rijen na _vul.
 _BERT = {
@@ -46,6 +49,7 @@ _BERT = {
     "algemene_feedback": 1,
     "data_recipes": 1,
     "beurtbewijs": 1,
+    "tokengebruik": 1,
 }
 
 
@@ -102,11 +106,21 @@ def _vul_anna() -> None:
             }
         },
     )
+    for dag in ("2026-11-03", "2026-11-04"):
+        db.tokengebruik_boek(_sleutel("anna"), dag, 10)
+
+
+def _filter(tabel: str, gebruiker: str) -> tuple[str, tuple]:
+    """`tokengebruik` staat onder het pseudoniem van de naam (#1112), de andere tabellen onder de naam zelf."""
+    if tabel == "tokengebruik":
+        return "sleutel = ?", (_sleutel(gebruiker),)
+    return "username = ?", (gebruiker,)
 
 
 def _aantal(tabel: str, gebruiker: str) -> int:
+    waar, params = _filter(tabel, gebruiker)
     with db._connection() as conn:
-        return db._execute(conn, f"SELECT COUNT(*) AS n FROM {tabel} WHERE username = ?", (gebruiker,)).fetchone()["n"]
+        return db._execute(conn, f"SELECT COUNT(*) AS n FROM {tabel} WHERE {waar}", params).fetchone()["n"]
 
 
 def _aantallen(gebruiker: str) -> dict[str, int]:
@@ -115,13 +129,12 @@ def _aantallen(gebruiker: str) -> dict[str, int]:
 
 def _rijen(gebruiker: str) -> dict[str, list[tuple]]:
     """Elke rij van deze gebruiker per tabel, volledig en gesorteerd: om 'ongewijzigd' te toetsen."""
+    rijen = {}
     with db._connection() as conn:
-        return {
-            tabel: sorted(
-                tuple(r) for r in db._execute(conn, f"SELECT * FROM {tabel} WHERE username = ?", (gebruiker,))
-            )
-            for tabel in _SOORTEN
-        }
+        for tabel in _SOORTEN:
+            waar, params = _filter(tabel, gebruiker)
+            rijen[tabel] = sorted(tuple(r) for r in db._execute(conn, f"SELECT * FROM {tabel} WHERE {waar}", params))
+    return rijen
 
 
 def _ingetrokken() -> int:
@@ -175,6 +188,31 @@ def test_van_de_figuurstappen_in_de_bewijsrijen_blijft_niets_over(client):
         figuren = [r["figuren"] for r in db._execute(conn, "SELECT figuren FROM beurtbewijs")]
     assert figuren and not any("ANNA-UNIEK" in f for f in figuren)
     assert any("BERT-UNIEK" in f for f in figuren)
+
+
+def test_het_tokengebruik_van_de_gebruiker_gaat_mee_dat_van_een_ander_blijft(client):
+    """#1074: het verbruik per dag staat onder een pseudoniem van de naam (#1112), niet onder `username`; het hoort
+    toch bij het account. De export toont alleen de eigen dagen, het verwijderen wist alleen die, met het aantal."""
+    from core import tokenbudget
+
+    db.tokengebruik_boek(tokenbudget._sleutel("anna"), "2026-11-01", 100)
+    db.tokengebruik_boek(tokenbudget._sleutel("anna"), "2026-11-02", 200)
+    db.tokengebruik_boek(tokenbudget._sleutel("bert"), "2026-11-02", 999)
+    anna, bert = _token("anna"), _token("bert")
+
+    export = client.get("/api/mijn-gegevens/export", headers={"Authorization": f"Bearer {anna}"}).json()
+    assert export["tokengebruik"] == [{"dag": "2026-11-01", "eenheden": 100}, {"dag": "2026-11-02", "eenheden": 200}]
+
+    response = _verwijder(client, anna)
+
+    assert response.json()["verwijderd"]["tokengebruik"] == 2
+    assert tokenbudget.gebruik("anna") == (0, 0)
+    assert _aantal("tokengebruik", "anna") == 0
+    with db._connection() as conn:
+        over = [tuple(r) for r in db._execute(conn, "SELECT sleutel, dag, eenheden FROM tokengebruik")]
+    assert over == [(tokenbudget._sleutel("bert"), "2026-11-02", 999)]
+    export_bert = client.get("/api/mijn-gegevens/export", headers={"Authorization": f"Bearer {bert}"}).json()
+    assert export_bert["tokengebruik"] == [{"dag": "2026-11-02", "eenheden": 999}]
 
 
 # ── 2. Bevestiging en sessie ─────────────────────────────────────────────────
@@ -324,7 +362,7 @@ def test_zonder_login_404_en_niets_weg(client, monkeypatch):
     response = _verwijder(client, None)
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Zonder inloggen is er geen eigen account om te verwijderen."}
+    assert response.json() == {"detail": "Zonder inloggen is er geen eigen account om te exporteren of te verwijderen."}
     assert _aantallen(auth.FALLBACK_USER) == gast_voor
     assert _ingetrokken() == 0
 
@@ -363,7 +401,7 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
     assert len(regels) == 1
     assert regels[0] == (
         "verwijder mijn gegevens: conversations=3, workbooks=2, feedback=4, algemene_feedback=5, "
-        "data_recipes=1, beurtbewijs=2"
+        "data_recipes=1, beurtbewijs=2, tokengebruik=3"
     )
     assert next(r for r in caplog.records if r.name == "routes.mijn_gegevens").levelno == logging.INFO
 
@@ -372,7 +410,8 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
 
 
 def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path, monkeypatch):
-    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test."""
+    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test. `tokengebruik`
+    heeft geen kolom `username` maar een pseudoniem van de naam (#1112), en hoort er toch bij (#1074)."""
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     db.init_db()
     with db._connection() as conn:
@@ -381,10 +420,12 @@ def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path
             t for t in tabellen if any(k["name"] == "username" for k in db._execute(conn, f"PRAGMA table_info({t})"))
         }
 
-    assert met_gebruiker == set(_SOORTEN)
+    assert met_gebruiker == set(_SOORTEN) - {"tokengebruik"}
     assert list(verwijderen.DELETES) == list(export.SOORTEN) == _SOORTEN
 
 
 def test_elke_delete_filtert_op_de_gebruiker():
-    for soort, sql in verwijderen.DELETES.items():
+    *op_naam, tokengebruik = verwijderen.DELETES.items()
+    for soort, sql in op_naam:
         assert sql == f"DELETE FROM {soort} WHERE username = ?"
+    assert tokengebruik == ("tokengebruik", "DELETE FROM tokengebruik WHERE sleutel = ?")
