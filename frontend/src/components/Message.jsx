@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import DataExport from './DataExport'
+import VasteMaat from './VasteMaat'
 import AnswerBlocks from './AnswerBlocks'
 import IngetrokkenVersies from './IngetrokkenVersies'
 import { hasExport } from '../dataExport'
@@ -120,6 +121,8 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
+            {/* Code, niet het model, zet dit label (#1242): het komt met message_end, net als de controle. */}
+            {msg.done && <VasteMaat waarde={msg.vaste_maat} />}
             {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
             {figuren.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />

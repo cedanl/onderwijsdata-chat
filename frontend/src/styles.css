@@ -955,6 +955,13 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 }
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
+/* Het label "Vaste maat" (#1242): herkomst, geen waarschuwing en geen keurmerk. Zelfde plek en maat als de
+   controlemelding, met een neutrale grijze streep; de teldefinitie en de vastlegging staan in de uitklap. */
+.vaste-maat { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--gray-300); padding: 2px 0 2px 8px; margin-top: 6px; }
+.vaste-maat summary { cursor: pointer; width: fit-content; font-weight: 600; min-height: var(--tap-min-aa); }
+.vaste-maat summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
+.vaste-maat-uitleg { margin-top: 4px; color: var(--gray-600); }
+.message-bubble .vaste-maat-uitleg p { margin-bottom: 4px; }
 .message-continue {
   font: inherit; font-style: normal; font-weight: 600; color: var(--accent-text);
   background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer;
@@ -2193,7 +2200,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
   .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
-  .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
+  .csv-download-btn, .data-export-btn, .vaste-maat, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
   .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst,
