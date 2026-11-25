@@ -10,7 +10,9 @@ import asyncio
 import importlib
 import json
 import re
+from dataclasses import fields
 from datetime import date
+from typing import Any
 
 import pytest
 
@@ -18,11 +20,12 @@ from agent.loop import LoopResult
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import SCOPE_UITLEG, WEIGER_ANTWOORD
 from agent.vaste_maat import vaste_maat
-from tools.maten import MATEN, PERSONEN_HO
+from tools.maten import MATEN, PERSONEN_HO, Recept
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
 
+_VASTLEGGING = frozenset({"vastgelegd_in", "vastgelegd_op"})
 _TELDEFINITIE = MATEN[PERSONEN_HO].teldefinitie
 _ANTWOORD = "De HU had in 2024/25 38.000 ingeschreven personen."
 
@@ -54,11 +57,21 @@ def test_elk_recept_noemt_issue_en_datum_van_de_vastlegging(naam):
     assert date.fromisoformat(recept.vastgelegd_op).isoformat() == recept.vastgelegd_op
 
 
-def test_een_recept_zonder_vastlegging_kan_niet_bestaan():
-    """Het veld is verplicht: een nieuw recept zonder issue en datum faalt al bij het maken."""
-    recept = MATEN[PERSONEN_HO]
-    with pytest.raises(TypeError):
-        type(recept)(recept.naam, recept.omschrijving, recept.dataset, recept.teldefinitie, recept.waardekolom)
+def _velden_zonder_vastlegging(recept: Recept) -> dict[str, Any]:
+    """Alle velden van het recept behalve de vastlegging, zodat alleen die bij het maken ontbreekt."""
+    return {veld.name: getattr(recept, veld.name) for veld in fields(recept) if veld.name not in _VASTLEGGING}
+
+
+@pytest.mark.parametrize("naam", sorted(MATEN))
+def test_een_recept_zonder_vastlegging_kan_niet_bestaan(naam):
+    """Het veld is verplicht: een nieuw recept zonder issue en datum faalt al bij het maken, voor elk recepttype."""
+    recept = MATEN[naam]
+    klasse = type(recept)
+    velden = _velden_zonder_vastlegging(recept)
+    # Met de vastlegging erbij ontstaat hetzelfde recept: de TypeError hieronder komt dus alleen door het ontbrekende veld.
+    assert klasse(**velden, vastgelegd_in=recept.vastgelegd_in, vastgelegd_op=recept.vastgelegd_op) == recept
+    with pytest.raises(TypeError, match="vastgelegd_in"):
+        klasse(**velden)
 
 
 # --- het veld in message_end ---
@@ -121,7 +134,9 @@ def test_modeltekst_over_een_vaste_maat_geeft_geen_veld():
 def test_vaste_maat_leest_alleen_de_stappen():
     assert vaste_maat([]) is None
     assert vaste_maat([("search_catalog", "{}")]) is None
-    assert vaste_maat([_maatstap()])["maat"] == PERSONEN_HO
+    veld = vaste_maat([_maatstap()])
+    assert veld is not None
+    assert veld["maat"] == PERSONEN_HO
 
 
 def test_run_zet_geen_veld_onder_een_modeltekst_die_een_vaste_maat_noemt(monkeypatch):
