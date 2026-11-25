@@ -1,7 +1,7 @@
 """Wat de server zonder inloggen laat zien en berekent (#636).
 
-In productie geen API-documentatie (Swagger UI haalde zijn scripts van cdn.jsdelivr.net), en de
-dashboard-eindpunten alleen voor een ingelogde gebruiker en alleen als dashboards aan staan.
+In productie geen API-documentatie en nergens Swagger UI of ReDoc (die haalden hun scripts van cdn.jsdelivr.net,
+#1161), en de dashboard-eindpunten alleen voor een ingelogde gebruiker en alleen als dashboards aan staan.
 """
 
 import pytest
@@ -92,14 +92,49 @@ def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
         assert schema.headers["content-type"] == "application/json"
 
 
-def test_buiten_productie_blijft_de_api_documentatie(ontwikkel_app):
+def test_buiten_productie_blijft_alleen_het_openapi_schema(ontwikkel_app):
+    # #1161: Swagger UI en ReDoc laadden hun scripts van cdn.jsdelivr.net, wat de CSP blokkeert: ze bleven leeg.
+    # Alleen het schema blijft; elke viewer kan het lezen.
     client = TestClient(ontwikkel_app)
 
-    assert client.get("/api/docs").status_code == 200
     schema = client.get("/api/openapi.json")
     assert schema.status_code == 200
+    assert schema.headers["content-type"] == "application/json"
     assert "/health" in schema.json()["paths"]
-    assert client.get("/redoc").status_code == 200
+    assert ontwikkel_app.docs_url is None
+    assert ontwikkel_app.redoc_url is None
+    for pad in ("/api/docs", "/redoc", "/docs/oauth2-redirect"):
+        resp = client.get(pad)
+        assert resp.status_code == 404, pad
+        assert "cdn.jsdelivr.net" not in resp.text, pad
+
+
+def test_buiten_productie_met_spa_geeft_voor_docs_geen_documentatie(ontwikkel_app, tmp_path):
+    # Met een gebouwde frontend: /api/docs is een JSON-404, /redoc en /docs/oauth2-redirect krijgen index.html van de
+    # SPA, zoals elk onbekend pad en zoals in productie.
+    from frontend_static import mount_frontend
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    mount_frontend(ontwikkel_app, tmp_path)
+    client = TestClient(ontwikkel_app)
+
+    docs = client.get("/api/docs")
+    assert docs.status_code == 404
+    assert docs.json() == {"detail": NIET_GEVONDEN}
+    for pad in ("/redoc", "/docs/oauth2-redirect"):
+        assert client.get(pad).text == "<!doctype html><title>EDUdata</title>", pad
+    assert client.get("/api/openapi.json").status_code == 200
+    for pad in (*DOCS_PADEN, "/", "/dashboards"):
+        assert "cdn.jsdelivr.net" not in client.get(pad).text, pad
+
+
+def test_de_csp_laat_geen_cdn_toe(ontwikkel_app):
+    # De oplossing van #1161 haalt de pagina's weg; de CSP blijft zoals hij was, zonder externe scripthost.
+    csp = TestClient(ontwikkel_app).get("/api/openapi.json").headers["Content-Security-Policy"]
+
+    assert "jsdelivr" not in csp
+    assert "script-src 'self' 'unsafe-inline';" in csp
 
 
 # ── De fabriek en de app van de module ───────────────────────────────────────
