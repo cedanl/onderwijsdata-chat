@@ -203,3 +203,20 @@ def test_een_skdb_tabel_zonder_nse_cijfers_krijgt_geen_vlag():
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
     assert "onzeker" not in json.dumps(uit["toelichting"], ensure_ascii=False)
     assert uit[koppel.PER_GRAAD] == {"bachelor": 1, "master": 29, "associate degree": 1}
+
+
+def test_een_eigen_kolom_onzeker_blijft_staan():
+    _hu()
+    store.put(_SKDB, store.get(_SKDB).assign(onzeker="eigen"), _SKDB_META)
+    df = store.get(_koppel()["data_key"])
+    assert set(df.loc[df["koppelstatus"] != "alleen DUO", koppel.ONZEKER]) == {"eigen"}
+
+
+def test_de_celtelling_vooraf_rekent_de_kolom_onzeker_mee(monkeypatch):
+    """De grens van #1011 telt wat er in de store komt: de koppeling plus de kolom onzeker."""
+    _hu()
+    cellen = store.get(_koppel()["data_key"]).size
+    monkeypatch.setattr(koppel, "MAX_CELLEN", cellen)
+    assert "data_key" in _koppel()
+    monkeypatch.setattr(koppel, "MAX_CELLEN", cellen - 1)
+    assert _koppel()["verwachte_cellen"] == cellen

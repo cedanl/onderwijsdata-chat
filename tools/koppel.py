@@ -562,7 +562,8 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     if tellingen.nm_waarden:
         raise _nm_melding(links, rechts, sleutels, (a_ok, b_ok), tellingen, rijen)
     korrel = {links.label: _korrel(a_ok, sleutels), rechts.label: _korrel(b_ok, sleutels)}
-    kolommen = len(a.columns) + len(b.columns) - len(sleutels) + 1  # de sleutels één keer, plus koppelstatus
+    # De sleutels één keer, plus koppelstatus, plus onzeker bij SKDB naast DUO (_skdb_signalen).
+    kolommen = len(a.columns) + len(b.columns) - len(sleutels) + 1 + int(_met_onzeker(links, rechts, sleutels))
     melding = _te_groot(links, rechts, sleutels, rijen, kolommen, "_to_".join(korrel.values()))
     if melding is not None:
         raise melding
@@ -615,6 +616,15 @@ def _opvolgers(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitk
     return replace(uitkomst, df=df), extra
 
 
+def _met_onzeker(links: _Kant, rechts: _Kant, sleutels: list[str]) -> bool:
+    """Krijgt de koppeling de kolom `onzeker`: SKDB naast DUO, de SKDB-kant heeft een NSE-cijfer en geen van beide
+    tabellen heeft zelf een kolom met die naam. Ook de celtelling vooraf rekent haar mee."""
+    paar = _skdb_duo(links, rechts, sleutels)
+    if paar is None or any(ONZEKER in k.df.columns for k in paar):
+        return False
+    return any(k in paar[0].df.columns for k in studiekeuze.NSE_CIJFERS)
+
+
 def _graadsoort(waarde: object) -> str:
     """De graad van een SKDB-rij als sleutel van PER_GRAAD: bachelor, master, associate degree (ook 'ad'); een andere
     waarde in kleine letters, een lege onder GEEN_GRAAD. Nooit weggelaten."""
@@ -645,8 +655,9 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
 
     De kolom `onzeker` (na `koppelstatus` en een `koppelreden`) volgt dezelfde regel als get_studiekeuze
     (`studiekeuze.is_onzeker`, MIN_RESPONDENTEN): true of false bij een SKDB-rij, leeg bij een rij alleen uit DUO. Alleen
-    als de SKDB-kant een NSE-cijfer heeft en geen eigen kolom `onzeker`. `niet_gekoppeld_per_graad` telt de rijen
-    `alleen SKDB` per `graad`; de delen tellen op tot hun `telling`. Andere koppelingen blijven zoals ze waren.
+    als de SKDB-kant een NSE-cijfer heeft en geen tabel een eigen kolom `onzeker` (_met_onzeker).
+    `niet_gekoppeld_per_graad` telt de rijen `alleen SKDB` per `graad`; de delen tellen op tot hun `telling`. Andere
+    koppelingen blijven zoals ze waren.
     """
     paar = _skdb_duo(links, rechts, sleutels)
     if paar is None:
@@ -658,7 +669,7 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
     statussen = (BEIDE, skdb.alleen)
     van_skdb = df[KOPPELSTATUS].isin(statussen)
     nse = {k: naam[k] for k in ("nse_respondenten", *studiekeuze.NSE_CIJFERS) if k in naam}
-    if ONZEKER not in df.columns and any(k in nse for k in studiekeuze.NSE_CIJFERS):
+    if _met_onzeker(links, rechts, sleutels):
         na = [k for k in (KOPPELSTATUS, opvolger.KOPPELREDEN) if k in df.columns][-1]
         df = df.copy()
         df.insert(list(df.columns).index(na) + 1, ONZEKER, _onzekerheid(df, van_skdb, nse))
