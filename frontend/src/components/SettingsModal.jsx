@@ -52,7 +52,11 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
   // A stored role that is not in the list (an older value) shows as no choice, and is saved as none (#591).
   const [functie, setFunctie] = useState(isFunctie(settings.functie) ? settings.functie : '')
   const [mode, setMode] = useState(settings.mode || 'system')
-  const [geavanceerdAan, setGeavanceerdAan] = useState(geavanceerd === true)
+  // Tot de gebruiker zelf kiest, volgt de dialoog de bewaarde stand: die komt van de server en kan pas na het openen
+  // binnenkomen (een ander apparaat, de pilotlijst). Zo zet Opslaan zonder keuze niets terug.
+  const [geavanceerdKeuze, setGeavanceerdKeuze] = useState(null)
+  const geavanceerdAan = geavanceerdKeuze ?? geavanceerd === true
+  const setGeavanceerdAan = aan => setGeavanceerdKeuze(aan)
   const dialogRef = useDialog(onClose)
 
   const handleSave = () => {
@@ -216,7 +220,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
                 aria-checked={geavanceerdAan}
                 aria-describedby="settings-geavanceerd-uitleg"
                 className="settings-switch"
-                onClick={() => setGeavanceerdAan(aan => !aan)}
+                onClick={() => setGeavanceerdAan(!geavanceerdAan)}
               >
                 <span className="settings-switch-label">Geavanceerd</span>
                 <span className="settings-switch-baan" aria-hidden="true"><span className="settings-switch-knop" /></span>
