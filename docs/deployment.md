@@ -158,8 +158,9 @@ kubectl get networkpolicy -n services-onderwijsdata-chat
 Alle omgevingen gebruiken `traefik-external` en draaien één pod zonder HPA; resources, quotum en toegang per
 omgeving staan in [Operatie](operatie.md#per-omgeving).
 
-**Ook productie draait één pod** (ADR-011, besluit 09-11 op #677). Waarom: de opgehaalde data, de gelijktijdigheidstellers en de
-SRAM-cache leven in het geheugen van het proces, dus een tweede pod zou ze niet kennen. Wat dat betekent: elke uitrol
+**Ook productie draait één pod** (ADR-011, besluit 09-11 op #677). Waarom: de opgehaalde data en de gelijktijdigheidstellers
+leven in het geheugen van het proces, dus een tweede pod zou ze niet kennen; de SRAM-gebruikersinfo staat sinds #984 in
+Postgres (`oidc_gebruikers`). Wat dat betekent: elke uitrol
 of herstart is een korte onderbreking (lopende antwoorden breken af, de frontend verbindt vanzelf opnieuw), en de
 gelijktijdigheidstellers tellen per proces en beginnen na een herstart op nul (de tijdslimieten voor login, berichten,
 feedback en `/mcp` staan sinds #984 in Postgres). Zet geen `replicaCount` boven 1 en

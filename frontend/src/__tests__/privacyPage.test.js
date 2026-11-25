@@ -240,6 +240,61 @@ describe('de privacytekst op B1 (#1139)', () => {
   })
 })
 
+// #1230: naam, organisatie en instelling uit SRAM staan sinds #984 in de database (`oidc_gebruikers`), niet meer in het
+// geheugen van de server. #1209: ze zitten in de export en gaan mee met "Verwijder al mijn gegevens", in dezelfde
+// transactie als de rest. App en docs/privacy.md noemen dezelfde plek, termijn en momenten van verwijderen.
+describe('de SRAM-gegevens in de database (#1230, #1209)', () => {
+  const inloggenInDeApp = () => sectionElements('Wat de server bewaart')
+    .flatMap(el => [...el.querySelectorAll('li')]).map(li => oneLine(li.textContent))
+    .find(li => li.startsWith('Inloggen'))
+  const inloggenInDeDocs = () => oneLine(docsSection('Wat de server bewaart')).split('Inloggen:')[1].split('Bewaartermijn')[0]
+
+  it('zegt in de app: in de database, ten hoogste de sessieduur, weg bij uitloggen en bij al je gegevens verwijderen', async () => {
+    zetTermijnen({ sessie_max_uren: 12 })
+    try {
+      await render(createElement(PrivacyPage))
+      const inloggen = inloggenInDeApp()
+      expect(inloggen).toContain('naam, organisatie en instelling uit SRAM staan in de database van de server, ten hoogste 12 uur')
+      expect(inloggen).toContain('weg als je uitlogt of al je gegevens verwijdert')
+      expect(container.textContent).not.toContain('geheugen van de server')
+      expect(container.textContent).not.toMatch(/SRAM[^.]*geheugen|geheugen[^.]*SRAM/)
+    } finally {
+      zetTermijnen({})
+    }
+  })
+
+  it('docs/privacy.md noemt dezelfde plek, termijn en momenten van verwijderen', () => {
+    const inloggen = inloggenInDeDocs()
+    expect(inloggen).toMatch(/naam, organisatie en instelling[^.]*in de database \(`oidc_gebruikers`/)
+    expect(inloggen).toContain('`SESSION_MAX_HOURS`')
+    expect(inloggen).toMatch(/uitloggen/)
+    expect(inloggen).toMatch(/al zijn gegevens verwijdert/)
+    const rij = readDocs().split('\n').find(regel => regel.includes('| `oidc_gebruikers` |'))
+    expect(rij).toMatch(/tot `SESSION_MAX_HOURS`/)
+    expect(rij).toMatch(/eerder bij uitloggen of als de gebruiker al zijn gegevens verwijdert, en in de export/)
+    expect(rij).not.toMatch(/stond tot #984 in het geheugen/)
+    expect(readDocs()).not.toContain('geheugen van de server')
+  })
+
+  it('noemt de SRAM-gegevens bij exporteren en verwijderen, vóór wat blijft, in de app en de docs', async () => {
+    await render(createElement(PrivacyPage))
+    const appBullets = sectionElements('Wat je zelf kunt doen').flatMap(el => [...el.querySelectorAll('li')]).map(li => oneLine(li.textContent))
+    const docsBullets = docsSection('Wat je zelf kunt doen').split(/^- /m).map(oneLine)
+    for (const bullets of [appBullets, docsBullets]) {
+      const exporteren = bullets.find(b => b.includes('Exporteer al mijn gegevens'))
+      const verwijderen = bullets.find(b => b.includes('Verwijder al mijn gegevens'))
+      expect(exporteren).toMatch(/naam, organisatie en instelling uit SRAM/)
+      const [weg, blijft] = verwijderen.split('Wat blijft')
+      expect(weg).toMatch(/naam, organisatie en instelling uit SRAM/)
+      expect(blijft).not.toMatch(/SRAM/)
+    }
+    const docsExport = docsBullets.find(b => b.includes('Exporteer al mijn gegevens'))
+    expect(docsExport).toMatch(/`oidc_gebruiker`/)
+    const docsVerwijderen = docsBullets.find(b => b.includes('Verwijder al mijn gegevens'))
+    expect(docsVerwijderen).not.toMatch(/direct daarna je SRAM-gegevens/)
+  })
+})
+
 // #1140: de pagina en docs/privacy.md noemen wat er in de browser staat met de namen van de app. Een "werkboek" heet
 // in de app een rapport, en de dashboardchat bestaat sinds #765 niet meer: de app schrijft haar niet meer, ze wist
 // alleen wat een eerdere versie achterliet (SESSION_DATA_KEYS).

@@ -100,8 +100,9 @@ export default function PrivacyInhoud() {
         <li>
           <strong>Inloggen</strong>: met een gebruikersnaam en wachtwoord bewaart de server alleen je gebruikersnaam
           bij je gegevens. Met SURF SRAM is je e-mailadres je accountnaam, ook als auteur van een rapport. Je naam,
-          organisatie en instelling staan tijdens je sessie in het geheugen van de server (ten hoogste {sessieMax} uur).
-          Een ingetrokken sessie (bijvoorbeeld na uitloggen) bewaart de server als controlecode, tot ze verloopt.
+          organisatie en instelling uit SRAM staan in de database van de server, ten hoogste {sessieMax} uur. Ze gaan
+          eerder weg als je uitlogt of al je gegevens verwijdert. Een ingetrokken sessie (bijvoorbeeld na uitloggen)
+          bewaart de server als controlecode, tot ze verloopt.
         </li>
         <li>
           <strong>Tellers</strong>: de server telt twee dingen. Het eerste is wat een account het model kostte, als
@@ -168,7 +169,8 @@ export default function PrivacyInhoud() {
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
           dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald en het bewijs per antwoord.
-          Ook je tokengebruik zit erin: wat je vragen het model kostten, als één getal per dag. Niet erin: wat alleen in je browser
+          Ook je tokengebruik zit erin: wat je vragen het model kostten, als één getal per dag. Log je in met SRAM, dan
+          zitten ook je naam, organisatie en instelling uit SRAM erin. Niet erin: wat alleen in je browser
           staat. Zonder eigen login kan het niet.
         </li>
         <li>
@@ -176,8 +178,9 @@ export default function PrivacyInhoud() {
           Typ daarna het woord &ldquo;verwijder&rdquo;. Dat kan niet ongedaan worden gemaakt, dus exporteer eerst.
           Dan verdwijnt alles wat de server onder je account bewaart. Dat zijn je gesprekken, rapporten en
           dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je
-          tokengebruik. Ook de kopie in deze browser gaat weg. Je wordt uitgelogd, ook op een ander apparaat. De
-          tellers van het inloggen en de limieten gaan niet direct weg. Ze staan onder een pseudoniem en verdwijnen na
+          tokengebruik. Ook je naam, organisatie en instelling uit SRAM gaan weg. Ook de kopie in deze browser gaat
+          weg. Je wordt uitgelogd, ook op een ander apparaat. De tellers van het inloggen en de limieten gaan niet
+          direct weg. Ze staan onder een pseudoniem en verdwijnen na
           hoogstens tien minuten. Wat blijft verder: de serverlogs (zonder gesprekstekst) en de back-ups van de
           beheerder. Ook blijft een controlecode van je accountnaam staan, tot je laatste sessie verlopen is. Een
           controlecode van een sessie waarmee je uitlogde blijft staan tot zij verloopt. De kopie in de browser van een

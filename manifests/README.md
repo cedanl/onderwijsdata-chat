@@ -5,8 +5,8 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 ## Omgeving-specifieke configuratie
 
 Elke omgeving draait **één pod** zonder HPA en zonder PDB, ook productie (ADR-011 in
-[`docs/architecture-decisions.md`](../docs/architecture-decisions.md), besluit 09-11 op #677). Waarom: datastore,
-gelijktijdigheidstellers en SRAM-cache leven in het geheugen van het proces (#421). Gevolg: elke uitrol is een korte
+[`docs/architecture-decisions.md`](../docs/architecture-decisions.md), besluit 09-11 op #677). Waarom: datastore en
+gelijktijdigheidstellers leven in het geheugen van het proces (#421); de SRAM-gebruikersinfo staat sinds #984 in Postgres. Gevolg: elke uitrol is een korte
 onderbreking, en die tellers beginnen na een herstart op nul (de tijdslimieten staan sinds #984 in Postgres). Opschalen is #984. Resources, quotum, probes,
 het stoppen van de pod en het runbook staan in [`docs/operatie.md`](../docs/operatie.md); deze tabel is het overzicht.
 

@@ -164,6 +164,8 @@ describe('the dialog', () => {
     for (const tekst of [
       'gesprekken', 'rapporten en dashboards', 'al je feedback', 'via de link Feedback', 'datarecepten',
       'niet ongedaan', 'kopie in deze browser', 'ander apparaat', 'tot je daar uitlogt', 'samen met anderen',
+      // #1209: het tokengebruik en het SRAM-profiel gaan mee.
+      'tokengebruik', 'naam, organisatie en instelling uit SRAM',
     ]) expect(uitleg).toContain(tekst)
     // Feedback per antwoord bestaat niet meer (#983).
     expect(uitleg).not.toContain('per antwoord')
