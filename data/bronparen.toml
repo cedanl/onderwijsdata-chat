@@ -17,7 +17,7 @@
 #   [paar.duo]    de DUO-maat: dataset, bestand (woorden in de titel), periodekolom, telkolommen, afbakening
 #   [[paar.reden]]  per bekende reden voor een verschil de tekst en de bron; een paar zonder reden mag
 #
-# Een ongeldig bestand laadt niet: de tests in tests/test_bronparen.py falen dan, en de kruiscontrole valt weg.
+# Een ongeldig bestand laadt niet: de tests in tests/test_kruiscontrole.py falen dan, en de kruiscontrole valt weg.
 
 [[paar]]
 id = "mbo-studenten-landelijk"
