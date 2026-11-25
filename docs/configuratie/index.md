@@ -36,6 +36,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MAX_OPSLAG_PER_GEBRUIKER_MB` | `100` | De samen bewaarde grootte van gesprekken en werkboeken per gebruiker; bijwerken telt alleen het verschil. `0` zet het uit (#682) |
 | `TOKENBUDGET_DAG` | `1500000` | Tokenbudget per gebruiker per dag (UTC), in invoertoken-equivalenten: nieuwe invoer x1, uit de cache gelezen x0,1, cache geschreven x1,25, uitvoer x5 (`core/tokenbudget.py`). Een typische vraag kost rond de 20.000, dus de standaard is zo'n 75 vragen per dag. Daarboven een melding en geen modelaanroep; `0` zet het uit. Zonder login geen budget (#678) |
 | `TOKENBUDGET_MAAND` | `15000000` | Hetzelfde per kalendermaand; `0` zet het uit (#678) |
+| `TOKENBUDGET_VRIJGESTELD` | leeg | Accounts zonder tokenbudget, gescheiden door komma's; de naam moet precies kloppen. Hun gebruik telt wel mee in de database. Op test `demo` (#1234) |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
 | `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
 | `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, rapport). Een volgende wacht op een plaats (#688) |

@@ -67,6 +67,16 @@ MAX_OPSLAG_PER_GEBRUIKER_MB = int(os.getenv("MAX_OPSLAG_PER_GEBRUIKER_MB", "100"
 # typische vraag kost na #1027 rond de 20k (71k invoer waarvan 69k uit de cache, 2k uitvoer): de dag dus rond de 75 vragen.
 TOKENBUDGET_DAG = int(os.getenv("TOKENBUDGET_DAG", "1500000"))
 TOKENBUDGET_MAAND = int(os.getenv("TOKENBUDGET_MAAND", "15000000"))
+
+
+def _namenlijst(naam: str) -> frozenset[str]:
+    """Een lijst accountnamen met komma's; spaties om een naam gaan weg en lege stukken tellen niet."""
+    return frozenset(n for deel in os.getenv(naam, "").split(",") if (n := deel.strip()))
+
+
+# Accounts zonder tokenbudget (#1234): op test het gedeelde account `demo`, dat team, demo's en audits samen gebruiken.
+# Hun gebruik telt nog wel mee in de database. De naam moet precies kloppen, zoals bij het inloggen (core/auth.py).
+TOKENBUDGET_VRIJGESTELD = _namenlijst("TOKENBUDGET_VRIJGESTELD")
 # Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))

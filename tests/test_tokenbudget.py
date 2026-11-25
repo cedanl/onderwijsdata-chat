@@ -181,6 +181,35 @@ def test_gast_heeft_geen_budget(budget):
     assert budget.over_budget("gast") is None
 
 
+def test_een_vrijgesteld_account_heeft_geen_budget_maar_telt_wel_mee(budget, monkeypatch):
+    """#1234: op test is het gedeelde account `demo` vrijgesteld; zijn gebruik staat nog wel in de database."""
+    monkeypatch.setattr(budget, "TOKENBUDGET_VRIJGESTELD", frozenset({"demo"}))
+    budget.zet_gebruiker("demo")
+    budget.boek(Tokens(invoer=400_000))
+    assert budget.gebruik("demo") == (400_000, 400_000), "het gebruik wordt nog geboekt"
+    assert budget.over_budget("demo") is None
+
+
+def test_naast_een_vrijgesteld_account_houdt_een_ander_account_zijn_budget(budget, monkeypatch):
+    monkeypatch.setattr(budget, "TOKENBUDGET_VRIJGESTELD", frozenset({"demo"}))
+    budget.zet_gebruiker("anna@hu.nl")
+    budget.boek(Tokens(invoer=100_000))
+    melding = budget.over_budget("anna@hu.nl")
+    assert melding and "vandaag" in melding.lower()
+    assert budget.over_budget(None) is None
+    assert budget.over_budget("gast") is None
+
+
+def test_de_vrijstelling_leest_een_lijst_met_komma_s(monkeypatch):
+    """Spaties om een naam gaan weg, lege stukken tellen niet; zonder variabele is niemand vrijgesteld."""
+    from core import config
+
+    monkeypatch.delenv("TOKENBUDGET_VRIJGESTELD", raising=False)
+    assert config._namenlijst("TOKENBUDGET_VRIJGESTELD") == frozenset()
+    monkeypatch.setenv("TOKENBUDGET_VRIJGESTELD", " demo , ,team@hu.nl,")
+    assert config._namenlijst("TOKENBUDGET_VRIJGESTELD") == frozenset({"demo", "team@hu.nl"})
+
+
 def test_een_databasefout_laat_de_chat_door(budget, monkeypatch, caplog):
     from persistence import db
 
