@@ -1,5 +1,7 @@
 """De richting die een vraag aanneemt, getoetst tegen de reeks van de beurt (#1255)."""
 
+import asyncio
+import importlib
 import json
 
 import pandas as pd
@@ -7,6 +9,7 @@ import pytest
 
 from agent.binding import verkeerd_gebonden
 from agent.controles import maak_getalcontrole
+from agent.loop import LoopResult
 from agent.premisse import (
     BEVESTIGD,
     NIET_TE_TOETSEN,
@@ -163,6 +166,44 @@ def test_een_deelantwoord_houdt_zijn_melding_bovenaan(maat):
 
     tekst = _met_premisse(f"{DEELANTWOORD}\n\nTekst.", "Waarom is het aantal gedaald?", [("get_maat", maat)])
     assert tekst == f"{DEELANTWOORD}\n\n{ZIN}\n\nTekst."
+
+
+def _beurt(monkeypatch, vraag: str, maat: str) -> dict:
+    """Eén beurt door run(), met een nagebootste lus die get_maat aanriep: het message_end-bericht."""
+    run_module = importlib.import_module("agent.run")
+
+    async def nep_lus(*args, **kwargs):
+        return LoopResult(
+            text="De Hogeschool Utrecht telt 28.355 studenten.",
+            finish_reason="stop",
+            steps=[("get_maat", maat)],
+            tool_calls=[{"name": "get_maat", "arguments": "{}"}],
+        )
+
+    monkeypatch.setattr(run_module, "tool_loop", nep_lus)
+    events: list[dict] = []
+
+    async def emit(event: dict) -> None:
+        events.append(event)
+
+    asyncio.run(run_module.run([{"role": "user", "content": vraag}], {}, emit, asyncio.Event(), model="openai/gpt-4o"))
+    return next(e for e in events if e["type"] == "message_end")
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_run_opent_het_antwoord_met_de_zin(maat, monkeypatch):
+    """De bedrading in run(), niet alleen de hulpfunctie: na de lus opent het antwoord met de vaste zin (#1255)."""
+    einde = _beurt(monkeypatch, "Waarom is het aantal studenten bij de Hogeschool Utrecht gedaald?", maat)
+    assert einde["content"].startswith(f"{ZIN}\n\n")
+    assert "De Hogeschool Utrecht telt 28.355 studenten." in einde["content"]
+    assert "controle" not in einde
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_run_zonder_tegenspraak_opent_niet_met_de_zin(maat, monkeypatch):
+    einde = _beurt(monkeypatch, "Waarom is het aantal studenten bij de Hogeschool Utrecht gestegen?", maat)
+    assert "De vraag gaat uit van" not in einde["content"]
+    assert "De Hogeschool Utrecht telt 28.355 studenten." in einde["content"]
 
 
 def test_twee_reeksen_die_elkaar_tegenspreken_zijn_niet_te_toetsen(maat):
