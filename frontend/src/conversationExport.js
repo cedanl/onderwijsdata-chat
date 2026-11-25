@@ -5,6 +5,7 @@
 import { conversationTitle } from './conversationTitle'
 import { meldingRegels, metBronnen } from './answerBlocks'
 import { manifestRegels } from './manifestRegels'
+import { VASTE_MAAT_UITLEG, vasteMaat, vasteMaatLabel, vastgelegdTekst } from './vasteMaat'
 
 const failed = step => ['error', 'empty', 'buiten_scope'].includes(step.status)
 
@@ -35,6 +36,11 @@ function answerBlocks(msg, options) {
   if (msg.content) blocks.push('### Antwoord', metBronnen(msg.content, msg.bronnen))
   // Dezelfde regels als de kopieerknop (#1257): "Let op" en "Wat is gecontroleerd" (#1260).
   for (const regel of meldingRegels(msg)) blocks.push(`> ${regel}`)
+  // Only get_maat behind the answer (#1242): the label as under the answer, with what its disclosure says.
+  const vm = vasteMaat(msg.vaste_maat)
+  if (vm) {
+    blocks.push([`**${vasteMaatLabel(vm)}**`, VASTE_MAAT_UITLEG, `Teldefinitie: ${vm.teldefinitie}`, vastgelegdTekst(vm)].join('\n\n'))
+  }
   for (const fig of msg.figures || []) blocks.push(`_Grafiek: ${fig.label || 'zonder titel'}_`)
   // Where the answer came from (#713): the model and versions that made it, and the version of the data behind it.
   const herkomst = manifestRegels(msg.manifest)

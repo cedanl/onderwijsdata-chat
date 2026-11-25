@@ -8,6 +8,7 @@ import { HERSTART, createHeartbeat, createRetry, opgevenBij, watchNetwork } from
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
 import { markeerWeggegaan } from '../weggegaan'
+import { vasteMaat } from '../vasteMaat'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // a few minutes (#417); the server ends a report itself after GENEREER_TIMEOUT_S (8 min, #759), which
@@ -310,8 +311,11 @@ export function useChat({ maxHistory } = {}) {
       },
       tool_start(ev) {
         setThinking(false)
+        // The arguments as sent go with the step and the stored conversation: the evidence file of the answer names
+        // them (#1244), also after reopening. Only a plain object; the tool's output never goes in.
+        const args = ev.input && typeof ev.input === 'object' && !Array.isArray(ev.input) ? { arguments: ev.input } : {}
         updateCurrentMsg(m => ({
-          ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false }],
+          ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false, ...args }],
         }))
       },
       tool_end(ev) {
@@ -363,6 +367,8 @@ export function useChat({ maxHistory } = {}) {
             ...(zijnBronlinks(ev.bronlinks) && { bronlinks: ev.bronlinks }),
             // Where the answer came from: model, versions, data version (#345). The export of the conversation shows it (#713).
             ...(ev.manifest?.model && { manifest: ev.manifest }),
+            // Only get_maat behind the answer: the label "Vaste maat", set by the server from the steps (#1242).
+            ...(vasteMaat(ev.vaste_maat) && { vaste_maat: vasteMaat(ev.vaste_maat) }),
             // Questions to ask next; a click puts one in the input box (#364).
             ...(vragen.length && { vervolgvragen: vragen }),
             // A finished turn without text would otherwise render nothing at all.

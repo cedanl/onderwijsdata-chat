@@ -30,7 +30,9 @@ export function answerBlocks(msg, { settled = false } = {}) {
   const gevuld = {
     citaties: msg.citaties?.length > 0,
     telling: Boolean(splitsTelling(msg.content).telling),
-    export: hasExport(msg),
+    // Een dataantwoord heeft altijd zijn bewijsbestand (#1244, bewijsJson.js), naast de CSV als die er is; een vast
+    // antwoord uit code (#565) niet.
+    export: hasExport(msg) || msg.vast !== true,
     bronnen: bronnenTekst(msg.bronnen).length > 0,
   }
   return BLOKKEN.map(kind => ({ kind, status: gevuld[kind] ? AANWEZIG : NVT }))

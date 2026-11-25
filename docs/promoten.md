@@ -36,6 +36,18 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
 
      De details per vraag, met de reden van elke mislukte run, staan in `eval_results/kritiek-<datum>.json`. Is er een
      kritieke vraag rood, dan wacht de promotie. Of de MR zegt waarom ze toch doorgaat.
+
+     Zet de uitslag daarna op de docs-site (#1246): draai met de versie en de volledige commit van de gemeten build
+     (`curl https://<test-url>/version`)
+
+     ```bash
+     uv run python scripts/betrouwbaarheid.py --versie X.Y.Z --commit <volledige commit> \
+       --slagingspercentage eval_results/slagingspercentage-<datum>.json
+     ```
+
+     en neem `docs/betrouwbaarheid.md` mee in die laatste MR. Het script leest `kritiek-<datum>.json` uit dezelfde map,
+     zet er een rij en een sectie per vraag bij en laat oudere releases staan. Ook een slechte score gaat erin
+     ([Betrouwbaarheid per release](betrouwbaarheid.md)).
 1. Wacht tot de pipeline van `main` groen is. Zonder groene pipeline publiceert
    `version:promote` geen chart.
 2. Tag kaal, **zonder `v`**: SDP matcht `^[0-9]+\.` op de ref-naam, dus `v2.1.0`

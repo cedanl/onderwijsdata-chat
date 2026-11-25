@@ -192,7 +192,9 @@ schooljaar, CBS-status en ophaaldag; een eval verwijst ernaar (`data_points.ijkw
 tolerantie. Zonder `--schrijf` toont het script elk verschil met de bron en faalt het; een nieuwe stand is een
 bewuste stap in een MR. Definities: `tests/ijkwaarden/README.md`. Met `TEST_REPEATS=3` loopt elke vraag drie
 keer per model en schrijft de runner het slagingspercentage per model en vraag naar
-`eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt.
+`eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt. De uitslag per release, met de
+kritieke set en per vraag geslaagd of niet, staat openbaar op [Betrouwbaarheid per release](betrouwbaarheid.md)
+(`scripts/betrouwbaarheid.py`, #1246).
 
 ### Scoring (per vraag, max 100 punten)
 
@@ -204,6 +206,42 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 | Inhoudelijke kwaliteit | 20 | Verplichte termen aanwezig |
 | Geen hallucinatie | 10 | Getallen alleen als data-tools zijn aangeroepen |
 | Geen timeout | 10 | Antwoord binnen tijd geretourneerd |
+
+### Toolaanroepen met argumenten (`must_call`, #1243)
+
+`must_contain_tools` toetst alleen of een tool is aangeroepen. Een antwoord dat het juiste getal noemt via een verkeerde
+selectie (vorm, jaar, maat) kan zo slagen. `expected.must_call` toetst ook de argumenten: een lijst van asserties
+`{ tool, args?, min_count? }` op de `input` van elke `tool_start` (`tests/e2e/toolasserties.js`).
+
+- `tool`: de toolnaam; `get_duo_data|get_maat` is één van beide.
+- `args`: een deelverzameling van de input. Geneste objecten worden recursief vergeleken, een lijst moet gelijk zijn
+  (zelfde waarden en volgorde) en een waarde strikt (`2025` is niet `"2025"`).
+- `min_count`: hoeveel aanroepen met die `args` er minstens zijn; standaard 1. `0` betekent "mag niet": elke passende
+  aanroep faalt.
+
+```json
+"must_call": [
+  { "tool": "get_maat", "args": { "maat": "ingeschreven_personen_ho", "vorm": "voltijd",
+                                  "schooljaren": ["2021/22", "2022/23", "2023/24", "2024/25", "2025/26"] } },
+  { "tool": "get_cbs_data", "args": { "selectie": { "dimensies": { "Geslacht": "4000" } } } },
+  { "tool": "get_duo_data|get_cbs_data|get_maat", "min_count": 0 }
+]
+```
+
+- **Een misser faalt de run** met een eigen regel in `fouten`, bijvoorbeeld
+  `must_call: get_maat {"vorm":"deeltijd"}: 0 aanroepen, minstens 1`. De punten van de score veranderen niet.
+- Een ontbrekende aanroep is een data-eis: een vooraf vastgelegde beperking (`acceptable_outcomes`) vervangt hem. Een
+  verboden aanroep (`min_count: 0`) en een ongeldige assertie blijven altijd een fout.
+- **Een ongeldige assertie** (geen lijst, geen toolnaam, een onbekende sleutel, een negatieve of halve `min_count`) laat
+  de run falen (`must_call ongeldig: …`), nooit een stille pass. `score-unit.mjs` toetst elke `must_call` in
+  `evaluations.json` en dat elke tool erin bestaat.
+- Bij een weigering (`must_refuse`) telt een verboden datatool als fout naast "weigert niet" en "verzonnen getallen".
+- **De uitslag per assertie** staat in de log van de run (`Toolasserties: …`), per run in `eval_results/runs.jsonl` en
+  per model, vraag en assertie (runs en geslaagd) in `eval_results/must_call-<datum>.json`.
+
+Vijf cases hebben er nu een: `ijk-hu-voltijd-reeks` (`get_maat` met vorm en schooljaren), `ijk-mbo-vrouwen`
+(`get_cbs_data` met `Geslacht` `4000`), `ijk-mbo-studenten-landelijk`, `geslacht-opleiding-exact` en de weigering
+`weigering-geen-data` (geen datatool).
 
 ### Gedragstests (Playwright E2E)
 
@@ -259,8 +297,9 @@ Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
   één uvicorn-proces. De procesmetrics van de bibliotheek (`process_resident_memory_bytes`, `process_cpu_seconds_total`,
   `python_gc_*`) komen mee. Een herstart zet de tellers op nul; PromQL `rate()` en `increase()` vangen dat op.
 - **Labels zijn begrensd:** het routesjabloon (`/api/conversations/{conv_id}`, nooit het pad), de methode (een onbekende
-  wordt `ANDERS`), de statuscode, de modelnaam uit het aanbod en vaste woorden. Geen gebruikersnaam, pseudoniem,
-  sleutel-ID of vraagtekst (`tests/test_metrics.py` toetst de labelsets).
+  wordt `ANDERS`), de statuscode, de modelnaam uit het aanbod, de namen van de controles en tools van de app (een andere
+  naam wordt `overig`) en vaste woorden. Geen gebruikersnaam, pseudoniem, sleutel-ID of vraagtekst
+  (`tests/test_metrics.py` toetst de labelsets).
 
 | Metric | Soort | Labels | Wat |
 |---|---|---|---|
@@ -281,6 +320,11 @@ Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
 | `edudata_sandbox_timeouts_total` | counter | | Scripts die na de tijdslimiet (10 s) zijn afgebroken |
 | `edudata_limiter_refusals_total` | counter | `limiter` | Geweigerd door een limiet: de rate limits (`login`, `bericht`, `feedback`, `feedback_algemeen`, `rapport_docx`, `mcp_ip`, `mcp_sleutel`) en de volle plaatsen (`runplaatsen_chat`, `runplaatsen_dashboard`, `mcp_plaatsen`, `sandbox`, `verbindingen`) |
 | `edudata_limiter_db_fallback_total` | counter | `limiter` | Pogingen die een limiet in het geheugen van de pod telde omdat de database niet bereikbaar was (fail-open, `core/rate_limit.py`) |
+| `edudata_controle_uitkomsten_total` | counter | `controle`, `uitkomst` (`hard`, `zacht`, `niet_gecontroleerd`, `ok`) | Per antwoord per controle de uitkomst, zoals de regel `CONTROLES`; `controle` is een naam uit `CONTROLENAMEN` (`agent/controles.py`) of `overig` (#1250) |
+| `edudata_herkansingen_total` | counter | | Antwoorden die na een controle zijn ingetrokken en herschreven (`HERKANSING`) |
+| `edudata_ingehouden_antwoorden_total` | counter | | Antwoorden die na de herkansing nog een hard probleem hadden en zijn ingehouden (`ANTWOORD INGEHOUDEN`) |
+| `edudata_stappenbudget_op_total` | counter | | Vragen waarvan het stappenbudget op was; er volgde een afrondronde zonder tools (`STAPPENBUDGET OP`) |
+| `edudata_tool_weigeringen_total` | counter | `tool`, `reden` (`op_slot`, `limiet`, `afgekapt`) | Toolstappen die op slot gingen (`TOOL OP SLOT`), over hun limiet gingen (`TOOL LIMIET`) of afgekapt werden (`TOOL_AFGEKAPT`); `tool` is een tool van de app of `overig` |
 
 ### SLO's (voorstel)
 

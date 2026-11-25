@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import DataExport from './DataExport'
+import VasteMaat from './VasteMaat'
 import AnswerBlocks from './AnswerBlocks'
 import IngetrokkenVersies from './IngetrokkenVersies'
 import { hasExport } from '../dataExport'
@@ -62,7 +63,8 @@ function hasAssistantContent(msg) {
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
-export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
+export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   if (msg.role === 'user') {
     return (
@@ -105,7 +107,7 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
   const voorbehoud = voorbehoudRegels(msg)
   const dataExport = (
     <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy}
-      voorbehoud={voorbehoud} />
+      voorbehoud={voorbehoud} bewijsVan={msg} vraag={vraag} />
   )
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
 
@@ -126,6 +128,8 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
+            {/* Code, niet het model, zet dit label (#1242): het komt met message_end, net als de controle. */}
+            {msg.done && <VasteMaat waarde={msg.vaste_maat} />}
             {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
             {figuren.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} voorbehoud={voorbehoud} />

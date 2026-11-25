@@ -17,10 +17,10 @@ RUN npm run build
 # Stage 2: Python-afhankelijkheden. De compiler staat alleen hier; het runtime-image krijgt alleen de .venv (#681).
 # git is er niet meer bij nodig: het bronpakket onderwijsbronnen staat als workspace-lid in packages/ en komt
 # niet meer als git-afhankelijkheid van GitHub (#885, #910).
-FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS python-builder
+FROM python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b AS python-builder
 
 # uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
-COPY --from=ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.10@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f /uv /usr/local/bin/uv
 
 WORKDIR /app
 
@@ -46,7 +46,7 @@ RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --n
     && .venv/bin/python -c "import mcp.types"
 
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
-FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
+FROM python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b
 
 # De gebruiker eerst, zodat elke COPY hieronder de bestanden meteen aan hem geeft (--chown). Een `chown -R /app`
 # aan het eind deed er op de CI-runner 11 minuten over (650 s van een build van 13,5 min) en zette elk bestand

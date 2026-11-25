@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { downloadDataCsv } from '../api'
+import { bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
 import { CITATIE_CSV_BESTAND, citatiesToCsv } from '../citatieCsv'
 import { exportKeys } from '../dataExport'
 import { saveFile } from '../saveFile'
@@ -16,6 +17,11 @@ function saveCitaties(csv) {
   saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), CITATIE_CSV_BESTAND)
 }
 
+// "Bewijs (JSON)" (#1244): the provenance the message already holds, built here (bewijsJson.js); no server route.
+function saveBewijs(json, naam) {
+  saveFile(new Blob([json], { type: 'application/json;charset=utf-8' }), naam)
+}
+
 // Wat een CSV van een antwoord bevat, in de app zelf (#1257); docs/reproducibility.md zegt hetzelfde.
 export const CSV_UITLEG = 'Boven de tabel staan regels die met # beginnen: het Uitgangspunt, wat niet is meegeteld, Bron en '
   + 'definitie, de Let op-regels en wat is gecontroleerd, en daarna de bron, de selectie en de onderdrukte cellen. Een '
@@ -25,13 +31,14 @@ export const CSV_UITLEG = 'Boven de tabel staan regels die met # beginnen: het U
 // `voorbehoud`: de regels die met elke export van dit antwoord meegaan (voorbehoud.js, #1257).
 export default function DataExport({
   tools, citaties = null, settled, onHerhaal = null, busy = false, download = downloadDataCsv, save = saveCitaties,
-  voorbehoud = [],
+  voorbehoud = [], bewijsVan = null, vraag = null, saveJson = saveBewijs,
 }) {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const keys = exportKeys(tools)
   const citatieCsv = keys.length ? null : metVoorbehoud(citatiesToCsv(citaties), voorbehoud)
-  if (!settled || (!keys.length && !citatieCsv)) return null
+  const metBewijs = heeftBewijs(bewijsVan)
+  if (!settled || (!keys.length && !citatieCsv && !metBewijs)) return null
 
   async function onClick(key) {
     setError(null)
@@ -55,10 +62,18 @@ export default function DataExport({
           Download cijfers als CSV
         </button>
       )}
-      <details className="data-export-uitleg">
-        <summary>Wat staat er in de CSV?</summary>
-        <p>{CSV_UITLEG}</p>
-      </details>
+      {metBewijs && (
+        <button type="button" className="bewijs-btn" onClick={() => saveJson(bewijsJson(bewijsVan), bewijsBestandsnaam(vraag))}>
+          Bewijs (JSON)
+        </button>
+      )}
+      {/* Alleen bij een CSV: een antwoord met alleen het bewijsbestand heeft geen CSV om uit te leggen. */}
+      {(keys.length > 0 || citatieCsv) && (
+        <details className="data-export-uitleg">
+          <summary>Wat staat er in de CSV?</summary>
+          <p>{CSV_UITLEG}</p>
+        </details>
+      )}
       {notice && (
         <div className="data-export-error" role="status">
           Let op: deze data is {notice}. De cijfers kunnen afwijken van het antwoord hierboven.
