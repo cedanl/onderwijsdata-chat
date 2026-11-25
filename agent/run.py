@@ -33,6 +33,7 @@ from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalc
 from .datasetcontext import herstel_data_voor_beurt
 from .genoemde_bronnen import genoemde_bronnen
 from .getalnotatie import heeft_tabel, nl_notatie, versienummers
+from .grounding import getalregel
 from .history import afgeronde_stappen, trim, zonder_vaste_blokken
 from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import interpretatie_bij, is_vervolgvraag
@@ -358,6 +359,11 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
+def _berichtstart() -> dict:
+    """message_start met de regel van de getalcontrole: de frontend houdt die getallen achter tot message_end (#1254)."""
+    return {"type": "message_start", "getalregel": getalregel()}
+
+
 def _met_premisse(tekst: str, vraag: str, steps: list[tuple[str, str]]) -> str:
     """De vaste zin over een aangenomen richting die de reeks tegenspreekt, bovenaan (#1255); een deelantwoord houdt
     zijn melding erboven. Een fout in de toets laat het antwoord zoals het was."""
@@ -645,7 +651,7 @@ async def run(
 
     # Wat code zelf beantwoordt (-1, een vo-school, een po/so/vo-vraag), krijgt geen kaart en geen model.
     if vast := await _vast_vooraf(last_user_msg, messages, session):
-        await emit({"type": "message_start"})
+        await emit(_berichtstart())
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
 
@@ -709,7 +715,7 @@ async def run(
                         stop_event=stop,
                         system=system,
                         stream_text=True,
-                        on_llm_start=lambda: emit({"type": "message_start"}),
+                        on_llm_start=lambda: emit(_berichtstart()),
                         on_tool_result=partial(_bewaar_stap, session, emit),
                         tool_limits=_TOOL_LIMITS,
                         halt_on=frozenset({TOOL_CLARIFY_SCOPE}),

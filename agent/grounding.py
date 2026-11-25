@@ -39,6 +39,21 @@ _YEARS = range(1900, 2101)
 _TRIVIAL_PERCENTAGES = (Decimal(0), Decimal(100))
 
 
+def getalregel() -> dict:
+    """De regel van de getalcontrole voor de browser (#1254): welke getallen hij toetst, als patronen die ook JavaScript
+    leest. De frontend houdt die getallen tijdens het streamen achter "…" tot message_end; zo is er één bron.
+
+    `getal` is _TEXT_NUMBER (groep 1 zijn de cijfers met scheidingstekens `scheiding`), `procent` is _TEXT_PERCENT; een
+    getal telt mee bij `min_cijfers` of meer cijfers en buiten `jaren` (inclusief), een percentage altijd."""
+    return {
+        "getal": _TEXT_NUMBER.pattern,
+        "procent": _TEXT_PERCENT.pattern,
+        "scheiding": _THOUSANDS.pattern,
+        "min_cijfers": _MIN_DIGITS,
+        "jaren": [_YEARS.start, _YEARS.stop - 1],
+    }
+
+
 def _digits(written: str) -> str:
     return _THOUSANDS.sub("", written)
 

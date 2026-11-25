@@ -99,7 +99,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Event | Betekenis |
 |-------|-----------|
-| `message_start`, `text_delta`, `message_end` | Een antwoord: begin, tekst die live binnenstroomt, en het eindresultaat met bronnen en acties. `message_end` met `aborted` of `partial` is een afgebroken of onvolledig antwoord |
+| `message_start`, `text_delta`, `message_end` | Een antwoord: begin, tekst die live binnenstroomt, en het eindresultaat met bronnen en acties. `message_end` met `aborted` of `partial` is een afgebroken of onvolledig antwoord. `message_start` draagt `getalregel`: welke getallen de getalcontrole toetst; de frontend toont die pas na `message_end` (#1254) |
 | `message_cancel` | Het open antwoord vervalt (bij een verduidelijkingsvraag, of omdat een controle het intrekt; dan met `reden`). De tekst die al zichtbaar was, trekt de frontend zichtbaar in |
 | `tool_start`, `tool_end`, `figure` | Een toolstap met zijn resultaat, en een grafiek die de stap tekende |
 | `clarification` | Een verduidelijkingsvraag met opties; het antwoord gaat terug als action `clarification_choice` |

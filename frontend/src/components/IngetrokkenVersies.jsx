@@ -1,10 +1,13 @@
 import { Markdown } from './MessageContent'
+import WachtTekst from './WachtTekst'
 
 // An answer the check took back (#398): out of the way, but still there to see.
 // Only a version that differs from the final answer, with the check's reason (CH-01):
 // an empty block, or one with the same text as the answer, says nothing.
 // The heading is plain language: "ingetrokken" read as internal noise (#496, F-01).
-export default function IngetrokkenVersies({ versies, eindtekst = '' }) {
+// `wacht` (#1254): zolang het antwoord loopt, wachten ook hier de getallen die de controle toetst; de regel van de
+// server, of null zonder regel. Weggelaten (het antwoord is klaar) staat de eerdere versie zoals ze was.
+export default function IngetrokkenVersies({ versies, eindtekst = '', wacht = undefined }) {
   const anders = (versies || []).filter(v => v.tekst?.trim() && v.tekst.trim() !== eindtekst.trim())
   if (!anders.length) return null
   return (
@@ -16,9 +19,13 @@ export default function IngetrokkenVersies({ versies, eindtekst = '' }) {
       </summary>
       {anders.map((v, i) => (
         <div key={i}>
-          {v.reden?.length > 0 && <p className="message-ingetrokken-reden">Reden: {v.reden.join(' ')}</p>}
+          {v.reden?.length > 0 && (
+            <p className="message-ingetrokken-reden">
+              Reden: {wacht === undefined ? v.reden.join(' ') : <WachtTekst tekst={v.reden.join(' ')} regel={wacht} />}
+            </p>
+          )}
           {/* Als markdown, zoals het antwoord zelf: de sterretjes van het model blijven niet letterlijk staan (#1110). */}
-          <div className="message-ingetrokken-tekst"><Markdown text={v.tekst} /></div>
+          <div className="message-ingetrokken-tekst"><Markdown text={v.tekst} wacht={wacht} /></div>
         </div>
       ))}
     </details>

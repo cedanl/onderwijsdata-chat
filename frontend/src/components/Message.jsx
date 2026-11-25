@@ -9,7 +9,7 @@ import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
-import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken } from './MessageContent'
+import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken, wachtVan } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
 import { WEGGEGAAN } from '../weggegaan'
 
@@ -111,8 +111,9 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} />
-        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
+        {/* Getallen die de controle toetst, wachten tot die klaar is (#1254): ook in de tussentekst en een eerdere versie. */}
+        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} wacht={wachtVan(msg)} />
+        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} wacht={wachtVan(msg)} />
         {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={kopieerTekst(msg)} className="copy-btn-message" />}
