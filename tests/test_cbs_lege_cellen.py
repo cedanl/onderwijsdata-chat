@@ -6,6 +6,7 @@ een volledig gevulde selectie niet.
 """
 
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from unittest.mock import patch
 
@@ -110,7 +111,7 @@ def test_een_afgeleide_cbs_key_erft_geen_lege_groepstotalen_als_broncellen():
 _PERIODEN = ["2022SJ00", "2023SJ00"]
 
 
-def _laad(dataset: str, aantallen: dict[tuple[str, str], list[float | None]], dims_eerst: bool = True) -> str:
+def _laad(dataset: str, aantallen: Mapping[tuple[str, str], Sequence[float | None]], dims_eerst: bool = True) -> str:
     """Een geladen CBS-tabel met de dimensies Onderwijssoort x Opleidingsfase over twee jaren; per combinatie de
     aantallen per jaar."""
     rijen = [
