@@ -146,7 +146,10 @@ def test_een_reden_die_de_andere_kant_op_werkt_verklaart_het_verschil_niet():
     assert isinstance(uitkomst, dict)
     tekst = uitkomst["tekst"]
     nl = controlestappen.nl_getal
-    assert f"Extranei (examendeelnemers): ons getal telt ze mee: scheelt ongeveer {nl(ex)}, maar de andere kant op" in tekst
+    assert (
+        f"Extranei (examendeelnemers): ons getal telt ze mee: scheelt ongeveer {nl(ex)}, maar de andere kant op"
+        in tekst
+    )
     assert "valt binnen de bekende redenen" not in tekst
     assert tekst.endswith(f"Na deze redenen blijft een verschil van {nl(ex)} over.")
     (extranei,) = [r for r in json.loads(uitkomst["stap"]["output"])["redenen"] if r["tekst"].startswith("Extranei")]
