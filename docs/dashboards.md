@@ -471,12 +471,28 @@ Een dashboard-eindpunt laadt zijn bronnen bij de eerste aanvraag na een start: g
 live) duurt `regio` voor Hogeschool Utrecht 15,6 s koud en 0,7 s warm, ook voor een andere instelling; `financien` 12,5 s
 koud en daarna 0,0 s; `rendement` deelt de bestanden van `regio`. Elke lading die langer duurt dan `DASHBOARD_TRAAG_S`
 (5 s) schrijft één INFO-regel `DASHBOARD traag: eindpunt=… duur=… s`, met alleen het eindpunt: zo ziet een beheerder
-welk eindpunt traag is. Een opwarmstap na `/ready` is nog niet gebouwd. Het ontwerp: na de start de laders van
-`regio`, `rendement` en `financien` één keer aanroepen voor één vaste instelling per niveau (hbo, mbo), op de achtergrond
-en onder de plaatsenlimiet van `MAX_DASHBOARD_LOADS`, met `ENABLE_DASHBOARDS` als voorwaarde. Dat dekt alleen de eerste
-24 uur: daarna verlopen de caches (`core/actualiteit.py`) en betaalt de eerste gebruiker weer 10-23 s. Een opwarmstap die
-helpt, ververst dus ook voordat de TTL verloopt, en dat is een eigen ontwerp (moment, geheugen van zes DUO-bestanden
-naast de chat, gedrag bij een bronstoring).
+welk eindpunt traag is.
+
+**Opwarmen na een start.** Met `ENABLE_DASHBOARDS=true` warmt de app de dashboards na de start op de achtergrond op
+(`core/dashboard_opwarmen.py`): ze roept elke lader één keer aan voor één instelling per soort (hbo, wo, mbo; de eerste
+van het register met een bekende provincie), eerst `regio`, `rendement` en `financien`, daarna de andere eindpunten.
+De caches zijn per bron, niet per instelling, dus daarna is ook elke andere instelling van die soort warm. Een
+eindpunt waarvan de bron hier uit staat (`financien`, `personeel`, `opleidingen`, zie `tools/beschikbaarheid.py`) wordt
+niet geladen. De opwarming:
+
+- houdt de start niet op: `/health` en `/ready` antwoorden meteen, de laders lopen in de executor;
+- laadt na elkaar, elke lading in een plaats onder `MAX_DASHBOARD_LOADS`, en bezet dus hooguit één plaats naast de
+  gebruikers;
+- stopt niet bij een fout of een volle wachtrij: per eindpunt één WARNING `DASHBOARD opwarmen mislukt: eindpunt=…`
+  met alleen het foutkenmerk, en de volgende lading gaat door;
+- schrijft aan het eind één INFO-regel `DASHBOARD opgewarmd: eindpunten=… mislukt=… instellingen=… duur=… s`, zonder
+  namen van instellingen (#475);
+- wordt bij het afsluiten geannuleerd. Een lading die dan in haar thread loopt, maakt die af.
+
+`DASHBOARD_WARMUP=false` (of `0`) zet de opwarming uit; standaard staat ze aan. Ze dekt de eerste 24 uur na een start:
+daarna verlopen de caches (`core/actualiteit.py`) en betaalt de eerste gebruiker weer 10-23 s. Opnieuw opwarmen
+voordat de TTL verloopt, is een eigen ontwerp (moment, geheugen van zes DUO-bestanden naast de chat, gedrag bij een
+bronstoring).
 
 ---
 
