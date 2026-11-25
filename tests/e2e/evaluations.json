@@ -624,7 +624,7 @@
       "instelling": "Hogeschool Utrecht",
       "description": "#1267: met een profielinstelling roept de chat de vergelijkingsgroep van het dashboard Mijn instelling aan (vergelijkingsgroep), kiest de peers niet zelf, en de app zet de zin over de groep onder het antwoord",
       "expected": {
-        "must_call": ["vergelijkingsgroep"],
+        "must_call": [{ "tool": "vergelijkingsgroep" }],
         "max_search_catalog": 2,
         "must_mention": ["Hogeschool Utrecht", "Vergelijkingsgroep"]
       }

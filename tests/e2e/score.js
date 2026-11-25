@@ -35,10 +35,6 @@ export function scoreResult(r, ev) {
   for (const tool of (ex.must_contain_tools || [])) {
     scores.required_tools[tool] = tool.split('|').some(t => r.toolCalls.includes(t))
   }
-  // must_call (#1243, #1267): de tool moet aangeroepen zijn, zonder alternatief; een eis zoals must_contain_tools.
-  for (const tool of (ex.must_call || [])) {
-    scores.required_tools[tool] = r.toolCalls.includes(tool)
-  }
   scores.has_all_required = Object.values(scores.required_tools).every(Boolean)
   // Met welke argumenten (#1243): per assertie de uitslag; alleen als de case must_call heeft.
   if (ex.must_call !== undefined) scores.must_call = toetsMustCall(r.aanroepen, ex.must_call)

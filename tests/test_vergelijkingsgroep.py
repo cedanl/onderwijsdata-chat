@@ -174,5 +174,5 @@ def test_de_prompt_stuurt_vergelijkbare_instellingen_naar_de_tool():
 def test_de_eval_vraagt_de_tool_met_must_call():
     evals = json.loads((Path(__file__).resolve().parent / "e2e" / "evaluations.json").read_text(encoding="utf-8"))
     (ev,) = [e for e in evals["evaluations"] if e["label"] == "vergelijkingsgroep-chat"]
-    assert ev["expected"]["must_call"] == [TOOL_VERGELIJKINGSGROEP] and ev.get("instelling")
+    assert ev["expected"]["must_call"] == [{"tool": TOOL_VERGELIJKINGSGROEP}] and ev.get("instelling")
     assert "vergelijk" in ev["message"].lower() and "vergelijkbare instellingen" in ev["message"].lower()
