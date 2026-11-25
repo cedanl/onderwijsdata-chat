@@ -51,9 +51,11 @@ from .schemas import (
     TOOL_RELATIE,
     TOOL_RUN_ANALYSIS,
     TOOL_SEARCH_CATALOG,
+    TOOL_VERGELIJKINGSGROEP,
 )
 from .schemas import TOOL_SCHEMAS as SCHEMAS  # noqa: F401
 from .studiekeuze import get_studiekeuze
+from .vergelijkingsgroep import vergelijkingsgroep
 from .wo_personeel import get_wo_personeel
 
 LABELS = {
@@ -68,6 +70,7 @@ LABELS = {
     TOOL_GET_RIO_INSTELLING: "Instelling in RIO opgezocht",
     TOOL_GET_DUO_DATA: "DUO dataset geladen",
     TOOL_GET_MAAT: "Vaste maat opgehaald",
+    TOOL_VERGELIJKINGSGROEP: "Vergelijkingsgroep van het dashboard opgehaald",
     TOOL_QUERY_DATA: "Data gefilterd",
     TOOL_RELATIE: "Relaties opgezocht",
     TOOL_KOPPEL_DATA: "Tabellen gekoppeld",
@@ -98,6 +101,7 @@ _HANDLERS = {
     TOOL_GET_RIO_INSTELLING: get_rio_instelling,
     TOOL_GET_DUO_DATA: get_duo_data,
     TOOL_GET_MAAT: get_maat,
+    TOOL_VERGELIJKINGSGROEP: vergelijkingsgroep,
     TOOL_QUERY_DATA: query_data,
     TOOL_RELATIE: relatie,
     TOOL_KOPPEL_DATA: koppel_data,

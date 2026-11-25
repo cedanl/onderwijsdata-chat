@@ -1257,6 +1257,137 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     return result
 
 
+# ─── De vergelijkingsgroep in de chat (#1267) ────────────────────────────────
+# De chat gebruikt dezelfde groep als Mijn instelling: dezelfde context (`_build_regio_context`) en dezelfde peerreeks
+# (`_ho_regio_benchmark`, `_mbo_regio_benchmark`), zonder kaart, UWV en ROA. Eén definitie van de groep, hier; de chat
+# kopieert haar niet (tools/vergelijkingsgroep.py vraagt alleen deze functie).
+
+EIGEN_GROEP = "eigen"  # regio_type van een groep die de gebruiker zelf koos: niet de dashboardgroep
+
+
+def _code_in_register(waarde: str, registry: list[dict]) -> dict | None:
+    """De instelling uit het register bij een naam, alias of code, hoofdletterongevoelig; None als het register haar niet
+    kent. Een deel van een naam telt niet: een gegokte peer is erger dan geen peer."""
+    naam = resolve_alias(waarde.strip()).lower()
+    return next(
+        (i for i in registry if i["naam"].lower() == naam or str(i.get("instellingscode") or "").lower() == naam),
+        None,
+    )
+
+
+def _eigen_context(ctx: RegioContext, onderwijs_type: str, eigen_groep: Iterable[str]) -> tuple[RegioContext, dict]:
+    """De groep die de gebruiker koos, als context voor dezelfde peerreeks; met wat er niet in kon (onbekend, ander type)."""
+    registry = get_all_instellingen()
+    codes: set[str] = set()
+    onbekend: list[str] = []
+    ander_type: list[str] = []
+    for waarde in eigen_groep:
+        gevonden = _code_in_register(str(waarde), registry)
+        if gevonden is None or not gevonden.get("instellingscode"):
+            onbekend.append(str(waarde))
+        elif gevonden.get("type") not in _ONDERWIJSTYPEN[onderwijs_type]:
+            ander_type.append(gevonden["naam"])
+        elif gevonden["instellingscode"] != ctx.self_code:
+            codes.add(gevonden["instellingscode"])
+    eigen = RegioContext("eigen groep", EIGEN_GROEP, ctx.provincie, ctx.self_code, frozenset(codes), ctx.soort, None)
+    return eigen, {"onbekend": onbekend, "ander_type": ander_type}
+
+
+def _peerreden(ctx: RegioContext, omvang: int | None, eigen_omvang: int | None) -> str:
+    """Waarom een peer in de groep zit, in de woorden van de peerregels (#926, #948, #1008)."""
+    if ctx.regio_type == EIGEN_GROEP:
+        return "gekozen door de gebruiker"
+    enkel = _SOORTNAAM[ctx.soort][0]
+    plaats = "landelijk" if ctx.regio_type == "nationaal" else f"in {ctx.regio_type} {ctx.regio_naam}"
+    reden = f"{enkel}, {plaats}"
+    if eigen_omvang and omvang is not None:
+        reden += f", {omvang} ingeschrevenen: ten minste {_MIN_PEER_OMVANG:.0%} van de eigen omvang ({eigen_omvang})"
+    return reden
+
+
+def _groep(ctx: RegioContext, bm: dict, instelling: str, onderwijs_type: str, buiten: dict | None) -> dict:
+    """De groep en haar peergemiddelde zoals de chat ze krijgt, uit de context en de benchmark van het dashboard."""
+    omvang = _omvang_per_code(onderwijs_type)
+    namen = {i["instellingscode"]: i["naam"] for i in get_all_instellingen() if i.get("instellingscode")}
+    eigen_omvang = omvang.get(ctx.self_code)
+    peers = [
+        {
+            "naam": namen.get(code, code),
+            "code": code,
+            "omvang": omvang.get(code),
+            "reden": _peerreden(ctx, omvang.get(code), eigen_omvang),
+        }
+        for code in sorted(ctx.peer_codes, key=lambda c: namen.get(c, c))
+    ]
+    uit = {
+        "instelling": instelling,
+        "instellingscode": ctx.self_code,
+        "soort": ctx.soort,
+        "groep": EIGEN_GROEP if ctx.regio_type == EIGEN_GROEP else "dashboard",
+        "regio_trede": ctx.regio_type,
+        "regio": ctx.regio_naam,
+        "terugval": ctx.terugval,
+        "label": bm.get("label"),
+        "n_instellingen": bm.get("n_instellingen", len(peers)),  # de peers met cijfers in het laatste jaar (#903)
+        "eigen_omvang": eigen_omvang,
+        "min_peers": _MIN_PEERS,
+        "min_peer_omvang": _MIN_PEER_OMVANG,
+        "peers": peers,
+        "geen_gegevens": (bm.get("geen_gegevens") or {}).get("ingeschrevenen", []),
+        "n_per_jaar": (bm.get("n_per_jaar") or {}).get("ingeschrevenen", {}),
+        "peergemiddelde": bm.get("ingeschrevenen", {}),
+        "te_weinig_peers": (bm.get("te_weinig_peers") or {}).get("ingeschrevenen"),
+    }
+    if buiten:
+        uit |= {k: v for k, v in buiten.items() if v}
+    return uit
+
+
+def _vergelijkingsgroep_ho(instelling: str, eigen_groep: tuple[str, ...]) -> dict | None:
+    df_inges, df_ej, df_dipl = _load_ho_full()
+    inst_col, code_col = "INSTELLINGSNAAM_ACTUEEL", "INSTELLINGSCODE_ACTUEEL"
+    eigen = df_inges[df_inges[inst_col].str.lower() == instelling.lower()]
+    if eigen.empty or (ctx := _build_regio_context(instelling, "ho")) is None:
+        return None
+    buiten = None
+    if eigen_groep:
+        ctx, buiten = _eigen_context(ctx, "ho", eigen_groep)
+    ej = df_ej[df_ej[inst_col].str.lower() == instelling.lower()]
+    dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
+    kern = _ho_kern(eigen, ej, dipl)
+    bm = _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col, kern["ingeschrevenen"])
+    return _groep(ctx, bm, instelling, "ho", buiten) | {"eigen_ingeschrevenen": kern["ingeschrevenen"]}
+
+
+def _vergelijkingsgroep_mbo(instelling: str, eigen_groep: tuple[str, ...]) -> dict | None:
+    df_mbo = _load_mbo_studenten()
+    rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
+    if rows.empty or (ctx := _build_regio_context(instelling, "mbo")) is None:
+        return None
+    buiten = None
+    if eigen_groep:
+        ctx, buiten = _eigen_context(ctx, "mbo", eigen_groep)
+    code_naam = _mbo_code_naam(df_mbo)
+    eigen = str(rows["INSTELLINGSNAAM"].iloc[0])
+    instroom, _ = _mbo_load_eerstejaars(code_naam, eigen)
+    kern = _mbo_kern(rows)
+    # Zonder gediplomeerden: de chat vergelijkt de ingeschrevenen; hun reeks is dezelfde als op het dashboard.
+    bm = _mbo_regio_benchmark(ctx, df_mbo, instroom, None, code_naam, eigen, kern["ingeschrevenen"])
+    return _groep(ctx, bm, instelling, "mbo", buiten) | {"eigen_ingeschrevenen": kern["ingeschrevenen"]}
+
+
+def vergelijkingsgroep(instelling: str, eigen_groep: Iterable[str] = ()) -> dict | None:
+    """De vergelijkingsgroep van Mijn instelling voor de chat (#1267): de peers met naam, code, omvang en waarom ze erin
+    zitten, de regio-trede, de terugval en het peergemiddelde van de ingeschrevenen per jaar, zoals het dashboard.
+
+    Met `eigen_groep` (namen, aliassen of codes) de groep van de gebruiker, met dezelfde reeksfunctie: `groep` is dan
+    "eigen", niet de dashboardgroep. None als de bestanden of het register de instelling niet kennen.
+    """
+    naam = resolve_alias(instelling)
+    eigen = tuple(str(w) for w in eigen_groep if str(w).strip())
+    return _vergelijkingsgroep_ho(naam, eigen) or _vergelijkingsgroep_mbo(naam, eigen)
+
+
 def tikfout_suggesties(instelling: str, namen: Iterable[str]) -> list[str]:
     """De namen die zo veel op de ingetikte naam lijken dat het een tikfout kan zijn, hooguit _MAX_SUGGESTIONS,
     hoofdletterongevoelig. Met difflib, zoals de bronpakketten bij een onbekende waarde; eerder waren het de eerste

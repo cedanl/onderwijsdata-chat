@@ -83,6 +83,7 @@ from tools.schemas import (
     TOOL_RELATIE,
     TOOL_RUN_ANALYSIS,
     TOOL_SEARCH_CATALOG,
+    TOOL_VERGELIJKINGSGROEP,
 )
 
 # Tools die hun equivalentie in een eigen testbestand bewaken: tool → pad vanaf de repo-root. Voor een bron met een
@@ -113,6 +114,7 @@ _ZONDER_LAADSTAP = {
     TOOL_GET_MBO_INDICATOREN: "mbo-indicatorenbestand, zonder laadaanroep in de store",
     TOOL_GET_ACCREDITATIE: "accreditatie uit DUO/NVAO, zonder laadaanroep in de store",
     TOOL_GET_COLLEGEGELD: "collegegeld uit DUO, zonder laadaanroep in de store",
+    TOOL_VERGELIJKINGSGROEP: "de vergelijkingsgroep van het dashboard (#1267), zonder laadaanroep in de store",
 }
 
 # De bronladers: (bron, de echte functie). De opnemer vervangt elke verwijzing ernaar.

@@ -14,6 +14,7 @@ _ROA_SIS = roa_sis(_ROA_BESTAND.themas) or "SIS"
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_GET_MAAT = "get_maat"
+TOOL_VERGELIJKINGSGROEP = "vergelijkingsgroep"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_DATASET_PROFIEL = "dataset_profiel"
@@ -111,6 +112,36 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["maat"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_VERGELIJKINGSGROEP,
+            "description": (
+                "De vergelijkingsgroep van een instelling, dezelfde als op het dashboard Mijn instelling: instellingen "
+                "van hetzelfde type, van ten minste 10% van de eigen omvang, in de smalste regio met ten minste drie "
+                "(arbeidsmarktregio, provincie, landelijk), met het peergemiddelde van de ingeschrevenen per jaar. "
+                "Gebruik dit als de gebruiker vergelijkt met 'vergelijkbare instellingen', 'peers', 'de "
+                "vergelijkingsgroep' of 'instellingen zoals wij': kies de peers nooit zelf. Wil de gebruiker een eigen "
+                "groep, geef die dan in eigen_groep; het antwoord zegt dan dat het niet de dashboardgroep is. De app zet "
+                "de zin over de groep zelf onder het antwoord."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de instelling (hbo, wo of mbo), bijvoorbeeld de profielinstelling.",
+                    },
+                    "eigen_groep": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Alleen als de gebruiker zelf instellingen noemt: hun namen of codes.",
+                    },
+                },
+                "required": ["instelling"],
             },
         },
     },
