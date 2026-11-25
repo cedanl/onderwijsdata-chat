@@ -10,7 +10,8 @@ invoer x1, uit de cache gelezen x0,1, cache geschreven x1,25, uitvoer x5. `invoe
 
 De gebruiker van een run komt uit een ContextVar die de WebSocket bij het openen zet (zoals `ho_markers.beurtvraag`):
 taken en `asyncio.to_thread` erven hem. Gast (zonder login) heeft geen budget; daar gelden de berichtlimiet en de
-verbindingsgrens. Faalt de database, dan gaat het chatten door met een WARNING: liever even geen budget dan geen chat
+verbindingsgrens. Een account in `TOKENBUDGET_VRIJGESTELD` (#1234) heeft ook geen budget, maar zijn runs tellen wel
+mee in de database. Faalt de database, dan gaat het chatten door met een WARNING: liever even geen budget dan geen chat
 (zoals core/rate_limit.py). De dag is UTC.
 """
 
@@ -20,7 +21,7 @@ import time
 from contextvars import ContextVar
 
 from agent.stream import Tokens
-from core.config import TOKENBUDGET_DAG, TOKENBUDGET_MAAND
+from core.config import TOKENBUDGET_DAG, TOKENBUDGET_MAAND, TOKENBUDGET_VRIJGESTELD
 from core.pseudoniem import pseudoniem
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,8 @@ def _volgende_maand(dag: dt.date) -> str:
 def over_budget(gebruiker: str | None) -> str | None:
     """De melding voor de gebruiker als zijn budget op is; None als er nog ruimte is (of geen budget geldt)."""
     if not gebruiker or gebruiker == GAST or not _aan():
+        return None
+    if gebruiker in TOKENBUDGET_VRIJGESTELD:
         return None
     try:
         vandaag, maand = gebruik(gebruiker)
