@@ -93,7 +93,7 @@ De baseline krimpt per kwartaal naar nul (`AFBOUWPLAN` in `scripts/ty_baseline.p
 hoeveel er nog af moet.
 
 De poorten draaien alleen in GitLab CI (`.gitlab-ci.yml`). GitLab blijft de bron: GitHub spiegelt `main` en alle
-tags. Op GitHub draait alleen de docs-workflow (`.github/workflows/docs.yml`: `mkdocs build --strict` en publicatie
+tags. Op GitHub draait alleen de docs-workflow (`.github/workflows/docs.yml`: `zensical build --strict --clean` en publicatie
 naar Pages); er draait daar geen test en geen deploy.
 
 De pipeline faalt als de dekking van `pytest` onder `fail_under` in `pyproject.toml` komt (#691). Dek je nieuwe code

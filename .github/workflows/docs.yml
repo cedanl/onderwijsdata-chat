@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -16,11 +20,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install docs dependencies
-        run: uv sync --group docs
-
+      # Zensical staat vastgepind in de docs-groep van pyproject.toml (pre-1.0: bewust verhogen).
       - name: Build docs
-        run: uv run mkdocs build --strict
+        run: uv run --group docs zensical build --strict --clean
 
       # De catalogussites van de bronpakketten (#887), vroeger op cedanl.github.io/cbs-onderwijsdata en
       # /rio-onderwijsdata. De CI-job catalogus:site in GitLab houdt packages/onderwijsbronnen/docs/{cbs,rio} bij (docs/operatie.md).
@@ -30,8 +32,11 @@ jobs:
           cp -r packages/onderwijsbronnen/docs/cbs site/catalogus/cbs
           cp -r packages/onderwijsbronnen/docs/rio site/catalogus/rio
 
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+        if: github.event_name != 'pull_request'
+
       - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: site/
@@ -44,7 +49,7 @@ jobs:
     concurrency:
       group: pages
       cancel-in-progress: false
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write

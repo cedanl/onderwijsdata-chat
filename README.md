@@ -83,7 +83,7 @@ MODEL=anthropic/claude-sonnet-4-6
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Ondersteunde providers via [LiteLLM](https://docs.litellm.ai/docs/providers): Anthropic, OpenAI, Azure OpenAI, Azure AI Foundry, Google Gemini.
+Ondersteunde providers via [LiteLLM](https://docs.litellm.ai/docs/providers): Anthropic, OpenAI, Azure OpenAI, Azure AI Foundry, Google Gemini, Ollama en SURF Willma.
 
 Optionele instellingen:
 
