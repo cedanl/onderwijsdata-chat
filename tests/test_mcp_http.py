@@ -382,7 +382,7 @@ def test_gelijktijdigheidsgrens_geeft_snel_503(maak_app, grenzen, monkeypatch):
         async with (
             app.router.lifespan_context(app),
             httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), headers=_bearer(SLEUTEL)) as http,
-            streamable_http_client(f"http://test{pad}", http_client=http) as (lezen, schrijven),
+            streamable_http_client("http://test/mcp", http_client=http) as (lezen, schrijven),
             ClientSession(lezen, schrijven) as sessie,
             anyio.create_task_group() as groep,
         ):
