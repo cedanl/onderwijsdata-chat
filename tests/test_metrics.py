@@ -37,6 +37,17 @@ def _bearer(token: str = TOKEN) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _ingelogd() -> dict[str, str]:
+    """De header van GEBRUIKER, zonder /api/auth/login.
+
+    routes.auth leest CHAT_USERS bij het importeren; heeft een eerdere test die module met andere gebruikers geladen,
+    dan geeft de login in de volle testrun 401. Ook telt de login-limiter over de hele testrun mee.
+    """
+    from core import auth
+
+    return {"Authorization": f"Bearer {auth.make_token(GEBRUIKER)}"}
+
+
 @pytest.fixture
 def client(app_client, monkeypatch):
     monkeypatch.setenv("METRICS_TOKEN", TOKEN)
@@ -114,8 +125,7 @@ def test_een_verzoek_telt_onder_zijn_routesjabloon(client):
 
 
 def test_een_pad_met_parameter_telt_onder_het_sjabloon_niet_onder_het_pad(client):
-    token = client.post("/api/auth/login", json={"username": GEBRUIKER, "password": "wachtwoord-a"}).json()["token"]
-    resp = client.get("/api/conversations/gesprek-van-anna-123", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get("/api/conversations/gesprek-van-anna-123", headers=_ingelogd())
     assert resp.status_code == 404
 
     tekst = client.get("/metrics", headers=_bearer()).text
@@ -326,8 +336,7 @@ def test_geen_label_draagt_een_gebruiker_pseudoniem_of_vraagtekst(client, monkey
     from core.pseudoniem import pseudoniem
     from persistence import db
 
-    token = client.post("/api/auth/login", json={"username": GEBRUIKER, "password": "wachtwoord-a"}).json()["token"]
-    auth = {"Authorization": f"Bearer {token}"}
+    auth = _ingelogd()
     client.get(f"/api/conversations/{urllib.parse.quote(VRAAG, safe='')}", headers=auth)
     client.get("/api/conversations", params={"q": VRAAG}, headers=auth)
     client.get(f"/api/onbekend/{GEBRUIKER}", headers=auth)
