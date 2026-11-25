@@ -74,6 +74,35 @@ def lege_cellen(df: pd.DataFrame) -> pd.DataFrame:
     leeg geen onderdrukte telwaarde.
     """
     masks = {col: mask for col in df.columns if is_maskable(df, col) and (mask := df[col].isna()).any()}
+    return _als_cellen(masks)
+
+
+def lege_cellen_onderdrukt(df: pd.DataFrame, dimensies: list[str], periodekolom: str | None) -> pd.DataFrame:
+    """De lege cellen van een geladen CBS-tabel zonder de combinaties die niet bestaan (#1213).
+
+    Een combinatie van dimensiewaarden (de periode niet meegerekend) die in een kolom in elk jaar van de geladen tabel
+    leeg is, heeft daar geen cijfer omdat ze niet voorkomt: 85424NED kent geen hbo-associate degree binnen het wo. Zo'n
+    cel is geen onderdrukt cijfer, en een som erover is volledig. Een cel die maar in sommige jaren leeg is, blijft
+    onderdrukt; net als elke lege cel bij minder dan twee jaren, of zonder bekende dimensies of periodekolom: bij
+    twijfel blijft de ondergrens staan. Zelfde vorm als lege_cellen.
+    """
+    combinatie = [d for d in dimensies if d in df.columns and d != periodekolom]
+    if not (combinatie and periodekolom and periodekolom in df.columns):
+        return lege_cellen(df)
+    groepen = df.groupby(combinatie, dropna=False, sort=False)
+    meer_jaren = groepen[periodekolom].transform("nunique").ge(2)
+    masks = {}
+    for col in df.columns:
+        if not is_maskable(df, col) or not (leeg := df[col].isna()).any():
+            continue
+        bestaat_niet = meer_jaren & groepen[col].transform("count").eq(0)
+        if (mask := leeg & ~bestaat_niet).any():
+            masks[col] = mask
+    return _als_cellen(masks)
+
+
+def _als_cellen(masks: dict) -> pd.DataFrame:
+    """Per kolom een masker → de cellen: alleen rijen met minstens één cel, per kolom 0/1."""
     if not masks:
         return EMPTY_CELLS
     cells = pd.DataFrame(masks).astype(int)

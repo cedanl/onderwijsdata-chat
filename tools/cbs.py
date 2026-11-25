@@ -52,7 +52,12 @@ _eenheden: dict[str, dict[str, str]] = {}
 
 
 def register_dimensions(dataset_id: str, columns: list[str]) -> None:
+    """Leg de dimensies vast; zijn ze nieuw of anders, dan weegt de store de lege cellen van de tabellen van deze
+    dataset opnieuw: welke combinatie niet bestaat, volgt uit de dimensies (#1213)."""
+    if _dimensies.get(dataset_id) == list(columns):
+        return
     _dimensies[dataset_id] = list(columns)
+    store.cbs_lege_cellen_opnieuw(dataset_id)
 
 
 def register_units(dataset_id: str, units: dict[str, str]) -> None:
@@ -579,14 +584,14 @@ def laad_cbs_data(
         bijgewerkt_op=bijgewerkt_op,
         vo_context=vo,
     )
-    store.put(key, df, store_meta)
-    if not vo:  # een key van vóór #342 is nooit een lading met vo-rijen
-        store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
-
+    # De dimensies vóór de tabel: store.put leest eraan af welke lege cel een combinatie is die niet bestaat (#1213).
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
         register_dimensions(dataset_id, dims)
         register_units(dataset_id, {col: d["unit"] for col, d in col_defs.items() if d.get("unit")})
+    store.put(key, df, store_meta)
+    if not vo:  # een key van vóór #342 is nooit een lading met vo-rijen
+        store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
     schema = [
         {
             "kolom": col,

@@ -11,12 +11,14 @@ from typing import TYPE_CHECKING
 
 from core import actualiteit
 from core.config import STORE_MAX_MB
-from core.sentinels import lege_cellen, mask_sentinels
+from core.sentinels import lege_cellen_onderdrukt, mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
 from .catalog import bronetiketten
 
 if TYPE_CHECKING:
+    import pandas as pd
+
     from .regiolocaties import Nevenlocatie
 
 logger = logging.getLogger(__name__)
@@ -201,11 +203,12 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
         value, cells = mask_sentinels(value)
         duo.record_sentinel_cells(key, cells)
     elif key.startswith(_CBS_PREFIX) and not (meta and meta.afgeleid_van):
-        # Een geladen CBS-tabel: haar lege cellen ('.') zijn onderdrukt, net als DUO -1 (#862). Een afgeleide key
-        # krijgt de cellen van zijn selectie van wie hem afleidt (query_data); een leeg groepstotaal is geen broncel.
+        # Een geladen CBS-tabel: haar lege cellen ('.') zijn onderdrukt, net als DUO -1 (#862), behalve een combinatie
+        # die in elk jaar leeg is: die bestaat niet (#1213). Een afgeleide key krijgt de cellen van zijn selectie van
+        # wie hem afleidt (query_data); een leeg groepstotaal is geen broncel.
         from . import duo
 
-        duo.record_sentinel_cells(key, lege_cellen(value))
+        duo.record_sentinel_cells(key, _cbs_lege_cellen(key, value, meta))
     with _slot:
         _cache[key] = value
         _cache.move_to_end(key)
@@ -216,6 +219,30 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
         else:
             _meta[key] = meta
         _ruim_op(key)
+
+
+def _cbs_lege_cellen(key: str, value, meta: KeyMeta | None) -> "pd.DataFrame":
+    """De onderdrukte lege cellen van een geladen CBS-tabel, met haar dimensies en periodekolom (#1213)."""
+    from . import cbs  # lazy: cbs importeert store
+
+    return lege_cellen_onderdrukt(value, cbs.dimension_columns(key), meta.periodekolom if meta else None)
+
+
+def cbs_lege_cellen_opnieuw(dataset_id: str) -> None:
+    """Weeg de lege cellen van de geladen tabellen van `dataset_id` opnieuw, nu haar dimensies bekend zijn (#1213).
+
+    Zonder dimensies telde elke lege cel als onderdrukt; met dimensies valt een combinatie die niet bestaat eruit.
+    """
+    from . import duo
+
+    with _slot:
+        geladen = [
+            (k, v, m)
+            for k, v in _cache.items()
+            if k.split(":")[:2] == ["cbs", dataset_id] and not ((m := _meta.get(k)) and m.afgeleid_van)
+        ]
+    for k, v, m in geladen:
+        duo.record_sentinel_cells(k, _cbs_lege_cellen(k, v, m))
 
 
 def derive(parent: str, key: str, value, **changes) -> None:
