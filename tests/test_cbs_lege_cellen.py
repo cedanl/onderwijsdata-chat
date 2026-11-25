@@ -111,20 +111,27 @@ def test_een_afgeleide_cbs_key_erft_geen_lege_groepstotalen_als_broncellen():
 _PERIODEN = ["2022SJ00", "2023SJ00"]
 
 
-def _laad(dataset: str, aantallen: Mapping[tuple[str, str], Sequence[float | None]], dims_eerst: bool = True) -> str:
-    """Een geladen CBS-tabel met de dimensies Onderwijssoort x Opleidingsfase over twee jaren; per combinatie de
-    aantallen per jaar."""
+def _laad(
+    dataset: str,
+    aantallen: Mapping[tuple[str, str], Sequence[float | None]],
+    dims_eerst: bool | None = True,
+    perioden: Sequence[str] = tuple(_PERIODEN),
+    periodekolom: str | None = "Perioden",
+) -> str:
+    """Een geladen CBS-tabel met de dimensies Onderwijssoort x Opleidingsfase over `perioden` (standaard twee jaren);
+    per combinatie de aantallen per jaar. `dims_eerst` None: de dimensies worden nooit bekend; `periodekolom` None: de
+    meta noemt geen periodekolom."""
     rijen = [
         {"Onderwijssoort": soort, "Opleidingsfase": fase, "Perioden": jaar, "Aantal": aantal}
         for (soort, fase), per_jaar in aantallen.items()
-        for jaar, aantal in zip(_PERIODEN, per_jaar, strict=True)
+        for jaar, aantal in zip(perioden, per_jaar, strict=True)
     ]
     key = f"cbs:{dataset}"
     dims = ["Onderwijssoort", "Opleidingsfase", "Perioden"]
     if dims_eerst:
         cbs.register_dimensions(dataset, dims)
-    store.put(key, pd.DataFrame(rijen), store.KeyMeta(bron="cbs", dataset=dataset, periodekolom="Perioden"))
-    if not dims_eerst:
+    store.put(key, pd.DataFrame(rijen), store.KeyMeta(bron="cbs", dataset=dataset, periodekolom=periodekolom))
+    if dims_eerst is False:
         cbs.register_dimensions(dataset, dims)
     return key
 
@@ -149,8 +156,15 @@ def _ondergrens_overal(key: str, result: dict) -> tuple[bool, bool, bool]:
     )
 
 
+# De grenzen van de regel (#1233), elk in een eigen test: (a) een combinatie die in elk geladen jaar leeg is, is geen
+# ondergrens; (b) een cel die maar in sommige jaren leeg is, blijft er een; (c) bij één geladen jaar blijft de
+# ondergrens staan; (d) zonder dimensies of zonder periodekolom ook; (e) een kleine groep die CBS in elk geladen jaar
+# onderdrukt, telt als een combinatie die niet bestaat: de gekozen afweging. core/sentinels.py verandert er niet door.
+
+
 @pytest.mark.parametrize("dims_eerst", [True, False])
 def test_een_combinatie_die_in_elk_jaar_leeg_is_is_geen_ondergrens(dims_eerst):
+    """(a)"""
     key = _laad("TNVT", _WO_AD_BESTAAT_NIET, dims_eerst)
 
     assert duo.count_cells(duo.sentinel_cells(key)) == {}
@@ -177,6 +191,7 @@ def test_een_som_over_een_combinatie_die_niet_bestaat_is_volledig():
 
 
 def test_een_cel_die_alleen_in_sommige_jaren_leeg_is_blijft_een_ondergrens():
+    """(b)"""
     key = _laad("TDEELS", {**_WO_AD_BESTAAT_NIET, ("HBO", "AD"): [20.0, None]})
 
     result = json.loads(query_data(key, filters={"Onderwijssoort": ["HBO"]}))
@@ -228,16 +243,61 @@ def test_get_cbs_data_kent_de_dimensies_al_bij_het_wegen_van_de_lege_cellen():
 
 
 def test_een_lege_combinatie_in_maar_een_geladen_jaar_blijft_onderdrukt():
-    # Eén jaar zegt niet of de combinatie bestaat: dan de voorzichtige ondergrens, zoals bij GM0738 hierboven.
+    """(c) Eén jaar zegt niet of de combinatie bestaat: dan de voorzichtige ondergrens, zoals bij GM0738 hierboven."""
     df = pd.DataFrame({"Soort": ["WO", "HBO"], "Perioden": ["2023SJ00", "2023SJ00"], "Aantal": [None, 5.0]})
 
     assert duo.count_cells(lege_cellen_onderdrukt(df, ["Soort", "Perioden"], "Perioden")) == {"Aantal": 1}
 
 
-def test_zonder_dimensies_of_periodekolom_is_elke_lege_cel_onderdrukt():
+def test_een_selectie_uit_een_tabel_met_een_jaar_blijft_een_ondergrens():
+    """(c) Hetzelfde door de hele keten: WO-AD is in het enige geladen jaar leeg, dus onderdrukt."""
+    key = _laad("TEENJAAR", {k: v[-1:] for k, v in _WO_AD_BESTAAT_NIET.items()}, perioden=_PERIODEN[-1:])
+
+    assert duo.count_cells(duo.sentinel_cells(key)) == {"Aantal": 1}
+    result = json.loads(query_data(key, filters={"Onderwijssoort": ["WO"]}))
+    assert _ondergrens_overal(result["data_key"], result) == (True, True, True)
+
+
+def test_zonder_dimensies_is_elke_lege_cel_onderdrukt():
+    """(d) Zonder bekende dimensies is er geen combinatie om te wegen: elke lege cel blijft een ondergrens."""
     df = pd.DataFrame({"Soort": ["WO", "WO"], "Perioden": ["2022SJ00", "2023SJ00"], "Aantal": [None, None]})
     df = df.astype({"Aantal": float})
 
     assert duo.count_cells(lege_cellen_onderdrukt(df, [], "Perioden")) == {"Aantal": 2}
-    assert duo.count_cells(lege_cellen_onderdrukt(df, ["Soort"], None)) == {"Aantal": 2}
+    assert duo.count_cells(lege_cellen_onderdrukt(df, ["Perioden"], "Perioden")) == {"Aantal": 2}  # alleen de periode
+    # Met dimensies en periodekolom is dezelfde cel een combinatie die niet bestaat, zoals bij (a).
     assert duo.count_cells(lege_cellen_onderdrukt(df, ["Soort", "Perioden"], "Perioden")) == {}
+
+    key = _laad("TZONDERDIMS", _WO_AD_BESTAAT_NIET, dims_eerst=None)
+    assert duo.count_cells(duo.sentinel_cells(key)) == {"Aantal": 2}
+    result = json.loads(query_data(key, filters={"Onderwijssoort": ["WO"]}))
+    assert _ondergrens_overal(result["data_key"], result) == (True, True, True)
+
+
+def test_zonder_periodekolom_is_elke_lege_cel_onderdrukt():
+    """(d) Zonder periodekolom is niet te zien of een cel in elk jaar leeg is: elke lege cel blijft een ondergrens."""
+    df = pd.DataFrame({"Soort": ["WO", "WO"], "Perioden": ["2022SJ00", "2023SJ00"], "Aantal": [None, None]})
+    df = df.astype({"Aantal": float})
+
+    assert duo.count_cells(lege_cellen_onderdrukt(df, ["Soort"], None)) == {"Aantal": 2}
+    assert duo.count_cells(lege_cellen_onderdrukt(df, ["Soort", "Perioden"], "Jaar")) == {"Aantal": 2}  # niet in df
+
+    key = _laad("TZONDERPERIODE", _WO_AD_BESTAAT_NIET, periodekolom=None)
+    assert duo.count_cells(duo.sentinel_cells(key)) == {"Aantal": 2}
+    result = json.loads(query_data(key, filters={"Onderwijssoort": ["WO"]}))
+    # Telling-blok en CSV-kop; de databewerking telt de lege cellen per jaar en heeft daar de periodekolom voor nodig.
+    blok, _, csv = _ondergrens_overal(result["data_key"], result)
+    assert (blok, csv) == (True, True)
+
+
+def test_een_kleine_groep_die_in_elk_geladen_jaar_onbekend_is_telt_als_niet_bestaand():
+    """(e) De gekozen afweging (#1233, #1213): de code ziet niet of een combinatie niet bestaat of dat CBS haar in elk
+    geladen jaar onderdrukt (een kleine groep, bijv. een handvol hbo-masterstudenten). Ze telt dan als niet bestaand:
+    geen ondergrens, ook al kan het echte totaal iets hoger liggen. Zo noemt een som over een combinatie die echt niet
+    bestaat zich niet onvolledig; het besluit van 25-11 houdt deze regel zo."""
+    key = _laad("TKLEIN", {**_WO_AD_BESTAAT_NIET, ("HBO", "MA"): [None, None]})
+
+    assert duo.count_cells(duo.sentinel_cells(key)) == {}
+    result = json.loads(query_data(key, filters={"Onderwijssoort": ["HBO"]}))
+    assert _ondergrens_overal(result["data_key"], result) == (False, False, False)
+    assert "databewerking" not in result
