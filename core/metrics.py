@@ -115,7 +115,7 @@ _ONBENOEMD = "onbenoemd"
 
 
 def _veilig(functie):
-    """Meten mag nooit de aanroeper breken: een fout komt eenmaal per soort op DEBUG in het log."""
+    """Meten mag nooit de aanroeper breken: een fout in het meten staat alleen op DEBUG in het log."""
 
     def binnen(*args: Any, **kwargs: Any) -> None:
         try:
