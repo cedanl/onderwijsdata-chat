@@ -7,8 +7,10 @@ onder een antwoord met precies één hoofdgetal (uit een vaste maat of een enkel
 cijfer?". De gebruiker typt alleen een getal. Code zet het naast ons getal (verschil absoluut en in %) en loopt de
 redenen af die de teldefinitie van de geladen key draagt; per reden de grootte als code die kan uitrekenen (extranei,
 personen of inschrijvingen, opleidingsvorm uit de andere definities van #1256; onderdrukte cellen en afronding als
-bovengrens), anders "kan meespelen, grootte niet te bepalen uit open data". De slotzin zegt of het verschil binnen de
-bekende redenen valt, of hoeveel er overblijft.
+bovengrens), anders "kan meespelen, grootte niet te bepalen uit open data". Elke reden heeft een richting: komt een
+telling zonder haar hoger of lager uit dan ons getal? Een reden die de andere kant op werkt dan het verschil (ons getal
+telt extranei al mee, het eigen getal ligt hoger), staat er met haar grootte, maar verklaart niets. De slotzin zegt of
+het verschil binnen de bekende redenen valt die de goede kant op werken, of hoeveel er overblijft.
 
 Het eigen getal is invoer van de gebruiker, nooit bewijs: het staat in de stap en het bewijs als `eigen_getal`, met
 `invoer: gebruiker` en zonder citatie; het rapport en de getalcontrole van een volgend antwoord tellen het niet
@@ -168,24 +170,46 @@ def onthoud(session: dict, steps: list[tuple[str, str]], controles: controlestap
     return {"id": key, "waarde": gevonden["waarde"]}
 
 
+HOGER, LAGER, BEIDE = 1, -1, 0
+
+
+def _teken(getal: float) -> int:
+    return (getal > 0) - (getal < 0)
+
+
 @dataclass(frozen=True)
 class Reden:
     tekst: str
     grootte: float | None  # wat de reden ongeveer verklaart, of ten hoogste (`bovengrens`); None: niet te bepalen
     bovengrens: bool = False
+    # Komt een telling zonder deze keuze van ons getal hoger (HOGER) of lager (LAGER) uit, of kan het beide (BEIDE)?
+    richting: int = BEIDE
 
-    def regel(self) -> str:
+    def telt_mee(self, teken: int) -> bool:
+        """Verklaart de reden (een deel van) een verschil met dit teken (eigen getal min het onze)?"""
+        return self.grootte is not None and self.richting in (BEIDE, teken)
+
+    def regel(self, teken: int) -> str:
         if self.grootte is None:
             return f"{self.tekst}: {ONBEKEND}."
+        getal = controlestappen.nl_getal(self.grootte)
+        if not self.telt_mee(teken):
+            woord = "ten hoogste" if self.bovengrens else "ongeveer"
+            kant = "hoger" if self.richting == HOGER else "lager"
+            return f"{self.tekst}: scheelt {woord} {getal}, maar de andere kant op (zo'n telling komt {kant} uit)."
         woord = "verklaart ten hoogste" if self.bovengrens else "verklaart ongeveer"
-        return f"{self.tekst}: {woord} {controlestappen.nl_getal(self.grootte)}."
+        return f"{self.tekst}: {woord} {getal}."
 
 
-def _verschil_met(alternatieven: dict[str, float], namen: tuple[str, ...], ons: float) -> float | None:
+def _verschil_met(
+    alternatieven: dict[str, float], namen: tuple[str, ...], ons: float, standaard: int
+) -> tuple[float | None, int]:
+    """De grootte en de richting van een reden uit de andere definities (#1256); zonder alternatief geen grootte en de
+    richting die de teldefinitie geeft."""
     for naam in namen:
         if naam in alternatieven:
-            return abs(alternatieven[naam] - ons)
-    return None
+            return abs(alternatieven[naam] - ons), _teken(alternatieven[naam] - ons) or standaard
+    return None, standaard
 
 
 def redenen(info: dict) -> list[Reden]:
@@ -196,34 +220,48 @@ def redenen(info: dict) -> list[Reden]:
     uit: list[Reden] = []
     if "extranei" in tel or "examendeelnemers" in tel:
         zonder = "excl. extranei" in tel or "zonder examendeelnemers" in tel
-        grootte = info.get("extranei")
+        # Telt ons getal ze mee, dan komt een telling zonder lager uit; telt het ze niet, dan komt een telling met hoger.
+        standaard = HOGER if zonder else LAGER
+        grootte, richting = info.get("extranei"), standaard
         if grootte is None:
-            grootte = _verschil_met(alternatieven, ("zonder extranei", "met extranei"), ons)
+            grootte, richting = _verschil_met(alternatieven, ("zonder extranei", "met extranei"), ons, standaard)
         mee = "niet mee" if zonder else "mee"
-        uit.append(Reden(f"Extranei (examendeelnemers): ons getal telt ze {mee}", grootte))
+        uit.append(Reden(f"Extranei (examendeelnemers): ons getal telt ze {mee}", grootte, richting=richting))
     # De teldefinitie van het recept begint met wat ze telt; zonder recept die van DUO, zoals report_vergelijken (#736).
     if recept.startswith(("personen", "eerstejaars personen")) or (not recept and "natuurlijke personen" in bron):
-        grootte = _verschil_met(alternatieven, ("inschrijvingen",), ons)
+        grootte, richting = _verschil_met(alternatieven, ("inschrijvingen",), ons, HOGER)
         uit.append(
-            Reden("Personen of inschrijvingen: ons getal telt personen, wie inschrijvingen telt komt hoger", grootte)
+            Reden(
+                "Personen of inschrijvingen: ons getal telt personen, wie inschrijvingen telt komt hoger",
+                grootte,
+                richting=richting,
+            )
         )
     elif recept.startswith("inschrijvingen") or (not recept and "neveninschrijvingen meegeteld" in bron):
-        grootte = _verschil_met(alternatieven, ("personen",), ons)
+        grootte, richting = _verschil_met(alternatieven, ("personen",), ons, LAGER)
         uit.append(
-            Reden("Personen of inschrijvingen: ons getal telt inschrijvingen, wie personen telt komt lager", grootte)
+            Reden(
+                "Personen of inschrijvingen: ons getal telt inschrijvingen, wie personen telt komt lager",
+                grootte,
+                richting=richting,
+            )
         )
     alle_vormen = info.get("vorm") in (None, "alle")
     if "alleen voltijd" in alternatieven or (info.get("dataset") in OPLEIDINGSVORM_DATASETS and alle_vormen):
-        grootte = _verschil_met(alternatieven, ("alleen voltijd",), ons)
-        uit.append(Reden("Opleidingsvorm: ons getal telt voltijd, deeltijd en duaal samen", grootte))
+        grootte, richting = _verschil_met(alternatieven, ("alleen voltijd",), ons, LAGER)
+        uit.append(Reden("Opleidingsvorm: ons getal telt voltijd, deeltijd en duaal samen", grootte, richting=richting))
     if info.get("bron") == "duo" and (cellen := int(info.get("onderdrukt") or 0)):
+        # Wie de weggelaten cellen wel telt, komt hoger uit.
         uit.append(
             Reden(
-                f"Onderdrukte cellen: {cellen} cellen met 1 tot en met 4 tellen in ons getal niet mee", 4 * cellen, True
+                f"Onderdrukte cellen: {cellen} cellen met 1 tot en met 4 tellen in ons getal niet mee",
+                4 * cellen,
+                True,
+                richting=HOGER,
             )
         )
     if afronding := info.get("afronding"):
-        uit.append(Reden(f"Afronding: CBS rondt af op {afronding}-tallen", afronding / 2, True))
+        uit.append(Reden(f"Afronding: CBS rondt af op {afronding}-tallen", afronding / 2, True, richting=BEIDE))
     if "1 oktober" in tel:
         uit.append(
             Reden("Peildatum: ons getal telt op 1 oktober, een telling op een andere datum komt anders uit", None)
@@ -235,9 +273,12 @@ def verklaar(eigen: int, info: dict) -> dict:
     """De uitkomst bij een eigen getal: het verschil, de redenen met hun grootte en de slotzin, als tekst en als stap."""
     ons = float(info["waarde"])
     verschil = eigen - ons
+    teken = _teken(verschil)
     pct = round(verschil / ons * 100, 1) if ons else None
     gevonden = redenen(info)
-    verklaard = sum(r.grootte for r in gevonden if r.grootte is not None)
+    # Alleen een reden die de kant van het verschil op werkt, verklaart er iets van (audit #1271).
+    passend = [r for r in gevonden if r.telt_mee(teken)]
+    verklaard = sum(r.grootte for r in passend if r.grootte is not None)
     rest = max(abs(verschil) - verklaard, 0)
     nl = controlestappen.nl_getal
     if verschil == 0:
@@ -249,13 +290,13 @@ def verklaar(eigen: int, info: dict) -> dict:
         vergelijking = f"ligt {nl(abs(verschil))} {richting} dan ons getal {nl(ons)}{procent}"
         slot = (
             "Het verschil valt binnen de bekende redenen."
-            if rest == 0 and gevonden
+            if rest == 0 and passend
             else f"Na deze redenen blijft een verschil van {nl(rest)} over."
         )
     kop = f"{KOP} je eigen getal {nl(eigen)} (jouw invoer, geen bron) {vergelijking}."
     if gevonden:
         midden = "Wat zo'n verschil kan verklaren, volgens de teldefinitie van ons getal:\n" + "\n".join(
-            f"- {r.regel()}" for r in gevonden
+            f"- {r.regel(teken)}" for r in gevonden
         )
     else:
         midden = "De teldefinitie van ons getal noemt geen bekende reden voor een verschil."
@@ -265,7 +306,16 @@ def verklaar(eigen: int, info: dict) -> dict:
         "ons_getal": {"waarde": ons, "data_key": info["data_key"]},
         "verschil": verschil,
         "verschil_pct": pct,
-        "redenen": [{"tekst": r.tekst, "grootte": r.grootte, "bovengrens": r.bovengrens} for r in gevonden],
+        "redenen": [
+            {
+                "tekst": r.tekst,
+                "grootte": r.grootte,
+                "bovengrens": r.bovengrens,
+                "richting": r.richting,
+                "telt_mee": r.telt_mee(teken),
+            }
+            for r in gevonden
+        ],
         "rest": rest,
         "slot": slot,
         "tekst": tekst,

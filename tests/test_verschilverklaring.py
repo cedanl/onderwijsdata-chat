@@ -100,11 +100,66 @@ def test_run_zet_het_hoofdgetal_in_het_einde_van_het_antwoord():
 # --- 8 en 9. de redenen uit de teldefinitie, met hun grootte uit code -------------------------------------------------
 
 
-def test_naast_ons_duo_getal_noemt_de_uitkomst_extranei_met_de_berekende_grootte():
-    """475.460 (CBS) naast ons 474.963 (DUO, incl. examendeelnemers): extranei verklaart ongeveer 9.640."""
+def _mondriaan() -> tuple[str, int, int]:
+    """De vaste maat voor ROC Mondriaan in 2024/25 uit het bevroren DUO-bestand (#766), met het totaal en de
+    examendeelnemers (EX) die pandas los uit hetzelfde bestand rekent."""
+    import pandas as pd
+
+    from scripts.duo_testfixtures import MAP, bestandsnaam
+
+    ruw = pd.read_csv(MAP / bestandsnaam("mbo-studenten-per-instelling", 0))
+    (rij,) = ruw[(ruw["INSTELLINGSNAAM"] == "ROC Mondriaan") & (ruw["JAAR"] == 2024)].to_dict("records")
+    totaal = sum(int(rij[k]) for k in ("BBL", "BOLDT", "BOLVT", "EX") if int(rij[k]) > 0)
+    stap = maten.get_maat(maten.MBO_STUDENTEN, "ROC Mondriaan", schooljaren=["2024/25"])
+    return stap, totaal, int(rij["EX"])
+
+
+@pytest.mark.usefixtures("gouden")
+def test_op_bevroren_duo_data_noemt_de_uitkomst_extranei_met_de_grootte_uit_het_bestand():
+    """Ons getal telt de examendeelnemers mee (de teldefinitie van de maat); wie ze niet telt, komt precies zoveel lager.
+    De grootte is de EX-cel van het bevroren bestand, niet een getal uit de test."""
+    stap, totaal, ex = _mondriaan()
     session: dict = {}
-    stap = _maat(474963, _DUO_TEL, extra={"BBL": 1, "BOLDT": 1, "BOLVT": 1, "EX": 9640})
-    stap = json.dumps({**json.loads(stap), "rijen": [{"JAAR": 2024, "EX": 9640, "AANTAL": 474963}]})
+    hoofd = verschilverklaring.onthoud(session, [(TOOL_GET_MAAT, stap)], controlestappen.Controles())
+    assert hoofd is not None and hoofd["waarde"] == totaal and ex > 0
+
+    uitkomst = verschilverklaring.behandel(session, hoofd["id"], str(totaal - ex))
+    assert isinstance(uitkomst, dict)
+    tekst = uitkomst["tekst"]
+    nl = controlestappen.nl_getal
+    assert f"ligt {nl(ex)} lager dan ons getal {nl(totaal)}" in tekst
+    assert f"Extranei (examendeelnemers): ons getal telt ze mee: verklaart ongeveer {nl(ex)}." in tekst
+    assert tekst.endswith("Het verschil valt binnen de bekende redenen.")
+    assert "fout" not in tekst.lower()
+
+
+@pytest.mark.usefixtures("gouden")
+def test_een_reden_die_de_andere_kant_op_werkt_verklaart_het_verschil_niet():
+    """Ons getal telt extranei al mee: een hoger eigen getal verklaren ze niet. De reden staat er met haar grootte,
+    maar telt niet mee in de slotzin (audit van #1271: eerst telde elke reden mee, ongeacht haar richting)."""
+    stap, totaal, ex = _mondriaan()
+    session: dict = {}
+    hoofd = verschilverklaring.onthoud(session, [(TOOL_GET_MAAT, stap)], controlestappen.Controles())
+    assert hoofd is not None
+
+    uitkomst = verschilverklaring.behandel(session, hoofd["id"], str(totaal + ex))
+    assert isinstance(uitkomst, dict)
+    tekst = uitkomst["tekst"]
+    nl = controlestappen.nl_getal
+    assert f"Extranei (examendeelnemers): ons getal telt ze mee: scheelt ongeveer {nl(ex)}, maar de andere kant op" in tekst
+    assert "valt binnen de bekende redenen" not in tekst
+    assert tekst.endswith(f"Na deze redenen blijft een verschil van {nl(ex)} over.")
+    (extranei,) = [r for r in json.loads(uitkomst["stap"]["output"])["redenen"] if r["tekst"].startswith("Extranei")]
+    assert (extranei["richting"], extranei["telt_mee"]) == (-1, False)
+
+
+def test_naast_ons_duo_getal_noemt_de_uitkomst_extranei_met_de_berekende_grootte():
+    """475.460 (CBS, incl. extranei) naast ons 474.963 (DUO, incl. examendeelnemers): extranei heeft een grootte, maar
+    verklaart een hoger getal niet, want ons getal telt ze al mee. Het bevroren DUO-bestand heeft geen landelijk totaal
+    van 474.963 (dat kwam uit het bestand per sectorkamer); de rij en haar EX-waarde (9.640) zijn hier synthetisch. De
+    grootte uit het bevroren bestand toetst `test_op_bevroren_duo_data_noemt_de_uitkomst_extranei_…` hierboven."""
+    session: dict = {}
+    stap = json.dumps({**json.loads(_maat(474963, _DUO_TEL)), "rijen": [{"JAAR": 2024, "EX": 9640, "AANTAL": 474963}]})
     hoofd = verschilverklaring.onthoud(session, [(TOOL_GET_MAAT, stap)], controlestappen.Controles())
     assert hoofd is not None
 
@@ -113,9 +168,22 @@ def test_naast_ons_duo_getal_noemt_de_uitkomst_extranei_met_de_berekende_grootte
     tekst = uitkomst["tekst"]
     assert tekst.startswith(KOP_VERSCHILVERKLARING)
     assert "475.460" in tekst and "497 hoger dan ons getal 474.963" in tekst and "+0,1%" in tekst
-    assert "Extranei (examendeelnemers): ons getal telt ze mee: verklaart ongeveer 9.640." in tekst
-    assert tekst.endswith("Het verschil valt binnen de bekende redenen.")
+    assert "Extranei (examendeelnemers): ons getal telt ze mee: scheelt ongeveer 9.640, maar de andere kant op" in tekst
+    assert tekst.endswith("Na deze redenen blijft een verschil van 497 over.")
     assert "fout" not in tekst.lower()
+
+
+def test_het_audit_voorbeeld_480000_heet_niet_verklaard():
+    """De proef uit de audit: ons 474.963 telt extranei mee, de gebruiker zegt 480.000 (5.037 hoger)."""
+    session: dict = {}
+    stap = json.dumps({**json.loads(_maat(474963, _DUO_TEL)), "rijen": [{"JAAR": 2024, "EX": 9640, "AANTAL": 474963}]})
+    hoofd = verschilverklaring.onthoud(session, [(TOOL_GET_MAAT, stap)], controlestappen.Controles())
+    assert hoofd is not None
+
+    uitkomst = verschilverklaring.behandel(session, hoofd["id"], "480.000")
+    assert isinstance(uitkomst, dict)
+    assert "valt binnen de bekende redenen" not in uitkomst["tekst"]
+    assert uitkomst["tekst"].endswith("Na deze redenen blijft een verschil van 5.037 over.")
 
 
 def test_naast_ons_cbs_getal_komt_de_grootte_van_extranei_uit_de_andere_definitie():
@@ -165,8 +233,9 @@ def test_de_grootte_van_personen_of_inschrijvingen_komt_uit_de_andere_definitie(
     uitkomst = verschilverklaring.behandel(session, hoofd["id"], "40.000")
     assert isinstance(uitkomst, dict)
     assert "telt personen, wie inschrijvingen telt komt hoger: verklaart ongeveer 1.812." in uitkomst["tekst"]
+    # Alleen voltijd komt lager uit (30.000): dat verklaart een hoger eigen getal niet, en telt niet mee.
     assert (
-        "Opleidingsvorm: ons getal telt voltijd, deeltijd en duaal samen: verklaart ongeveer 8.288."
+        "Opleidingsvorm: ons getal telt voltijd, deeltijd en duaal samen: scheelt ongeveer 8.288, maar de andere kant op"
         in uitkomst["tekst"]
     )
     assert uitkomst["tekst"].endswith("Het verschil valt binnen de bekende redenen.")
