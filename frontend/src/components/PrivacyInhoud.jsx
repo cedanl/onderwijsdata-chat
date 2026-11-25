@@ -60,6 +60,10 @@ export default function PrivacyInhoud() {
           je browser, tot je het gesprek verwijdert. Ook een export van het gesprek bevat hem. Alleen de titel van het gesprek
           wordt gemaskeerd: de app maakt zulke gegevens daar onleesbaar.
         </li>
+        <li>
+          Kleine aantallen blijven onderdrukt. DUO en CBS publiceren een klein aantal niet, zodat niemand in een kleine
+          groep herkenbaar is. De app rekent zo&apos;n cel niet terug als het totaal min de zichtbare delen.
+        </li>
       </ul>
 
       <h2>{PRIVACY_KOPJES[1]}</h2>

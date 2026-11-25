@@ -28,6 +28,11 @@ blijven.
   tekst met die gegevens naar de AI-dienst en blijft hij staan in het gesprek op de server, in de kopie in je
   browser en in een export van het gesprek, tot je het gesprek verwijdert; alleen de titel van het gesprek wordt
   gemaskeerd (besluit 19-10, #616).
+- Kleine aantallen blijven onderdrukt. DUO publiceert een aantal van 1 tot en met 4 als -1 en CBS een geheim cijfer
+  als '.', om personen in een kleine groep niet herkenbaar te maken. De app rekent zo'n cel niet terug als totaal min
+  de zichtbare delen (differencing), ook niet als het totaal in een ander bestand staat: de rekentools geven dan de
+  vaste melding "Deze cel is door de bron onderdrukt; terugrekenen geven we niet." en een antwoord dat het getal zelf
+  uitrekent, houdt de controle in (`tools/terugrekenen.py`, #1265).
 
 ## Wat de server bewaart
 

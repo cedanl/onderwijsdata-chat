@@ -141,6 +141,11 @@ def _literals(code: str) -> set[Decimal]:
     return {abs(w) for node in ast.walk(boom) if (w := _reken(node)) is not None}
 
 
+def getypte_getallen(code: str) -> tuple[int | float, ...]:
+    """Elk getal dat het script typt, als getal: een totaal dat het model eerder las en overtypte (#1265)."""
+    return tuple(sorted(_getal(g) for g in _literals(code)))
+
+
 def _getal(g: Decimal) -> int | float:
     return int(g) if g == g.to_integral_value() else float(g)
 

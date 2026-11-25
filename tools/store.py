@@ -368,6 +368,11 @@ def bronnen(key: str) -> list[tuple[str, KeyMeta]]:
     return [(k, known) for k, known in _keten(key) if not known.afgeleid_van]
 
 
+def bronsleutels(key: str, met_afgeleid: bool = False) -> list[str]:
+    """De keys waar `key` op rust, zonder `key` zelf: de geladen tabellen, of met `met_afgeleid` de hele keten (#1265)."""
+    return [k for k, known in _keten(key) if k != key and (met_afgeleid or not known.afgeleid_van)]
+
+
 def _bronregel(known: KeyMeta) -> str:
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
     if etiket := bronetiketten(known.dataset, vo_context=known.vo_context):
