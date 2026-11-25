@@ -29,7 +29,9 @@ def duo_sector():
 def cbs_studierichting():
     store.put(
         _CBS_KEY,
-        pd.DataFrame([{"Studierichting": "Economie", "Studenten_1": 300}, {"Studierichting": "Zorg", "Studenten_1": 200}]),
+        pd.DataFrame(
+            [{"Studierichting": "Economie", "Studenten_1": 300}, {"Studierichting": "Zorg", "Studenten_1": 200}]
+        ),
         KeyMeta(
             bron="cbs",
             dataset="85525NED",
