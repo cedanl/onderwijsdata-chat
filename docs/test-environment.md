@@ -67,9 +67,10 @@ env UV_PYTHON=3.14 uv run pytest tests/test_account_isolatie.py tests/test_isola
 
 **Tegen een draaiende app.** `scripts/isolatietest.py` doet dezelfde controles over HTTP, met twee echte tokens. Hij
 draait alleen tegen `localhost`, `127.0.0.1` of de testomgeving (`onderwijsdata-chat.test.sdp.surf.nl`, alleen via
-https). Elke andere URL, ook playground en productie, weigert hij vóór het eerste verzoek (exitcode 2). Hij weigert ook
-`demo`, `gast` en twee keer hetzelfde account. Hij maakt alleen eigen testgegevens met het merkteken
-`isolatietest-<run>` en ruimt die aan het eind op. Er gaat geen vraag naar het taalmodel: de test kost geen tokenbudget.
+https). Elke andere URL, ook playground en productie, weigert hij vóór het eerste verzoek (exitcode 2). `localhost` is
+voor een app op je eigen machine: de wacht ziet niet waar een poort heen gaat, dus richt hem nooit op een port-forward
+naar een gedeelde omgeving. Hij weigert ook `demo`, `gast` en twee keer hetzelfde account. Hij maakt alleen eigen
+testgegevens met het merkteken `isolatietest-<run>` en ruimt die aan het eind op. Er gaat geen vraag naar het taalmodel: de test kost geen tokenbudget.
 
 ```bash
 export ISOLATIE_URL=https://onderwijsdata-chat.test.sdp.surf.nl
