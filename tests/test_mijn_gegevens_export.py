@@ -232,6 +232,50 @@ def test_json_kolommen_zijn_ontleed(client):
     assert bewijs["created_at"] == "2026-11-03T10:00:00+00:00"
 
 
+def test_een_beurt_zonder_toolstap_zegt_waarom_ze_leeg_is(client):
+    """#1217: een rij met vier lege verzamelingen blijft in de export (AVG), met `reden_leeg` als uitleg."""
+    _vul("anna", "ANNA-UNIEK")
+    leeg = {"lineage": {}, "rekenbewijs": [], "bronnen": {}, "figuren": [], "created_at": "2026-11-04T10:00:00+00:00"}
+    db.save_beurtbewijs(
+        "anna",
+        "anna-c2",
+        {
+            "hash-leeg": leeg,
+            # None wordt `null` in de database; ook dat telt als leeg.
+            "hash-null": {**leeg, "lineage": None, "rekenbewijs": None, "created_at": "2026-11-05T10:00:00+00:00"},
+            # Een rij met alleen een bronregel heeft wel inhoud.
+            "hash-bron": {**leeg, "bronnen": {"k": [{"regel": "DUO"}]}, "created_at": "2026-11-06T10:00:00+00:00"},
+        },
+    )
+    # Een lege tekst in een kolom (oude of handmatig gewijzigde rij) telt ook als leeg.
+    db.save_beurtbewijs("anna", "anna-c2", {"hash-tekst": {**leeg, "created_at": "2026-11-07T10:00:00+00:00"}})
+    with db._connection() as conn:
+        db._execute(conn, "UPDATE beurtbewijs SET lineage = '' WHERE tekst_hash = ?", ("hash-tekst",))
+        conn.commit()
+
+    data, _ = _export(client, "anna")
+
+    rijen = {r["tekst_hash"]: r for r in data["beurtbewijs"]}
+    assert list(rijen) == ["hash-ANNA-UNIEK", "hash-leeg", "hash-null", "hash-bron", "hash-tekst"]
+    for tekst_hash in ("hash-leeg", "hash-null", "hash-tekst"):
+        assert rijen[tekst_hash]["reden_leeg"] == "geen toolstap in deze beurt"
+    assert rijen["hash-leeg"] == {
+        "conv_id": "anna-c2",
+        "tekst_hash": "hash-leeg",
+        "lineage": {},
+        "rekenbewijs": [],
+        "bronnen": {},
+        "figuren": [],
+        "created_at": "2026-11-04T10:00:00+00:00",
+        "reden_leeg": "geen toolstap in deze beurt",
+    }
+    assert rijen["hash-null"]["lineage"] is None and rijen["hash-null"]["rekenbewijs"] is None
+    for tekst_hash in ("hash-ANNA-UNIEK", "hash-bron"):
+        assert "reden_leeg" not in rijen[tekst_hash]
+    assert rijen["hash-bron"]["bronnen"] == {"k": [{"regel": "DUO"}]}
+    assert data["schema_version"] == 1
+
+
 def test_de_enige_regelovergang_is_het_laatste_teken(client):
     """De frontend bewaart alleen een bestand dat op een regelovergang eindigt: dat is het eindteken."""
     db.upsert_conversation("anna", "c1", "Twee\nregels", 1_700_000_000, _gesprek("een\nmeer"))

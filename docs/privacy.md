@@ -115,8 +115,11 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback,
   datarecepten, het bewijs per antwoord en je tokengebruik (`tokengebruik`: per dag `dag` en `eenheden`, zonder het
-  pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Niet erin: wat alleen in je browser staat. Zonder
-  eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404 (#1118).
+  pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Een antwoord zonder toolstap staat er ook in, met
+  lege `lineage`, `rekenbewijs`, `bronnen` en `figuren`; zo'n rij heeft de extra sleutel `reden_leeg` ("geen toolstap
+  in deze beurt"), zodat ze niet als ontbrekende data leest (#1217; `schema_version` blijft 1). Niet erin: wat alleen
+  in je browser staat. Zonder eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server
+  antwoordt 404 (#1118).
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen met je accountnaam
