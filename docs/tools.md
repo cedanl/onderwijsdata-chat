@@ -1008,6 +1008,14 @@ knopen zijn de unieke herkomsten en bestemmingen, elk van groot naar klein; een 
 stroom, en het toolbericht zegt hoeveel rijen dat waren. Boven 40 knopen komt er geen figuur, maar een melding om te
 filteren of te groeperen. De hover toont het aantal, en bij een herkomst met meer stromen het aandeel van die stroom.
 
+**Indeling in de titel (#1232).** Staan op de categorie-as de groepen van een indeling, dan noemt de titel die
+indeling en de bron, uit de metadata van de `data_key` en niet uit het model: "per sector (DUO)" bij de DUO-kolommen
+`ONDERDEEL` (ho) en `HOOFDGROEP NAAM` (mbo), "per studierichting (CBS)" bij een CBS-dimensie op studie- of
+opleidingsrichting of sector (de titel uit `kolomtitels`). Wat de titel van het model al noemt, komt er niet nog eens
+bij. Dezelfde woorden staan in `layout.meta.indeling`, als regel `indeling: …` boven de CSV en in de bronregel onder de
+rapportfiguur (`tools/indeling.py`). Een grafiek zonder `data_key`, of op jaren, regio's of een andere kolom, houdt
+haar titel.
+
 De grafiek wordt direct in de chat weergegeven. In een rapport staat onder elke grafiek een bronregel uit code
 (`agent/figuurbron.py`, #569): bron en catalogustitel, dataset-ID, bij meer bestanden het bestand, de periode en de
 CBS-periodestatus van de getekende rijen, en als link de StatLine-pagina (CBS, #638) of de documentatie-URL uit de

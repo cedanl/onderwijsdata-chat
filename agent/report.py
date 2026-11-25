@@ -315,7 +315,7 @@ async def _genereer(
     # De figuren van het rapport: precies de gekozen figuren uit het gesprek, het model tekent er geen (#993).
     figures = [f.figure_json for f in vast.figuren]
     # Per figuur de bronregel eronder, uit de key die de grafiek tekende (#569).
-    figuurbronnen = [figuurbron(f.data_key) for f in vast.figuren]
+    figuurbronnen = [figuurbron(f.data_key, f.indeling) for f in vast.figuren]
     # Per figuur de periode van haar rijen (startjaren), voor de rapporttitel (#893).
     figuurperioden = [figuurperiode(f.data_key) for f in vast.figuren]
     # De keys die de rapportrun las: haar bevragingen en de figuren die in het rapport komen (#738).

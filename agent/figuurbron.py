@@ -13,6 +13,7 @@ zegt dan dat de bron niet is vastgesteld.
 
 from tools import store
 from tools.catalog import bron_titel, documentatie_url
+from tools.indeling import indelingsregel
 
 from .selectie import SCHEIDING, bestand_in_woorden, laadkey, periode_in_woorden
 
@@ -27,12 +28,13 @@ def _periodestatus(data_key: str) -> str | None:
     return "/".join(sorted({str(s) for s in df[_PERIODESTATUS].dropna().unique()})) or None
 
 
-def figuurbron(data_key) -> dict | None:
+def figuurbron(data_key, indeling: str | None = None) -> dict | None:
     """De bronregel van de grafiek die `data_key` tekende.
 
     `tekst` is de regel onder de grafiek, `url` de link naar de open-databron (None als de catalogus
     die niet kent), `bron` en `dataset` staan er los bij. None als de figuur geen data_key heeft of de
-    store die niet kent: dan is de bron niet vastgesteld, en zegt het rapport dat.
+    store die niet kent: dan is de bron niet vastgesteld, en zegt het rapport dat. `indeling` is de indeling die de
+    grafiek toont ("per sector (DUO)", uit layout.meta, #1232): de regel noemt haar met dezelfde woorden als de CSV.
     """
     if not isinstance(data_key, str) or not data_key or not (known := store.meta(laadkey(data_key))):
         return None
@@ -49,6 +51,8 @@ def figuurbron(data_key) -> dict | None:
         delen.append(jaren)
     if status := _periodestatus(data_key):
         delen.append(f"status {status}")
+    if indeling:
+        delen.append(indelingsregel(indeling))
     return {
         "bron": known.bron.upper(),
         "dataset": str(known.dataset),
