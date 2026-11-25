@@ -120,11 +120,14 @@ def antwoordcontrole(
     data_keys: list[str],
     getalcontrole: Callable[[str, list[str]], list[Probleem]] | None = None,
     verklaring_gevraagd: bool = True,
+    verslag: dict[str, str] | None = None,
 ) -> Callable[[str, list[str]], list[str]]:
     """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop.
 
     `verklaring_gevraagd`: vroeg de gebruiker om een verklaring (#1036); zonder verzoek is elk vermoeden een probleem,
-    met verzoek alleen een vermoeden buiten het blok "Niet uit de data". `run` geeft het altijd mee."""
+    met verzoek alleen een vermoeden buiten het blok "Niet uit de data". `run` geeft het altijd mee.
+    `verslag`: krijgt na elke controle per controle wat ze gaf (ok, zacht, hard, niet gecontroleerd), dus na de laatste
+    die van het antwoord dat de gebruiker ziet; daaruit komt de regel "Wat is gecontroleerd" (#1260)."""
     getalcontrole = getalcontrole or maak_getalcontrole(earlier, said_by_user)
 
     def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
@@ -178,6 +181,9 @@ def antwoordcontrole(
         # Per antwoord welke controle wat gaf: regressietestbaar en de afvuurfrequentie per controle (CH-01).
         per_controle = uitkomsten((c.__name__ for c, _, _ in controles), problemen)
         logger.info("CONTROLES  %s", "  ".join(f"{naam}={uitkomst}" for naam, uitkomst in per_controle.items()))
+        if verslag is not None:
+            verslag.clear()
+            verslag.update(per_controle)
         return problemen
 
     return check
