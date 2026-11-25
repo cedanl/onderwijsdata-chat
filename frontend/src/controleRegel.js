@@ -42,9 +42,37 @@ export function controleSamenvatting(controles) {
 }
 
 // De regel als platte tekst, voor kopie, gespreksexport en CSV-kop (#1257, #1260): kop, details en de vaste zin.
-// Een leeg veld geeft ''. Hook voor de bewijs-JSON (#1244): die neemt deze tekst over.
+// Een leeg veld geeft ''.
 export function controleRegelTekst(controles) {
   const samenvatting = controleSamenvatting(controles)
   if (!samenvatting) return ''
   return [`${KOP}: ${samenvatting.kop}.`, ...samenvatting.details, NIET_GECONTROLEERD].join(' ')
+}
+
+const isObject = waarde => typeof waarde === 'object' && waarde !== null && !Array.isArray(waarde)
+
+// Per controle alleen `gedraaid` (ja/nee) en `uitkomst` (tekst), zoals agent/controleoverzicht.py ze zet.
+function perControle(waarde) {
+  if (!isObject(waarde)) return {}
+  return Object.fromEntries(Object.entries(waarde)
+    .filter(([, c]) => isObject(c) && typeof c.gedraaid === 'boolean' && typeof c.uitkomst === 'string')
+    .map(([naam, c]) => [naam, { gedraaid: c.gedraaid, uitkomst: c.uitkomst }]))
+}
+
+// De sleutel `controles` van het bewijsbestand (#1244, #1260): de regel zoals hierboven, met de tellingen uit code
+// waar ze op rust. Alleen de bekende sleutels gaan mee, wat er verder in een bewaard bericht staat niet; zonder
+// (geldig) veld null, zoals elke sleutel van het bewijs die niet van toepassing is.
+export function controlesVoorBewijs(controles) {
+  const regel = controleRegelTekst(controles)
+  if (!regel) return null
+  return {
+    regel,
+    per_controle: perControle(controles.per_controle),
+    getallen: aantal(controles.getallen),
+    gebonden: aantal(controles.gebonden),
+    jaar_en_instelling: controles.jaar_en_instelling === true,
+    niet_gedraaid: aantal(controles.niet_gedraaid),
+    ingetrokken: aantal(controles.ingetrokken),
+    gecorrigeerd: aantal(controles.gecorrigeerd),
+  }
 }

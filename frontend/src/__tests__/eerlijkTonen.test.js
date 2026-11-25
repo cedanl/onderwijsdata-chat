@@ -11,6 +11,8 @@ import { figuurTabel } from '../figuurTabel'
 import { metBronregel, figuurNoten } from '../figuurNoot'
 import { chatFigureLayout } from '../figureLayout'
 import { buildReportHtml } from '../reportHtml'
+import { bewijs } from '../bewijsJson'
+import { metGrafiekVraag } from '../rapportGrafieken'
 import { GEEN_GETALLEN, NIET_GECONTROLEERD, controleRegelTekst, controleSamenvatting } from '../controleRegel'
 import { metVoorbehoud, voorbehoudAlineas, voorbehoudRegels } from '../voorbehoud'
 import ControleRegel from '../components/ControleRegel'
@@ -119,6 +121,16 @@ describe('elk exportpad draagt het voorbehoud (#1257)', () => {
     })
   }
 
+  // Het bewijsbestand (#1244) is een eigen exportpad: het antwoord met zijn kopregels, de meldingen en de controleregel.
+  it('bewijs (JSON): Niet meegeteld en ten minste in het antwoord, Let op onder controle, de controleregel onder controles', () => {
+    const b = bewijs(ANTWOORD)
+    expect(b.antwoord.replace(/\*\*/g, '')).toContain(NIET)
+    expect(b.antwoord).toContain('ten minste')
+    expect(b.controle).toEqual(['2025 staat niet in de data.'])
+    expect(b.controles.regel).toBe(controleRegelTekst(CONTROLES))
+    expect(b.controles.regel).toContain(NIET_GECONTROLEERD)
+  })
+
   it('data-CSV: de regels van het antwoord boven die van de server', async () => {
     const { downloadDataCsv } = await import('../api')
     const server = '﻿# bron: DUO, dataset p01hoinges, resource 0\n# kolom ondergrens: ja als ...\nSTUDIEJAAR;AANTAL;ondergrens\n2020;1100;ja'
@@ -138,13 +150,19 @@ describe('elk exportpad draagt het voorbehoud (#1257)', () => {
     expect(tekst.split('\n').filter(r => !r.startsWith('#') && !r.startsWith('﻿#'))).toEqual(['STUDIEJAAR;AANTAL;ondergrens', '2020;1100;ja'])
   })
 
-  for (const pad of ['Word', 'PDF-afdruk']) {
+  // Word maakt zijn PNG's in het rapportframe met Plotly.toImage uit de .vis-figuren van deze pagina
+  // (metGrafiekVraag in rapportGrafieken.js, via useReportFrame.js); afdrukken drukt dezelfde pagina af.
+  const rapportPaden = {
+    Word: html => metGrafiekVraag(html),
+    'PDF-afdruk': html => html,
+  }
+  for (const [pad, pagina] of Object.entries(rapportPaden)) {
     it(`${pad}: de figuur in het rapport draagt de bronregel met "ten minste", de noot staat eronder`, () => {
-      // Word maakt zijn PNG's uit deze figuur (rapportGrafieken.js), afdrukken drukt dezelfde pagina af.
-      const html = buildReportHtml({ titel: 'R', visualisaties: [{ titel: 'Studenten per jaar', figure_json: JSON.stringify(FIGUUR) }] })
+      const html = pagina(buildReportHtml({ titel: 'R', visualisaties: [{ titel: 'Studenten per jaar', figure_json: JSON.stringify(FIGUUR) }] }))
       expect(html).toContain('"name":"bronregel"')
       expect(html).toContain('ten minste: onderdrukte cellen maken een getal een ondergrens')
       expect(html).toContain('<p class="vis-noot">Trendbreuk vanaf 2020')
+      if (pad === 'Word') expect(html).toContain("querySelectorAll('.vis')")
     })
   }
 

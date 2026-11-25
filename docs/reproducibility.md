@@ -166,12 +166,13 @@ bewaarde gesprek. Een vast antwoord uit code zonder bronnen heeft geen bewijsbes
 | `bronnen`, `bronlinks` | De bronregels onder het antwoord en hun links naar de bronpagina |
 | `citaties` | Per gecontroleerd getal de maat, selectie, bron en stap |
 | `controle` | Wat de controle nog vond (de regels "Let op: …") |
+| `controles` | Wat de controle deed (#1260): `regel` is de regel "Wat is gecontroleerd" zoals onder het antwoord, altijd met de vaste zin over wat niet gecontroleerd is; daarnaast de tellingen uit code waar die regel op rust (`per_controle`, `getallen`, `gebonden`, `jaar_en_instelling`, `niet_gedraaid`, `ingetrokken`, `gecorrigeerd`; zie [Voor auditors](anti-hallucination-architecture.md#voor-auditors)) |
 | `toolstappen` | Per geslaagde stap `name`, `arguments` en `snippet`; nooit de ruwe uitvoer van de tool |
 | `vaste_maat` | Het label "Vaste maat" (#1242): `maat`, `teldefinitie`, `vastgelegd_in`, `vastgelegd_op` |
 | `antwoord` | De antwoordtekst zoals hij er staat |
 
 Een sleutel die niet van toepassing is, is `null`: een antwoord zonder vaste maat heeft `"vaste_maat": null`, een
-antwoord van vóór #1244 heeft per stap `"arguments": null`. Een voorbeeld, ingekort:
+antwoord van vóór #1244 heeft per stap `"arguments": null`, een antwoord van vóór #1260 `"controles": null`. Een voorbeeld, ingekort:
 
 ```json
 {
@@ -187,6 +188,16 @@ antwoord van vóór #1244 heeft per stap `"arguments": null`. Een voorbeeld, ing
   "bronlinks": { "DUO p01hoinges": "https://duo.nl/open_onderwijsdata/…" },
   "citaties": [{ "getal": "38.000", "selectie": "HU, 2024/25", "bron": "DUO p01hoinges", "vastgesteld": true }],
   "controle": null,
+  "controles": {
+    "regel": "Wat is gecontroleerd: 1 getal tegen de opgehaalde data gelegd. … Niet gecontroleerd: of de bron zelf klopt, …",
+    "per_controle": { "ongedekte_getallen": { "gedraaid": true, "uitkomst": "ok" } },
+    "getallen": 1,
+    "gebonden": 1,
+    "jaar_en_instelling": true,
+    "niet_gedraaid": 0,
+    "ingetrokken": 0,
+    "gecorrigeerd": 0
+  },
   "toolstappen": [
     {
       "name": "get_maat",

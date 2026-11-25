@@ -115,9 +115,10 @@ U kunt dit zelf nagaan:
    herkomst kregen: de cel in de data, `agent/citaties.py`), `jaar_en_instelling` (of de controles op schooljaar,
    instelling en binding alle drie draaiden), `niet_gedraaid`, `ingetrokken` (hoe vaak het antwoord na de controle
    opnieuw is geschreven) en `gecorrigeerd` (hoe vaak de app zelf zinnen met een ongedekt getal wegliet, #619). Alleen
-   tellingen, geen tekst. De regel "Wat is gecontroleerd" onder het antwoord, de kopie, de gespreksexport en de kop van
-   elke CSV lezen dit veld; wat het model over zijn eigen controle schrijft ("alle getallen gecontroleerd"), verandert
-   het niet. De regel noemt altijd de vaste zin uit "Wat dit niet dekt" en gebruikt geen vinkje.
+   tellingen, geen tekst. De regel "Wat is gecontroleerd" onder het antwoord, de kopie, de gespreksexport, de kop van
+   elke CSV en het bewijsbestand (sleutel `controles`, met de regel en deze tellingen, #1244) lezen dit veld; wat het
+   model over zijn eigen controle schrijft ("alle getallen gecontroleerd"), verandert het niet. De regel noemt altijd
+   de vaste zin uit "Wat dit niet dekt" en gebruikt geen vinkje.
 
 ---
 
