@@ -40,22 +40,31 @@ def database(tmp_path, monkeypatch):
 def maak_app(monkeypatch, database):
     """Een app uit de fabriek met deze sleutels in MCP_API_KEYS."""
 
-    def maak(*sleutels: str):
+    def maak(*sleutels: str, frontend_dist=None):
         monkeypatch.setattr(mcp_http, "MCP_API_KEYS", sleutels)
-        return server.create_app(api_docs=False)
+        return server.create_app(api_docs=False, frontend_dist=frontend_dist)
 
     return maak
 
 
-def via_mcp(app, actie, *, koppen=None):
-    """(initialize-resultaat, uitkomst van actie(sessie)) via een echte MCP-client tegen /mcp, binnen de lifespan."""
+def via_mcp(app, actie, *, koppen=None, pad="/mcp", statussen=None):
+    """(initialize-resultaat, uitkomst van actie(sessie)) via een echte MCP-client tegen pad, binnen de lifespan.
+
+    statussen: een lijst die de statuscode van elk HTTP-antwoord krijgt, ook van een redirect die de SDK zelf volgt.
+    """
     koppen = {"Authorization": f"Bearer {SLEUTEL}"} if koppen is None else koppen
+
+    async def noteer(antwoord):
+        if statussen is not None:
+            statussen.append(antwoord.status_code)
 
     async def draai():
         async with (
             app.router.lifespan_context(app),
-            httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), headers=koppen) as http,
-            streamable_http_client("http://test/mcp", http_client=http) as (lezen, schrijven),
+            httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), headers=koppen, event_hooks={"response": [noteer]}
+            ) as http,
+            streamable_http_client(f"http://test{pad}", http_client=http) as (lezen, schrijven),
             ClientSession(lezen, schrijven) as sessie,
         ):
             init = await sessie.initialize()
@@ -190,6 +199,61 @@ def test_de_app_start_vaker_met_dezelfde_fabriek(maak_app):
             assert client.post("/mcp", json=INITIALIZE, headers=koppen).status_code == 200
 
 
+# ── /mcp/ met slash (#1215) ──────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def dist(tmp_path):
+    """Een gebouwde frontend: zonder eigen route op /mcp/ vangt de catch-all van de SPA het pad."""
+    (tmp_path / "dist" / "assets").mkdir(parents=True)
+    (tmp_path / "dist" / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    return tmp_path / "dist"
+
+
+def test_zonder_sleutels_is_mcp_met_slash_er_ook_niet(maak_app, dist):
+    """Een client met de URL /mcp/ kreeg index.html met 200, ook voor POST geen 404 (#1215)."""
+    with TestClient(maak_app(frontend_dist=dist), follow_redirects=False) as client:
+        for pad in ("/mcp", "/mcp/"):
+            get = client.get(pad)
+            post = client.post(pad, json=INITIALIZE, headers=ACCEPT | _bearer(SLEUTEL))
+            assert (get.status_code, get.json()) == (404, {"detail": NIET_GEVONDEN}), pad
+            assert (post.status_code, post.json()) == (404, {"detail": NIET_GEVONDEN}), pad
+        for pad in ("/chat", "/dashboards/arbeidsmarkt"):
+            spa = client.get(pad)
+            assert spa.status_code == 200, pad
+            assert "EDUdata" in spa.text, "de SPA-routes blijven de app-shell"
+
+
+def test_zonder_sleutels_en_zonder_frontend_geen_redirect_op_de_slash(maak_app):
+    with TestClient(maak_app(), follow_redirects=False) as client:
+        antwoord = client.get("/mcp/")
+    assert (antwoord.status_code, antwoord.json()) == (404, {"detail": NIET_GEVONDEN})
+
+
+@pytest.mark.parametrize("frontend", [False, True], ids=["zonder-frontend", "met-frontend"])
+def test_met_sleutels_doet_mcp_met_slash_hetzelfde_zonder_redirect(maak_app, dist, frontend):
+    """Geen 307/308: een POST door een redirect breekt veel MCP-clients (#1215)."""
+    app = maak_app(SLEUTEL, frontend_dist=dist if frontend else None)
+    with TestClient(app, follow_redirects=False) as client:
+        zonder = client.post("/mcp/", json=INITIALIZE, headers=ACCEPT)
+        verkeerd = client.post("/mcp/", json=INITIALIZE, headers=ACCEPT | _bearer("verkeerd"))
+        goed = client.post("/mcp/", json=INITIALIZE, headers=ACCEPT | _bearer(SLEUTEL))
+        get = client.get("/mcp/", headers={"Accept": "text/event-stream"} | _bearer(SLEUTEL))
+    assert (zonder.status_code, zonder.headers["www-authenticate"]) == (401, "Bearer")
+    assert verkeerd.status_code == 401
+    assert goed.status_code == 200
+    assert goed.json()["result"]["serverInfo"]["name"] == mcp_server.NAAM
+    assert (get.status_code, get.headers["allow"]) == (405, "POST")
+
+
+def test_de_client_van_de_sdk_werkt_ook_met_de_slash_zonder_redirect(maak_app):
+    """De SDK volgt een 307 zelf; ook dan hoort de slash-URL direct te antwoorden, zonder omweg."""
+    statussen = []
+    _, resultaat = via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools(), pad="/mcp/", statussen=statussen)
+    assert [t.name for t in resultaat.tools] == list(mcp_server.MCP_TOOLS)
+    assert statussen and not {307, 308} & set(statussen), statussen
+
+
 # ── API-sleutel (#939) ───────────────────────────────────────────────────────────────────
 
 ANDERE = "sleutel-b-fedcba9876543210"
@@ -318,7 +382,7 @@ def test_gelijktijdigheidsgrens_geeft_snel_503(maak_app, grenzen, monkeypatch):
         async with (
             app.router.lifespan_context(app),
             httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), headers=_bearer(SLEUTEL)) as http,
-            streamable_http_client("http://test/mcp", http_client=http) as (lezen, schrijven),
+            streamable_http_client(f"http://test{pad}", http_client=http) as (lezen, schrijven),
             ClientSession(lezen, schrijven) as sessie,
             anyio.create_task_group() as groep,
         ):

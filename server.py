@@ -295,8 +295,11 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     for router in _ROUTERS:
         app.include_router(router)
     # Vóór de SPA: zonder sleutels geeft ook GET /mcp een JSON-404, geen index.html. Een ASGI-app als eindpunt: elke
-    # methode gaat naar de transport van de SDK, die zelf POST, GET en DELETE afhandelt.
-    app.router.routes.append(Route(MCP_PAD, endpoint=mcp, include_in_schema=False))
+    # methode gaat naar de transport van de SDK, die zelf POST, GET en DELETE afhandelt. Ook /mcp/ is een eigen route
+    # (#1215): anders vangt de SPA het pad (200 met HTML), of zonder frontend een 307, en een POST door een redirect
+    # breekt veel MCP-clients.
+    for pad in (MCP_PAD, MCP_PAD + "/"):
+        app.router.routes.append(Route(pad, endpoint=mcp, include_in_schema=False))
     if frontend_dist is not None:
         mount_frontend(app, frontend_dist)
     return app
