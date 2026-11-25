@@ -21,7 +21,7 @@ jobs:
           enable-cache: true
 
       # Zensical staat vastgepind in de docs-groep van pyproject.toml (pre-1.0: bewust verhogen).
-      - name: Build docs (strict)
+      - name: Build docs
         run: uv run --group docs zensical build --strict --clean
 
       # De catalogussites van de bronpakketten (#887), vroeger op cedanl.github.io/cbs-onderwijsdata en
