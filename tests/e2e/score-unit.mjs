@@ -5,7 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { binnenLimiet, bronVan, limietWacht, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
-import { scoreResult } from './score.js'
+import { scoreResult, scoreWeigering } from './score.js'
+import { controleerMustCall, mustCallFouten, toetsMustCall } from './toolasserties.js'
 import { getallen, waardeInAntwoord, waardeInBron } from './antwoord.js'
 import { drempel, foutenVan, isKritiek, kritiekVerslag, nieuweStand, samenvatting, voegRunToe } from './kritiek.js'
 import { verslagen } from './runlog.js'
@@ -490,4 +491,160 @@ test('de verslagen komen uit de runs van alle workers samen (#753)', () => {
   assert.equal(uit.kritiek.modellen.m.vragen['weigering-x'].gehaald, true)
   assert.deepEqual(uit.rapport.scenarios.s, { runs: 1, geslaagd: 1, mislukt: [] })
   assert.deepEqual(Object.keys(verslagen([], evals)), [])
+})
+
+// --- toolaanroepen met argumenten (must_call, #1243) ---------------------------------------------------------------
+
+function aanroepen(...calls) {
+  return antwoord([...calls.map(([name, input]) => ({ type: 'tool_start', name, input })), { type: 'message_end', content: 'x' }])
+}
+
+test('chatstream bewaart per tool_start de naam en de volledige input, naast de toolnamen (#1243)', () => {
+  const selectie = { dimensies: { Geslacht: '4000', Leerweg: '*' }, periode: ['2024/25'] }
+  const a = aanroepen(['search_catalog', { query: 'mbo vrouwen' }], ['get_cbs_data', { dataset_id: '85353NED', selectie }], ['create_plot'])
+  assert.deepEqual(a.toolCalls, ['search_catalog', 'get_cbs_data', 'create_plot'])
+  assert.deepEqual(a.aanroepen, [
+    { tool: 'search_catalog', input: { query: 'mbo vrouwen' } },
+    { tool: 'get_cbs_data', input: { dataset_id: '85353NED', selectie } },
+    { tool: 'create_plot', input: null },
+  ])
+})
+
+test('must_call: een treffer met args als deelverzameling, geneste objecten recursief (#1243)', () => {
+  const a = [
+    { tool: 'get_cbs_data', input: { dataset_id: '85353NED', selectie: { dimensies: { Geslacht: '4000', Niveau: '*' }, periode: ['2024/25'] } } },
+  ]
+  const [uit] = toetsMustCall(a, [{ tool: 'get_cbs_data', args: { selectie: { dimensies: { Geslacht: '4000' } } } }])
+  assert.equal(uit.geslaagd, true)
+  assert.equal(uit.aantal, 1)
+  assert.equal(uit.min_count, 1)
+  assert.deepEqual(mustCallFouten([uit]), [])
+})
+
+test('must_call: een verkeerd argument faalt, een lijst moet gelijk zijn (#1243)', () => {
+  const a = [{ tool: 'get_maat', input: { maat: 'ingeschreven_personen_ho', vorm: 'voltijd', schooljaren: ['2025/26'] } }]
+  const vorm = toetsMustCall(a, [{ tool: 'get_maat', args: { vorm: 'deeltijd' } }])
+  assert.equal(vorm[0].geslaagd, false)
+  assert.deepEqual(mustCallFouten(vorm), ['must_call: get_maat {"vorm":"deeltijd"}: 0 aanroepen, minstens 1'])
+  // Een lijst is geen deelverzameling: ["2024/25", "2025/26"] is niet ["2025/26"].
+  const jaren = toetsMustCall([{ tool: 'get_maat', input: { schooljaren: ['2024/25', '2025/26'] } }],
+    [{ tool: 'get_maat', args: { schooljaren: ['2025/26'] } }])
+  assert.equal(jaren[0].geslaagd, false)
+  // Een getal is geen tekst: 2025 is niet "2025".
+  assert.equal(toetsMustCall([{ tool: 'get_maat', input: { schooljaren: [2025] } }],
+    [{ tool: 'get_maat', args: { schooljaren: ['2025'] } }])[0].geslaagd, false)
+})
+
+test('must_call: te weinig aanroepen faalt bij min_count (#1243)', () => {
+  const a = [{ tool: 'search_catalog', input: { query: 'a' } }, { tool: 'get_maat', input: { maat: 'eerstejaars_ho' } }]
+  const [uit] = toetsMustCall(a, [{ tool: 'search_catalog', min_count: 2 }])
+  assert.equal(uit.aantal, 1)
+  assert.equal(uit.geslaagd, false)
+  assert.deepEqual(mustCallFouten([uit]), ['must_call: search_catalog: 1 aanroep, minstens 2'])
+})
+
+test('must_call: | in tool is één van beide; min_count 0 is "mag niet" (#1243)', () => {
+  const a = [{ tool: 'get_maat', input: { maat: 'eerstejaars_ho' } }]
+  assert.equal(toetsMustCall(a, [{ tool: 'get_duo_data|get_maat', args: { maat: 'eerstejaars_ho' } }])[0].geslaagd, true)
+  assert.equal(toetsMustCall(a, [{ tool: 'get_duo_data|get_cbs_data' }])[0].geslaagd, false)
+  const verbod = toetsMustCall(a, [{ tool: 'get_duo_data|get_cbs_data|get_maat', min_count: 0 }])
+  assert.equal(verbod[0].geslaagd, false)
+  assert.deepEqual(mustCallFouten(verbod), ['must_call: get_duo_data|get_cbs_data|get_maat mag niet: 1 aanroep'])
+  assert.equal(toetsMustCall([{ tool: 'search_catalog', input: {} }], [{ tool: 'get_cbs_data', min_count: 0 }])[0].geslaagd, true)
+})
+
+test('must_call: een ongeldige assertie is een fout, geen stille pass (#1243)', () => {
+  for (const [assertie, reden] of [
+    [{ args: { maat: 'x' } }, /tool/],
+    [{ tool: '' }, /tool/],
+    [{ tool: 'get_maat|' }, /tool/],
+    [{ tool: 'get_maat', min_count: -1 }, /min_count/],
+    [{ tool: 'get_maat', min_count: 1.5 }, /min_count/],
+    [{ tool: 'get_maat', args: ['vorm'] }, /args/],
+    [{ tool: 'get_maat', arg: { vorm: 'deeltijd' } }, /onbekende sleutel: arg/],
+    ['get_maat', /object/],
+  ]) {
+    assert.match(controleerMustCall([assertie]).join('; '), reden, JSON.stringify(assertie))
+    const [uit] = toetsMustCall([{ tool: 'get_maat', input: { vorm: 'deeltijd' } }], [assertie])
+    assert.equal(uit.geslaagd, false, JSON.stringify(assertie))
+    assert.match(mustCallFouten([uit])[0], /^must_call ongeldig/)
+  }
+  assert.match(controleerMustCall({ tool: 'get_maat' }).join(), /lijst/)
+  assert.equal(toetsMustCall([], { tool: 'get_maat' })[0].geslaagd, false)
+  assert.deepEqual(controleerMustCall([{ tool: 'get_maat', args: { vorm: 'deeltijd' }, min_count: 0 }]), [])
+})
+
+test('scoreResult: must_call per assertie in de score; een misser faalt de run, de punten blijven gelijk (#1243)', () => {
+  const ev = { expected: { must_contain_tools: ['get_maat'], must_call: [{ tool: 'get_maat', args: { vorm: 'deeltijd' } }] } }
+  const goedeVorm = aanroepen(['get_maat', { maat: 'ingeschreven_personen_ho', vorm: 'deeltijd' }])
+  const fouteVorm = aanroepen(['get_maat', { maat: 'ingeschreven_personen_ho', vorm: 'voltijd' }])
+  const goed = scoreResult(goedeVorm, ev)
+  const fout = scoreResult(fouteVorm, ev)
+  assert.equal(goed.must_call.length, 1)
+  assert.equal(goed.must_call[0].geslaagd, true)
+  assert.deepEqual(goed.fouten, [])
+  assert.deepEqual(fout.fouten, ['must_call: get_maat {"vorm":"deeltijd"}: 0 aanroepen, minstens 1'])
+  assert.equal(fout.uitkomst, 'geen')
+  assert.equal(fout.total, goed.total)
+  // Zonder must_call geen veld: de bestaande score blijft precies gelijk.
+  assert.ok(!('must_call' in scoreResult(goedeVorm, { expected: { must_contain_tools: ['get_maat'] } })))
+})
+
+test('scoreResult: een ongeldige assertie en een verboden aanroep tellen ook naast een aanvaarde beperking (#1243)', () => {
+  const ev = {
+    expected: {
+      must_mention: ['getal'],
+      acceptable_outcomes: [{ id: 'niet-per-instelling', markers: ['niet per instelling'] }],
+      must_call: [{ tool: 'get_maat', min_count: 3 }, { tool: 'run_analysis', min_count: 0 }, { tool: 'get_maat', min: 1 }],
+    },
+  }
+  const r = { ...aanroepen(['run_analysis', { code: '1' }]), content: 'Dit is niet per instelling beschikbaar.' }
+  const s = scoreResult(r, ev)
+  assert.equal(s.uitkomst, 'beperking')
+  assert.deepEqual(s.fouten, ['must_call: run_analysis mag niet: 1 aanroep', 'must_call ongeldig: onbekende sleutel: min'])
+})
+
+test('scoreWeigering: een weigering met een verboden datatool faalt via foutenVan (#1243)', () => {
+  const ev = EVALS.find(e => e.label === 'weigering-geen-data')
+  const weigering = 'Gegevens over IQ per opleiding zijn niet beschikbaar in de open data.'
+  const zonder = { ...aanroepen(['search_catalog', { query: 'iq' }]), content: weigering }
+  const met = { ...aanroepen(['search_catalog', { query: 'iq' }], ['get_cbs_data', { dataset_id: '85423NED' }]), content: weigering }
+  assert.deepEqual(foutenVan(ev, scoreWeigering(zonder, ev)), [])
+  const fouten = foutenVan(ev, scoreWeigering(met, ev))
+  assert.equal(fouten.length, 1)
+  assert.match(fouten[0], /^must_call: .*get_cbs_data.* mag niet: 1 aanroep$/)
+  assert.equal(scoreWeigering(met, ev).refused, true)
+})
+
+test('evaluations.json: minstens vijf cases met must_call, elke assertie geldig, met de drie soorten uit #1243', () => {
+  const met = EVALS.filter(ev => ev.expected.must_call !== undefined)
+  assert.ok(met.length >= 5, `${met.length} cases met must_call`)
+  for (const ev of met) assert.deepEqual(controleerMustCall(ev.expected.must_call), [], ev.label)
+  const alle = met.flatMap(ev => ev.expected.must_call.map(a => ({ ...a, ev })))
+  assert.ok(alle.some(a => a.tool === 'get_maat' && a.args?.vorm && Array.isArray(a.args?.schooljaren)), 'get_maat met vorm en schooljaren')
+  assert.ok(alle.some(a => a.tool === 'get_cbs_data' && a.args?.selectie?.dimensies), 'get_cbs_data met een dimensiecode')
+  assert.ok(alle.some(a => a.min_count === 0 && a.ev.expected.must_refuse && /get_(duo|cbs)_data/.test(a.tool)),
+    'een weigering waarbij een datatool niet mag')
+  // Elke tool in een assertie bestaat in de vragenset als tool die het model kan kiezen (tools/schemas.py).
+  const schemas = readFileSync(new URL('../../tools/schemas.py', import.meta.url), 'utf-8')
+  for (const a of alle) for (const t of a.tool.split('|')) assert.match(schemas, new RegExp(`"${t}"`), `${a.ev.label}: ${t}`)
+})
+
+test('de verslagen: per vraag en assertie hoe vaak must_call slaagde (#1243)', () => {
+  const evals = [{ label: 'ijk-x', expected: { kritiek: true } }]
+  const toets = (geslaagd) => [{ tool: 'get_maat', args: { vorm: 'deeltijd' }, min_count: 1, aantal: geslaagd ? 1 : 0, geslaagd }]
+  const runs = [
+    { soort: 'vraag', model: 'm', label: 'ijk-x', fouten: [], must_call: toets(true) },
+    { soort: 'vraag', model: 'm', label: 'ijk-x', fouten: ['must_call: …'], must_call: toets(false) },
+    { soort: 'vraag', model: 'm', label: 'zonder', fouten: [] },
+  ]
+  const uit = verslagen(runs, evals, { herhalingen: 2, gemeten_op: '2026-11-25' })
+  assert.deepEqual(uit.must_call, {
+    gemeten_op: '2026-11-25',
+    herhalingen: 2,
+    modellen: {
+      m: { 'ijk-x': [{ tool: 'get_maat', args: { vorm: 'deeltijd' }, min_count: 1, runs: 2, geslaagd: 1 }] },
+    },
+  })
+  assert.ok(!('must_call' in verslagen(runs.slice(2), evals)))
 })

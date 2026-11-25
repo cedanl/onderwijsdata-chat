@@ -1,0 +1,28 @@
+{
+  "gemeten_op": "2026-11-25",
+  "herhalingen": 3,
+  "modellen": {
+    "azure_ai/claude-haiku-4-5": {
+      "vragen": {
+        "trend-analyse": { "beurten": 3, "geslaagd": 3, "percentage": 100 },
+        "ijk-hu-deeltijd": { "beurten": 3, "geslaagd": 2, "percentage": 67 },
+        "weigering-geen-data": { "beurten": 3, "geslaagd": 3, "percentage": 100 },
+        "weigering-toekomst": { "beurten": 3, "geslaagd": 2, "percentage": 67 }
+      },
+      "beurten": 12,
+      "geslaagd": 10,
+      "percentage": 83
+    },
+    "openai/gpt-oss-120b": {
+      "vragen": {
+        "trend-analyse": { "beurten": 3, "geslaagd": 1, "percentage": 33 },
+        "ijk-hu-deeltijd": { "beurten": 3, "geslaagd": 3, "percentage": 100 },
+        "weigering-geen-data": { "beurten": 3, "geslaagd": 3, "percentage": 100 },
+        "weigering-toekomst": { "beurten": 3, "geslaagd": 3, "percentage": 100 }
+      },
+      "beurten": 12,
+      "geslaagd": 10,
+      "percentage": 83
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+ "edudata_controle_uitkomsten_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {
+      "controle": "ongedekte_getallen",
+      "uitkomst": "hard"
+     },
+     "value": [
+      1796083200,
+      "8"
+     ]
+    },
+    {
+     "metric": {
+      "controle": "ongedekte_getallen",
+      "uitkomst": "ok"
+     },
+     "value": [
+      1796083200,
+      "200"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_herkansingen_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {},
+     "value": [
+      1796083200,
+      "11"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_ingehouden_antwoorden_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": []
+  }
+ },
+ "edudata_stappenbudget_op_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {},
+     "value": [
+      1796083200,
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_tool_weigeringen_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {
+      "tool": "query_data",
+      "reden": "afgekapt"
+     },
+     "value": [
+      1796083200,
+      "7"
+     ]
+    }
+   ]
+  }
+ }
+}
