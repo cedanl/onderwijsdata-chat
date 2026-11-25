@@ -24,7 +24,7 @@ from core.config import MAX_TOKENS
 from core.errors import log_interne_fout
 from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
-from core.metrics import meet_modelaanroep, meet_tokens
+from core.metrics import meet_modelaanroep, meet_stappenbudget_op, meet_tokens, meet_toolweigering
 from tools import LABELS, afbreken, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
@@ -155,6 +155,7 @@ def _truncate(result: str, limit: int, *, tool: str) -> str:
         return result
     # Wat na de grens staat, heeft het model niet gezien; de log maakt dat in de trace zichtbaar (#395).
     logger.warning("TOOL_AFGEKAPT tool=%s tekens=%d limiet=%d", tool, len(result), limit)
+    meet_toolweigering(tool, "afgekapt")
     return result[:limit] + (
         f"\n... (afgekapt: {len(result) - limit} van {len(result)} tekens niet getoond. Wat hierna kwam heb je "
         "niet gezien; concludeer niet dat het ontbreekt. Gebruik filters of selecteer kolommen.)"
@@ -388,6 +389,7 @@ class _Loop:
             self.result.exhausted = True
             return
         logger.warning("STAPPENBUDGET OP na %d stappen, afrondronde", self.max_iterations)
+        meet_stappenbudget_op()
         self.messages.append({"role": "user", "content": self.wrap_up})
         sr = await self._ask(tool_choice="none")
         if sr is None:
@@ -414,6 +416,7 @@ class _Loop:
         if n >= 2 and name not in self.locked:
             self.locked[name] = code
             logger.warning("TOOL OP SLOT  %s: %dx %s", name, n, code)
+            meet_toolweigering(name, "op_slot")
 
     async def _run_tools(self, calls: list[ToolCall]) -> bool:
         """Draai de tools van deze ronde en zet hun uitkomsten in het gesprek; False als een stop ze afbrak (#1087)."""
@@ -427,6 +430,7 @@ class _Loop:
             if limit and self.counts[c.name] > limit:
                 blocked[c.id] = _limiet(c.name, limit)
                 logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", c.name, self.counts[c.name], limit)
+                meet_toolweigering(c.name, "limiet")
 
         runnable = {
             c.key: c

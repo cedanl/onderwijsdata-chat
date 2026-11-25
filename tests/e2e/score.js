@@ -9,9 +9,14 @@
  *
  * Een referentiewaarde telt alleen als het eindantwoord haar bij haar jaar (en instelling, maat)
  * noemt; dat de tooluitvoer haar bevat, is een aparte uitkomst (#463, antwoord.js).
+ *
+ * `expected.must_call` toetst de toolaanroepen met hun argumenten (#1243, toolasserties.js): de uitslag per assertie
+ * staat in `scores.must_call`, elke misser in `fouten`. De punten veranderen er niet door.
  */
 import { poorten } from './chatstream.js'
 import { tegenspreekt, waardeInAntwoord, waardeInBron } from './antwoord.js'
+import { scoreRefusal } from './refusal.js'
+import { altijdFout, mustCallFouten, toetsMustCall } from './toolasserties.js'
 
 export function scoreResult(r, ev) {
   const scores = { poorten: poorten(r) }
@@ -35,6 +40,8 @@ export function scoreResult(r, ev) {
     scores.required_tools[tool] = r.toolCalls.includes(tool)
   }
   scores.has_all_required = Object.values(scores.required_tools).every(Boolean)
+  // Met welke argumenten (#1243): per assertie de uitslag; alleen als de case must_call heeft.
+  if (ex.must_call !== undefined) scores.must_call = toetsMustCall(r.aanroepen, ex.must_call)
 
   // 3. Dataset-match: worden verwachte datasets genoemd in antwoord of tool output?
   const allText = r.content + ' ' + r.toolResults.map(t => t.output).join(' ')
@@ -159,15 +166,19 @@ function fouten(scores, dataFouten) {
   const uit = Object.entries(scores.poorten).filter(([, ok]) => !ok).map(([naam]) => `poort: ${naam}`)
   if (uit.length) return uit
   if (scores.hallucination_risk) uit.push('getallen zonder datatool')
+  // Een verboden toolaanroep en een ongeldige assertie (#1243) vervangt geen beperking: die blijven altijd staan.
+  const altijd = mustCallFouten((scores.must_call || []).filter(altijdFout))
   // Een vooraf vastgelegde andere uitkomst ("niet per instelling beschikbaar") vervangt de data-eisen.
-  if (scores.uitkomst === 'beperking') return uit
-  return [...uit, ...dataFouten]
+  if (scores.uitkomst === 'beperking') return [...uit, ...altijd]
+  return [...uit, ...dataFouten, ...altijd]
 }
 
 /** De data-eisen die falen. 'close' is geen bewijs: alleen 'exact' haalt een referentiewaarde. */
 function dataEisFouten(scores, datasetsVerwacht) {
   const uit = []
   for (const [tool, ok] of Object.entries(scores.required_tools)) if (!ok) uit.push(`tool ontbreekt: ${tool}`)
+  // Een aanroep die ontbreekt of te weinig voorkomt, is een data-eis; een verbod staat in fouten() (#1243).
+  uit.push(...mustCallFouten((scores.must_call || []).filter(u => !altijdFout(u))))
   if (datasetsVerwacht && !scores.dataset_match) uit.push('verwachte dataset niet gebruikt')
   for (const [term, ok] of Object.entries(scores.mentions)) if (!ok) uit.push(`term ontbreekt: ${term}`)
   for (const [term, gevonden] of Object.entries(scores.verboden)) if (gevonden) uit.push(`term mag niet: ${term}`)
@@ -192,4 +203,14 @@ function aanvaardeUitkomst(content, ex) {
   const passend = (ex.acceptable_outcomes || []).find(u =>
     u.markers?.length && u.markers.every(m => new RegExp(m, 'i').test(content)))
   return passend?.id ?? null
+}
+
+/**
+ * De score van een weigering (`expected.must_refuse`, refusal.js) met de poorten en, als de case ze heeft, de
+ * toolasserties (#1243): een weigering die toch een datatool aanroept die niet mag, faalt via foutenVan (kritiek.js).
+ */
+export function scoreWeigering(r, ev) {
+  const scores = { ...scoreRefusal(r), poorten: poorten(r) }
+  if (ev.expected.must_call !== undefined) scores.must_call = toetsMustCall(r.aanroepen, ev.expected.must_call)
+  return scores
 }

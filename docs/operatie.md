@@ -346,3 +346,45 @@ doorverwijzing.
 
 - Een jaarlijkse review van deze pagina staat in [Promoten naar playground](promoten.md).
 - Dependency-updates komen via Renovate (Dependency Dashboard, #656).
+
+### Wekelijkse kwaliteitsaudit (#1250)
+
+Sinds de duimpjes weg zijn (#983) is het log het enige signaal uit echt gebruik. Eens per week leest een beheerder
+(de ontwikkelaar van dienst) het met `scripts/kwaliteitsaudit.py`. Het script maakt een weekrapport in Markdown:
+aantallen per controle en per tool, de trend tegen de vorige week, de top 10 van wat het vaakst misgaat en, bij een
+duidelijk patroon, een kandidaat-wijziging (domeinregel, catalogusvermelding, voorbeeldvraag).
+
+- **Bron: de tellers** (`edudata_controle_uitkomsten_total`, `edudata_herkansingen_total`,
+  `edudata_ingehouden_antwoorden_total`, `edudata_stappenbudget_op_total`, `edudata_tool_weigeringen_total`;
+  [Metrics](kwaliteit-en-veiligheid.md#metrics-get-metrics-678)). Sla per teller het antwoord van de Prometheus-API op
+  in één JSON-object `{"<teller>": <antwoord>}`, voor deze week en met `offset 7d` voor de vorige:
+
+  ```text
+  sum by (controle, uitkomst) (increase(edudata_controle_uitkomsten_total[7d]))
+  sum(increase(edudata_herkansingen_total[7d]))
+  sum(increase(edudata_ingehouden_antwoorden_total[7d]))
+  sum(increase(edudata_stappenbudget_op_total[7d]))
+  sum by (tool, reden) (increase(edudata_tool_weigeringen_total[7d]))
+  ```
+
+  ```bash
+  uv run python scripts/kwaliteitsaudit.py --prometheus deze-week.json --prometheus-vorige vorige-week.json \
+    --uit kwaliteitsaudit-<datum>.md
+  ```
+- **Of de logexport:** het JSON-log van de pods over twee weken, één object per regel
+  (`kubectl logs … --since=336h`; een herstarte pod is zijn log kwijt, de tellers in Prometheus niet):
+
+  ```bash
+  uv run python scripts/kwaliteitsaudit.py --log export.jsonl --tot <JJJJ-MM-DD> --uit kwaliteitsaudit-<datum>.md
+  ```
+
+  Het script leest alleen de regelsoorten `CONTROLES`, `HERKANSING`, `ANTWOORD INGEHOUDEN`, `STAPPENBUDGET OP`,
+  `TOOL OP SLOT`, `TOOL LIMIET` en `TOOL_AFGEKAPT` op INFO en hoger, en daaruit alleen controlenamen en toolnamen uit
+  de vaste lijsten (een andere naam telt als `overig`). `TOOL CALL`, `TOOL RESULT` en alles op DEBUG slaat het over.
+- **Geen gebruikerstekst:** het rapport bevat geen vraag- of antwoordtekst, gebruikersnaam of pseudoniem. Het script
+  roept geen model aan en gebruikt geen netwerk.
+- **Geen automatische merge.** Het script opent, pusht of merget niets. Een kandidaat-wijziging wordt een MR door een
+  beheerder of een factory-job, altijd met review, en wordt nooit automatisch gemerged.
+- **Inplannen is een latere stap van een beheerder.** Er is nog geen CronJob of CI-schema voor de audit (het patroon
+  zou `charts/onderwijsdata-chat/templates/cronjob-opschonen.yaml` zijn), en het script heeft geen toegang tot
+  Prometheus: dat vraagt een besluit over toegang en credentials. Tot die tijd draait een beheerder het met de hand.

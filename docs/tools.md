@@ -176,6 +176,14 @@ herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snipp
 
 **Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
 
+**Vastlegging per recept** (#1242). Elk recept in `MATEN` heeft de verplichte velden `vastgelegd_in` (het issue,
+bijvoorbeeld `#188`) en `vastgelegd_op` (de datum, ISO, bijvoorbeeld `2026-10-14`); een recept zonder kan niet worden
+gemaakt, en `tests/test_vaste_maat_label.py` toetst de vorm. Nu: de vijf maten van #188 op 2026-10-14,
+`doorstroom_vmbo_mbo` #667 op 2026-10-22 en `mbo_studenten_landelijk` #805 op 2026-10-29. Rust een antwoord alleen op
+`get_maat`, dan noemt het label "Vaste maat" onder het antwoord die vastlegging (`agent/vaste_maat.py`, zie
+`docs/anti-hallucination-architecture.md`). Een nieuw recept krijgt het issue en de datum waarop het erbij kwam; een
+recept dat inhoudelijk verandert (ander bestand, andere codes of teldefinitie), het issue en de datum van die wijziging.
+
 **Andere definities onder het antwoord** (#1256, `tools/andere_definities.py`, `agent/controlestappen.py`). Per maat
 ligt in code een korte lijst andere definities vast (personen ↔ inschrijvingen, alle vormen ↔ alleen voltijd, met ↔
 zonder extranei), elk met een uitleg van één regel en een recept: de get_maat-argumenten die anders zijn. Na het

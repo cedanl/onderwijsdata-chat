@@ -9,6 +9,7 @@ De metrics zijn van het proces en tellen over tests heen: elke test kijkt naar h
 
 import asyncio
 import urllib.parse
+from typing import Any
 
 import pytest
 from prometheus_client import REGISTRY
@@ -26,7 +27,22 @@ GEBRUIKER = "anna.devries@hu.nl"
 VRAAG = "Hoeveel studenten volgen geheimvak-xyz aan de HU?"
 
 # De labels die een reeks van de app mag dragen; alles daarbuiten kan groeien met gebruikers of tekst.
-_LABELS = {"method", "route", "status", "model", "outcome", "direction", "limiter", "pool", "counter", "le"}
+_LABELS = {
+    "method",
+    "route",
+    "status",
+    "model",
+    "outcome",
+    "direction",
+    "limiter",
+    "pool",
+    "counter",
+    "le",
+    "controle",
+    "uitkomst",
+    "tool",
+    "reden",
+}
 
 
 def _waarde(naam: str, **labels: str) -> float:
@@ -358,9 +374,192 @@ def test_geen_label_draagt_een_gebruiker_pseudoniem_of_vraagtekst(client, monkey
             assert set(sample.labels) <= _LABELS, (sample.name, sample.labels)
             if "route" in sample.labels:
                 assert sample.labels["route"].startswith("/") or sample.labels["route"] == metrics.GEEN_ROUTE
+            # De kwaliteitstellers (#1250): alleen namen en woorden uit vaste lijsten.
+            vast = {
+                "controle": metrics.controlenamen() | {metrics.OVERIG},
+                "uitkomst": set(metrics.CONTROLE_UITKOMSTEN) | {metrics.OVERIG},
+                "tool": metrics.toolnamen() | {metrics.OVERIG},
+                "reden": set(metrics.TOOL_WEIGERREDENEN) | {metrics.OVERIG},
+            }
+            for label, toegestaan in vast.items():
+                if label in sample.labels:
+                    assert sample.labels[label] in toegestaan, (sample.name, sample.labels)
 
 
 def metrics_route():
     from routes import metrics as route
 
     return route
+
+
+# ── Kwaliteitstellers voor de wekelijkse audit (#1250) ──────────────────────
+
+
+def _antwoordrun(monkeypatch, stappen: list, tool_result: str) -> str:
+    """Een vraag door agent.run met een nagebootst model, zoals in test_chat_grounding.py."""
+    import importlib
+
+    run_module = importlib.import_module("agent.run")  # `agent.run` is ook een functie in agent/__init__.py
+
+    async def fake_completion(*args, **kwargs):
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return stappen.pop(0)
+
+    async def fake_execute_tool(call, emit, recept_van=None):
+        return tool_result, None
+
+    monkeypatch.setattr(loop, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop, "_execute_tool", fake_execute_tool)
+
+    async def emit(event):
+        pass
+
+    return asyncio.run(
+        run_module.run([{"role": "user", "content": VRAAG}], {}, emit, asyncio.Event(), model="openai/gpt-4o")
+    )
+
+
+def _controle(naam: str, uitkomst: str) -> float:
+    return _waarde("edudata_controle_uitkomsten_total", controle=naam, uitkomst=uitkomst)
+
+
+@pytest.mark.usefixtures("zonder_scopekaart")
+def test_controles_herkansing_en_ingehouden_antwoord_tellen_mee(monkeypatch):
+    from agent.probleem import INGEHOUDEN
+    from agent.stream import StreamResult
+
+    rijen = '{"data_key": "duo:p02:a", "rijen": [{"AANTAL": 5943}]}'
+    query = {"id": "q", "name": "query_data", "arguments": '{"data_key": "duo:p02"}'}
+    voor = {
+        "hard": _controle("ongedekte_getallen", "hard"),
+        "ok": _controle("metatekst", "ok"),
+        "herkansingen": _waarde("edudata_herkansingen_total"),
+        "ingehouden": _waarde("edudata_ingehouden_antwoorden_total"),
+    }
+
+    tekst = _antwoordrun(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[query]),
+            StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
+            StreamResult(text="Toch 6.340 eerstejaars.", tool_calls=[]),
+        ],
+        rijen,
+    )
+
+    assert tekst == INGEHOUDEN
+    # Vóór en na de herkansing: twee keer hard, en elke andere controle twee keer per uitkomst.
+    assert _controle("ongedekte_getallen", "hard") == voor["hard"] + 2
+    assert _controle("metatekst", "ok") == voor["ok"] + 2
+    assert _waarde("edudata_herkansingen_total") == voor["herkansingen"] + 1
+    assert _waarde("edudata_ingehouden_antwoorden_total") == voor["ingehouden"] + 1
+
+
+def test_elke_controle_van_het_antwoord_staat_in_de_vaste_lijst(caplog):
+    """De labels komen uit CONTROLENAMEN; een nieuwe controle zonder plaats daar zou als `overig` tellen."""
+    import logging
+
+    from agent.controles import CONTROLENAMEN, antwoordcontrole
+
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        antwoordcontrole(VRAAG, [], [], [], [])("Een antwoord zonder getallen.", [])
+    [regel] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    gelogd = [deel.split("=", 1)[0] for deel in regel.removeprefix("CONTROLES").split("  ") if "=" in deel]
+    assert gelogd == list(CONTROLENAMEN)
+    assert metrics.controlenamen() == frozenset(CONTROLENAMEN)
+
+
+def test_een_onbekende_controle_of_uitkomst_telt_als_overig():
+    voor_naam = _controle(metrics.OVERIG, "hard")
+    voor_uitkomst = _controle("ongedekte_getallen", metrics.OVERIG)
+    voor_spatie = _controle("ongedekte_getallen", "niet_gecontroleerd")
+    metrics.meet_controles({VRAAG: "hard", "ongedekte_getallen": "iets anders"})
+    metrics.meet_controles({"ongedekte_getallen": "niet gecontroleerd"})
+    assert _controle(metrics.OVERIG, "hard") == voor_naam + 1
+    assert _controle("ongedekte_getallen", metrics.OVERIG) == voor_uitkomst + 1
+    assert _controle("ongedekte_getallen", "niet_gecontroleerd") == voor_spatie + 1
+    assert _controle(VRAAG, "hard") == 0
+
+
+def test_de_toolnamen_zijn_alle_tools_van_de_app():
+    from tools import LABELS
+    from tools.schemas import TOOL_SCHEMAS
+
+    assert {s["function"]["name"] for s in TOOL_SCHEMAS} <= metrics.toolnamen()
+    assert metrics.toolnamen() == frozenset(LABELS)
+    assert metrics.tool_label("get_maat") == "get_maat"
+    assert metrics.tool_label(GEBRUIKER) == metrics.OVERIG
+    assert metrics.reden_label("op_slot") == "op_slot"
+    assert metrics.reden_label("vrije tekst") == metrics.OVERIG
+
+
+def _toolweigering(tool: str, reden: str) -> float:
+    return _waarde("edudata_tool_weigeringen_total", tool=tool, reden=reden)
+
+
+def _lus(**kwargs) -> loop._Loop:
+    standaard: dict[str, Any] = {
+        "messages": [],
+        "model": "openai/gpt-4o",
+        "tools": [],
+        "emit": None,
+        "stop_event": None,
+        "max_iterations": 3,
+        "max_result_chars": 1000,
+        "system": [],
+        "stream_text": False,
+        "on_llm_start": None,
+        "on_tool_result": None,
+        "tool_limits": {},
+        "halt_on": frozenset(),
+        "wrap_up": None,
+    }
+    return loop._Loop(**{**standaard, **kwargs})
+
+
+def test_een_afgekapt_toolresultaat_telt_als_toolweigering():
+    voor = _toolweigering("query_data", "afgekapt")
+    assert loop._truncate("x" * 20, 30, tool="query_data") == "x" * 20  # binnen de grens telt niet
+    loop._truncate("x" * 20, 10, tool="query_data")
+    assert _toolweigering("query_data", "afgekapt") == voor + 1
+
+
+def test_een_tool_op_slot_telt_eenmaal_als_toolweigering():
+    lus = _lus()
+    voor = _toolweigering("get_cbs_data", "op_slot")
+    for _ in range(3):
+        lus._note_error("get_cbs_data", "Fout (bron_fout): de bron faalde")
+    assert lus.locked == {"get_cbs_data": "bron_fout"}
+    assert _toolweigering("get_cbs_data", "op_slot") == voor + 1
+
+
+def test_een_tool_over_zijn_limiet_telt_als_toolweigering(monkeypatch):
+    async def fake_execute_tool(call, emit, recept_van=None):
+        return "resultaat", None
+
+    async def emit(event):
+        pass
+
+    monkeypatch.setattr(loop, "_execute_tool", fake_execute_tool)
+    lus = _lus(tool_limits={"search_catalog": 1}, emit=emit)
+    aanroepen = [
+        loop.ToolCall(id=str(i), name="search_catalog", arguments=f'{{"query": "q{i}"}}', args={"query": f"q{i}"})
+        for i in range(3)
+    ]
+    voor = _toolweigering("search_catalog", "limiet")
+    asyncio.run(lus._run_tools(aanroepen))
+    assert _toolweigering("search_catalog", "limiet") == voor + 2
+
+
+def test_een_stappenbudget_dat_op_is_telt(monkeypatch):
+    from agent.stream import StreamResult
+    from tests.test_herkansing_budget import _beurt, _tool
+
+    voor = _waarde("edudata_stappenbudget_op_total")
+    stappen = [_tool("a"), _tool("b"), StreamResult(text="Deelantwoord.", tool_calls=[])]
+    result, _, _ = _beurt(monkeypatch, stappen, max_iterations=2, wrap_up="Rond af.")
+    assert result.wrapped_up
+    assert _waarde("edudata_stappenbudget_op_total") == voor + 1

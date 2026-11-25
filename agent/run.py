@@ -16,6 +16,7 @@ from core.config import (
 )
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
+from core.metrics import meet_herkansing, meet_ingehouden
 from tools import LABELS, SCHEMAS, cbs_standaard, ho_markers
 from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
@@ -65,6 +66,7 @@ from .vaste_antwoorden import (
     sentinelvraag,
     weigering,
 )
+from .vaste_maat import vaste_maat
 from .verklaringsverzoek import verklaringinstructie
 from .vo_school import vo_schoolvraag
 from .vorige_werkwijze import werkwijze_vorige_databeurt
@@ -277,6 +279,15 @@ def _veilig_hoofdgetal(session: dict, result: LoopResult, controles: controlesta
         return None
 
 
+def _veilige_vaste_maat(steps: list[tuple[str, str]]) -> dict | None:
+    """Het label "Vaste maat" (#1242) is een extra, net als de citaties: lukt het niet, dan gaat het antwoord zonder."""
+    try:
+        return vaste_maat(steps)
+    except Exception as exc:
+        log_interne_fout(exc, "vaste maat")
+        return None
+
+
 def _veilige_vervolgbronnen(tekst: str, session: dict) -> tuple[list[str], dict[str, str]]:
     """De bronregels van eerder geladen data die een antwoord zonder toolaanroep noemt (#975); faalt zacht, als hierboven."""
     try:
@@ -417,6 +428,7 @@ def _beurtcontext(vraag: str, session: dict, verklaring_gevraagd: bool) -> str:
 async def _intrekken(emit: Emit, problems: list[str]) -> None:
     # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
     logger.info("HERKANSING  controles=%s", controlenamen(problems))
+    meet_herkansing()
     # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
     await emit({"type": "message_cancel", "reden": meldingen(problems)})
     await emit(
@@ -542,6 +554,7 @@ def _eindtekst(
         logger.debug("CONTROLE MELDINGEN  %s", result.problems)
     if harde(result.problems):
         logger.warning("ANTWOORD INGEHOUDEN  model=%s  %s", model, tekst_kenmerk(text_content))
+        meet_ingehouden()
         text_content = INGEHOUDEN
     return text_content
 
@@ -581,7 +594,9 @@ def _slotbericht(
 
     `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416).
     `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
-    `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst."""
+    `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst.
+    `vaste_maat` (#1242) alleen als elke datastap een get_maat was, uit de stappen en het recept; nooit onder een tekst
+    uit code (#565) of een ingehouden antwoord: die rusten niet op de maat."""
     vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
     return {
         "type": "message_end",
@@ -604,6 +619,12 @@ def _slotbericht(
         # Precies één hoofdgetal uit een vaste maat of een enkele selectie: de knop "Wijkt af van je eigen cijfer?"
         # (#1258). Nooit onder een vast of ingehouden antwoord.
         **({"hoofdgetal": hoofdgetal} if hoofdgetal and not vast_zonder_bronnen else {}),
+        **(
+            {"vaste_maat": maat}
+            if text_content not in _ZONDER_BRONNEN | _UIT_CODE
+            and (maat := _veilige_vaste_maat(result.steps))
+            else {}
+        ),
         **_vast(text_content),
     }
 

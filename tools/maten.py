@@ -81,6 +81,10 @@ class DuoRecept:
     vormkolom: str = "OPLEIDINGSVORM"
     vormen: Mapping[str, str] = field(default_factory=lambda: dict(VORMEN_HO))
     bestand: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: dict(_BESTAND_HO))
+    # Waar en wanneer dit recept is vastgelegd (#1242): het issue en de datum (ISO). Verplicht: het label "Vaste maat"
+    # onder een antwoord noemt ze, dus een recept zonder vastlegging faalt al bij het maken.
+    vastgelegd_in: str = field(kw_only=True)
+    vastgelegd_op: str = field(kw_only=True)
     bron: ClassVar[str] = "duo"
 
 
@@ -97,6 +101,8 @@ class DuoBreedRecept:
     periodekolom: str = "JAAR"
     leerwegen: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: dict(LEERWEGEN_MBO))
     bestand: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: {"mbo": ("instelling", "en leerweg")})
+    vastgelegd_in: str = field(kw_only=True)  # de vastlegging (#1242), zie DuoRecept
+    vastgelegd_op: str = field(kw_only=True)
     bron: ClassVar[str] = "duo"
 
 
@@ -130,6 +136,8 @@ class CbsRecept:
     vormen: Mapping[str, str] = field(default_factory=lambda: dict(VORMEN_HO_CBS))
     vast: Mapping[str, str] = field(default_factory=lambda: {"Opleidingsfase": "A045745", "Geslacht": "T001038"})
     alternatieve_bron: AlternatieveBron | None = None
+    vastgelegd_in: str = field(kw_only=True)  # de vastlegging (#1242), zie DuoRecept
+    vastgelegd_op: str = field(kw_only=True)
     bron: ClassVar[str] = "cbs"
 
 
@@ -154,6 +162,8 @@ class CbsSomRecept:
     sectoren: tuple[str, ...] = ("mbo",)
     vormen: Mapping[str, str] = field(default_factory=lambda: {ALLE: ALLE})
     vormdimensie: str | None = None  # de dimensie waarop een andere vorm dan alle een code pint
+    vastgelegd_in: str = field(kw_only=True)  # de vastlegging (#1242), zie DuoRecept
+    vastgelegd_op: str = field(kw_only=True)
     bron: ClassVar[str] = "cbs"
 
 
@@ -214,6 +224,8 @@ MATEN: dict[str, Recept] = {
         "p01hoinges",
         "personen: hoofdinschrijvingen op 1 oktober, elke persoon één keer in het hele ho (DUO p01hoinges)",
         "AANTAL_INGESCHREVENEN",
+        vastgelegd_in="#188",
+        vastgelegd_op="2026-10-14",
     ),
     INSCHRIJVINGEN_HO: DuoRecept(
         INSCHRIJVINGEN_HO,
@@ -221,6 +233,8 @@ MATEN: dict[str, Recept] = {
         "p03hoinschr",
         "inschrijvingen: hoofd- én neveninschrijvingen op 1 oktober, geen personen (DUO p03hoinschr)",
         "AANTAL_INSCHRIJVINGEN",
+        vastgelegd_in="#188",
+        vastgelegd_op="2026-10-14",
     ),
     EERSTEJAARS_HO: DuoRecept(
         EERSTEJAARS_HO,
@@ -228,6 +242,8 @@ MATEN: dict[str, Recept] = {
         "p02ho1ejrs",
         "eerstejaars personen: eerste hoofdinschrijving in het ho op 1 oktober (DUO p02ho1ejrs)",
         "AANTAL_EERSTEJAARS_INGESCHREVENEN",
+        vastgelegd_in="#188",
+        vastgelegd_op="2026-10-14",
     ),
     DEELNEMERS_HO_LANDELIJK: CbsRecept(
         DEELNEMERS_HO_LANDELIJK,
@@ -235,6 +251,8 @@ MATEN: dict[str, Recept] = {
         "85423NED",
         "ingeschrevenen in het hbo of wo landelijk, alle fasen en geslachten; CBS rondt af op tientallen",
         "TotaalIngeschrevenen_1",
+        vastgelegd_in="#188",
+        vastgelegd_op="2026-10-14",
     ),
     MBO_STUDENTEN: DuoBreedRecept(
         MBO_STUDENTEN,
@@ -242,6 +260,8 @@ MATEN: dict[str, Recept] = {
         "mbo-studenten-per-instelling",
         "hoofdinschrijvingen op 1 oktober: bol en bbl (bekostigd en niet-bekostigd) en examendeelnemers "
         "(DUO mbo-studenten-per-instelling)",
+        vastgelegd_in="#188",
+        vastgelegd_op="2026-10-14",
     ),
     MBO_STUDENTEN_LANDELIJK: CbsRecept(
         MBO_STUDENTEN_LANDELIJK,
@@ -256,6 +276,8 @@ MATEN: dict[str, Recept] = {
         vormen={**_LEERWEGEN_MBO_CBS, **_EXTRANEI_CBS},
         vast={"Geslacht": "T001038", "Niveau": "T001336", "Herkomstland": "T001040", "GeboortelandOuders": "T001638"},
         alternatieve_bron=_DUO_MBO_STUDENTEN,
+        vastgelegd_in="#805",
+        vastgelegd_op="2026-10-29",
     ),
     DOORSTROOM_VMBO_MBO: CbsSomRecept(
         DOORSTROOM_VMBO_MBO,
@@ -276,6 +298,8 @@ MATEN: dict[str, Recept] = {
         _DUO_INSTROOM_MBO,
         vormen={ALLE: ALLE, **_EXTRANEI_CBS},
         vormdimensie="Leerweg",
+        vastgelegd_in="#667",
+        vastgelegd_op="2026-10-22",
     ),
 }
 # De maat voor één instelling bij een landelijke maat: een instelling erbij is een fout die daarheen wijst.

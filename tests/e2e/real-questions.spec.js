@@ -11,17 +11,19 @@
  * slagingspercentage per model en vraag gaat als JSON naar eval_results/slagingspercentage-<datum>.json, de kritieke
  * set met haar drempel (besluit #693) naar eval_results/kritiek-<datum>.json, met één regel per model in de log
  * ("kritiek …: 14 van 15 gehaald; rood: …"); eval-teardown.js schrijft ze uit de runs van alle workers (runlog.js).
+ * Een case met expected.must_call toetst ook de toolaanroepen met hun argumenten (#1243); de uitslag per assertie staat
+ * in de log ("Toolasserties: …") en in eval_results/must_call-<datum>.json.
  */
 import { test, expect } from 'playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
-import { scoreRefusal } from './refusal.js'
-import { scoreResult } from './score.js'
+import { scoreResult, scoreWeigering } from './score.js'
+import { mustCallFouten } from './toolasserties.js'
 import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
 import { foutenVan } from './kritiek.js'
 import { legVast } from './runlog.js'
-import { haalToken, poorten } from './chatstream.js'
+import { haalToken } from './chatstream.js'
 import { losseVraag } from './gesprek.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -45,17 +47,22 @@ test.describe('Productie-vragen (evaluatie)', () => {
         const short = REPEATS > 1 ? `${model.split('/').pop()}#${beurt}` : model.split('/').pop()
         // Een eval met een profielinstelling (#1267) stuurt die mee, zoals de instellingen van de app.
         const r = await losseVraag(token, ev.message, model, undefined, ev.instelling ? { instelling: ev.instelling } : {})
-        const scores = ev.expected.must_refuse ? { ...scoreRefusal(r), poorten: poorten(r) } : scoreResult(r, ev)
+        const scores = ev.expected.must_refuse ? scoreWeigering(r, ev) : scoreResult(r, ev)
         allScores[short] = scores
         // Op schijf, niet in het geheugen: na een mislukte test begint een nieuwe worker (#753). Met de tools en de
-        // bron per aanroep, zodat een latere run de bronkeuze tegen de nulmeting kan leggen (#909).
-        legVast({ soort: 'vraag', model, label: ev.label, fouten: foutenVan(ev, scores), tools: r.toolCalls, bronnen: r.bronnen })
+        // bron per aanroep, zodat een latere run de bronkeuze tegen de nulmeting kan leggen (#909); met de uitslag per
+        // toolassertie (#1243).
+        legVast({
+          soort: 'vraag', model, label: ev.label, fouten: foutenVan(ev, scores), tools: r.toolCalls, bronnen: r.bronnen,
+          ...(scores.must_call && { must_call: scores.must_call }),
+        })
 
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)
         console.log(`SCORE: ${scores.total}/${scores.max}`)
         console.log(`Poorten: ${JSON.stringify(scores.poorten)}; ingetrokken versies: ${r.ingetrokken}`)
         if (ev.expected.foutcategorie) console.log(`Foutcategorie bij falen: ${ev.expected.foutcategorie} (bron: ${ev.expected.bron_versie})`)
+        if (scores.must_call) console.log(`Toolasserties: ${JSON.stringify(scores.must_call)}`)
         if (ev.expected.must_refuse) {
           console.log(`Weigert: ${scores.refused}; verzonnen getallen: ${scores.fabricated.join(', ') || 'geen'}`)
           console.log(`ANTWOORD (400 chars):\n${r.content.slice(0, 400)}`)
@@ -101,6 +108,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
           // Integraal weigeren: geen gok, ook niet naast een weigerzin (#36).
           expect(scores.fabricated, `${modelName} noemt getallen zonder bron`).toEqual([])
           expect(scores.refused, `${modelName} weigert niet`).toBe(true)
+          // Een datatool die bij deze weigering niet mag (must_call, #1243).
+          expect(mustCallFouten(scores.must_call), `${modelName} roept een tool aan die niet mag`).toEqual([])
           continue
         }
         // Elke eis apart: referentiewaarde, dataset, tools, termen; geen zachte totaalscore (CH-28).

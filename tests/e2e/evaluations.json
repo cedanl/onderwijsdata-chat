@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt. expected.must_not_mention zijn termen (hoofdletterongevoelige regex) die niet in het antwoord mogen staan (#1036). Bronwaarheid-cases (#190) verwijzen per sleutel naar een ijkwaarde in ijkwaarden.json (data_points.ijkwaarden, exact, geen tolerantie), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; eenheid, schooljaar en status toetsen ze met must_mention. expected.kritiek markeert de kritieke set (besluit #693): de ijk-cases, de weigeringen en het #742-paar. Een weigering moet in elke herhaling slagen, een andere kritieke vraag in een meerderheid; de uitslag staat in eval_results/kritiek-<datum>.json (kritiek.js) en hoort in de promotie-MR.",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt. expected.must_not_mention zijn termen (hoofdletterongevoelige regex) die niet in het antwoord mogen staan (#1036). Bronwaarheid-cases (#190) verwijzen per sleutel naar een ijkwaarde in ijkwaarden.json (data_points.ijkwaarden, exact, geen tolerantie), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; eenheid, schooljaar en status toetsen ze met must_mention. expected.kritiek markeert de kritieke set (besluit #693): de ijk-cases, de weigeringen en het #742-paar. Een weigering moet in elke herhaling slagen, een andere kritieke vraag in een meerderheid; de uitslag staat in eval_results/kritiek-<datum>.json (kritiek.js) en hoort in de promotie-MR. expected.must_call toetst de toolaanroepen met hun argumenten (#1243, toolasserties.js): een lijst van { tool, args?, min_count? }; tool met | is één van beide, args is een deelverzameling van de input (geneste objecten recursief, lijsten gelijk), min_count is standaard 1 en 0 betekent dat de tool niet mag worden aangeroepen. Een ongeldige assertie laat de run falen.",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -129,7 +129,11 @@
       "label": "weigering-geen-data",
       "message": "Wat is het gemiddelde IQ van studenten per hbo-opleiding?",
       "description": "Geen open data over IQ: moet weigeren, geen schatting",
-      "expected": { "kritiek": true, "must_refuse": true }
+      "expected": {
+        "kritiek": true,
+        "must_refuse": true,
+        "must_call": [{ "tool": "get_duo_data|get_cbs_data|get_maat", "min_count": 0 }]
+      }
     },
     {
       "label": "weigering-buiten-reeks",
@@ -323,6 +327,16 @@
         "kritiek": true,
         "datasets": ["duo:p01hoinges"],
         "must_contain_tools": ["get_duo_data|get_maat"],
+        "must_call": [
+          {
+            "tool": "get_maat",
+            "args": {
+              "maat": "ingeschreven_personen_ho",
+              "vorm": "voltijd",
+              "schooljaren": ["2021/22", "2022/23", "2023/24", "2024/25", "2025/26"]
+            }
+          }
+        ],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "voltijd", "personen"],
         "data_points": {
@@ -391,6 +405,7 @@
         "datasets": ["cbs:85353NED"],
         "datasets_alt": ["cbs:85354NED"],
         "must_contain_tools": ["get_cbs_data"],
+        "must_call": [{ "tool": "get_cbs_data", "args": { "selectie": { "dimensies": { "Geslacht": "4000" } } } }],
         "max_search_catalog": 3,
         "must_mention": ["mbo", "vrouw"],
         "data_points": {
@@ -412,6 +427,7 @@
         "kritiek": true,
         "datasets": ["cbs:85354NED"],
         "must_contain_tools": ["get_maat"],
+        "must_call": [{ "tool": "get_maat", "args": { "maat": "mbo_studenten_landelijk" } }],
         "max_search_catalog": 3,
         "must_mention": ["mbo", "Bron en definitie"],
         "data_points": {
@@ -470,6 +486,7 @@
         "kritiek": true,
         "datasets": ["duo:p02ho1ejrs"],
         "must_contain_tools": ["get_maat"],
+        "must_call": [{ "tool": "get_maat", "args": { "maat": "eerstejaars_ho" } }],
         "max_search_catalog": 3,
         "must_mention": ["Luchtvaarttechnologie", "vrouw", "2021/22"],
         "data_points": {

@@ -128,6 +128,61 @@ Een snippet laadt de bron opnieuw, dus de data kan intussen zijn veranderd. Twee
 
 Wat dit **niet** zegt: dat het frame ná de verwerking van de app (maskering van -1, `STUDIEJAAR_LABEL`, provincie) byte-voor-byte gelijk is aan wat de snippet maakt. Een controleregel in de snippet is een aparte stap.
 
+## Bewijs per antwoord
+
+Onder elk dataantwoord staat bij Export de knop **Bewijs (JSON)** (#1244). Het bestand bevat wat het antwoord al over
+zijn herkomst weet, in één vorm: geen nieuwe gegevens, geen serveraanroep en geen model. De browser maakt het uit het
+bericht (`frontend/src/bewijsJson.js`); een heropend gesprek geeft hetzelfde bestand, want elk veld staat in het
+bewaarde gesprek. Een vast antwoord uit code zonder bronnen heeft geen bewijsbestand.
+
+| Sleutel | Inhoud |
+|---|---|
+| `schema` | Altijd `onderwijsdata-chat/bewijs/1`; een andere vorm krijgt een ander nummer |
+| `manifest` | Model, sampling, prompt-hash, catalogus, app-versie en dataversie per dataset, zoals onder "Herkomst" in de gespreksexport |
+| `bronnen`, `bronlinks` | De bronregels onder het antwoord en hun links naar de bronpagina |
+| `citaties` | Per gecontroleerd getal de maat, selectie, bron en stap |
+| `controle` | Wat de controle nog vond (de regels "Let op: …") |
+| `toolstappen` | Per geslaagde stap `name`, `arguments` en `snippet`; nooit de ruwe uitvoer van de tool |
+| `vaste_maat` | Het label "Vaste maat" (#1242): `maat`, `teldefinitie`, `vastgelegd_in`, `vastgelegd_op` |
+| `antwoord` | De antwoordtekst zoals hij er staat |
+
+Een sleutel die niet van toepassing is, is `null`: een antwoord zonder vaste maat heeft `"vaste_maat": null`, een
+antwoord van vóór #1244 heeft per stap `"arguments": null`. Een voorbeeld, ingekort:
+
+```json
+{
+  "schema": "onderwijsdata-chat/bewijs/1",
+  "manifest": {
+    "model": "mistral/mistral-medium",
+    "prompt_hash": "ab12cd34",
+    "app": "3.1.0",
+    "data_as_of": [{ "bron": "duo", "dataset": "p01hoinges", "bronhash": ["9f8e…"] }],
+    "gemaakt_op": "25-11-2026"
+  },
+  "bronnen": ["DUO p01hoinges"],
+  "bronlinks": { "DUO p01hoinges": "https://duo.nl/open_onderwijsdata/…" },
+  "citaties": [{ "getal": "38.000", "selectie": "HU, 2024/25", "bron": "DUO p01hoinges", "vastgesteld": true }],
+  "controle": null,
+  "toolstappen": [
+    {
+      "name": "get_maat",
+      "arguments": { "maat": "ingeschreven_personen_ho", "instelling": "Hogeschool Utrecht", "schooljaren": ["2024/25"] },
+      "snippet": "from onderwijsbronnen import duo\n…"
+    }
+  ],
+  "vaste_maat": {
+    "maat": "ingeschreven_personen_ho",
+    "teldefinitie": "personen: hoofdinschrijvingen op 1 oktober, elke persoon één keer in het hele ho (DUO p01hoinges)",
+    "vastgelegd_in": "#188",
+    "vastgelegd_op": "2026-10-14"
+  },
+  "antwoord": "De HU had in 2024/25 38.000 ingeschreven personen."
+}
+```
+
+Met `toolstappen[].snippet` herhaal je de stappen (zie hierboven), met `manifest.data_as_of` zie je of het dezelfde
+data is. Wat er wel en niet in staat voor je privacy: [Privacy](privacy.md#wat-je-zelf-kunt-doen).
+
 ## Voor onderzoekers
 
 - Export je chat-sessie na elke analyse: per antwoord staat er een blok "Herkomst" in met model, versies en dataversie (#713); bij een teruggezet gesprek ontbreekt dat

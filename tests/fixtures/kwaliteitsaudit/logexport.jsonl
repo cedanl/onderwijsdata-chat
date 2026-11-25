@@ -1,0 +1,22 @@
+{"timestamp": "2026-11-10T09:00:00+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  ongedekte_getallen=hard  metatekst=ok"}
+{"timestamp": "2026-11-18T10:00:00+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  ongedekte_getallen=hard  metatekst=ok  verkeerde_antwoordtaal=ok", "verbinding": "c-1"}
+{"timestamp": "2026-11-18T10:00:02+00:00", "level": "INFO", "logger": "agent.run", "message": "HERKANSING  controles=['ongedekte_getallen']", "verbinding": "c-1"}
+{"timestamp": "2026-11-19T11:00:00+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL LIMIET  search_catalog aangeroepen 4/3 keer"}
+{"timestamp": "2026-11-24T10:00:00+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  ongedekte_getallen=hard  metatekst=ok  verkeerde_antwoordtaal=niet gecontroleerd", "verbinding": "c-2"}
+{"timestamp": "2026-11-24T10:00:01+00:00", "level": "WARNING", "logger": "agent.loop", "message": "CONTROLE MISLUKT, herkansing: controles=['ongedekte_getallen']"}
+{"timestamp": "2026-11-24T10:00:01+00:00", "level": "DEBUG", "logger": "agent.loop", "message": "CONTROLE MELDINGEN  ['6.340 staat niet in de opgehaalde data over Hoeveel studenten volgen geheimvak-xyz aan de HU?']"}
+{"timestamp": "2026-11-24T10:00:02+00:00", "level": "INFO", "logger": "agent.run", "message": "HERKANSING  controles=['ongedekte_getallen']", "verbinding": "c-2"}
+{"timestamp": "2026-11-24T10:00:03+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  ongedekte_getallen=hard  metatekst=zacht  verkeerde_antwoordtaal=ok", "verbinding": "c-2"}
+{"timestamp": "2026-11-24T10:00:04+00:00", "level": "WARNING", "logger": "agent.run", "message": "ANTWOORD INGEHOUDEN  model=openai/gpt-4o  len=40 hash=abcd1234"}
+{"timestamp": "2026-11-25T08:00:00+00:00", "level": "DEBUG", "logger": "agent.loop", "message": "TOOL CALL get_maat {\"instelling\": \"Hoeveel studenten volgen geheimvak-xyz aan de HU?\"}"}
+{"timestamp": "2026-11-25T08:00:00+00:00", "level": "INFO", "logger": "agent.loop", "message": "TOOL RESULT get_maat {\"vraag\": \"Hoeveel studenten volgen geheimvak-xyz aan de HU?\"}"}
+{"timestamp": "2026-11-25T08:00:01+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL OP SLOT  get_cbs_data: 2x bron_fout"}
+{"timestamp": "2026-11-25T08:00:02+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL LIMIET  search_catalog aangeroepen 4/3 keer"}
+{"timestamp": "2026-11-25T08:00:03+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL LIMIET  search_catalog aangeroepen 5/3 keer"}
+{"timestamp": "2026-11-26T12:00:00+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL_AFGEKAPT tool=query_data tekens=90000 limiet=50000"}
+{"timestamp": "2026-11-26T12:00:01+00:00", "level": "WARNING", "logger": "agent.loop", "message": "STAPPENBUDGET OP na 25 stappen, afrondronde"}
+{"timestamp": "2026-11-26T12:00:02+00:00", "level": "INFO", "logger": "agent.run", "message": "RUN START  model=openai/gpt-4o  vraag_len=48 vraag_hash=0f0f0f0f"}
+Traceback (most recent call last): Hoeveel studenten volgen geheimvak-xyz aan de HU?
+{"timestamp": "2026-11-27T09:00:00+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  geheimvak_xyz=hard  ongedekte_getallen=ok"}
+{"timestamp": "2026-11-27T09:00:01+00:00", "level": "WARNING", "logger": "agent.loop", "message": "TOOL OP SLOT  geheimvak-xyz: 2x toolfout"}
+{"timestamp": "2026-11-30T00:00:00+00:00", "level": "INFO", "logger": "agent.run", "message": "CONTROLES  ongedekte_getallen=hard"}

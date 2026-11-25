@@ -8,6 +8,8 @@ Alles hier is invoer → bevindingen, zonder `emit` en zonder sessie: wat de con
 import logging
 from collections.abc import Callable
 
+from core.metrics import meet_controles
+
 from .aanspreekcontrole import overgebleven_u_vorm
 from .antwoordtaal import Taal, taal, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
@@ -35,6 +37,36 @@ from .zelfcorrectie import onvervangen_tabelcorrectie, zonder_zelfcorrectie
 # De regel CONTROLES blijft onder de logger van `agent/run.py`: logfilters en tests kennen die bron, en de verhuizing
 # van de code is geen reden om hem te veranderen (#694).
 logger = logging.getLogger("agent.run")
+
+# De controles van een antwoord, in de volgorde van `check` en de regel CONTROLES. Vast, zodat de teller
+# `edudata_controle_uitkomsten_total` alleen deze namen als label kent (#1250); tests/test_metrics.py houdt de lijst
+# gelijk aan de controles in `check`. Een nieuwe controle hoort hier ook bij, anders telt ze als `overig`.
+CONTROLENAMEN = (
+    "ongedekte_getallen",
+    "ontbrekende_schooljaren",
+    "ontbrekende_instellingen",
+    "onvolledige_selecties",
+    "verkeerde_opleidingsvormen",
+    "verkeerde_dimensielabels",
+    "onbekende_datasets",
+    "ongebruikte_bronnen",
+    "verkeerd_gebonden",
+    "verkeerde_tabeljaren",
+    "onjuiste_rekensommen",
+    "onjuiste_tabelbeweringen",
+    "onvervangen_tabelcorrectie",
+    "verkeerde_kenmerken",
+    "verkeerde_kpi_periodes",
+    "kpi_naast_filter",
+    "genegeerde_keuze",
+    "ongekozen_studies",
+    "onbeschikbaar_zonder_zoekpad",
+    "ongedekte_oorzaak",
+    "ontbrekende_grafiek",
+    "metatekst",
+    "verkeerde_antwoordtaal",
+    "overgebleven_u_vorm",
+)
 
 
 def correctie(problems: list[str]) -> str:
@@ -178,6 +210,8 @@ def antwoordcontrole(
         # Per antwoord welke controle wat gaf: regressietestbaar en de afvuurfrequentie per controle (CH-01).
         per_controle = uitkomsten((c.__name__ for c, _, _ in controles), problemen)
         logger.info("CONTROLES  %s", "  ".join(f"{naam}={uitkomst}" for naam, uitkomst in per_controle.items()))
+        # Dezelfde uitkomsten als teller, voor de wekelijkse kwaliteitsaudit (#1250).
+        meet_controles(per_controle)
         return problemen
 
     return check
