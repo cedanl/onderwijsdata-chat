@@ -18,9 +18,10 @@ from itertools import combinations, islice
 
 import numpy as np
 import pandas as pd
+from onderwijsbronnen import skdb as skdbbron
 from onderwijsbronnen import sleutels as kern
 
-from . import dekking, fouten, opvolger, relaties, store
+from . import dekking, fouten, opvolger, relaties, store, studiekeuze
 from .analysis import modelrijen, rijmaximum
 from .kolomlabel import is_labelkolom
 
@@ -31,6 +32,12 @@ STAP = "koppeling (koppel_data)"  # het begin van KeyMeta.stap: zo noemt de herk
 BEIDE = "beide"
 _HERKOMST = "__koppel_herkomst"  # de indicatorkolom van pd.merge; komt nooit in het resultaat
 _EEN, _VEEL = "one", "many"
+# SKDB naast DUO (#1231): per SKDB-rij de vlag van de kleine-n-regel van get_studiekeuze, en de SKDB-rijen zonder
+# DUO-rij per graad. De code telt; het model neemt over.
+ONZEKER = "onzeker"
+PER_GRAAD = "niet_gekoppeld_per_graad"
+GEEN_GRAAD = "onbekend"
+_GRADEN = ("bachelor", "master", "associate degree")
 # Zoveel rijen mag een koppeling hooguit geven. De koppeling draait in het serverproces, niet in de sandbox van
 # run_analysis (1 GiB, 10 s): veel-op-veel op een grove sleutel (alleen schooljaar of brin) is een kruisproduct per
 # waarde en groeit kwadratisch (2 x 1500 rijen op één waarde: 2,25 miljoen rijen, 1 GB). Daarom eerst tellen, dan
@@ -207,10 +214,14 @@ def _kanten(data_key: str, andere_key: str, opgegeven: object, links_opgave, rec
     )
 
 
-def _genormaliseerd(kant: _Kant, sleutels: list[str], bezet: set[str]) -> pd.DataFrame:
-    """De tabel met vooraan een kolom per sleutel in de vorm van onderwijsbronnen.sleutels; een eigen kolom met een
-    naam die al bezet is (de sleutel, `koppelstatus`, een kolom van de andere tabel) krijgt het label ervoor, zo vaak
-    als nodig: een eerdere koppeling heeft zelf al `SKDB_brin` naast `brin`."""
+def _bezet(sleutels: list[str], ander: _Kant) -> set[str]:
+    """De namen die een kolom van de ene kant niet mag houden: de sleutels, `koppelstatus` en de kolommen van de andere."""
+    return {*sleutels, KOPPELSTATUS} | set(ander.df.columns)
+
+
+def _hernoeming(kant: _Kant, bezet: set[str]) -> dict[str, str]:
+    """Een eigen kolom met een naam die al bezet is, krijgt het label ervoor, zo vaak als nodig: een eerdere koppeling
+    heeft zelf al `SKDB_brin` naast `brin`. Alleen de kolommen die een andere naam krijgen."""
     genomen = set(kant.df.columns) | bezet
     nieuw: dict[str, str] = {}
     for k in kant.df.columns:
@@ -220,7 +231,13 @@ def _genormaliseerd(kant: _Kant, sleutels: list[str], bezet: set[str]) -> pd.Dat
                 naam = f"{kant.label}_{naam}"
             nieuw[k] = naam
             genomen.add(naam)
-    df = kant.df.rename(columns=nieuw)
+    return nieuw
+
+
+def _genormaliseerd(kant: _Kant, sleutels: list[str], bezet: set[str]) -> pd.DataFrame:
+    """De tabel met vooraan een kolom per sleutel in de vorm van onderwijsbronnen.sleutels; een eigen kolom met een
+    naam die al bezet is (de sleutel, `koppelstatus`, een kolom van de andere tabel) heet zoals _hernoeming zegt."""
+    df = kant.df.rename(columns=_hernoeming(kant, bezet))
     norm = {s: kant.df[kant.kolommen[s]].map(kern.SLEUTELS[s].normaliseer).astype(object) for s in sleutels}
     return pd.concat([pd.DataFrame(norm, index=df.index), df], axis=1)
 
@@ -537,9 +554,8 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     Een veel-op-veel-koppeling gaat nooit door, een join boven MAX_RIJEN of MAX_CELLEN ook niet (_Melding): eerst
     tellen, dan pas koppelen.
     """
-    bezet = {*sleutels, KOPPELSTATUS}
-    a = _genormaliseerd(links, sleutels, bezet | set(rechts.df.columns))
-    b = _genormaliseerd(rechts, sleutels, bezet | set(links.df.columns))
+    a = _genormaliseerd(links, sleutels, _bezet(sleutels, rechts))
+    b = _genormaliseerd(rechts, sleutels, _bezet(sleutels, links))
     a_ok, b_ok = (t[t[sleutels].notna().all(axis=1)] for t in (a, b))
     tellingen = _Tellingen.van(a_ok, b_ok, sleutels)
     rijen = tellingen.rijen + (len(a) - len(a_ok)) + (len(b) - len(b_ok))
@@ -575,21 +591,111 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     )
 
 
+def _skdb_duo(links: _Kant, rechts: _Kant, sleutels: list[str]) -> tuple[_Kant, _Kant] | None:
+    """De SKDB- en de DUO-kant bij SKDB naast DUO op precies brin + croho, geen van beide zelf een koppeling; anders
+    None."""
+    if set(sleutels) != {"brin", "croho"}:
+        return None
+    bron = {k.key: m.bron.lower() for k in (links, rechts) if (m := store.meta(k.key)) and not _is_koppeling(k.key)}
+    skdb = next((k for k in (links, rechts) if bron.get(k.key) == "skdb"), None)
+    duo = next((k for k in (links, rechts) if bron.get(k.key) == "duo"), None)
+    return (skdb, duo) if skdb and duo else None
+
+
 def _opvolgers(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst) -> tuple[_Uitkomst, dict]:
     """SKDB naast DUO op brin + croho: per SKDB-rij zonder DUO-rij de reden uit RIO (#1060, `tools/opvolger.py`).
 
     Een andere koppeling (andere bronnen, andere sleutels, of een kant die zelf een koppeling is) raakt RIO niet aan.
     """
-    if set(sleutels) != {"brin", "croho"}:
+    paar = _skdb_duo(links, rechts, sleutels)
+    tabel = opvolger.DuoTabel.van(paar[1].df, paar[1].kolommen, store.meta(paar[1].key)) if paar else None
+    if paar is None or tabel is None:
         return uitkomst, {}
-    bron = {k.key: m.bron.lower() for k in (links, rechts) if (m := store.meta(k.key)) and not _is_koppeling(k.key)}
-    skdb = next((k for k in (links, rechts) if bron.get(k.key) == "skdb"), None)
-    duo = next((k for k in (links, rechts) if bron.get(k.key) == "duo"), None)
-    tabel = opvolger.DuoTabel.van(duo.df, duo.kolommen, store.meta(duo.key)) if skdb and duo else None
-    if skdb is None or tabel is None:
-        return uitkomst, {}
-    df, extra = opvolger.bij_koppeling(uitkomst.df, KOPPELSTATUS, skdb.alleen, tabel)
+    df, extra = opvolger.bij_koppeling(uitkomst.df, KOPPELSTATUS, paar[0].alleen, tabel)
     return replace(uitkomst, df=df), extra
+
+
+def _graadsoort(waarde: object) -> str:
+    """De graad van een SKDB-rij als sleutel van PER_GRAAD: bachelor, master, associate degree (ook 'ad'); een andere
+    waarde in kleine letters, een lege onder GEEN_GRAAD. Nooit weggelaten."""
+    tekst = str(waarde).strip().lower() if isinstance(waarde, str) else ""
+    if not tekst:
+        return GEEN_GRAAD
+    return skdbbron.overzicht.GRADEN.get(tekst, tekst).lower()
+
+
+def _per_graad(reeks: pd.Series) -> dict[str, int]:
+    """Het aantal rijen per graadsoort: eerst bachelor, master, associate degree, dan de rest op naam."""
+    tel = reeks.map(_graadsoort).value_counts()
+    volgorde = [*(g for g in _GRADEN if g in tel.index), *sorted(g for g in tel.index if g not in _GRADEN)]
+    return {g: int(tel[g]) for g in volgorde}
+
+
+def _onzekerheid(df: pd.DataFrame, van_skdb: pd.Series, nse: dict[str, str]) -> list[bool | None]:
+    """Per rij de vlag van studiekeuze.is_onzeker voor een SKDB-rij, None voor een rij zonder SKDB-kant. `nse` zegt per
+    NSE-kolom van de SKDB hoe ze in de koppeling heet."""
+    rijen = df[list(nse.values())].set_axis(list(nse), axis=1).to_dict(orient="records")
+    return [bool(studiekeuze.is_onzeker(r)) if s else None for r, s in zip(rijen, van_skdb, strict=True)]
+
+
+def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst) -> tuple[_Uitkomst, dict]:
+    """SKDB naast DUO op brin + croho (#1231): de kleine-n-vlag per SKDB-rij en de SKDB-rijen zonder DUO-rij per graad,
+    in code. Bij HU telde het model zelf: een opleiding met 28 respondenten heette niet onzeker, en 31 opleidingen
+    zonder DUO-rij heetten "bijna allemaal masters".
+
+    De kolom `onzeker` (na `koppelstatus` en een `koppelreden`) volgt dezelfde regel als get_studiekeuze
+    (`studiekeuze.is_onzeker`, MIN_RESPONDENTEN): true of false bij een SKDB-rij, leeg bij een rij alleen uit DUO. Alleen
+    als de SKDB-kant een NSE-cijfer heeft en geen eigen kolom `onzeker`. `niet_gekoppeld_per_graad` telt de rijen
+    `alleen SKDB` per `graad`; de delen tellen op tot hun `telling`. Andere koppelingen blijven zoals ze waren.
+    """
+    paar = _skdb_duo(links, rechts, sleutels)
+    if paar is None:
+        return uitkomst, {}
+    skdb, duo = paar
+    hernoemd = _hernoeming(skdb, _bezet(sleutels, duo))
+    naam = {k: hernoemd.get(k, k) for k in skdb.df.columns}
+    df, extra, toelichting = uitkomst.df, {}, {}
+    statussen = (BEIDE, skdb.alleen)
+    van_skdb = df[KOPPELSTATUS].isin(statussen)
+    nse = {k: naam[k] for k in ("nse_respondenten", *studiekeuze.NSE_CIJFERS) if k in naam}
+    if ONZEKER not in df.columns and any(k in nse for k in studiekeuze.NSE_CIJFERS):
+        na = [k for k in (KOPPELSTATUS, opvolger.KOPPELREDEN) if k in df.columns][-1]
+        df = df.copy()
+        df.insert(list(df.columns).index(na) + 1, ONZEKER, _onzekerheid(df, van_skdb, nse))
+        zin = (
+            f"Een rij met {ONZEKER}: true heeft minder dan {studiekeuze.MIN_RESPONDENTEN} NSE-respondenten of geen "
+            "bekend aantal: noem het NSE-oordeel en de thema's van die rij onzeker. De code zette de vlag; neem haar "
+            "over en tel de respondenten niet zelf."
+        )
+        toelichting = {s: zin for s in statussen if (df[KOPPELSTATUS] == s).any()}
+    alleen = df[KOPPELSTATUS] == skdb.alleen
+    if "graad" in naam and alleen.any():
+        extra[PER_GRAAD] = _per_graad(df.loc[alleen, naam["graad"]])
+        zin = (
+            f"{PER_GRAAD} telt deze rijen per graad (bachelor, master, associate degree; zonder graad: {GEEN_GRAAD}), "
+            "in code: noem die aantallen zoals ze er staan en tel de rijen niet zelf."
+        )
+        toelichting[skdb.alleen] = f"{toelichting.get(skdb.alleen, '')} {zin}".strip()
+    if toelichting:
+        extra["toelichting"] = toelichting
+    return replace(uitkomst, df=df), extra
+
+
+def _samengevoegd(*extras: dict) -> dict:
+    """De aanvullingen van de stappen na de koppeling samen: een toelichting per status en een waarschuwing aan elkaar
+    geregen, de rest naast elkaar."""
+    uit: dict = {}
+    for extra in extras:
+        for veld, waarde in extra.items():
+            if veld == "toelichting":
+                eerder = uit.setdefault("toelichting", {})
+                for status, tekst in waarde.items():
+                    eerder[status] = f"{eerder.get(status, '')} {tekst}".strip()
+            elif veld == "waarschuwing" and uit.get(veld):
+                uit[veld] = f"{uit[veld]} {waarde}"
+            else:
+                uit[veld] = waarde
+    return uit
 
 
 def _koppelkey(links: _Kant, rechts: _Kant) -> str:
@@ -692,6 +798,8 @@ def _tekst(
         uit["toelichting"][status] = f"{uit['toelichting'].get(status, '')} {aanvulling}".strip()
     if opvolgers := extra.get("opvolgers"):
         uit["opvolgers"] = opvolgers
+    if per_graad := extra.get(PER_GRAAD):
+        uit[PER_GRAAD] = per_graad
     if uitkomst.zonder_sleutel:
         uit["zonder_sleutel"] = uitkomst.zonder_sleutel
     waarschuwingen: list[str] = [w for w in (uit.pop("waarschuwing", None),) if isinstance(w, str)]
@@ -719,6 +827,7 @@ def koppel_data(
     except _Melding as melding:
         return str(melding)
     uitkomst, opvolging = _opvolgers(links, rechts, namen, uitkomst)
+    uitkomst, signalen = _skdb_signalen(links, rechts, namen, uitkomst)
     key = _koppelkey(links, rechts)
     volledig = _bewaar(key, uitkomst.df, links, rechts, _stap(links, rechts, namen, uitkomst.koppeling))
     # Wat er gekoppeld is, zonder waarden (#475): de sleutels, de korrel en de telling per status.
@@ -731,4 +840,4 @@ def koppel_data(
         telling.get(links.alleen, 0),
         telling.get(rechts.alleen, 0),
     )
-    return _tekst(key, links, rechts, namen, uitkomst, volledig, opvolging)
+    return _tekst(key, links, rechts, namen, uitkomst, volledig, _samengevoegd(opvolging, signalen))

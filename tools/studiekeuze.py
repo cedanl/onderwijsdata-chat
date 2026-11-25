@@ -20,7 +20,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import numbers
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import pandas as pd
@@ -476,7 +479,23 @@ def _voorbehouden(keuze: Keuze, export: skdb.Export) -> list[str]:
     return per_weergave
 
 
-_NSE_CIJFERS = ("nse_oordeel", *skdb.NSE_THEMAS.values())
+# De NSE-cijfers van een rij: het algemeen oordeel en de thema's. Ook koppel_data leest ze (#1231).
+NSE_CIJFERS = ("nse_oordeel", *skdb.NSE_THEMAS.values())
+
+
+def _ingevuld(waarde) -> bool:
+    """Een cel met een waarde: niet None en geen lege cel van pandas (NaN, NA), zoals na een koppeling."""
+    return waarde is not None and not (isinstance(waarde, numbers.Real) and math.isnan(waarde)) and waarde is not pd.NA
+
+
+def is_onzeker(rij: Mapping) -> bool:
+    """Is het NSE-oordeel of een -thema in deze rij onzeker: minder dan MIN_RESPONDENTEN antwoorden, of geen bekend
+    aantal terwijl er een cijfer is (een thema zonder algemeen oordeel, #979)? De ene regel voor get_studiekeuze, het
+    dashboard Opleidingen en koppel_data (#1231). Een aantal als 28.0 (een kolom met lege cellen na een koppeling)
+    telt als 28."""
+    n = rij.get("nse_respondenten")
+    genoeg = isinstance(n, numbers.Real) and not isinstance(n, bool) and _ingevuld(n) and n >= MIN_RESPONDENTEN
+    return not genoeg and any(_ingevuld(rij.get(k)) for k in NSE_CIJFERS)
 
 
 def met_onzekerheid(rij: dict) -> dict:
@@ -484,11 +503,7 @@ def met_onzekerheid(rij: dict) -> dict:
     algemeen oordeel, #979), krijgt `nse_onzeker: true`: de code markeert het, het model hoeft niet zelf te tellen.
     Alleen in het toolresultaat en op het dashboard Opleidingen, niet in de tabel in de store (die is gelijk aan de
     snippet)."""
-    n = rij.get("nse_respondenten")
-    genoeg = isinstance(n, int) and n >= MIN_RESPONDENTEN
-    if not genoeg and any(rij.get(k) is not None for k in _NSE_CIJFERS):
-        return {**rij, "nse_onzeker": True}
-    return rij
+    return {**rij, "nse_onzeker": True} if is_onzeker(rij) else rij
 
 
 def _uitkomst(alle: list[dict], keuze: Keuze, export: skdb.Export) -> dict:
