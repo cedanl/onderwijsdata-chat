@@ -6,7 +6,8 @@ get_bestuursfinancien, get_wo_personeel of get_studiekeuze (#956, #957);
 niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
-zoals bij de grafiekexport (#118). Data die na een herstart opnieuw bij de bron
+zoals bij de grafiekexport (#118); een rij met een onderdrukte cel zegt dat in
+de kolom `ondergrens` (#1257). Data die na een herstart opnieuw bij de bron
 is opgehaald zegt dat bovenaan: de cijfers kunnen afwijken van het antwoord (#472).
 """
 
@@ -19,7 +20,7 @@ import pandas as pd
 
 from core.bestandsnaam import bestandsdeel
 
-from . import catalog, duo, herlaad, store
+from . import catalog, duo, herlaad, ondergrens, store
 from .exportnoten import herkomstregels
 from .schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
@@ -173,8 +174,15 @@ def naar_csv(key: str, username: str | None = None) -> str | None:
     if not isinstance(df, pd.DataFrame):
         return None
     afronden = duo.is_prognose(store.meta(key))
+    # Per rij ja/nee: valt er een onderdrukte cel in, dan is die rij een ondergrens (#1257). Alleen als de bron zulke
+    # cellen per rij heeft; een tabel zonder krijgt geen extra kolom.
+    met_vlag = ondergrens.met_kolom(df, key)
+    noten = _noten(key, afronden, username)
+    if met_vlag is not df:
+        noten.append(ondergrens.KOLOMREGEL)
+        df = met_vlag
     uit = io.StringIO()
-    for noot in _noten(key, afronden, username):
+    for noot in noten:
         uit.write(f"# {noot}\n")
     writer = csv.writer(uit, delimiter=";", lineterminator="\n")
     writer.writerow(_veilig(kolom) if isinstance(kolom, str) else kolom for kolom in df.columns)

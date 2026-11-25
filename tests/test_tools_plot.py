@@ -6,7 +6,7 @@ import plotly.io as pio
 import pytest
 
 from tools import cbs_afronding, store
-from tools.plot import AS_NIET_BIJ_NUL, create_plot
+from tools.plot import _HIGHLIGHT_GREY, AS_NIET_BIJ_NUL, create_plot
 
 _ROWS = [
     {"jaar": "2020", "waarde": 100},
@@ -123,7 +123,7 @@ def test_highlight_gives_one_group_the_accent_color_and_the_rest_grey():
     assert fig is not None
     colors = {trace.name: trace.marker.color for trace in fig.data}
     assert colors["A"] != colors["B"]
-    assert colors["B"] == "#B0B0B0"
+    assert colors["B"] == _HIGHLIGHT_GREY
 
 
 def test_value_labels_shown_for_a_small_number_of_points():

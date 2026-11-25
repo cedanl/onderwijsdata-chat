@@ -13,7 +13,7 @@ import json
 import plotly.graph_objects as go
 import pytest
 
-from tools.plot import create_plot, leesbare_titels
+from tools.plot import _HIGHLIGHT_GREY, create_plot, leesbare_titels
 
 _UNIVERSITEITEN = [
     ("Universiteit van Amsterdam", 14773),
@@ -132,8 +132,8 @@ class TestUitlichtenZonderLegenda:
         kleuren = list(_plot(color_by="INSTELLING", highlight=_VU).data[0].marker.color)
         namen = [naam for naam, _ in _UNIVERSITEITEN]
         accent = kleuren[namen.index(_VU)]
-        assert accent != "#B0B0B0"
-        assert [k for i, k in enumerate(kleuren) if i != namen.index(_VU)] == ["#B0B0B0"] * 17
+        assert accent != _HIGHLIGHT_GREY
+        assert [k for i, k in enumerate(kleuren) if i != namen.index(_VU)] == [_HIGHLIGHT_GREY] * 17
 
     def test_highlight_werkt_ook_zonder_color_by(self):
         fig = _plot(highlight=_VU)
