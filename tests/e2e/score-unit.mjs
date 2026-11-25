@@ -491,3 +491,14 @@ test('de verslagen komen uit de runs van alle workers samen (#753)', () => {
   assert.deepEqual(uit.rapport.scenarios.s, { runs: 1, geslaagd: 1, mislukt: [] })
   assert.deepEqual(Object.keys(verslagen([], evals)), [])
 })
+
+test('must_call eist precies die tool, zonder alternatief (#1267)', () => {
+  const ev = EVALS.find(e => e.label === 'vergelijkingsgroep-chat')
+  assert.deepEqual(ev.expected.must_call, ['vergelijkingsgroep'])
+  const r = goed()
+  r.content = 'Hogeschool Utrecht staat boven het gemiddelde. **Vergelijkingsgroep:** de dashboardgroep.'
+  r.toolCalls = ['get_maat']
+  assert.ok(scoreResult(r, ev).fouten.includes('tool ontbreekt: vergelijkingsgroep'))
+  r.toolCalls = ['vergelijkingsgroep']
+  assert.ok(!scoreResult(r, ev).fouten.includes('tool ontbreekt: vergelijkingsgroep'))
+})

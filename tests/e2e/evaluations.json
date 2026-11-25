@@ -602,6 +602,17 @@
       }
     },
     {
+      "label": "vergelijkingsgroep-chat",
+      "message": "Vergelijk ons met vergelijkbare instellingen: hoeveel studenten hebben wij ten opzichte van hen?",
+      "instelling": "Hogeschool Utrecht",
+      "description": "#1267: met een profielinstelling roept de chat de vergelijkingsgroep van het dashboard Mijn instelling aan (vergelijkingsgroep), kiest de peers niet zelf, en de app zet de zin over de groep onder het antwoord",
+      "expected": {
+        "must_call": ["vergelijkingsgroep"],
+        "max_search_catalog": 2,
+        "must_mention": ["Hogeschool Utrecht", "Vergelijkingsgroep"]
+      }
+    },
+    {
       "label": "geen-verklaring-zonder-verzoek",
       "message": "Hoeveel eerstejaars hbo zijn er per jaar sinds 2020?",
       "description": "#1036: een datavraag zonder verzoek om een verklaring krijgt geen oorzaken, geen vermoedens en geen blok 'Niet uit de data'",
