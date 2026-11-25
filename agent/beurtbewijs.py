@@ -36,6 +36,7 @@ from datetime import UTC, datetime
 from persistence import db
 
 from . import figuurstappen
+from .onder_antwoord import is_verschilverklaring
 from .session_data import begrens_rekenbewijs, met_vraag, neem_beurtbewijs, voeg_rekenbewijs_toe
 
 logger = logging.getLogger(__name__)
@@ -215,7 +216,12 @@ def eerdere_antwoorden(berichten: list[dict], session: dict) -> list[str]:
     client veranderde of toevoegde, een gestopt antwoord, of een herstart vóór de PUT. Wat de server daarna in de
     heropende sessie schrijft, telt weer, tenzij het letterlijk dezelfde tekst is als zo'n bericht.
     """
-    teksten = [str(m.get("content") or "") for m in berichten if m.get("role") == "assistant"]
+    # De uitkomst bij een eigen getal noemt een getal dat de gebruiker invoerde: nooit bewijs (#1258).
+    teksten = [
+        tekst
+        for m in berichten
+        if m.get("role") == "assistant" and not is_verschilverklaring(tekst := str(m.get("content") or ""))
+    ]
     if not (zonder_rij := session.get(_ZONDER_RIJ)):
         return teksten
     return [t for t in teksten if tekst_hash(t) not in zonder_rij]
