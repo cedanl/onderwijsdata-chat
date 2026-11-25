@@ -17,7 +17,7 @@ import logging
 from core.logging_util import foutkenmerk
 from data import dashboard
 
-from . import periode
+from . import periode, schemas
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +40,18 @@ def _aantal(n: int, soort: str) -> str:
     return f"{n} {enkel[soort] if n == 1 else soort}"
 
 
-def zin(groep: dict) -> str:
-    """De vaste zin over de groep: aantal, regio-trede en terugvalregel, of dat het een eigen groep is."""
+def zin(groep: dict, ingekort: int = 0) -> str:
+    """De vaste zin over de groep: aantal, regio-trede en terugvalregel, of dat het een eigen groep is (en of die is
+    ingekort tot `schemas.MAX_EIGEN_GROEP` namen)."""
     soort = _SOORT[groep["soort"]]
     n = groep.get("n_instellingen", len(groep["peers"]))  # zoals het label van het dashboard: de peers met cijfers
     if groep["groep"] == dashboard.EIGEN_GROEP:
         tekst = f"Vergeleken met een eigen groep van {_aantal(n, soort)}, niet de dashboardgroep van Mijn instelling."
+        if ingekort:
+            tekst += (
+                f" Alleen de eerste {schemas.MAX_EIGEN_GROEP} genoemde instellingen tellen mee; {ingekort} "
+                f"{'is' if ingekort == 1 else 'zijn'} weggelaten."
+            )
     else:
         plaats = "landelijk" if groep["regio_trede"] == "nationaal" else f"in {groep['regio_trede']} {groep['regio']}"
         tekst = (
@@ -78,15 +84,23 @@ def _rijen(groep: dict) -> list[dict]:
     return rijen
 
 
+def eigen_groep_ingekort(eigen_groep: list) -> tuple[tuple[str, ...], int]:
+    """De eigen groep zoals de code haar neemt: hoogstens `MAX_EIGEN_GROEP` namen van hoogstens `MAX_NAAM_TEKENS`
+    tekens (tools/schemas.py), en hoeveel namen er wegvielen. Het schema vraagt de grens, deze functie dwingt haar af."""
+    namen = [str(w)[: schemas.MAX_NAAM_TEKENS] for w in eigen_groep if str(w).strip()]
+    return tuple(namen[: schemas.MAX_EIGEN_GROEP]), max(len(namen) - schemas.MAX_EIGEN_GROEP, 0)
+
+
 def vergelijkingsgroep(instelling: str, eigen_groep: list[str] | None = None) -> str:
     """De vergelijkingsgroep van een instelling zoals het dashboard Mijn instelling haar kiest, of een eigen groep."""
-    naam = str(instelling or "").strip()
+    naam = str(instelling or "").strip()[: schemas.MAX_NAAM_TEKENS]
     if not naam:
         return "Geef de instelling (officiële naam of alias), bijvoorbeeld de profielinstelling."
     if eigen_groep is not None and not isinstance(eigen_groep, list):
         return "`eigen_groep` is een lijst met namen of codes van instellingen."
+    eigen, ingekort = eigen_groep_ingekort(eigen_groep or [])
     try:
-        groep = dashboard.vergelijkingsgroep(naam, eigen_groep or ())
+        groep = dashboard.vergelijkingsgroep(naam, eigen)
     except Exception as e:
         logger.warning("vergelijkingsgroep niet beschikbaar: %s", foutkenmerk(e))
         return (
@@ -101,7 +115,7 @@ def vergelijkingsgroep(instelling: str, eigen_groep: list[str] | None = None) ->
     uit = {
         "instelling": groep["instelling"],
         "groep": groep["groep"],
-        "zin": zin(groep),
+        "zin": zin(groep, ingekort if eigen else 0),
         "regio_trede": groep["regio_trede"],
         "regio": groep["regio"],
         "terugval": groep["terugval"],
@@ -118,4 +132,6 @@ def vergelijkingsgroep(instelling: str, eigen_groep: list[str] | None = None) ->
     for veld in ("geen_gegevens", "te_weinig_peers", "onbekend", "ander_type"):
         if groep.get(veld):
             uit[veld] = groep[veld]
+    if eigen and ingekort:
+        uit["ingekort"] = ingekort
     return json.dumps(uit, ensure_ascii=False, default=str)

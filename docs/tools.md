@@ -223,7 +223,7 @@ zelf.
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `instelling` | string | Officiële naam of alias, meestal de profielinstelling |
-| `eigen_groep` | array | Alleen als de gebruiker zelf instellingen noemt: namen of codes. Onbekende namen en instellingen van een ander onderwijstype tellen niet mee en staan in `onbekend` en `ander_type` |
+| `eigen_groep` | array | Alleen als de gebruiker zelf instellingen noemt: namen of codes, hoogstens 25 van hoogstens 120 tekens (`MAX_EIGEN_GROEP`, `MAX_NAAM_TEKENS` in `tools/schemas.py`; de code kapt zelf af en zet het aantal weggelaten namen in `ingekort` en in de zin). Onbekende namen en instellingen van een ander onderwijstype tellen niet mee en staan in `onbekend` en `ander_type` |
 
 Het resultaat: `peers` (naam, code, omvang en waarom elke peer erin zit), `regio_trede`, `regio`, `terugval`, de `regel`
 in woorden, `rijen` per schooljaar (de eigen ingeschrevenen, het peergemiddelde en het aantal peers met cijfers) en

@@ -42,6 +42,11 @@ TOOL_GET_WO_PERSONEEL = "get_wo_personeel"
 TOOL_GET_BESTUURSFINANCIEN = "get_bestuursfinancien"
 TOOL_GET_STUDIEKEUZE = "get_studiekeuze"
 
+# Een eigen vergelijkingsgroep komt van het model (#1267): hoogstens zoveel namen of codes, elk hoogstens zo lang. Het
+# schema vraagt het; tools/vergelijkingsgroep.py kapt zelf af, want het model kan het schema negeren.
+MAX_EIGEN_GROEP = 25
+MAX_NAAM_TEKENS = 120
+
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
@@ -137,7 +142,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "eigen_groep": {
                         "type": "array",
-                        "items": {"type": "string"},
+                        "maxItems": MAX_EIGEN_GROEP,
+                        "items": {"type": "string", "maxLength": MAX_NAAM_TEKENS},
                         "description": "Alleen als de gebruiker zelf instellingen noemt: hun namen of codes.",
                     },
                 },

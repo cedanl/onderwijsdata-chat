@@ -9,6 +9,7 @@ Op de bevroren DUO-bestanden (`duo_fixtures`) voor een hogeschool, een universit
 verzonnen register voor de terugval onder drie peers met cijfers.
 """
 
+import importlib
 import json
 from pathlib import Path
 
@@ -164,6 +165,44 @@ def test_de_tool_staat_in_het_schema_met_een_label_en_weigert_een_onbekende_inst
     assert melding.startswith("Onbekende instelling")
     melding, _ = dispatch(TOOL_VERGELIJKINGSGROEP, {"instelling": "HU", "peers": ["x"]})
     assert "peers" in melding  # een onbekend argument: het model vult de groep niet zelf aan
+
+
+def test_een_eigen_groep_heeft_een_grens_in_het_schema_en_in_de_code(monkeypatch):
+    """llm-safety bij #1267: `eigen_groep` komt van het model. Het schema zegt hoeveel namen en hoe lang; de code kapt
+    zelf af, want het schema is een advies aan het model, geen controle. Wat wegviel, staat in het resultaat."""
+    from tools import schemas
+
+    tool = importlib.import_module("tools.vergelijkingsgroep")  # tools.vergelijkingsgroep is ook de functie
+    functie = next(s for s in TOOL_SCHEMAS if s["function"]["name"] == TOOL_VERGELIJKINGSGROEP)["function"]
+    veld = functie["parameters"]["properties"]["eigen_groep"]
+    assert veld["maxItems"] == schemas.MAX_EIGEN_GROEP and veld["items"]["maxLength"] == schemas.MAX_NAAM_TEKENS
+
+    gezien: list[tuple[str, ...]] = []
+
+    def nep(instelling, eigen_groep=()):
+        gezien.append(tuple(eigen_groep))
+        return None
+
+    monkeypatch.setattr(dashboard, "vergelijkingsgroep", nep)
+    namen = [f"Instelling {i}" for i in range(schemas.MAX_EIGEN_GROEP + 5)] + ["x" * 5000]
+    tool.vergelijkingsgroep("Hogeschool Utrecht", eigen_groep=namen)
+    (doorgegeven,) = gezien
+    assert len(doorgegeven) == schemas.MAX_EIGEN_GROEP
+    assert doorgegeven == tuple(namen[: schemas.MAX_EIGEN_GROEP])
+    assert tool.eigen_groep_ingekort(["a" * 5000]) == (("a" * schemas.MAX_NAAM_TEKENS,), 0)
+    assert tool.eigen_groep_ingekort(namen)[1] == len(namen) - schemas.MAX_EIGEN_GROEP
+
+
+@_met_duo
+def test_een_ingekorte_eigen_groep_zegt_dat_in_de_zin(monkeypatch):
+    from tools import schemas
+
+    monkeypatch.setattr(schemas, "MAX_EIGEN_GROEP", 2)
+    chat = _chat("Hogeschool Utrecht", eigen_groep=["Hogeschool van Amsterdam", "Universiteit Utrecht", "Curio"])
+
+    assert [p["naam"] for p in chat["peers"]] == ["Hogeschool van Amsterdam", "Universiteit Utrecht"]
+    assert chat["ingekort"] == 1 and "ander_type" not in chat
+    assert "Alleen de eerste 2 genoemde instellingen tellen mee; 1 is weggelaten." in chat["zin"]
 
 
 def test_de_prompt_stuurt_vergelijkbare_instellingen_naar_de_tool():
