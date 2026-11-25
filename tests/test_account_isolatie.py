@@ -32,6 +32,9 @@ def client(app_client, monkeypatch):
 
     monkeypatch.setattr(rapport_docx, "_limiter", RateLimiter(max_attempts=30, window_seconds=60))
     monkeypatch.setattr(feedback, "_limiter", RateLimiter(max_attempts=3, window_seconds=600))
+    # Feedback aan, wat een eerdere test ook achterliet: routes.feedback leest ENABLE_FEEDBACK bij het importeren, en
+    # tests/test_feedback.py herlaadt hem met "false" (dan geeft elk /api/feedback-eindpunt 404, ook voor Anna).
+    monkeypatch.setattr(feedback, "FEEDBACK_ENABLED", True)
     store.clear()
     yield c
     store.clear()
