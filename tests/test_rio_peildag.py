@@ -9,9 +9,27 @@ import pytest
 from tools import snippet, store
 from tools.rio import get_rio_data
 
-_VANDAAG = date.today().isoformat()
+# Eén vaste testdag: de tests lezen de klok niet zelf, `tools.rio` krijgt deze dag (#1208).
+_DAG = date(2026, 11, 25)
+_VANDAAG = _DAG.isoformat()
 _RECORDS = [{"code": "01XX", "volledigeNaam": "Instelling 1"}]
 _CATALOG = [{"_rio_resource": "erkenningen", "bron": "Erkenningen", "filters": ["type", "datumGeldigOp"]}]
+
+
+class _VasteDag(date):
+    """`date` waarvan `today()` de testdag is; `fromisoformat` en de opmaak blijven die van `date`."""
+
+    dag = _DAG
+
+    @classmethod
+    def today(cls):
+        return cls.dag
+
+
+@pytest.fixture(autouse=True)
+def _vaste_dag(monkeypatch):
+    monkeypatch.setattr("tools.rio.date", _VasteDag)
+    monkeypatch.setattr(_VasteDag, "dag", _DAG)
 
 
 @pytest.fixture(autouse=True)
@@ -71,7 +89,7 @@ def test_het_manifest_krijgt_de_dag_als_peilmoment():
 
     known = _meta(result["data_key"])
     assert known.geldig_op == _VANDAAG
-    assert known.peilmoment == f"stand van {date.today():%d-%m-%Y}"
+    assert known.peilmoment == "stand van 25-11-2026"
 
 
 def test_een_eigen_datum_van_de_gebruiker_blijft_en_wordt_het_peilmoment():
@@ -88,7 +106,7 @@ def test_een_resource_zonder_datumgeldigop_krijgt_het_filter_niet_en_de_laaddatu
     assert "datumGeldigOp" not in nep.aanroepen[0][1]
     known = _meta(result["data_key"])
     assert known.geldig_op is None
-    assert known.peilmoment == f"opgehaald op {date.today():%d-%m-%Y}"
+    assert known.peilmoment == "opgehaald op 25-11-2026"
 
 
 def test_de_snippet_zet_de_dag_in_de_aanroep_zodat_hij_dezelfde_stand_ophaalt():
@@ -127,3 +145,14 @@ def test_een_selectie_op_een_rio_bron_herhaalt_de_dag_van_de_bron_in_de_snippet(
     tekst = "\n".join(snippet._laadregels("rio:erkenningen:sel", lambda key: recept if key.endswith(":sel") else None))
 
     assert f"'datumGeldigOp': '{_VANDAAG}'" in tekst
+
+
+def test_de_dag_komt_van_de_bevroren_klok_en_niet_van_de_echte(monkeypatch):
+    """Over middernacht: de klok van `tools.rio` staat op een andere dag dan de echte; de aanroep volgt die klok."""
+    morgen = date(2026, 11, 26)
+    monkeypatch.setattr(_VasteDag, "dag", morgen)
+
+    result, nep = _laad("erkenningen")
+
+    assert nep.aanroepen[0][1]["datumGeldigOp"] == "2026-11-26"
+    assert _meta(result["data_key"]).peilmoment == "stand van 26-11-2026"
