@@ -1,6 +1,7 @@
-# Eén pod, bewust (ADR-011, besluit 09-11 op #677): de opgehaalde data (tools/store.py), de limieten en de
-# SRAM-cache leven in het geheugen van de pod. Met meer pods en zonder sticky sessions komt een CSV-download
-# (/api/data/csv) bij een pod die de tabel niet kent, en tellen de limieten per pod. Opschalen is #984; geen HPA.
+# Eén pod, bewust (ADR-011, besluit 09-11 op #677): de opgehaalde data (tools/store.py) en de limieten leven in
+# het geheugen van de pod; de SRAM-gegevens staan sinds #984 in Postgres. Met meer pods en zonder sticky sessions
+# komt een CSV-download (/api/data/csv) bij een pod die de tabel niet kent, en tellen de limieten per pod.
+# Opschalen is #984; geen HPA.
 # Strategie: de standaard RollingUpdate (maxSurge 1, maxUnavailable 0), zodat de oude pod pas stopt als de nieuwe
 # klaar is; dat vraagt quotum voor een tweede pod tijdens de uitrol (#674). Past dat niet, dan `strategy: Recreate`
 # zoals op test, en is elke uitrol een onderbreking van start plus startupProbe (docs/operatie.md).
