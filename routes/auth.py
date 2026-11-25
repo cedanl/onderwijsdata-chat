@@ -4,7 +4,6 @@ import logging
 import secrets
 import time
 import urllib.parse
-from collections import OrderedDict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -34,7 +33,9 @@ from core.auth import (
 )
 from core.errors import log_interne_fout
 from core.logging_util import foutkenmerk
+from core.pseudoniem import pseudoniem
 from core.rate_limit import RateLimiter
+from persistence import db
 
 logger = logging.getLogger(__name__)
 
@@ -100,40 +101,33 @@ def session_check(username: Annotated[str | None, Depends(get_optional_user)]) -
     return Response(status_code=204 if username else 401, headers={"Cache-Control": "no-store"})
 
 
-# De SRAM-gebruikersinfo (naam, e-mail, organisatie, instelling) per gebruiker, zodat ze een herlaad van
-# de pagina overleeft. Begrensd (#487, privacy M4): een rij vervalt na SESSION_MAX (langer kan geen sessie
-# leven) en boven _OIDC_CACHE_MAX gebruikers gaat de langst niet gebruikte eruit. Eerder groeide dit tot een
-# herstart.
+# De SRAM-gebruikersinfo (naam, e-mail, organisatie, instelling) per gebruiker, zodat ze een herlaad van de pagina
+# overleeft. In de database (tabel oidc_gebruikers, #984), niet in het geheugen van de pod: zo vindt een tweede pod haar
+# ook. Begrensd (#487, privacy M4): een rij vervalt na SESSION_MAX (langer kan geen sessie leven) en boven
+# _OIDC_CACHE_MAX gebruikers gaat de langst niet gebruikte eruit. De wandklok (time.time), want de tijd moet over pods
+# en herstarts heen kloppen. Elke functie hier gaat naar de database: vanuit async code via asyncio.to_thread (#508).
 _OIDC_CACHE_MAX = 1000
-_oidc_user_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()  # username -> (vervalt op, user_info)
+_PSEUDONIEM_DOMEIN = "oidc_gebruiker"
 
 
-def _ruim_oidc_cache_op() -> None:
-    nu = time.monotonic()
-    for naam in [naam for naam, (vervalt, _) in _oidc_user_cache.items() if vervalt <= nu]:
-        del _oidc_user_cache[naam]
-    while len(_oidc_user_cache) > _OIDC_CACHE_MAX:
-        _oidc_user_cache.popitem(last=False)
+def _oidc_sleutel(username: str) -> str:
+    """De sleutel van de rij: een pseudoniem van de accountnaam (core/pseudoniem.py), niet de naam zelf."""
+    return pseudoniem(_PSEUDONIEM_DOMEIN, username)
 
 
 def _store_oidc_user(username: str, user_data: dict) -> None:
     """Store SRAM user info server-side so it survives page reloads; bounded in size and time (#487)."""
-    _oidc_user_cache.pop(username, None)
-    _oidc_user_cache[username] = (time.monotonic() + SESSION_MAX, user_data)
-    _ruim_oidc_cache_op()
+    nu = time.time()
+    db.oidc_gebruiker_bewaar(_oidc_sleutel(username), json.dumps(user_data), int(nu + SESSION_MAX), nu, _OIDC_CACHE_MAX)
 
 
 def _get_oidc_user(username: str) -> dict | None:
-    """Retrieve cached SRAM user info; None when unknown or expired. Reading keeps the row young."""
-    item = _oidc_user_cache.get(username)
-    if item is None:
-        return None
-    vervalt, user_data = item
-    if vervalt <= time.monotonic():
-        del _oidc_user_cache[username]
-        return None
-    _oidc_user_cache.move_to_end(username)
-    return user_data
+    """Retrieve stored SRAM user info; None when unknown or expired. Reading keeps the row young.
+
+    Een databasefout gaat door als uitzondering (500), niet als None: een storing is geen onbekende gebruiker.
+    """
+    gegevens = db.oidc_gebruiker_lees(_oidc_sleutel(username), time.time())
+    return None if gegevens is None else json.loads(gegevens)
 
 
 class LoginBody(BaseModel):
@@ -150,8 +144,8 @@ class RefreshBody(BaseModel):
 
 
 def vergeet_oidc_gebruiker(username: str) -> None:
-    """Na "verwijder al mijn gegevens" (#646) staan naam, e-mail en organisatie niet meer in het geheugen."""
-    _oidc_user_cache.pop(username, None)
+    """Na uitloggen en na "verwijder al mijn gegevens" (#646) staan naam, e-mail en organisatie niet meer bewaard."""
+    db.oidc_gebruiker_vergeet(_oidc_sleutel(username))
 
 
 # Only add user info + refresh endpoints if OIDC is configured; zonder OIDC (wachtwoordlogin of geen login)
@@ -169,8 +163,8 @@ if is_oidc_configured():
         # For basic auth users, minimal info
         user_info = {"username": username, "name": username}
 
-        # For SRAM users, add rich data if available
-        if oidc_data := _get_oidc_user(username):
+        # For SRAM users, add rich data if available; de database in de threadpool (#508)
+        if oidc_data := await asyncio.to_thread(_get_oidc_user, username):
             user_info.update(oidc_data)
 
         return user_info
@@ -207,8 +201,13 @@ def logout(authorization: Annotated[str | None, Header()] = None) -> None:
     204 ook zonder, met een ongeldig of met een al ingetrokken token: uitloggen mag de
     client nooit in een 401-lus brengen. Zonder login raakt het de database niet.
     Een databasestoring geeft wel 500: het token is dan mogelijk niet ingetrokken.
+    Met SRAM gaat ook de bewaarde gebruikersinfo van dit account weg (#984).
     """
-    revoke_token(bearer_token(authorization))
+    token = bearer_token(authorization)
+    username = verify_token(token) if token and is_oidc_configured() else None
+    revoke_token(token)
+    if username:
+        vergeet_oidc_gebruiker(username)
 
 
 def _limiter_key(username: str, client_ip: str) -> str:
@@ -351,8 +350,8 @@ async def _verwerk_oidc_callback(request: Request) -> Response:
         "institution": institution,
         "email_domein": email_domein,
     }
-    # Store user data server-side for /api/user endpoint (survives page reloads)
-    _store_oidc_user(username, user_data)
+    # Store user data server-side for /api/user endpoint (survives page reloads); de database in de threadpool (#508)
+    await asyncio.to_thread(_store_oidc_user, username, user_data)
 
     # Also send in URL for frontend initialization (temporary, deprecated in favor of /api/user)
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))

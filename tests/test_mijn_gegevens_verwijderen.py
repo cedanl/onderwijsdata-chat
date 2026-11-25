@@ -8,7 +8,6 @@ login-limiter telt over de hele testrun mee.
 import logging
 import sqlite3
 import time
-from collections import OrderedDict
 
 import pytest
 from fastapi.testclient import TestClient
@@ -56,14 +55,12 @@ _BERT = {
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     """De app met inloggen aan voor anna en bert, zonder modules te herladen: niets blijft achter."""
-    import routes.auth
     import server
     from core import auth
 
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setattr(auth, "USERS", {"anna": "wachtwoord-a", "bert": "wachtwoord-b"})
     monkeypatch.setattr(auth, "AUTH_ENABLED", True)
-    monkeypatch.setattr(routes.auth, "_oidc_user_cache", OrderedDict())
     db.init_db()
     return TestClient(server.app)
 
@@ -301,7 +298,7 @@ def test_het_geheugen_vergeet_recepten_bewijsrijen_en_sram_gegevens_van_alleen_d
     assert [sleutel for sleutel in recepten._wachtend if sleutel[0] == "anna"] == []
     assert ("bert", "key-bert") in recepten._wachtend
     assert list(beurtbewijs._klaar) == [("bert", "hash-nooit-bewaard")]
-    assert "anna" not in routes.auth._oidc_user_cache
+    assert routes.auth._get_oidc_user("anna") is None
     assert routes.auth._get_oidc_user("bert") == {"name": "Bert"}
 
 

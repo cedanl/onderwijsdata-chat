@@ -13,7 +13,8 @@ Termijnen (besluit 21-10-2026), in te stellen in core/config.py:
 - Rapporten en dashboards (`workbooks`): 365 dagen nadat ze voor het laatst zijn opgeslagen of geopend
   (`laatst_gebruikt`). Langer dan een gesprek: een rapport is het resultaat dat je bewaart en terugkijkt.
 - Korte staat (`db.verlopen_staat`, #1113): tokengebruik na `TOKENGEBRUIK_DAGEN` (62), ingetrokken sessies en accounts
-  (`revoked_tokens`, `revoked_users`) na het verlopen van hun token en pogingen in `rate_limit_hits` na hun venster.
+  (`revoked_tokens`, `revoked_users`) na het verlopen van hun token, SRAM-gebruikersinfo (`oidc_gebruikers`, #984) na
+  SESSION_MAX en pogingen in `rate_limit_hits` na hun venster.
   De app ruimt die ook op bij de start en bij intrekken, maar een pod die weken niet herstart en waar niemand uitlogt,
   behield ze anders langer dan de termijn in de privacytekst.
 
@@ -50,6 +51,7 @@ _PER_RIJ = (
     "tokengebruik",
     "revoked_tokens",
     "revoked_users",
+    "oidc_gebruikers",
     "rate_limit_hits",
 )
 
