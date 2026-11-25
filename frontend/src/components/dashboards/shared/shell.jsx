@@ -219,7 +219,8 @@ export const peilmomentTekst = peilmoment => datumsInTekst((peilmoment || '').re
 export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren: jaren, opgehaald_op: opgehaald }) {
   return [
     peilmomentTekst(peilmoment),
-    peildatum && !peilmoment?.includes(peildatum) ? `peildatum ${datumsInTekst(peildatum)}` : null,
+    // Vergeleken in de notatie van de tekst: het peilmoment van UWV schrijft de datum al voluit (#1219).
+    peildatum && !peilmomentTekst(peilmoment)?.includes(datumsInTekst(peildatum)) ? `peildatum ${datumsInTekst(peildatum)}` : null,
     voorlopig && jaren?.length ? `cijfers ${jaren.join(', ')} voorlopig` : null,
     opgehaald ? `opgehaald ${langeDatum(opgehaald)}` : null,
   ].filter(Boolean)

@@ -5,7 +5,8 @@ import { fmt } from './getal'
 import { SectionHeader, ChartCard, ROA_AIS, roaEditie, roaSis } from './shell'
 import { Grafiek } from './grafiek'
 import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks, staafHoogte, SECTOR_LABELS, DREMPELLIJNEN } from './chart-opts'
-import { MomentopnameBanner, uwvBron } from './momentopname'
+import { MomentopnameBanner, uwvBron, peildatumTekst } from './momentopname'
+import { datumsInTekst } from './datum'
 import { WeggelatenNoot } from './ondergrens'
 
 // ─── Arbeidsmarktmatch ───────────────────────────────────────────────────────
@@ -263,18 +264,26 @@ export function PrognoseSection({ data }) {
   )
 }
 
+// Zonder vacatures: wat de data van UWV Open Match wel beslaat, uit de payload (#1220). De peildatum als die er is,
+// anders de periode uit de UWV-catalogus (`uwv_periode`); nooit een vaste maand in de code.
+function uwvBereik(vac, data) {
+  if (peildatumTekst(vac?.peildatum)) return `, peildatum ${peildatumTekst(vac.peildatum)}`
+  if (data?.uwv_periode) return `, die loopt van ${datumsInTekst(data.uwv_periode)}`
+  return ''
+}
+
 export function UwvSection({ data, provincie, dark }) {
   const vac = data?.vacatureaanbod
   if (!vac?.clusters || Object.keys(vac.clusters).length === 0) {
     return (
       <ChartCard title="Vacatureaanbod in de provincie">
         <p style={{ color: 'var(--gray-500)', fontSize: '.85rem', padding: '8px 0' }}>
-          Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''}.
-          UWV Open Match data is beschikbaar t/m mei 2023.
+          Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''} in de data van UWV Open Match{uwvBereik(vac, data)}.
         </p>
       </ChartCard>
     )
   }
+  const bron = uwvBron(vac.peildatum, vac.peildatum_ouderdom_maanden)
   const gefilterdOp = vac.gefilterd_op || []
   const clusterHeight = staafHoogte(Object.keys(vac.clusters), { perRij: 32, minimum: 180 })
   // Het blok heette "in de regio"; data en KPI zijn per provincie (UWV, F5 in #951).
@@ -283,10 +292,10 @@ export function UwvSection({ data, provincie, dark }) {
       <SectionHeader
         title="Vacatureaanbod in de provincie"
         subtitle={gefilterdOp.length > 0
-          ? `Clusters passend bij opleidingssectoren — ${uwvBron(vac.peildatum)} (momentopname)`
-          : `Openstaande vacatures per beroepencluster — ${uwvBron(vac.peildatum)} (momentopname)`}
+          ? `Clusters passend bij opleidingssectoren — ${bron} (momentopname)`
+          : `Openstaande vacatures per beroepencluster — ${bron} (momentopname)`}
       />
-      <MomentopnameBanner peildatum={vac.peildatum} />
+      <MomentopnameBanner peildatum={vac.peildatum} ouderdomMaanden={vac.peildatum_ouderdom_maanden} verouderd={vac.verouderd} />
       <div className="kpi-grid" style={{ marginBottom: 12 }}>
         <div className="kpi-card">
           <div className="kpi-card-header">

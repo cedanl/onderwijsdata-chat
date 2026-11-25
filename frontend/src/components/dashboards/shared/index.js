@@ -12,7 +12,7 @@ export { DashboardShell, NietGeladen, DeelLading, gatenVan, Sparkline, SectionHe
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'
 export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendChart, InstroomRatioChart, buildMarktaandeelData, buildGroeiRankingData, MarktaandeelChart, GroeiRankingChart } from './charts-markt'
 export { RoaSection, PrognoseSection, UwvSection, MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF, MATCH_KAP } from './charts-arbeidsmarkt'
-export { MomentopnameBanner, MatchDuiding, peildatumTekst, uwvBron, jarenTekst } from './momentopname'
+export { MomentopnameBanner, MatchDuiding, peildatumTekst, uwvBron, jarenTekst, ouderdomTekst } from './momentopname'
 export { buildSectorTrendData, buildLeerwegenData, SectorTrendChart, HoofdgroepenChart, LeerwegenChart, LEERWEGEN_MBO } from './charts-sector'
 export { buildDiplomaVerhoudingData, DiplomaVerhoudingChart } from './charts-diplomaverhouding'
 export { diplomaRatio } from './diploma-ratio'

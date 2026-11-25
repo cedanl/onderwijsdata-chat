@@ -76,7 +76,8 @@ def test_uwv_is_de_momentopname_met_de_peildatum_uit_de_data():
 
     assert uwv["bron"] == "UWV"
     assert uwv["peildatum"] == "2023-05-16"
-    assert uwv["peilmoment"] == "peildatum 2023-05-16"
+    assert uwv["peilmoment"] == "peildatum 16 mei 2023, ruim 3 jaar oud"  # met de ouderdom, op de klok van _NU (#1219)
+    assert (uwv["peildatum_ouderdom_maanden"], uwv["verouderd"]) == (41, True)
     assert uwv["voorlopig"] is False
     assert uwv["url"] == "https://data.overheid.nl/dataset/uwv-open-match-data"
 

@@ -1343,6 +1343,16 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
     background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
   }
 }
+.db-momentopname p { margin: 0; }
+.db-momentopname p + p { margin-top: 6px; }
+/* Een UWV-stand van meer dan 12 maanden oud (#1219): dezelfde amberen noot, nadrukkelijker, met de links naar de
+   actuele kwartaalcijfers. Tekst #78350F op #FEF3C7 haalt ruim 4,5:1 (WCAG 1.4.3). */
+.db-momentopname--verouderd { background: #FEF3C7; border-color: #F59E0B; border-left-width: 4px; color: #78350F; }
+.db-momentopname--verouderd a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
+}
 /* Wat de match-tegels zeggen en niet zeggen (#900). */
 .db-match-duiding { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 16px; }
 .db-match-duiding p { margin: 0 0 6px; }

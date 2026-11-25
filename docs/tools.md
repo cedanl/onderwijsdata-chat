@@ -744,6 +744,11 @@ reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij vacature
 
 - **Resultaat:** `peildatum`, `totaal_vacatures` en de 15 grootste beroepenclusters (`clusters_getoond` zegt het als
   er meer zijn).
+- **Ouderdom** (#1219): `peildatum_ouderdom_maanden` (hele maanden van de peildatum tot nu) en `verouderd` (meer dan
+  12 maanden, `VACATURES_VEROUDERD_MAANDEN`). Bij `verouderd` ook `ouderdom_toelichting`: hoe oud de peildatum is in
+  woorden ("ruim 3 jaar"), dat UWV de dataset niet meer bijwerkt en dat de actuele kwartaalcijfers bij UWV
+  (Vacaturemarkt) en CBS (83599NED) staan, niet in deze app. De systeemprompt laat het model die ouderdom dan noemen;
+  de bronregel onder het antwoord noemt haar altijd ("peildatum 16 mei 2023, ruim 3 jaar oud").
 - **Met `sector`** staan drie lagen apart (#460): `uwv_broncijfer` (de ongewogen aantallen van UWV),
   `lokale_classificatie` (welke clusters bij de sector horen: een indeling van deze app, gemaakt met een taalmodel) en
   `gewogen_aandeel` (het sectorgetal; een cluster dat de sector met andere deelt, telt naar rato mee).
