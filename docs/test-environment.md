@@ -45,6 +45,64 @@ Afspraken voor de gedeelde testomgeving (#488, privacy H2):
   op `demo` of een ander gedeeld account: hij wist het werk van iedereen die dat account gebruikt, en dat is niet terug
   te halen.
 
+## Isolatietest met twee accounts (#1235)
+
+Twee gewone accounts, A en B, komen niet bij elkaars werk. Zes controles:
+
+| # | Controle | Verwacht |
+|---|---|---|
+| 1 | B vraagt een gesprek of rapport (werkboek) van A op, of hernoemt het | 404, dezelfde body als bij een onbekend id |
+| 2 | B vraagt het Word-document of de CSV van A op, of geeft feedback op het rapport van A | 404, dezelfde body als bij een onbekend id of een onbekende key |
+| 3 | B bewaart een data-key van A in een eigen gesprek en heropent het | geen CSV (404), geen recept in zijn export, 0 data-keys in de chat |
+| 4 | Gesprekken, zoekresultaten, werkboeken, gegeven feedback en de export van B | geen merkteken, id of naam van A |
+| 5 | A doet "verwijder al mijn gegevens" | alles van B blijft precies zo |
+| 6 | Zonder token, met onzin, met een vervalst of met een ingetrokken token | 401 op elk eindpunt hierboven; de chat sluit met 4001 |
+
+**Lokaal en in CI.** `tests/test_account_isolatie.py` toetst alle zes op de app in het testproces, met twee accounts
+in `CHAT_USERS`. Hij draait in de `pytest`-job van elke MR. Los draaien:
+
+```bash
+env UV_PYTHON=3.14 uv run pytest tests/test_account_isolatie.py tests/test_isolatietest_script.py -q
+```
+
+**Tegen een draaiende app.** `scripts/isolatietest.py` doet dezelfde controles over HTTP, met twee echte tokens. Hij
+draait alleen tegen `localhost`, `127.0.0.1` of de testomgeving (`onderwijsdata-chat.test.sdp.surf.nl`, alleen via
+https). Elke andere URL, ook playground en productie, weigert hij vóór het eerste verzoek (exitcode 2). `localhost` is
+voor een app op je eigen machine: de wacht ziet niet waar een poort heen gaat, dus richt hem nooit op een port-forward
+naar een gedeelde omgeving. Hij weigert ook `demo`, `gast` en twee keer hetzelfde account. Hij maakt alleen eigen
+testgegevens met het merkteken `isolatietest-<run>` en ruimt die aan het eind op. Er gaat geen vraag naar het taalmodel: de test kost geen tokenbudget.
+
+```bash
+export ISOLATIE_URL=https://onderwijsdata-chat.test.sdp.surf.nl
+export ISOLATIE_TOKEN_A=…        # token van het auditaccount
+export ISOLATIE_TOKEN_B=…        # token van een tweede eigen account
+export ISOLATIE_TOKEN_A_UIT=…    # optioneel: een tweede token van A; de test logt het uit (controle 6, ingetrokken)
+uv run python scripts/isolatietest.py --data-key <key uit een gesprek van A> --verwijder-a
+```
+
+- Een token komt van `POST /api/auth/login` (account in `CHAT_USERS`) of, na een SRAM-login, uit de browser
+  (`localStorage`, sleutel `edudata_token`). Een tweede token van A: log nog eens in, in een ander browserprofiel.
+  Zet tokens alleen in de omgeving, niet als argument en niet in een issue.
+- `--data-key` neemt een key uit een gesprek van A (de CSV-knop onder een antwoord of de export van A). Zonder vallen
+  controle 2 (CSV) en 3 weg.
+- `--verwijder-a` (controle 5) wist **alles** van account A en trekt al zijn tokens in. Alleen op het auditaccount,
+  nooit op `demo` of een account van een tester.
+- Per controle één regel `OK` of `FOUT`, dan het totaal; exitcode 0 als alles in orde is, 1 bij een fout. Zet die
+  regels als uitkomst in het issue; ze bevatten geen token.
+
+**Het auditaccount.** Eigenaar is de beheerder van de testomgeving (de eigenaar van dit project); hij maakt het aan en
+heft het op. Beheer: een regel in `CHAT_USERS` in `manifests/test/secret_orig.yaml`, versleuteld met SOPS naar
+`secret.yaml` (zie Testaccounts hierboven), of een tweede SRAM-profiel. Een agent maakt het niet aan en leest het
+wachtwoord niet. Budget: hetzelfde als elk account op test, 6 mln per dag en 60 mln per maand (`TOKENBUDGET_DAG`,
+`TOKENBUDGET_MAAND`); de isolatietest zelf verbruikt daar niets van. Account B is een tweede eigen account van de
+beheerder, niet `demo`.
+
+**Wat de test niet afdekt.** De datastore in het geheugen is gedeeld over alle gebruikers (`tools/store.py`, #13): hij
+houdt open brondata (CBS, DUO, RIO), en dezelfde selectie geeft dezelfde key. Per gebruiker zijn het recept achter een
+key, de data-keys van een gesprek en wat de CSV-export, het rapport en de foutmelding van een tool noemen; dat toetst
+controle 3. Noemt iemand een key letterlijk in een vraag, dan leest een tool de open data achter die key, zoals hij ze
+ook zelf zou laden.
+
 ## Rollout
 
 ```
