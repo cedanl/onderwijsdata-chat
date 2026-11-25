@@ -37,6 +37,7 @@ from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
 from core.logging_util import gebruiker_kenmerk, tekst_kenmerk
+from core.metrics import meet_weigering, volg_plaatsen, volg_verbindingen
 from core.profiel import normaliseer_profiel
 from core.rate_limit import RateLimiter
 from tools import store
@@ -56,6 +57,9 @@ _LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} sec
 # Wat er tegelijk mag (#688): open verbindingen per gebruiker en in totaal, en runs die het model aanroepen.
 _verbindingen = Verbindingen(per_sleutel=MAX_WS_PER_USER, totaal=MAX_WS_TOTAL)
 _runplaatsen = Runplaatsen(max_tegelijk=MAX_CONCURRENT_RUNS, wacht_s=RUN_QUEUE_TIMEOUT_S)
+# Per pod in de metrics (core/metrics.py, #678): `edudata_websockets_open` en `edudata_runs_running{pool="chat"}`.
+volg_verbindingen(_verbindingen)
+volg_plaatsen("chat", _runplaatsen)
 # "Try again later" (RFC 6455). De frontend probeert het dan niet zelf opnieuw, maar wacht op "Opnieuw verbinden" (#783).
 _TE_VEEL_VERBINDINGEN = 1013
 # De origins die naast de eigen een chatverbinding mogen openen (core/herkomst.py, #682).
@@ -70,6 +74,7 @@ async def _in_een_runplaats(start: Callable[[], Awaitable[None]], emit) -> None:
             await start()
     except Druk as e:
         logger.warning("RUNPLAATSEN vol  max=%d  wacht=%ss", MAX_CONCURRENT_RUNS, RUN_QUEUE_TIMEOUT_S)
+        meet_weigering("runplaatsen_chat")
         await emit({"type": "error", "message": str(e), "modelafhankelijk": False})
 
 
@@ -650,6 +655,7 @@ async def chat_websocket(ws: WebSocket) -> None:
     if not _verbindingen.open(sleutel):
         # Pas na accept: zo leest de gebruiker waarom, in plaats van een kale 1006.
         logger.warning("VERBINDINGEN vol  open=%d  max=%d/%d", _verbindingen.aantal, MAX_WS_PER_USER, MAX_WS_TOTAL)
+        meet_weigering("verbindingen")
         await ws.send_text(json.dumps({"type": "error", "message": _TE_VEEL_MELDING, "modelafhankelijk": False}))
         await ws.close(code=_TE_VEEL_VERBINDINGEN)
         return

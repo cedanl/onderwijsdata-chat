@@ -323,6 +323,13 @@ def _korte_staat(pad) -> None:
             _sql(pad, f"INSERT INTO {tabel} ({kolommen}) VALUES (?, ?{extra})", (naam, verloopt))
     for sleutel, verloopt in (("h1:verlopen", _epoch(0.01) * 1000), ("h1:levend", _epoch(-0.01) * 1000)):
         _sql(pad, "INSERT INTO rate_limit_hits (bucket, sleutel, verloopt) VALUES ('login', ?, ?)", (sleutel, verloopt))
+    # SRAM-gebruikersinfo (#984): vervalt op expires_at, net als een sessie.
+    for sleutel, verloopt in (("h1:verlopen", _epoch(0.01)), ("h1:levend", _epoch(-0.01))):
+        _sql(
+            pad,
+            "INSERT INTO oidc_gebruikers (sleutel, gegevens, expires_at, gebruikt) VALUES (?, '{}', ?, 0)",
+            (sleutel, verloopt),
+        )
 
 
 def test_tokengebruik_van_63_dagen_gaat_weg_en_dat_van_61_dagen_blijft(pad):
@@ -342,7 +349,9 @@ def test_verlopen_intrekkingen_en_limietpogingen_gaan_weg_levende_blijven(pad):
     assert _ids(pad, "SELECT token_hash FROM revoked_tokens") == {"levend"}
     assert _ids(pad, "SELECT user_hash FROM revoked_users") == {"levend"}
     assert _ids(pad, "SELECT sleutel FROM rate_limit_hits") == {"h1:levend"}
+    assert _ids(pad, "SELECT sleutel FROM oidc_gebruikers") == {"h1:levend"}
     assert (aantallen["revoked_tokens"], aantallen["revoked_users"], aantallen["rate_limit_hits"]) == (1, 1, 1)
+    assert aantallen["oidc_gebruikers"] == 1
 
 
 def test_droog_telt_de_korte_staat_zonder_te_verwijderen(pad):
@@ -404,6 +413,7 @@ def test_droog_telt_wat_de_echte_run_verwijdert_en_verwijdert_zelf_niets(pad):
         "tokengebruik": 0,
         "revoked_tokens": 0,
         "revoked_users": 0,
+        "oidc_gebruikers": 0,
         "rate_limit_hits": 0,
     }
     # Een tweede run vindt niets meer.

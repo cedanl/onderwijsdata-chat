@@ -12,7 +12,6 @@ import json
 import logging
 import time
 import urllib.parse
-from collections import OrderedDict
 
 import httpx2
 import pytest
@@ -26,6 +25,7 @@ import routes.auth
 from auth import oidc
 from config import Config
 from core import foutmeldingen
+from persistence import db
 
 ISSUER = "https://proxy.sram.test"
 CLIENT_ID = "edudata-test"
@@ -97,7 +97,7 @@ class Provider:
 
 
 @pytest.fixture
-def provider(monkeypatch):
+def provider(monkeypatch, tmp_path):
     for naam, waarde in {
         "OIDC_PROVIDER": "sram",
         "OIDC_DISCOVERY_URL": f"{ISSUER}/.well-known/openid-configuration",
@@ -117,8 +117,15 @@ def provider(monkeypatch):
     monkeypatch.setattr(oidc, "_fetch_json", nep.fetch_json)
     transport = httpx2.MockTransport(nep.handler)
     monkeypatch.setattr(oidc, "AsyncOAuth2Client", functools.partial(AsyncOAuth2Client, transport=transport))
-    monkeypatch.setattr(routes.auth, "_oidc_user_cache", OrderedDict())
+    # De SRAM-gebruikersinfo staat in de database (#984): elke test een eigen, lege.
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "oidc.db"))
+    db.init_db()
     return nep
+
+
+def _bewaarde_gebruikers() -> int:
+    with db._connection() as conn:
+        return db._execute(conn, "SELECT COUNT(*) AS n FROM oidc_gebruikers").fetchone()["n"]
 
 
 @pytest.fixture
@@ -213,6 +220,23 @@ def test_een_geldige_login_geeft_token_en_gebruikersdata(client, provider, token
     assert _alle_cookies_gewist(response)
 
 
+def test_uitloggen_haalt_de_bewaarde_gebruikersinfo_weg(client, provider, tokens):
+    """De SRAM-gegevens staan in de database (#984); uitloggen trekt het token in en haalt ook die rij weg."""
+    locatie = client.get(CALLBACK, headers={"Cookie": COOKIES}).headers["location"]
+    token = locatie.split("#token=", 1)[1].split("&", 1)[0]
+    assert routes.auth._get_oidc_user("anna@hu.nl") is not None
+
+    assert client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"}).status_code == 204
+    assert routes.auth._get_oidc_user("anna@hu.nl") is None
+    assert _bewaarde_gebruikers() == 0
+
+
+def test_uitloggen_met_een_ongeldig_token_laat_de_gebruikersinfo_staan(client, provider, tokens):
+    client.get(CALLBACK, headers={"Cookie": COOKIES})
+    assert client.post("/api/auth/logout", headers={"Authorization": "Bearer geen-token"}).status_code == 204
+    assert routes.auth._get_oidc_user("anna@hu.nl") is not None
+
+
 def test_zonder_email_is_sub_de_gebruikersnaam(client, provider, tokens):
     provider.userinfo = {"sub": "sub-123", "name": "Anna"}
     response = client.get(CALLBACK, headers={"Cookie": COOKIES})
@@ -234,7 +258,7 @@ def _geen_sessie(response, tokens) -> None:
     assert "location" not in response.headers
     assert "#token=" not in response.text
     assert tokens == []
-    assert not routes.auth._oidc_user_cache
+    assert _bewaarde_gebruikers() == 0
     assert _alle_cookies_gewist(response)
 
 

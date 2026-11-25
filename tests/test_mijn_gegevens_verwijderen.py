@@ -8,7 +8,6 @@ login-limiter telt over de hele testrun mee.
 import logging
 import sqlite3
 import time
-from collections import OrderedDict
 
 import pytest
 from fastapi.testclient import TestClient
@@ -56,14 +55,12 @@ _BERT = {
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     """De app met inloggen aan voor anna en bert, zonder modules te herladen: niets blijft achter."""
-    import routes.auth
     import server
     from core import auth
 
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setattr(auth, "USERS", {"anna": "wachtwoord-a", "bert": "wachtwoord-b"})
     monkeypatch.setattr(auth, "AUTH_ENABLED", True)
-    monkeypatch.setattr(routes.auth, "_oidc_user_cache", OrderedDict())
     db.init_db()
     return TestClient(server.app)
 
@@ -301,7 +298,7 @@ def test_het_geheugen_vergeet_recepten_bewijsrijen_en_sram_gegevens_van_alleen_d
     assert [sleutel for sleutel in recepten._wachtend if sleutel[0] == "anna"] == []
     assert ("bert", "key-bert") in recepten._wachtend
     assert list(beurtbewijs._klaar) == [("bert", "hash-nooit-bewaard")]
-    assert "anna" not in routes.auth._oidc_user_cache
+    assert routes.auth._get_oidc_user("anna") is None
     assert routes.auth._get_oidc_user("bert") == {"name": "Bert"}
 
 
@@ -347,6 +344,30 @@ def test_een_fout_halverwege_geeft_500_en_het_token_blijft_geldig(client, monkey
     assert _werkt(client, token)
     # Opnieuw proberen lukt.
     assert _verwijder(client, token).json() == {"ok": True, "verwijderd": _ANNA}
+
+
+def test_een_fout_bij_het_wissen_van_de_sram_gegevens_laat_de_intrekking_staan(client, monkeypatch):
+    """De SRAM-gegevens staan sinds #984 in de database, en dat wissen kan falen. Na de transactie zijn de rijen weg;
+    de tokens moeten dan ook weg, ook die van een ander apparaat. De rij verloopt zelf na SESSION_MAX."""
+    import server
+
+    _vul_anna()
+    token = _token("anna")
+    ander_apparaat = _token("anna", start=int(time.time()) - 60)
+    zonder_raise = TestClient(server.app, raise_server_exceptions=False)
+
+    def stuk(_sleutel):
+        raise sqlite3.OperationalError("database is locked")
+
+    with monkeypatch.context() as m:
+        m.setattr(db, "oidc_gebruiker_vergeet", stuk)
+        response = _verwijder(zonder_raise, token)
+
+    assert response.status_code == 500
+    assert _aantallen("anna") == _ALLES_NUL
+    assert _ingetrokken() == 1
+    assert not _werkt(client, token)
+    assert not _werkt(client, ander_apparaat)
 
 
 # ── 6. Zonder login, onbekende naam, `verwijderd` ────────────────────────────

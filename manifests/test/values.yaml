@@ -128,6 +128,14 @@ env:
         name: onderwijsdata-chat-secrets
         key: LOG_HASH_SECRET
         optional: true
+  # Bearer-token voor GET /metrics (#678, docs/kwaliteit-en-veiligheid.md "Productiemonitoring"). optional: zonder deze
+  # sleutel in het secret geeft /metrics 404 en start de pod zoals nu; de waarde zetten is beheer (SOPS).
+  - name: METRICS_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: METRICS_TOKEN
+        optional: true
   # API-sleutels voor /mcp (#939, docs/mcp.md), kommagescheiden. optional: zonder deze sleutel in het secret bestaat
   # /mcp niet (404) en start de pod zoals nu; de waarde zetten is beheer (SOPS, #941).
   - name: MCP_API_KEYS

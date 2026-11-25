@@ -118,6 +118,10 @@ STUDIEKEUZEDATABASE_API_KEY = os.getenv("STUDIEKEUZEDATABASE_API_KEY") or None
 # De catalogustools over streamable HTTP op /mcp (#706, routes/mcp_http.py). Kommagescheiden sleutels uit de secret;
 # zonder sleutels bestaat /mcp niet (404). Nooit in de repo.
 MCP_API_KEYS = tuple(s for s in (d.strip() for d in os.getenv("MCP_API_KEYS", "").split(",")) if s)
+# Bearer-token voor GET /metrics, de Prometheus-metrics van de pod (#678, routes/metrics.py). Zonder token bestaat
+# /metrics niet (404); met token vraagt elk verzoek `Authorization: Bearer <token>`. Een geheim uit de secret
+# (manifests/<omgeving>/values.yaml, optional), nooit in de repo.
+METRICS_TOKEN = os.getenv("METRICS_TOKEN") or None
 # Limieten op /mcp (#940), los van die van de chat: één consument mag de chat op de pod niet traag maken. Voorzichtige
 # standaarden; de definitieve waarden volgen uit de belastingsmeting (#942). Een sessie van een MCP-client kost een paar
 # verzoeken (initialize, de bevestiging, tools/list) plus één per toolaanroep.

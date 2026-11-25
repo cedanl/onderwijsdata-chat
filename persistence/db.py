@@ -582,6 +582,22 @@ _REVOKED_USERS_TABLE = """
     )
 """
 
+# De SRAM-gebruikersinfo per account (naam, e-mail, organisatie, instelling; routes/auth.py), zodat /api/auth/user ze na
+# een herlaad van de pagina terugvindt, ook op een andere pod (#984). Stond in het geheugen van de pod. Begrensd zoals
+# daar (#487, privacy M4): een rij vervalt na SESSION_MAX (`expires_at`, seconden sinds epoch) en boven het maximum gaat
+# de langst niet gebruikte eruit (`gebruikt`, ms sinds epoch). De sleutel is een pseudoniem van de accountnaam
+# (core/pseudoniem.py); de gegevens zelf zijn persoonsgegevens en gaan weg bij uitloggen, "verwijder al mijn gegevens"
+# en de opschoning (`verlopen_staat`).
+_OIDC_GEBRUIKERS_TABLE = """
+    CREATE TABLE IF NOT EXISTS oidc_gebruikers (
+        sleutel    TEXT   PRIMARY KEY,
+        gegevens   TEXT   NOT NULL,
+        expires_at BIGINT NOT NULL,
+        gebruikt   BIGINT NOT NULL
+    )
+"""
+_OIDC_GEBRUIKERS_INDEX = "CREATE INDEX IF NOT EXISTS idx_oidc_gebruikt ON oidc_gebruikers(gebruikt)"
+
 
 # Tellers van de limieten (core/rate_limit.py), gedeeld door alle pods (#984). Eén rij per meegetelde poging; `verloopt`
 # (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als HMAC met een
@@ -656,6 +672,8 @@ _SCHEMA = (
     _REVOKED_TOKENS_TABLE,
     _REVOKED_TOKENS_INDEX,
     _REVOKED_USERS_TABLE,
+    _OIDC_GEBRUIKERS_TABLE,
+    _OIDC_GEBRUIKERS_INDEX,
     _RATE_LIMIT_TABLE,
     _RATE_LIMIT_INDEX,
     _TOKENGEBRUIK_TABLE,
@@ -734,8 +752,9 @@ def init_db() -> None:
 def verlopen_staat(nu: datetime) -> dict[str, tuple[str, tuple]]:
     """Per tabel met korte staat wat op `nu` verlopen is, als WHERE met parameters (#1113).
 
-    Ingetrokken sessies en accounts verlopen met hun token (verificatie weigert zo'n token zelf), een poging in
-    `rate_limit_hits` als zij uit het venster van de limiet valt, en tokengebruik na `TOKENGEBRUIK_DAGEN`. Eén plek voor
+    Ingetrokken sessies en accounts verlopen met hun token (verificatie weigert zo'n token zelf), SRAM-gebruikersinfo
+    (`oidc_gebruikers`) na SESSION_MAX, een poging in `rate_limit_hits` als zij uit het venster van de limiet valt, en
+    tokengebruik na `TOKENGEBRUIK_DAGEN`. Eén plek voor
     twee gebruikers: `purge_expired_revocations` bij de start en bij intrekken, en de nachtelijke opschoning
     (persistence/opschonen.py), die ook een pod bereikt die weken niet herstart.
     """
@@ -744,6 +763,7 @@ def verlopen_staat(nu: datetime) -> dict[str, tuple[str, tuple]]:
     return {
         "revoked_tokens": ("expires_at < ?", (seconden,)),
         "revoked_users": ("expires_at < ?", (seconden,)),
+        "oidc_gebruikers": ("expires_at <= ?", (seconden,)),
         "rate_limit_hits": ("verloopt <= ?", (seconden * 1000,)),
         "tokengebruik": ("dag < ?", (grens,)),
     }
@@ -794,6 +814,56 @@ def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
             (token_hash, user_hash, start),
         ).fetchone()
     return row is not None
+
+
+def oidc_gebruiker_bewaar(sleutel: str, gegevens: str, expires_at: int, nu: float, maximum: int) -> None:
+    """Bewaar (of vervang) de SRAM-gebruikersinfo onder `sleutel` tot `expires_at` (#984).
+
+    In dezelfde transactie gaan verlopen rijen weg en, boven `maximum`, de langst niet gebruikte (#487).
+    """
+    with _connection() as conn:
+        _execute(conn, "DELETE FROM oidc_gebruikers WHERE expires_at <= ?", (int(nu),))
+        _execute(
+            conn,
+            "INSERT INTO oidc_gebruikers (sleutel, gegevens, expires_at, gebruikt) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (sleutel) DO UPDATE SET gegevens = excluded.gegevens, expires_at = excluded.expires_at, "
+            "gebruikt = excluded.gebruikt",
+            (sleutel, gegevens, expires_at, int(nu * 1000)),
+        )
+        _execute(
+            conn,
+            "DELETE FROM oidc_gebruikers WHERE sleutel NOT IN "
+            "(SELECT sleutel FROM oidc_gebruikers ORDER BY gebruikt DESC, sleutel DESC LIMIT ?)",
+            (maximum,),
+        )
+        conn.commit()
+
+
+def oidc_gebruiker_lees(sleutel: str, nu: float) -> str | None:
+    """De bewaarde gegevens onder `sleutel`, of None als ze er niet zijn of verlopen (dan gaat de rij weg).
+
+    Lezen houdt de rij jong: `gebruikt` gaat naar `nu`, zodat het maximum de langst niet gebruikte eruit zet (#487).
+    """
+    with _connection() as conn:
+        rij = _execute(
+            conn, "SELECT gegevens, expires_at FROM oidc_gebruikers WHERE sleutel = ?", (sleutel,)
+        ).fetchone()
+        if rij is None:
+            return None
+        if rij["expires_at"] <= nu:
+            _execute(conn, "DELETE FROM oidc_gebruikers WHERE sleutel = ?", (sleutel,))
+            conn.commit()
+            return None
+        _execute(conn, "UPDATE oidc_gebruikers SET gebruikt = ? WHERE sleutel = ?", (int(nu * 1000), sleutel))
+        conn.commit()
+    return rij["gegevens"]
+
+
+def oidc_gebruiker_vergeet(sleutel: str) -> None:
+    """De SRAM-gebruikersinfo onder `sleutel` weg: bij uitloggen en bij "verwijder al mijn gegevens"."""
+    with _connection() as conn:
+        _execute(conn, "DELETE FROM oidc_gebruikers WHERE sleutel = ?", (sleutel,))
+        conn.commit()
 
 
 def deelt_staat() -> bool:

@@ -24,6 +24,7 @@ from core.config import MAX_TOKENS
 from core.errors import log_interne_fout
 from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
+from core.metrics import meet_modelaanroep, meet_tokens
 from tools import LABELS, afbreken, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
@@ -574,6 +575,7 @@ def _log_tokens(model: str, result: LoopResult) -> None:
         t.cache_gelezen,
         t.cache_geschreven,
     )
+    meet_tokens(model, t.invoer, t.uitvoer)
 
 
 @dataclass
@@ -610,15 +612,18 @@ def _log_aanroep(model: str, m: _Aanroepmeting) -> None:
     ended, or the stop, error or abort. uitkomst is ok, gestopt, afgebroken_runlimiet (the hard limit of the run or
     report cut it off), geannuleerd (cancelled from outside) or the type of the error.
     """
+    einde = time.monotonic()
     logger.info(
         "MODELAANROEP  model=%s  uitkomst=%s  open=%s  eerste_chunk=%s  totaal=%s  uitvoer=%d",
         model,
         m.uitkomst,
         _sec(m.open, m.start),
         _sec(m.eerste_chunk, m.start),
-        _sec(time.monotonic(), m.start),
+        _sec(einde, m.start),
         m.uitvoer,
     )
+    # Dezelfde meting in de metrics (#678): aantal per uitkomst, fouten, duur en tijd tot de eerste chunk.
+    meet_modelaanroep(model, m.uitkomst, einde - m.start, None if m.eerste_chunk is None else m.eerste_chunk - m.start)
 
 
 def _answered(result: LoopResult) -> bool:

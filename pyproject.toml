@@ -31,6 +31,8 @@ dependencies = [
     # Validatie van het SRAM-id_token (#1024); authlib zelf raadt joserfc aan in plaats van authlib.jose.
     "joserfc>=1.6.8",
     "httpx>=0.27",
+    # GET /metrics voor de productiemonitoring (#678, core/metrics.py): de standaardregistry, één proces per pod.
+    "prometheus-client>=0.21",
 ]
 
 [project.optional-dependencies]
