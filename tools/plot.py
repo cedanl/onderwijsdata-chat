@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from . import cbs_afronding, cbs_meta, duo, fouten, kaartlocaties, periode, store
 from .exportnoten import herkomstregels
 from .getal import nl_getal
+from .indeling import indeling_in_woorden, indelingsregel, titel_met_indeling
 from .kolomlabel import kolomlabel, leesbaar, waardelabels
 
 logger = logging.getLogger(__name__)
@@ -519,6 +520,9 @@ def create_plot(
     titels = known.kolomtitels if known else None
     dataset = known.dataset if known else None
     x_labels = waardelabels(x, dataset)
+    # Welke indeling de categorieën zijn, uit de metadata: "per sector (DUO)" of "per studierichting (CBS)" (#1232).
+    indeling = indeling_in_woorden(known, x, titels)
+    title = titel_met_indeling(title, known, x, titels)
 
     fig = go.Figure()
     # color_by op de x-kolom zelf (alleen om één staaf uit te lichten) gaf een reeks per staaf
@@ -614,9 +618,12 @@ def create_plot(
             "y": y,
             "chart_type": chart_type,
             "color_by": color_by,
-            "herkomst": herkomstregels(data_key) if data_key else [],
+            "herkomst": [*herkomstregels(data_key), *([indelingsregel(indeling)] if indeling else [])]
+            if data_key
+            else [],
             **_dataset_meta(data_key),
             **_noot_meta(data_key),
+            **({"indeling": indeling} if indeling else {}),
         }
     )
 

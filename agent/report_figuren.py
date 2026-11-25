@@ -56,6 +56,7 @@ class VasteFiguur:
     keys: tuple[str, ...]  # wat de stap las en maakte: de gebruikte datasets van het rapport (#738)
     bewijs: tuple[str, ...]  # elk als eigen toolresultaat voor de getalcontrole: zie `_bewijs`
     beschrijving: str  # voor de prompt, met titel
+    indeling: str | None = None  # "per sector (DUO)" uit layout.meta, voor de bronregel (#1232)
 
 
 @dataclass(frozen=True)
@@ -116,7 +117,15 @@ def _maak(stap: dict) -> VasteFiguur | None:
         keys=tuple(dict.fromkeys([*stap["keys"], *stapkeys(result)])),
         bewijs=_bewijs(stap, result, figure),
         beschrijving=beschrijf(figure),
+        indeling=_indeling(figure),
     )
+
+
+def _indeling(figure) -> str | None:
+    """De indeling die create_plot in layout.meta zette (#1232); None bij een figuur zonder."""
+    meta = figure.layout.meta
+    waarde = meta.get("indeling") if isinstance(meta, dict) else None
+    return waarde if isinstance(waarde, str) and waarde else None
 
 
 def _bewijs(stap: dict, result: str, figure) -> tuple[str, ...]:
