@@ -192,7 +192,9 @@ schooljaar, CBS-status en ophaaldag; een eval verwijst ernaar (`data_points.ijkw
 tolerantie. Zonder `--schrijf` toont het script elk verschil met de bron en faalt het; een nieuwe stand is een
 bewuste stap in een MR. Definities: `tests/ijkwaarden/README.md`. Met `TEST_REPEATS=3` loopt elke vraag drie
 keer per model en schrijft de runner het slagingspercentage per model en vraag naar
-`eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt.
+`eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt. De uitslag per release, met de
+kritieke set en per vraag geslaagd of niet, staat openbaar op [Betrouwbaarheid per release](betrouwbaarheid.md)
+(`scripts/betrouwbaarheid.py`, #1246).
 
 ### Scoring (per vraag, max 100 punten)
 
@@ -211,11 +213,11 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 selectie (vorm, jaar, maat) kan zo slagen. `expected.must_call` toetst ook de argumenten: een lijst van asserties
 `{ tool, args?, min_count? }` op de `input` van elke `tool_start` (`tests/e2e/toolasserties.js`).
 
-| Veld | Betekenis |
-|---|---|
-| `tool` | De toolnaam; `get_duo_data\|get_maat` is één van beide |
-| `args` | Een deelverzameling van de input: geneste objecten worden recursief vergeleken, een lijst moet gelijk zijn (zelfde waarden en volgorde), een waarde strikt (`2025` is niet `"2025"`) |
-| `min_count` | Hoeveel aanroepen met die `args` er minstens zijn; standaard 1. `0` betekent "mag niet": elke passende aanroep faalt |
+- `tool`: de toolnaam; `get_duo_data|get_maat` is één van beide.
+- `args`: een deelverzameling van de input. Geneste objecten worden recursief vergeleken, een lijst moet gelijk zijn
+  (zelfde waarden en volgorde) en een waarde strikt (`2025` is niet `"2025"`).
+- `min_count`: hoeveel aanroepen met die `args` er minstens zijn; standaard 1. `0` betekent "mag niet": elke passende
+  aanroep faalt.
 
 ```json
 "must_call": [
