@@ -48,7 +48,7 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.15.16",
     # Gepind op één patchversie: een nieuwe ty meldt vaak nieuwe diagnostics; optillen in een eigen MR met triage (#1206).
-    "ty>=0.0.108,<0.0.109",
+    "ty>=0.0.110,<0.0.111",
 ]
 # Alleen voor demo/narrate.py (TTS-narratie van de demo-video): piper-tts trekt
 # onnxruntime mee (~185 MB) — niet in elke venv of de productie-image.
