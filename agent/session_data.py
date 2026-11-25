@@ -233,6 +233,24 @@ def record_rekenbewijs(session: dict, tool_result: str, call: dict) -> None:
     voeg_rekenbewijs_toe(session, [nieuw], sleutel=_NIEUW_REKENBEWIJS)
 
 
+def voeg_controlebewijs_toe(session: dict, items: list[dict]) -> None:
+    """De regels onder het antwoord uit code (andere definities, kruiscontrole; #1256, #1259) in het bewijs: in de
+    sessie voor het rapport, en in de rij van deze beurt (beurtbewijs)."""
+    if items:
+        voeg_rekenbewijs_toe(session, items)
+        voeg_rekenbewijs_toe(session, items, sleutel=_NIEUW_REKENBEWIJS)
+
+
+# Het rekenbewijs met een getal dat de gebruiker zelf invoerde (#1258): het staat in de rij van zijn beurt, maar is
+# nooit bewijs voor een ander getal, ook niet in het rapport.
+INVOER_GEBRUIKER = "gebruiker"
+
+
+def is_invoer_van_gebruiker(bewijs: dict) -> bool:
+    eigen = (bewijs.get("argumenten") or {}).get("eigen_getal") if isinstance(bewijs, dict) else None
+    return isinstance(eigen, dict) and eigen.get("invoer") == INVOER_GEBRUIKER
+
+
 def voeg_rekenbewijs_toe(session: dict, items: list[dict], sleutel: str = "rekenbewijs") -> None:
     """Zet rekenuitkomsten achteraan in het bewijs van de sessie; hoogstens de laatste `_MAX_REKENBEWIJS` blijven."""
     bewijs = session.setdefault(sleutel, [])
@@ -255,5 +273,5 @@ def neem_beurtbewijs(session: dict) -> tuple[dict[str, dict], list[dict], dict[s
 
 
 def rekenbewijs(session: dict) -> list[dict]:
-    """De bewaarde rekenuitkomsten van dit gesprek, oudste eerst."""
-    return list(session.get("rekenbewijs") or [])
+    """De bewaarde rekenuitkomsten van dit gesprek, oudste eerst; zonder een getal dat de gebruiker invoerde (#1258)."""
+    return [b for b in session.get("rekenbewijs") or [] if not is_invoer_van_gebruiker(b)]
