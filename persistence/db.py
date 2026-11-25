@@ -599,6 +599,19 @@ _OIDC_GEBRUIKERS_TABLE = """
 """
 _OIDC_GEBRUIKERS_INDEX = "CREATE INDEX IF NOT EXISTS idx_oidc_gebruikt ON oidc_gebruikers(gebruikt)"
 
+# De instelling "Geavanceerd" per account (#1269): de gebruiker kiest haar zelf in Instellingen, op elk apparaat
+# dezelfde. Nooit afgeleid uit rol, instelling of functie. `aan` is 0 of 1, `gewijzigd` ms sinds epoch. De sleutel is
+# een pseudoniem van de accountnaam (`geavanceerd_sleutel`), zoals bij `oidc_gebruikers`; geen rij betekent uit. Een rij
+# met 0 blijft staan: zo zet de pilotlijst (`GEAVANCEERD_PILOT`) bij een volgende login niets terug. De rij staat in de
+# export van "mijn gegevens" en gaat weg bij "verwijder al mijn gegevens"; een eigen bewaartermijn heeft ze niet.
+_GEAVANCEERD_TABLE = """
+    CREATE TABLE IF NOT EXISTS geavanceerd (
+        sleutel   TEXT    PRIMARY KEY,
+        aan       INTEGER NOT NULL,
+        gewijzigd BIGINT  NOT NULL
+    )
+"""
+
 
 # Tellers van de limieten (core/rate_limit.py), gedeeld door alle pods (#984). Eén rij per meegetelde poging; `verloopt`
 # (ms sinds epoch) is het moment waarop die poging uit het venster valt. De sleutel staat er alleen als HMAC met een
@@ -675,6 +688,7 @@ _SCHEMA = (
     _REVOKED_USERS_TABLE,
     _OIDC_GEBRUIKERS_TABLE,
     _OIDC_GEBRUIKERS_INDEX,
+    _GEAVANCEERD_TABLE,
     _RATE_LIMIT_TABLE,
     _RATE_LIMIT_INDEX,
     _TOKENGEBRUIK_TABLE,
@@ -879,6 +893,50 @@ def oidc_gebruiker_vergeet(sleutel: str) -> None:
     with _connection() as conn:
         _execute(conn, "DELETE FROM oidc_gebruikers WHERE sleutel = ?", (sleutel,))
         conn.commit()
+
+
+# Het domein van het pseudoniem in `geavanceerd` (#1269): een andere sleutel dan in `oidc_gebruikers` en `tokengebruik`.
+GEAVANCEERD_PSEUDONIEM_DOMEIN = "geavanceerd"
+
+
+def geavanceerd_sleutel(gebruiker: str) -> str:
+    """De sleutel van `gebruiker` in `geavanceerd`; één afleiding voor de route, de login, de export en het verwijderen."""
+    return pseudoniem(GEAVANCEERD_PSEUDONIEM_DOMEIN, gebruiker)
+
+
+def geavanceerd_lees(sleutel: str) -> bool | None:
+    """De bewaarde keuze onder `sleutel`: True of False, of None als er nog geen is."""
+    with _connection() as conn:
+        rij = _execute(conn, "SELECT aan FROM geavanceerd WHERE sleutel = ?", (sleutel,)).fetchone()
+    return None if rij is None else bool(rij["aan"])
+
+
+def geavanceerd_zet(sleutel: str, aan: bool, nu: float) -> None:
+    """Bewaar de keuze van de gebruiker zelf; een bestaande keuze wordt vervangen."""
+    with _connection() as conn:
+        _execute(
+            conn,
+            "INSERT INTO geavanceerd (sleutel, aan, gewijzigd) VALUES (?, ?, ?) "
+            "ON CONFLICT (sleutel) DO UPDATE SET aan = excluded.aan, gewijzigd = excluded.gewijzigd",
+            (sleutel, int(aan), int(nu * 1000)),
+        )
+        conn.commit()
+
+
+def geavanceerd_zet_als_nieuw(sleutel: str, aan: bool, nu: float) -> bool:
+    """Bewaar `aan` alleen als er nog geen keuze is (de pilotlijst bij de eerste login); True als er een rij bij kwam.
+
+    Atomisch, ook met twee pods tegelijk: een keuze die de gebruiker al maakte, blijft staan.
+    """
+    with _connection() as conn:
+        cursor = _execute(
+            conn,
+            "INSERT INTO geavanceerd (sleutel, aan, gewijzigd) VALUES (?, ?, ?) ON CONFLICT (sleutel) DO NOTHING",
+            (sleutel, int(aan), int(nu * 1000)),
+        )
+        nieuw = cursor.rowcount == 1
+        conn.commit()
+    return nieuw
 
 
 def deelt_staat() -> bool:

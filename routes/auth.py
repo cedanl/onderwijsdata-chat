@@ -18,6 +18,7 @@ from auth.oidc import (
     is_oidc_configured,
     nieuwe_login_geheimen,
 )
+from core import geavanceerd
 from core.auth import (
     AUTH_ENABLED,
     SESSION_MAX,
@@ -234,6 +235,9 @@ async def login(body: LoginBody, request: Request) -> dict:
         )
     if AUTH_ENABLED and not check_credentials(username, password, USERS):
         raise HTTPException(status_code=401, detail="Ongeldige inloggegevens")
+    if AUTH_ENABLED:
+        # Een pilotaccount zonder bewaarde keuze krijgt "Geavanceerd" aan (#1269); zonder login is er geen eigen account.
+        await asyncio.to_thread(geavanceerd.bij_login, username)
     token = make_token(username or "gast")
     return {"token": token, "user": username or "gast"}
 
@@ -352,6 +356,8 @@ async def _verwerk_oidc_callback(request: Request) -> Response:
     }
     # Store user data server-side for /api/user endpoint (survives page reloads); de database in de threadpool (#508)
     await asyncio.to_thread(_store_oidc_user, username, user_data)
+    # Alleen de accountnaam beslist over de pilotlijst (#1269), geen attribuut uit `user_data`: die bepalen haar nooit.
+    await asyncio.to_thread(geavanceerd.bij_login, username)
 
     # Also send in URL for frontend initialization (temporary, deprecated in favor of /api/user)
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))

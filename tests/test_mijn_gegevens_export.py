@@ -1,7 +1,7 @@
 """Exporteer al mijn gegevens (#645, deel 1 van #485): alles onder het eigen account, niets van een ander.
 
 Twee accounts in CHAT_USERS, elk met gesprekken, werkboeken, feedback van alle soorten, datarecepten, tokengebruik en
-een bewaard SRAM-profiel (#1209).
+een bewaard SRAM-profiel (#1209) en de instelling "Geavanceerd" (#1269).
 De export van Anna bevat precies haar rijen; geen tekst die alleen van Bert is, staat erin. Tokens worden
 direct gemaakt, niet via de login: de login-limiter telt over de hele testrun mee. Zonder login (iedereen is `gast`)
 is er geen eigen account en geen export (#1118).
@@ -29,6 +29,7 @@ _SOORTEN = [
     "beurtbewijs",
     "tokengebruik",
     "oidc_gebruiker",
+    "geavanceerd",
 ]
 _EXPORT = "/api/mijn-gegevens/export"
 
@@ -105,6 +106,8 @@ def _vul(gebruiker: str, uniek: str) -> None:
     db.tokengebruik_boek(_sleutel(gebruiker), "2026-11-02", 1234)
     # Het SRAM-profiel staat onder een pseudoniem van de naam (#984); de export en het verwijderen vinden het (#1209).
     _bewaar_profiel(gebruiker, _profiel(gebruiker, uniek))
+    # De instelling "Geavanceerd" staat ook onder een pseudoniem van de naam (#1269).
+    db.geavanceerd_zet(_geavanceerd_sleutel(gebruiker), True, 1_700_000_000)
 
 
 def _profiel(gebruiker: str, uniek: str) -> dict:
@@ -121,6 +124,11 @@ def _bewaar_profiel(gebruiker: str, profiel: dict) -> None:
 def _oidc_sleutel(gebruiker: str) -> str:
     """De sleutel van de rij, onafhankelijk van de code onder test afgeleid: domein `oidc_gebruiker` (#984)."""
     return pseudoniem("oidc_gebruiker", gebruiker)
+
+
+def _geavanceerd_sleutel(gebruiker: str) -> str:
+    """Hetzelfde voor de instelling "Geavanceerd": domein `geavanceerd` (#1269)."""
+    return pseudoniem("geavanceerd", gebruiker)
 
 
 def _export(client: TestClient, gebruiker: str) -> tuple[dict, str]:
@@ -157,11 +165,11 @@ def test_bijlage_met_datum_json_en_nooit_in_een_cache(client):
     assert json.loads(response.text)["exported_at"].startswith(vandaag)
 
 
-def test_een_gebruiker_zonder_gegevens_krijgt_acht_lege_lijsten(client):
+def test_een_gebruiker_zonder_gegevens_krijgt_negen_lege_lijsten(client):
     _vul("anna", "ANNA-UNIEK")
     data, _ = _export(client, "leeg")
     assert data["username"] == "leeg"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 8
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 9
 
 
 def test_zonder_login_404_zoals_bij_verwijderen(app_client):
@@ -233,8 +241,7 @@ def test_het_sram_profiel_van_het_account_zonder_de_sleutel(client):
     data, body = _export(client, "anna")
 
     assert data["schema_version"] == 1
-    assert list(data)[-1] == "oidc_gebruiker"
-    assert list(export.SOORTEN)[-1] == "oidc_gebruiker"
+    assert list(data)[-2:] == list(export.SOORTEN)[-2:] == ["oidc_gebruiker", "geavanceerd"]
     [rij] = data["oidc_gebruiker"]
     assert set(rij) == {"gegevens", "expires_at"}
     assert rij["gegevens"] == _profiel("anna", "ANNA-UNIEK")
@@ -408,7 +415,7 @@ def test_de_stukken_vormen_samen_de_json(tmp_path, monkeypatch):
     assert len(stukken) > 1
     data = json.loads("".join(stukken))
     assert data["exported_at"] == "2026-10-20T09:30:00+00:00"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 8
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 9
 
 
 def test_werkboeken_een_voor_een(client, monkeypatch):
@@ -441,8 +448,8 @@ def test_werkboeken_een_voor_een(client, monkeypatch):
 
 
 def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
-    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam; `tokengebruik` en
-    `oidc_gebruikers` kennen alleen het pseudoniem van de naam (#1112, #984) en filteren daarop."""
+    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam; `tokengebruik`,
+    `oidc_gebruikers` en `geavanceerd` kennen alleen het pseudoniem van de naam (#1112, #984, #1269) en filteren daarop."""
     queries: list[tuple[str, tuple]] = []
 
     def vang(sql, params):
@@ -451,8 +458,8 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
 
     monkeypatch.setattr(export, "_rijen", vang)
     list(export.export_json_chunks("anna"))
-    assert len(queries) == 8
-    *op_naam, tokengebruik, oidc_gebruiker = queries
+    assert len(queries) == 9
+    *op_naam, tokengebruik, oidc_gebruiker, geavanceerd = queries
     for sql, params in op_naam:
         assert re.search(r"WHERE username = \?", sql)
         assert "anna" in params
@@ -460,3 +467,20 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
     assert tokengebruik[1] == (_sleutel("anna"),)
     assert re.search(r"FROM oidc_gebruikers WHERE sleutel = \?", oidc_gebruiker[0])
     assert oidc_gebruiker[1][0] == _oidc_sleutel("anna")
+    assert re.search(r"FROM geavanceerd WHERE sleutel = \?", geavanceerd[0])
+    assert geavanceerd[1] == (_geavanceerd_sleutel("anna"),)
+
+
+def test_de_instelling_geavanceerd_van_het_account_zonder_de_sleutel(client):
+    """#1269: de keuze "Geavanceerd" hoort bij het account (AVG art. 15): één rij met `aan` en `gewijzigd`, zonder het
+    pseudoniem; een ander account ziet er niets van, en wie nog niets koos, krijgt een lege lijst."""
+    db.geavanceerd_zet(_geavanceerd_sleutel("anna"), True, 1_700_000_000.5)
+    db.geavanceerd_zet(_geavanceerd_sleutel("bert"), False, 1_700_000_100)
+
+    data, body = _export(client, "anna")
+
+    assert data["geavanceerd"] == [{"aan": True, "gewijzigd": 1_700_000_000_500}]
+    for geheim in (_geavanceerd_sleutel("anna"), _geavanceerd_sleutel("bert"), "sleutel"):
+        assert geheim not in body
+    assert _export(client, "bert")[0]["geavanceerd"] == [{"aan": False, "gewijzigd": 1_700_000_100_000}]
+    assert _export(client, "carla")[0]["geavanceerd"] == []

@@ -18,7 +18,9 @@ async def _modelfout(messages, session, emit, stop_event, model=None):
     raise litellm.AuthenticationError("geheim", llm_provider="azure_ai", model="m")
 
 
-def _melding(monkeypatch, aanbod: str | None) -> str:
+def _melding(monkeypatch, aanbod: str | None, *, modelkeuze: bool = True) -> str:
+    """De foutmelding bij een modelfout; `modelkeuze`: telt de keuze van de gebruiker (zonder login, of met
+    "Geavanceerd" aan, #1269), zoals `_ververs_modelkeuze` het voor elke vraag zet."""
     monkeypatch.setattr(config, "_AVAILABLE_MODELS_RAW", aanbod)
     monkeypatch.setattr(config, "_USER_MODELS", {})
     monkeypatch.setattr(chat, "agent_run", _modelfout)
@@ -27,7 +29,9 @@ def _melding(monkeypatch, aanbod: str | None) -> str:
     async def emit(event):
         events.append(event)
 
-    asyncio.run(chat._process_message("vraag", chat._new_session(username=USERNAME), emit, None))
+    session = chat._new_session(username=USERNAME)
+    session["modelkeuze"] = modelkeuze
+    asyncio.run(chat._process_message("vraag", session, emit, None))
     [fout] = [e for e in events if e["type"] == "error"]
     return fout["message"]
 
@@ -39,3 +43,8 @@ def test_zonder_keuze_staat_er_geen_ander_model_in_de_melding(monkeypatch, aanbo
 
 def test_met_twee_modellen_blijft_de_suggestie_staan(monkeypatch):
     assert "ander model" in _melding(monkeypatch, "azure_ai/een,azure_ai/twee")
+
+
+def test_zonder_geavanceerd_noemt_de_melding_geen_ander_model(monkeypatch):
+    """#1269: zonder "Geavanceerd" is de modelkiezer weg en geldt het standaardmodel, ook bij twee modellen."""
+    assert "ander model" not in _melding(monkeypatch, "azure_ai/een,azure_ai/twee", modelkeuze=False)

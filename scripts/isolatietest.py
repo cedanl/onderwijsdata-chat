@@ -10,7 +10,9 @@ Dezelfde controles als tests/test_account_isolatie.py, nu over HTTP met twee ech
   4. de gesprekken, zoekresultaten, werkboeken, gegeven feedback en de export van B noemen A nergens;
   5. met --verwijder-a: na "verwijder al mijn gegevens" van A staat alles van B er precies zo;
   6. zonder token, met onzin en met een vervalst token, en met --token-a-uit ook met een ingetrokken token: 401 op elk
-     eindpunt hierboven.
+     eindpunt hierboven;
+  7. de instelling "Geavanceerd" (#1269): wat A zet, ziet B niet, en B kan die van A niet zetten (ook niet met de naam
+     van A in het verzoek); aan het eind krijgt A zijn eigen stand terug.
 
 Gebruik (tokens alleen via de omgeving, nooit als argument: dan staan ze in de shellgeschiedenis):
     export ISOLATIE_URL=https://onderwijsdata-chat.test.sdp.surf.nl
@@ -45,6 +47,7 @@ TOEGESTANE_HOSTS = _LOKAAL | {TESTOMGEVING}
 GEDEELDE_ACCOUNTS = frozenset({"demo", "gast"})
 
 _BEVESTIGD = {"bevestig": "verwijder"}
+_GEAVANCEERD = "/api/mijn-gegevens/geavanceerd"
 
 
 class Geweigerd(Exception):
@@ -165,6 +168,7 @@ def voer_uit(
     uitslag = Uitslag()
     naam_a = gebruiker_van(token_a) or ""
     a_gewist = False
+    geavanceerd_a: bool | None = None  # de eigen stand van A, om hem aan het eind terug te zetten
 
     def stel_in(methode: str, pad: str, token: str, body: object) -> None:
         status = vraag(methode, pad, token, body).status_code
@@ -223,6 +227,23 @@ def voer_uit(
         export_b = vraag("GET", "/api/mijn-gegevens/export", token_b, None).text
         uitslag.toets(merk_b in export_b, "4 de export van B bevat wel B's eigen werk")
 
+        # 7: "Geavanceerd" van A is voor B niet te lezen of te zetten.
+        lees_a, lees_b = vraag("GET", _GEAVANCEERD, token_a, None), vraag("GET", _GEAVANCEERD, token_b, None)
+        if lees_a.status_code == 200 and lees_b.status_code == 200:
+            geavanceerd_a, eigen_b = lees_a.json().get("geavanceerd"), lees_b.json().get("geavanceerd")
+            anders = not eigen_b
+            stel_in("PUT", _GEAVANCEERD, token_a, {"geavanceerd": anders})
+            na = vraag("GET", _GEAVANCEERD, token_b, None).json()
+            uitslag.toets(na == {"geavanceerd": eigen_b}, f"7 Geavanceerd: A zet {anders}, B ziet zijn eigen {na}")
+            overname = vraag("PUT", _GEAVANCEERD, token_b, {"geavanceerd": eigen_b, "username": naam_a})
+            uitslag.toets(
+                overname.status_code == 422, f"7 Geavanceerd: B met de naam van A krijgt {overname.status_code}"
+            )
+            van_a = vraag("GET", _GEAVANCEERD, token_a, None).json()
+            uitslag.toets(van_a == {"geavanceerd": anders}, f"7 Geavanceerd: die van A is ongewijzigd ({van_a})")
+        else:
+            uitslag.toets(False, f"7 Geavanceerd: GET gaf {lees_a.status_code} voor A en {lees_b.status_code} voor B")
+
         # 6: zonder geldig token 401 op elk eindpunt.
         eindpunten: list[tuple[str, str, object]] = [
             ("GET", "/api/conversations", None),
@@ -240,6 +261,8 @@ def voer_uit(
             ("GET", "/api/feedback/given", None),
             ("GET", "/api/mijn-gegevens/export", None),
             ("DELETE", "/api/mijn-gegevens", _BEVESTIGD),
+            ("GET", _GEAVANCEERD, None),
+            ("PUT", _GEAVANCEERD, {"geavanceerd": True}),
         ]
         ongeldig: dict[str, str | None] = {
             "zonder token": None,
@@ -278,6 +301,8 @@ def voer_uit(
         ):
             if not (a_gewist and token == token_a):
                 vraag(methode, pad, token, None)
+        if geavanceerd_a is not None and not a_gewist:
+            vraag("PUT", _GEAVANCEERD, token_a, {"geavanceerd": geavanceerd_a})
     return uitslag
 
 
