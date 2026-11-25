@@ -286,7 +286,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "koppeling niet. Staat een sleutel in een kolom en haar labelkolom met dezelfde waarden (STUDIEJAAR, "
                 "STUDIEJAAR_LABEL), dan kiest de tool de bronkolom. Bij SKDB naast DUO op brin en croho noemt "
                 "opvolgers (kolom koppelreden) een SKDB-rij die volgens RIO pas na de DUO-peildatum begint: noem haar "
-                "nieuw, met haar voorgangers en hun eigen aantal, en tel die niet op. Schrijf geen eigen merge in "
+                "nieuw, met haar voorgangers en hun eigen aantal, en tel die niet op. Daar zet de code ook per SKDB-rij "
+                "onzeker (te weinig NSE-respondenten of geen bekend aantal, zie toelichting: noem dat oordeel onzeker) en "
+                "telt ze de SKDB-rijen zonder DUO-rij per graad in niet_gekoppeld_per_graad: neem de vlag en die aantallen "
+                "over, tel niet zelf. Schrijf geen eigen merge in "
                 "run_analysis en filter vóór de koppeling niet op een lege waarde."
             ),
             "parameters": {

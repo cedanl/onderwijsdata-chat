@@ -901,7 +901,7 @@ Boven `MAX_RIJEN` (200.000; per gedeelde sleutelwaarde links × rechts, plus de 
 gaat een koppeling ook niet door: de uitkomst is een `melding` met `verwachte_rijen` en `korrel`, met het advies op
 meer sleutels te koppelen of een tabel eerst met `query_data` kleiner te maken, en er komt niets in de store. Ook een
 brede koppeling onder die grens kan te groot zijn, dus telt de code ook de cellen (rijen × kolommen van het resultaat:
-beide tabellen, de sleutels één keer, plus `koppelstatus`). Boven `MAX_CELLEN` (5.000.000, zo'n 335 MB aan tekstcellen,
+beide tabellen, de sleutels één keer, plus `koppelstatus` en bij SKDB naast DUO `onzeker`). Boven `MAX_CELLEN` (5.000.000, zo'n 335 MB aan tekstcellen,
 onder de storegrens van 512 MB) volgt dezelfde `melding`, met ook `verwachte_cellen` en het advies alleen de nodige
 kolommen te houden (`columns` in `query_data`). Zijn beide grenzen overschreden, dan noemt de melding de rijgrens.
 
@@ -937,6 +937,17 @@ opvolger blijft de koppeling zoals ze was. Een storing bij RIO breekt de koppeli
 DUO-rij" en de `waarschuwing` zegt voor welke instellingen het niet is nagegaan (#970). Kosten: per instelling twee
 licentielijsten en één aanroep per licentie die tussen de twee dagen wisselt (bij Avans zes), een dag in de cache;
 boven 10 instellingen met een SKDB-rij zonder DUO-rij vraagt de koppeling RIO niets, zoals bij de fusieregels.
+
+**Onzeker en per graad, in code (#1231).** Bij dezelfde koppeling (SKDB naast DUO op `brin` en `croho`) telt de code
+ook wat het model eerder zelf telde. Heeft de SKDB-kant een NSE-cijfer (`nse_oordeel` of een thema), dan krijgt de
+koppeling de kolom `onzeker` (na `koppelstatus` en een eventuele `koppelreden`): `true` bij een SKDB-rij met minder dan
+30 NSE-respondenten of zonder bekend aantal terwijl er een cijfer is, `false` bij een andere SKDB-rij, leeg bij een rij
+`alleen DUO`. Het is dezelfde regel als `nse_onzeker` bij `get_studiekeuze` (`studiekeuze.is_onzeker`,
+`MIN_RESPONDENTEN`); een aantal als 28.0 telt als 28. Het resultaat heeft `niet_gekoppeld_per_graad`: de rijen
+`alleen SKDB` per `graad` (`bachelor`, `master`, `associate degree`, een andere waarde in kleine letters, zonder graad
+`onbekend`), samen precies de `telling` van `alleen SKDB`. De `toelichting` van `beide` en `alleen SKDB` zegt de vlag en
+die aantallen over te nemen en niet zelf te tellen. Heeft de SKDB-tabel zelf al een kolom `onzeker`, dan blijft die
+staan. Andere koppelingen krijgen geen van beide.
 
 De key is afgeleid van de eerste tabel en rust op beide (`gelezen`): de herkomst en de CSV-kop noemen beide bronnen,
 bij de Studiekeuzedatabase met de verplichte zin van LCSK (#977, #985), en de CSV-knop staat eronder zoals bij
