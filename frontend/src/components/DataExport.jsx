@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { downloadDataCsv } from '../api'
+import { bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
 import { CITATIE_CSV_BESTAND, citatiesToCsv } from '../citatieCsv'
 import { exportKeys } from '../dataExport'
 import { saveFile } from '../saveFile'
@@ -15,14 +16,21 @@ function saveCitaties(csv) {
   saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), CITATIE_CSV_BESTAND)
 }
 
+// "Bewijs (JSON)" (#1244): the provenance the message already holds, built here (bewijsJson.js); no server route.
+function saveBewijs(json, naam) {
+  saveFile(new Blob([json], { type: 'application/json;charset=utf-8' }), naam)
+}
+
 export default function DataExport({
   tools, citaties = null, settled, onHerhaal = null, busy = false, download = downloadDataCsv, save = saveCitaties,
+  bewijsVan = null, vraag = null, saveJson = saveBewijs,
 }) {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const keys = exportKeys(tools)
   const citatieCsv = keys.length ? null : citatiesToCsv(citaties)
-  if (!settled || (!keys.length && !citatieCsv)) return null
+  const metBewijs = heeftBewijs(bewijsVan)
+  if (!settled || (!keys.length && !citatieCsv && !metBewijs)) return null
 
   async function onClick(key) {
     setError(null)
@@ -44,6 +52,11 @@ export default function DataExport({
       {citatieCsv && (
         <button type="button" className="data-export-btn" onClick={() => save(citatieCsv)}>
           Download cijfers als CSV
+        </button>
+      )}
+      {metBewijs && (
+        <button type="button" className="bewijs-btn" onClick={() => saveJson(bewijsJson(bewijsVan), bewijsBestandsnaam(vraag))}>
+          Bewijs (JSON)
         </button>
       )}
       {notice && (

@@ -162,6 +162,12 @@ export default function PrivacyInhoud() {
         <li>Een gesprek verwijderen in de gesprekslijst. Een rapport of dashboard verwijderen onder Rapporten.</li>
         <li>Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV.</li>
         <li>
+          Het bewijs van een antwoord downloaden met &ldquo;Bewijs (JSON)&rdquo;. Je browser maakt dat bestand uit het
+          antwoord op je scherm; er gaat niets naar de server. Erin staan het antwoord, de bronnen, de herkomst en per
+          stap wat de app opvroeg, met de code. Dat kan tekst uit je vraag zijn, soms de hele vraag als zoekterm. Je
+          accountnaam en de ruwe data van de bron staan er niet in.
+        </li>
+        <li>
           Een rapport downloaden als HTML, Markdown of Word, of opslaan als PDF. Het Word-document bevat niets meer
           dan het rapport. Je browser stuurt alleen de grafieken als afbeelding mee, en de server bewaart ze niet.
         </li>
