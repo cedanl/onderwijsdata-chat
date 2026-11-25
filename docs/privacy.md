@@ -45,6 +45,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Gegevens uit je SRAM-account voor de kop van de app: naam, voor- en achternaam, e-mailadres, organisatie en instelling, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`). Alleen met SRAM-login; staat sinds #984 in de database | `oidc_gebruikers` | tot `SESSION_MAX_HOURS` (standaard 24 uur) na het inloggen, en hooguit 1000 accounts tegelijk; eerder bij uitloggen of als de gebruiker al zijn gegevens verwijdert, en in de export (#1209); verlopen rijen ruimt de nachtelijke taak op en elke start van de app |
 | Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`, geen kale hash, #1112); geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget); de nachtelijke taak ruimt ze op (#1113); eerder als de gebruiker al zijn gegevens verwijdert, en in de export (#1074) |
 | Tellers van de limieten (inloggen, berichten, feedback, Word-export, `/mcp`): één rij per meegetelde poging, onder een pseudoniem van de accountnaam, bij het inloggen samen met het IP-adres, of van het IP-adres (een HMAC met een geheim van de server, geen kale hash, #1117); geen inhoud. Alleen met PostgreSQL: lokaal telt het geheugen | `rate_limit_hits` | tot de poging uit het venster van de limiet valt (1 tot 10 minuten); verlopen rijen ruimt de nachtelijke taak op (#1113) en elke start van de app |
+| De instelling "Geavanceerd" (#1269): aan of uit, en wanneer je haar laatst wijzigde, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`). Alleen met een eigen login, en pas als je een keuze maakt of als je account op de pilotlijst `GEAVANCEERD_PILOT` staat (dan bij je eerste login "aan"); geen rol, instelling of functie | `geavanceerd` | zolang je account de app gebruikt: een keuze, ook "uit", blijft staan, zodat de pilotlijst haar niet terugzet. Geen eigen termijn in de nachtelijke opschoning; weg als de gebruiker al zijn gegevens verwijdert, en in de export |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
 Een oordeel op een antwoord (👍/👎 met toelichting en een kopie van vraag, antwoord en stappen) bewaart de server sinds
@@ -55,6 +56,11 @@ gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van ee
 organisatie en instelling uit SRAM staan in de database (`oidc_gebruikers`, begrensd, ten hoogste
 `SESSION_MAX_HOURS`), zodat ook een tweede server ze kent (#984). Ze gaan eerder weg bij uitloggen en als de gebruiker
 al zijn gegevens verwijdert, en ze staan in de export (#1209).
+
+De pilotlijst `GEAVANCEERD_PILOT` (#1269) is configuratie van de beheerder: een lijst accountnamen (met SRAM het
+e-mailadres) in de omgeving van de app, niet in de database. Staat je account erop en heb je nog geen keuze, dan zet
+je eerste login "Geavanceerd" aan en bewaart de server dat als hierboven. Zonder login bewaart de server de instelling
+niet; deze browser houdt haar dan zelf (`openEDUdata_geavanceerd`, hieronder).
 
 Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taak wat over zijn termijn is
 (`python -m persistence.opschonen`, een CronJob in de Helm-chart). Ze staat aan in de manifests van `test`,
@@ -82,6 +88,8 @@ de back-ups hierboven.
 - `openEDUdata_te_verwijderen` (#801): de ID's van verwijderde gesprekken waarvan de server de verwijdering nog niet
   bevestigde; geen titels of inhoud. Hoort bij het account (`SESSION_DATA_KEYS`): uitloggen stuurt die verwijderingen
   eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.
+- `openEDUdata_geavanceerd` (#1269): alleen zonder login, als je "Geavanceerd" aanzet; alleen "1", geen inhoud. Met
+  een login staat de keuze op de server (zie hierboven) en niet in de browser. Uitloggen wist de waarde met het profiel.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
   inloggen. Tijdens het inloggen met SRAM staan er kort drie cookies met eenmalige waarden van die login (OIDC-state,
   nonce en PKCE-verifier, hoogstens 10 minuten); daarna worden ze verwijderd, ook als het inloggen misgaat. Verder
@@ -108,7 +116,8 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   dan volgt dezelfde melding. Stel je na het verwijderen nog een vraag in het gesprek, dan blijft het bewaard. Log je
   uit, dan gaan ook deze verwijderingen eerst nog met je login. Is je sessie bij je volgende bezoek verlopen, dan is het
   ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
-- Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
+- Een gesprek exporteren als Markdown en, met de instelling "Geavanceerd" (#1269), de tabel achter een antwoord
+  downloaden als CSV (`/api/data/csv`).
 - Het bewijs van een dataantwoord downloaden met "Bewijs (JSON)" (#1244). Je browser maakt dat bestand uit het
   antwoord dat al op je scherm staat: er gaat niets naar de server of de AI-dienst. **Wel erin:** de antwoordtekst, de
   bronnen met hun links, de citaties, de controlemeldingen, het manifest (model, versies, dataversie, datum), het label
@@ -128,6 +137,8 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Log je in met SRAM, dan staan ook je naam,
   organisatie en instelling uit SRAM erin (`oidc_gebruiker`: één rij met het bewaarde profiel in `gegevens` en
   `expires_at`, zonder het pseudoniem; geen rij of een verlopen rij geeft `[]`; #1209, `schema_version` blijft 1).
+  Je keuze voor "Geavanceerd" staat er ook in (`geavanceerd`: één rij met `aan` en `gewijzigd`, zonder het pseudoniem;
+  `[]` als je nog niets koos; #1269).
   Een antwoord zonder toolstap staat er ook in, met lege `lineage`, `rekenbewijs`, `bronnen` en `figuren`; zo'n rij
   heeft de extra sleutel `reden_leeg` ("geen toolstap in deze beurt"), zodat ze niet als ontbrekende data leest (#1217; `schema_version` blijft 1). Niet erin: wat alleen
   in je browser staat. Zonder eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server
@@ -139,7 +150,8 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik, dat onder het
   pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en je naam, organisatie
   en instelling uit SRAM in `oidc_gebruikers`, ook onder een pseudoniem (#984; sinds #1209 in dezelfde transactie:
-  lukt die niet, dan blijft ook dit staan en blijven je sessies geldig). Daarna gaat ook de kopie in deze browser weg;
+  lukt die niet, dan blijft ook dit staan en blijven je sessies geldig), en je keuze voor "Geavanceerd" (`geavanceerd`,
+  #1269). Daarna gaat ook de kopie in deze browser weg;
   je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
   (#786): een open chat daar sluit bij de volgende vraag. De tellers in `rate_limit_hits` gaan niet direct weg: ze
   staan onder een pseudoniem en hebben geen accountnaam om op te verwijderen (hoogstens tien minuten). Wat blijft

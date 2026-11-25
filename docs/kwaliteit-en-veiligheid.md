@@ -12,7 +12,8 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
 
 - **Elk getal uit een tool**: de controle na het antwoord (hieronder) houdt een antwoord in met een getal dat niet in de
   opgehaalde data staat; wat die controle wel en niet dekt staat in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md).
-- **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, de redeneerkaart), elk antwoord en
+- **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, en met de instelling
+  "Geavanceerd" ook in de redeneerkaart, #1269), elk antwoord en
   rapport een manifest met model, prompt-, catalogus-, app- (met de korte build-commit uit `GIT_COMMIT`, #1123) en dataversie (#345; de catalogusversie is dezelfde digest
   als `catalogus_digest` in `/version`, #1029), en elk gepubliceerd resultaat (antwoord,
   figuur, CSV-export, rapport) één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
@@ -42,6 +43,50 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 | **Eerlijk falen** | Na 2 mislukte pogingen om data op te halen, wordt eerlijk gezegd wat er wel beschikbaar is. |
 | **Professionele toon** | Geen complimenten ("goede vraag!"), geen opvulzinnen, direct antwoord. |
 | **Verklaringen alleen op verzoek** | Een oorzaak of vermoeden komt alleen in het antwoord als de gebruiker erom vraagt (#1036); code beslist dat uit de vraag. Dan staat het in een apart blok "Niet uit de data": hooguit drie toetsbare vragen, elk met een bron uit de catalogus of "hiervoor is geen bron in deze app", nooit als feit. De controle na het antwoord toetst het. |
+
+### Geavanceerd: alleen erbij, nooit minder bescherming
+
+De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Aan de slag](aan-de-slag.md#instelling-geavanceerd))
+geeft analisten de code en de data achter een antwoord en de modelkeuze. De gebruiker kiest haar zelf; ze wordt nooit
+afgeleid uit rol, instelling, functie of een SRAM-attribuut (`core/geavanceerd.py`), alleen een pilotlijst
+(`GEAVANCEERD_PILOT`) zet haar bij de eerste login van een account aan.
+
+**Harde regel: een beschermende functie staat altijd aan.** Geavanceerd zet alleen iets erbij; het verbergt of
+verzwakt nooit een controle, waarschuwing of herkomst. `frontend/src/__tests__/beschermingInvariant.test.js` toont
+hetzelfde bevroren antwoord met de instelling uit en aan en faalt als een beschermende uitvoer ontbreekt of verschilt;
+`tests/test_geavanceerd.py` doet hetzelfde voor wat de server uitzendt. Een nieuwe beschermende functie komt in de
+lijst `BESCHERMEND` van beide tests en in de tabel hieronder.
+
+| Functie | Indeling | Waar |
+|---|---|---|
+| Controle na het antwoord: een antwoord met een getal dat niet in de data staat, wordt ingehouden of aangepast, met "Let op: …" eronder | Altijd aan | `agent/controles.py`, `Message.jsx` |
+| Ingetrokken versie met de reden ("Eerste versie van dit antwoord is aangepast na controle") | Altijd aan | `IngetrokkenVersies.jsx` |
+| "Uitgangspunt:" bovenaan een dataantwoord | Altijd aan | `agent/uitgangspunt.py` |
+| "Niet meegeteld:" | Altijd aan | `agent/niet_meegeteld.py` |
+| "Bron en definitie:" | Altijd aan | `agent/bronkeuze.py` |
+| Ondergrens: "≥" en "ten minste" bij onderdrukte kleine aantallen | Altijd aan | `tools/kleine_aantallen.py`, `agent/telling.py` |
+| "Let op"-regels in het antwoord | Altijd aan | antwoordtekst, `Message.jsx` |
+| Herkomst per getal in woorden: bron, selectie, maat en stap | Altijd aan | `CitedNumber.jsx` |
+| Scopekaart: de verduidelijkingsvraag bij een plaats die ook een instelling kan zijn | Altijd aan | `agent/scopevraag.py`, `ClarificationButtons.jsx` |
+| "Afwijking van je vraag" in een rapport | Altijd aan | `agent/report_afwijking.py`, `reportHtml.js` |
+| Vaste blokken onder een dataantwoord (Citaties, Telling, Export, Bronnen) en de bronnenlijst | Altijd aan | `AnswerBlocks.jsx` |
+| De stappen in de kaart "Redenering", zonder code | Altijd aan | `MessageContent.jsx` |
+| CSV onder een grafiek | Altijd aan | `PlotlyFigure.jsx` |
+| "Bewijs (JSON)" bij een dataantwoord (#1244) | Altijd aan | `DataExport.jsx` |
+| Python-code per stap in de kaart "Redenering" ("Bekijk code" en het codeblok) | Achter Geavanceerd | `MessageContent.jsx` |
+| Technische key onder "Technische details" bij een getal | Achter Geavanceerd | `CitedNumber.jsx` |
+| "Download data als CSV", "Download cijfers als CSV" en "Vraag opnieuw stellen" na een mislukte download | Achter Geavanceerd | `DataExport.jsx` |
+| Keuze "Code per stap" in de gespreksexport; uit: een export zonder code | Achter Geavanceerd | `ConversationExport.jsx` |
+| Modelkiezer (invoerkader en zijbalk op een telefoon) en "Opnieuw met <ander model>"; uit: het standaardmodel, ook op de server | Achter Geavanceerd | `ChatInputFooter.jsx`, `ChatPage.jsx`, `routes/chat.py` (`_model`) |
+| Modelaanbod als grens: alleen een model uit `AVAILABLE_MODELS`/`USER_MODELS` (#755) | Geen UI-functie | `core/config.py` (`toegestaan_model`) |
+| Scopegrens: po/so/vo-vragen falen gesloten | Geen UI-functie | `tools/scopeprofiel.py` |
+| Tokenbudget, limieten en de analyse-sandbox | Geen UI-functie | `core/tokenbudget.py`, `core/rate_limit.py`, `tools/sandbox.py` |
+| `REPRODUCEER`- en `GEPUBLICEERD`-regels in het log | Geen UI-functie | `agent/`, `tools/` |
+| Geplande functies van #1237, #1240, #1247, #1256, #1258, #1260 en #1268 | Indeling bij de bouw, in dat issue; een beschermende functie komt bij "Altijd aan" | — |
+
+Zonder login is er geen eigen account: de browser houdt de keuze dan zelf, en de server begrenst het model alleen tot
+het aanbod, zoals voorheen. Met login leest de server de instelling bij elke vraag en elk rapport uit de database,
+nooit uit wat de client meestuurt.
 
 ### Controle na het antwoord (#207)
 
@@ -275,8 +320,8 @@ Transparantie over wat nog niet getest is:
   proces en datastore) en `REPRODUCEER` (toolnaam met alleen lengte en hash van de snippet, `tekst_kenmerk`). De
   argumenten (`TOOL CALL`), het resultaat (`TOOL RESULT`) en de snippet zelf staan alleen op DEBUG, want ze bevatten
   tekst uit de vraag (#475; `Agents.md`, "Logs: geen gebruikerstekst op INFO+")
-- **Reproduceerbaarheid:** de Python-snippet van elke tool-aanroep staat in de chat en in de export, niet in het log op
-  INFO
+- **Reproduceerbaarheid:** de Python-snippet van elke tool-aanroep staat in de chat en in de export (met de instelling
+  "Geavanceerd", #1269), niet in het log op INFO
 - **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
 - **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
 - **Tokengebruik:** per run (vraag, rapport) één regel `TOKENS` (INFO) met model, aantal modelaanroepen, invoer, uitvoer en gelezen en geschreven cache (#678). De regel draagt het verbindings-ID; `VERBINDING open` noemt bij dat ID het pseudoniem `gebruiker=` (een HMAC met `LOG_HASH_SECRET`; zonder dat geheim `-`, want een kale hash van een e-mailadres is terug te rekenen). Per modelaanroep precies één regel `MODELAANROEP` (INFO), zonder gebruikerstekst: model, uitkomst (`ok`, `gestopt` na de stopknop of het stopsignaal van de grens, `afgebroken_runlimiet` als de harde grens van de run (`RUN_TIMEOUT_S` plus de uitloop) of van het rapport (`GENEREER_TIMEOUT_S`) een vastzittende aanroep afbrak, `geannuleerd` bij een annulering van buitenaf zoals een gesloten WebSocket, reset of ander gesprek, of anders het fouttype), de seconden tot de provider antwoordde (`open`, inclusief wachten na een rate limit of time-out), tot de eerste chunk en tot het einde (`totaal`, bij een afbraak de duur tot de afbraak), en de uitvoertokens. Een veld dat niet bereikt werd, staat op `-`. Daarop kiest #800 `LITELLM_REQUEST_TIMEOUT`

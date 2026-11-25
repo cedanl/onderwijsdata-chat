@@ -24,9 +24,11 @@ Achter de schermen roept de app functies aan, bijvoorbeeld:
 
 ### 3. De code per stap
 
-Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat staat die bij de stap, onder "Redenering".
-"Exporteer gesprek" zet het hele gesprek in één Markdown-bestand: per antwoord de stappen, elk met zijn snippet als
-`python`-codeblok (`frontend/src/conversationExport.js`, #366). Een los `.py`-bestand levert de app niet; je kopieert de
+Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). Met de instelling "Geavanceerd" (#1269, in
+Instellingen) staat die in de chat bij de stap, onder "Redenering", en zet "Exporteer gesprek" het hele gesprek in één
+Markdown-bestand: per antwoord de stappen, elk met zijn snippet als `python`-codeblok
+(`frontend/src/conversationExport.js`, #366). Zonder Geavanceerd toont de kaart de stappen zonder code en is de export
+zonder code. Een los `.py`-bestand levert de app niet; je kopieert de
 code van de stap die je wilt herhalen.
 
 Vraag je in de chat om de code ("Geef de code om dit zelf na te rekenen"), dan zet de app de snippet van de laatste

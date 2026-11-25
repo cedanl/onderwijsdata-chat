@@ -98,4 +98,31 @@ Na het opstarten verschijnt het chatvenster. Probeer bijvoorbeeld:
 
 > *"Welke DUO-datasets zijn beschikbaar over studentprognoses?"*
 
-De assistent zoekt automatisch de juiste datasets op, haalt de data op en presenteert resultaten direct in de chat. Bij elke tool-aanroep wordt een reproduceerbaar Python-snippet getoond.
+De assistent zoekt automatisch de juiste datasets op, haalt de data op en presenteert resultaten direct in de chat. Met
+de instelling **Geavanceerd** (hieronder) staat bij elke tool-aanroep ook een reproduceerbaar Python-snippet.
+
+---
+
+## Instelling "Geavanceerd"
+
+In **Instellingen** (je naam rechtsboven) staat de schakelaar **Geavanceerd**, standaard uit. Hij is voor wie de
+analyse achter een antwoord zelf wil zien en bijsturen. Aan zet hij erbij (#1269):
+
+- de Python-code per stap in de kaart "Redenering", en in de gespreksexport de keuze "Code per stap";
+- de technische key onder "Technische details" bij een getal met herkomst;
+- de downloads "Download data als CSV" en "Download cijfers als CSV", met "Vraag opnieuw stellen" als een download
+  mislukt;
+- de modelkiezer en "Opnieuw met <ander model>" na een fout. Uit gaat elke vraag met het standaardmodel (`MODEL`); de
+  server houdt zich daar zelf ook aan.
+
+Geavanceerd zet alleen iets erbij. De controles en waarschuwingen bij een antwoord, de herkomst van een getal in
+woorden, de bronnen en de CSV onder een grafiek staan er altijd, ook als hij uit staat (zie
+[Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#geavanceerd-alleen-erbij-nooit-minder-bescherming)).
+
+Bij de eerste keer inloggen vraagt de welkomstdialoog: *"Wil je de code en de data achter een antwoord zien en zelf
+bijsturen?"*, met **Nee** als standaard; **Ja** zet Geavanceerd aan. Met een login staat je keuze bij je account op de
+server, dus op elk apparaat dezelfde. Zonder login (de gedeelde gebruiker `gast`) bewaart alleen deze browser hem.
+
+Een beheerder kan de instelling voor een pilotgroep aanzetten met `GEAVANCEERD_PILOT` (zie
+[Configuratie](configuratie/index.md)): bij de eerste login van zo'n account staat hij dan aan. Daarna beslis je zelf; zet
+je hem uit, dan blijft hij uit. Nooit bepaalt je rol, instelling of functie of hij aan staat.
