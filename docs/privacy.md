@@ -113,9 +113,10 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   antwoord dat al op je scherm staat: er gaat niets naar de server of de AI-dienst. **Wel erin:** de antwoordtekst, de
   bronnen met hun links, de citaties, de controlemeldingen, het manifest (model, versies, dataversie, datum), het label
   "Vaste maat" en per geslaagde toolstap de tool, haar argumenten en de code die haar herhaalt. Die argumenten en de
-  code kunnen woorden uit je vraag bevatten (een instelling, een zoekterm), net als de code onder "Bekijk code".
-  **Niet erin:** je vraag, je accountnaam of SRAM-gegevens, je profiel, de ruwe uitvoer van een tool en de tekst die
-  het model onderweg herzag. De bestandsnaam komt uit je vraag met dezelfde regel als de gespreksexport (#478): staat
+  code kunnen tekst uit je vraag bevatten, net als de code onder "Bekijk code": een instelling, of bij het doorzoeken
+  van de catalogus de hele vraag als zoekterm. Staat er een persoonsgegeven in je vraag, dan kan het dus ook in het
+  bestand staan. **Niet erin:** je vraag als eigen veld, je accountnaam of SRAM-gegevens, je profiel, de ruwe uitvoer
+  van een tool en de tekst die het model onderweg herzag. De bestandsnaam komt uit je vraag met dezelfde regel als de gespreksexport (#478): staat
   er een BSN, e-mailadres of telefoonnummer in, dan heet het bestand `bewijs_Gesprek_persoonsgegevens_weggelaten.json`.
 - Een rapport downloaden als HTML, Markdown of Word, of opslaan als PDF. Het Word-document
   (`POST /api/workbooks/{id}/docx`, #1038) bevat niets meer dan het rapport: de server maakt het uit het bewaarde

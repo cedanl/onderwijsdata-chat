@@ -4,7 +4,8 @@
 //
 // Wel: het manifest (model, versies, dataversie), de bronnen met hun links, de citaties, de controlemeldingen, per
 // geslaagde stap de tool, haar argumenten en de code die haar herhaalt, het label "Vaste maat" en het antwoord.
-// Niet: de ruwe uitvoer van een tool, de vraag, de gebruikersnaam. Een sleutel die niet van toepassing is, is null.
+// Niet: de ruwe uitvoer van een tool, de vraag als eigen veld (een zoekterm in de argumenten kan haar wel bevatten),
+// de gebruikersnaam. Een sleutel die niet van toepassing is, is null.
 import { bronnenTekst } from './answerBlocks'
 import { bestandsdeel } from './bestandsnaam'
 import { zijnBronlinks } from './bronLink'
