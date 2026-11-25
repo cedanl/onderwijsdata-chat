@@ -6,5 +6,9 @@
   "jaren": [
     1900,
     2100
+  ],
+  "procenttekens": [
+    "%",
+    "procent"
   ]
 }

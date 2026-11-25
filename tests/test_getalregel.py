@@ -46,3 +46,14 @@ def test_de_regel_toetst_wat_de_getalcontrole_toetst(tekst, getoetst):
     aangewezen = bool(procent.search(tekst)) or any(telt(m) for m in getal.finditer(tekst))
     assert aangewezen is getoetst
     assert bool(unverified(tekst, [])) is getoetst
+
+
+def test_elk_procentteken_maakt_van_een_getal_een_percentage():
+    """De browser houdt een half procentteken aan het eind van de stroom vast, "70,6 pro" (#1254): de lijst is wat
+    de regel `procent` en de getalcontrole als percentage lezen."""
+    regel = getalregel()
+    procent = re.compile(regel["procent"])
+    assert regel["procenttekens"]
+    for teken in regel["procenttekens"]:
+        assert procent.fullmatch(f"70,6 {teken}")
+        assert unverified(f"Het aandeel is 70,6 {teken} van de studenten.", []) == [f"70,6 {teken}"]

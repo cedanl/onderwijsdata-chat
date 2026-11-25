@@ -44,6 +44,49 @@ describe('welke getallen wachten (de regel van de server)', () => {
     expect(zonderStaart('Er zijn 70,')).toBe('Er zijn ')
     expect(zonderStaart('Er zijn 27.135 studenten.')).toBe('Er zijn 27.135 studenten.')
   })
+
+  it('een percentage waarvan het woord nog binnenkomt, wacht ook ("70,6 pro" en daarna "cent")', () => {
+    for (const half of ['p', 'pr', 'pro', 'proc', 'proce', 'procen']) {
+      expect(zonderStaart(`Het aandeel is 70,6 ${half}`, REGEL)).toBe('Het aandeel is ')
+      expect(zonderStaart(`Het aandeel is 7 ${half}`, REGEL)).toBe('Het aandeel is ')
+      expect(zonderStaart(`Het aandeel is 7${half}`, REGEL)).toBe('Het aandeel is ')
+    }
+    // Een ander woord maakt er geen percentage meer van: dat getal blijft staan, het wacht niet op niets.
+    expect(zonderStaart('Er zijn 7 personen', REGEL)).toBe('Er zijn 7 personen')
+    expect(zonderStaart('In 2024/25 waren er 812 studenten', REGEL)).toBe('In 2024/25 waren er 812 studenten')
+    // Elk teken dat de server kent, telt: een half woord van een ander teken wacht net zo.
+    const metPunt = { ...REGEL, procenttekens: [...REGEL.procenttekens, 'pct.'] }
+    expect(zonderStaart('Het aandeel is 7 pct', metPunt)).toBe('Het aandeel is ')
+  })
+
+  it('zonder de procenttekens van de server wacht elk half woord na een getal', () => {
+    const { procenttekens: _, ...oud } = REGEL
+    expect(zonderStaart('Het aandeel is 7 pr', oud)).toBe('Het aandeel is ')
+    expect(zonderStaart('Er zijn 7 stu', oud)).toBe('Er zijn ')
+    expect(zonderStaart('Het aandeel is 7 pr', null)).toBe('Het aandeel is ')
+    expect(zonderStaart('Er zijn 27.135 studenten.', oud)).toBe('Er zijn 27.135 studenten.')
+  })
+
+  it('een lange reeks cijfers en komma\'s kost geen kwadratische tijd', () => {
+    // Hier is de tijd zelf het onderwerp: een patroon dat bij elke positie opnieuw zocht, deed ruim een seconde over
+    // deze 60.000 tekens, en dat bij elke render tijdens het streamen.
+    const reeks = Array.from({ length: 20000 }, (_, i) => String(i % 10)).join(', ')
+    const begin = performance.now()
+    expect(zonderStaart(`${reeks}. Meer tekst`, REGEL)).toBe(`${reeks}. Meer tekst`)
+    expect(zonderStaart(`${reeks}. Meer tekst`, null)).toBe(`${reeks}. Meer tekst`)
+    expect(zonderStaart(`Tekst ${reeks}`, REGEL)).toBe('Tekst ')
+    expect(zonderStaart(`Tekst ${reeks} pro`, null)).toBe('Tekst ')
+    expect(performance.now() - begin).toBeLessThan(250)
+  })
+
+  it('ook in de notatie van het model: de controle leest 9.5% als 9,5% en het Engelse 12,345 als 12.345', () => {
+    // agent/controles.py `lezingen`: de stroom is de tekst van het model, de controle toetst wat de gebruiker ziet.
+    expect(gemarkeerd('Het aandeel is 9.5% van alle studenten.')).toEqual(['9.5%'])
+    expect(gemarkeerd('There are 12,345 students, 1,234.5 on average.')).toEqual(['12,345', '1,234.5'])
+    // Een decimaal zonder procent toetst de controle niet, in geen van beide notaties.
+    expect(gemarkeerd('Gemiddeld 6.4 per klas, of 9,6.')).toEqual([])
+    expect(gemarkeerd('Er zijn 27.135 studenten, 70,6% slaagt.')).toEqual(['27.135', '70,6%'])
+  })
 })
 
 class FakeWebSocket {
@@ -125,6 +168,34 @@ describe('tijdens het streamen (useChat en Message)', () => {
     expect(plekken()).toHaveLength(1)
     await einde('Er zijn 27.135 studenten.')
     expect(container.textContent).toContain('27.135')
+  })
+
+  it('"70,6 pro" en daarna "cent": het percentage staat er geen moment als cijfers', async () => {
+    await start()
+    await delta('Het aandeel is 70,6 pro')
+    expect(container.textContent).toContain('Het aandeel is')
+    expect(container.textContent).not.toMatch(/\d/)
+    await delta('cent, en 7 p')
+    expect(container.textContent).not.toMatch(/\d/)
+    await delta('rocent twijfelt.')
+    expect(container.textContent).not.toMatch(/\d/)
+    expect(plekken()).toHaveLength(2)
+    await einde('Het aandeel is 70,6 procent, en 7 procent twijfelt.')
+    expect(container.textContent).toContain('70,6 procent')
+    expect(container.textContent).toContain('7 procent')
+  })
+
+  it('9.5% en het Engelse 12,345 staan er tijdens het streamen niet als cijfers', async () => {
+    await start()
+    await delta('Het aandeel is 9.')
+    expect(container.textContent).not.toMatch(/\d/)
+    await delta('5% van alle studenten. ')
+    expect(container.textContent).not.toMatch(/\d/)
+    await delta('In English: there are 12,345 students.')
+    expect(container.textContent).not.toMatch(/\d/)
+    await einde('Het aandeel is 9,5% van alle studenten. In English: there are 12,345 students.')
+    expect(container.textContent).toContain('9,5%')
+    expect(container.textContent).toContain('12,345')
   })
 
   it('een schooljaar en een getal onder 1.000 blijven zichtbaar', async () => {

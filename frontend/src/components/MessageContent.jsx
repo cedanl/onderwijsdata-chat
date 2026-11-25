@@ -229,8 +229,9 @@ export function MessageContent({ msg, blocks = null }) {
   if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
   if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
   const wacht = wachtVan(msg)
-  // Tijdens het streamen kan het eind van de tekst het begin van een getal zijn ("27." voor "135"): dat wacht mee.
-  const tekst = msg.done ? msg.content : zonderStaart(msg.content)
+  // Tijdens het streamen kan het eind van de tekst het begin van een getal zijn ("27." voor "135", "70,6 pro" voor
+  // "70,6 procent"): dat wacht mee.
+  const tekst = msg.done ? msg.content : zonderStaart(msg.content, wacht)
   const { antwoord, telling } = splitsTelling(tekst)
   if (!telling) return <Markdown text={tekst} citaties={msg.citaties} wacht={wacht} />
   return (

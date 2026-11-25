@@ -30,7 +30,14 @@ _TEXT_NUMBER = re.compile(
     r"(?<![\w.,])(?<!\d{4}/)(?<!\d{4}/['\u2019])(\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d+)?(?!\w)"
 )
 _THOUSANDS = re.compile(r"[. \u00a0\u202f]")
-_TEXT_PERCENT = re.compile(r"(?<![\w.,])(\d+(?:,\d+)?)\s?(?:%|procent\b)")
+# Wat na een getal een percentage maakt. De browser krijgt de lijst ook (getalregel): aan het eind van de stroom houdt
+# hij een half teken vast tot het af is, "70,6 pro" voor "70,6 procent" (#1254).
+_PROCENTTEKENS = ("%", "procent")
+_TEXT_PERCENT = re.compile(
+    r"(?<![\w.,])(\d+(?:,\d+)?)\s?(?:"
+    + "|".join(re.escape(teken) + (r"\b" if teken[-1].isalnum() else "") for teken in _PROCENTTEKENS)
+    + ")"
+)
 _TOOL_NUMBER = re.compile(r"\d+")
 # Decimalen in tooluitvoer: JSON schrijft 9.55, compute_kpi's weergave 9,6.
 _TOOL_DECIMAL = re.compile(r"\d+(?:[.,]\d+)?")
@@ -44,13 +51,15 @@ def getalregel() -> dict:
     leest. De frontend houdt die getallen tijdens het streamen achter "…" tot message_end; zo is er één bron.
 
     `getal` is _TEXT_NUMBER (groep 1 zijn de cijfers met scheidingstekens `scheiding`), `procent` is _TEXT_PERCENT; een
-    getal telt mee bij `min_cijfers` of meer cijfers en buiten `jaren` (inclusief), een percentage altijd."""
+    getal telt mee bij `min_cijfers` of meer cijfers en buiten `jaren` (inclusief), een percentage altijd.
+    `procenttekens` zijn de tekens waaruit `procent` bestaat: een half teken aan het eind van de stroom wacht ook."""
     return {
         "getal": _TEXT_NUMBER.pattern,
         "procent": _TEXT_PERCENT.pattern,
         "scheiding": _THOUSANDS.pattern,
         "min_cijfers": _MIN_DIGITS,
         "jaren": [_YEARS.start, _YEARS.stop - 1],
+        "procenttekens": list(_PROCENTTEKENS),
     }
 
 

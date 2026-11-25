@@ -12,9 +12,45 @@ export const WACHT_TEKEN = '…'
 
 // Zonder regel: elke reeks cijfers, met scheidingstekens en een procentteken erbij.
 const ALLE_GETALLEN = /\d+(?:[.,\s\u00a0\u202f]\d+)*(?:\s?(?:%|procent\b))?/g
-// Het eind van de tekst tot nu toe kan het begin van een getal zijn dat nog verder komt ("27." en daarna "135").
-// Dat stuk wacht tot het volgende stuk tekst er is.
-const STAART = /\d[\d.,\s\u00a0\u202f]*$/
+// Het eind van de tekst tot nu toe kan het begin zijn van een getal dat nog verder komt ("27." en daarna "135"), of
+// van een percentage waarvan het woord nog binnenkomt ("70,6 pro" en daarna "cent"). Dat stuk wacht tot het volgende
+// stuk tekst er is. Een half woord na het getal wacht als het een procentteken van de server kan worden
+// (`procenttekens`); zonder die lijst wacht elk half woord na een getal.
+const IN_GETAL = /[\d.,\s\u00a0\u202f]/
+const LETTER = /\p{L}/u
+// De controle toetst het antwoord zoals de gebruiker het na message_end ziet (`lezingen` in agent/controles.py): 9.5%
+// wordt 9,5%, en in een Engels antwoord is 12,345 twaalfduizend. De stroom is nog de notatie van het model. Daarom
+// wacht ook wat de regel in de andere notatie vindt: punt en komma tussen cijfers verwisseld, op dezelfde plek.
+const TUSSEN_CIJFERS = /(?<=\d)[.,](?=\d)/g
+
+// Elk begin van een procentteken, zonder het hele teken: dat vindt de regel `procent` zelf al. Null zonder bruikbare
+// lijst: dan telt elk half woord.
+function halveTekens(tekens) {
+  if (!Array.isArray(tekens) || !tekens.every(t => typeof t === 'string' && t)) return null
+  return tekens.flatMap(t => Array.from({ length: t.length - 1 }, (_, i) => t.slice(0, i + 1)))
+}
+
+// Waar het stuk aan het eind begint dat nog een getal of een percentage kan worden; de lengte van de tekst als er geen
+// is. Van achteren naar voren, zonder patroon dat bij elke positie opnieuw zoekt: een lange reeks cijfers en
+// komma's ("1, 2, 3, …") kostte zo bij elke render kwadratisch veel tijd.
+function staartBegin(tekst, halven) {
+  const eindes = [tekst.length]
+  if (halven) {
+    eindes.push(...halven.filter(h => tekst.endsWith(h)).map(h => tekst.length - h.length))
+  } else {
+    let eind = tekst.length
+    while (eind > 0 && LETTER.test(tekst[eind - 1])) eind--
+    eindes.push(eind)
+  }
+  let staart = tekst.length
+  for (const eind of eindes) {
+    let begin = eind
+    while (begin > 0 && IN_GETAL.test(tekst[begin - 1])) begin--
+    const cijfer = tekst.slice(begin, eind).search(/\d/)
+    if (cijfer >= 0) staart = Math.min(staart, begin + cijfer)
+  }
+  return staart
+}
 
 const regels = new WeakMap()
 
@@ -32,6 +68,7 @@ function compileer(regel) {
         minCijfers: regel.min_cijfers,
         laag: Number.isInteger(laag) ? laag : null,
         hoog: Number.isInteger(hoog) ? hoog : null,
+        halven: halveTekens(regel.procenttekens),
       }
     }
   } catch {
@@ -52,22 +89,37 @@ function getoetst(cijfers, r) {
   return !(r.laag !== null && r.hoog !== null && n >= r.laag && n <= r.hoog)
 }
 
-// [begin, eind] van elk getal in `tekst` dat moet wachten.
-export function wachtendeGetallen(tekst, regel) {
-  if (!tekst) return []
-  const r = compileer(regel)
-  if (!r) return [...tekst.matchAll(ALLE_GETALLEN)].map(m => [m.index, m.index + m[0].length])
+function getoetsteGetallen(tekst, r) {
   const procenten = [...tekst.matchAll(r.procent)].map(m => [m.index, m.index + m[0].length])
   const getallen = [...tekst.matchAll(r.getal)]
     .filter(m => !procenten.some(([b, e]) => m.index >= b && m.index < e))
     .filter(m => getoetst((m[1] ?? m[0]).replace(r.scheiding, ''), r))
     .map(m => [m.index, m.index + m[0].length])
-  return [...procenten, ...getallen].sort((a, b) => a[0] - b[0])
+  return [...procenten, ...getallen]
 }
 
-// De tekst zonder een getal dat aan het eind nog kan doorlopen.
-export function zonderStaart(tekst) {
-  return typeof tekst === 'string' ? tekst.replace(STAART, '') : tekst
+function samengevoegd(plekken) {
+  const uit = []
+  for (const [begin, eind] of plekken.sort((a, b) => a[0] - b[0])) {
+    const vorige = uit.at(-1)
+    if (vorige && begin < vorige[1]) vorige[1] = Math.max(vorige[1], eind)
+    else uit.push([begin, eind])
+  }
+  return uit
+}
+
+// [begin, eind] van elk getal in `tekst` dat moet wachten.
+export function wachtendeGetallen(tekst, regel) {
+  if (!tekst) return []
+  const r = compileer(regel)
+  if (!r) return [...tekst.matchAll(ALLE_GETALLEN)].map(m => [m.index, m.index + m[0].length])
+  const verwisseld = tekst.replace(TUSSEN_CIJFERS, teken => (teken === '.' ? ',' : '.'))
+  return samengevoegd([...getoetsteGetallen(tekst, r), ...getoetsteGetallen(verwisseld, r)])
+}
+
+// De tekst zonder een getal dat aan het eind nog kan doorlopen, of nog een percentage kan worden.
+export function zonderStaart(tekst, regel) {
+  return typeof tekst === 'string' ? tekst.slice(0, staartBegin(tekst, compileer(regel)?.halven ?? null)) : tekst
 }
 
 // De stukken van `tekst`: { tekst } of { wacht: lengte } voor een getal dat wacht.
