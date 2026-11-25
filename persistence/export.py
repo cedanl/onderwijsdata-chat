@@ -10,7 +10,7 @@ Elke query filtert op `username = ?`, behalve die van `tokengebruik`: dat staat 
 (#1112), dus filtert die op `sleutel = ?` met dat pseudoniem en geeft alleen `dag` en `eenheden`, niet de sleutel
 (#1074). Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser. Kolomnamen zijn
 die van de database (`html_content`, zoals `GET /api/workbooks/{id}`). Een nieuwe soort komt achteraan en verhoogt
-`SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe.
+`SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe. Zo ook `reden_leeg` in een lege `beurtbewijs`-rij (#1217).
 """
 
 import json
@@ -108,16 +108,27 @@ def data_recipes(username: str) -> Iterator[dict]:
         yield row
 
 
+_BEURTBEWIJS_KOLOMMEN = ("lineage", "rekenbewijs", "bronnen", "figuren")
+REDEN_LEEG = "geen toolstap in deze beurt"
+
+
 def beurtbewijs(username: str) -> Iterator[dict]:
     """Wat de server per antwoord vastlegde: herkomst, rekenbewijs en figuurstappen (#993) voor het rapport
-    (ADR-009, #875) en de bronregels voor een vervolgantwoord (#987)."""
+    (ADR-009, #875) en de bronregels voor een vervolgantwoord (#987).
+
+    Een antwoord zonder toolstap heeft vier lege verzamelingen (`None`, `""`, `[]` of `{}`). Die rij blijft in de
+    export, want die is compleet (AVG), maar krijgt `reden_leeg`, zodat ze niet als ontbrekende data leest (#1217);
+    een rij met inhoud krijgt die sleutel niet.
+    """
     for row in _rijen(
         "SELECT conv_id, tekst_hash, lineage, rekenbewijs, bronnen, figuren, created_at FROM beurtbewijs "
         "WHERE username = ? ORDER BY created_at, conv_id, tekst_hash",
         (username,),
     ):
-        for kolom in ("lineage", "rekenbewijs", "bronnen", "figuren"):
+        for kolom in _BEURTBEWIJS_KOLOMMEN:
             row[kolom] = _json_of_tekst(row[kolom])
+        if not any(row[kolom] for kolom in _BEURTBEWIJS_KOLOMMEN):
+            row["reden_leeg"] = REDEN_LEEG
         yield row
 
 
