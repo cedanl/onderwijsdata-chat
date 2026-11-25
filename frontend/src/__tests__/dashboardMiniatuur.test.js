@@ -172,6 +172,32 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
     expect(tekst).toContain('Schaarste')
   })
 
+  // #1212: de kaart noemt de reden uit de payload, zoals het dashboard zelf (#952), niet de oude vaste reden.
+  it('Arbeidsmarkt: een weggelaten sector met zijn reden uit de payload', async () => {
+    const reden = 'te weinig gediplomeerden: minder dan 30 per jaar'
+    payloads['/api/dashboard/arbeidsmarktmatch'] = {
+      ...dashboards.arbeidsmarktmatch,
+      match_score: { ...dashboards.arbeidsmarktmatch.match_score, ONDERWIJS: null },
+      match_weggelaten: { ONDERWIJS: reden },
+    }
+    await toon(galerij())
+    await inBeeld(MARKT)
+    const tekst = miniatuur(MARKT).textContent
+    expect(tekst).toContain(`Niet getoond (${reden}): Onderwijs.`)
+    expect(tekst).not.toContain('geen beroepenclusters in de sectorindeling')
+  })
+
+  it('Arbeidsmarkt: zonder redenen in de payload blijft de oude reden staan', async () => {
+    payloads['/api/dashboard/arbeidsmarktmatch'] = {
+      ...dashboards.arbeidsmarktmatch,
+      match_score: { ...dashboards.arbeidsmarktmatch.match_score, ONDERWIJS: null },
+    }
+    await toon(galerij())
+    await inBeeld(MARKT)
+    expect(miniatuur(MARKT).textContent).toContain('geen beroepenclusters in de sectorindeling')
+    expect(miniatuur(MARKT).textContent).toContain('Onderwijs')
+  })
+
   it('Landelijk: de positie per sector', async () => {
     await toon(galerij())
     await inBeeld(LAND)

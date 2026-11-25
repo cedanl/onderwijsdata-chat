@@ -16,12 +16,15 @@ export function mijnInstellingBeschrijving(sector) {
   return `${onderdelen.join(', ')} en de vergelijking met andere instellingen in één overzicht.`
 }
 
+// Een vast dashboard heeft `type: 'dashboard'`: de feedback stuurt het als report_type mee (#1210). De ids staan ook in
+// VASTE_DASHBOARDS in core/feedback.py; tests/test_feedback.py houdt beide gelijk.
 export const BUILTIN_MIJN_INSTELLING = {
   id: '__builtin_mijn_instelling__',
   title: 'Mijn instelling',
   description: mijnInstellingBeschrijving(null),
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
+  type: 'dashboard',
 }
 
 export const BUILTIN_ARBEIDSMARKT = {
@@ -30,6 +33,7 @@ export const BUILTIN_ARBEIDSMARKT = {
   description: `${AANSLUITING_ARBEIDSMARKT} per sector, vacatures (UWV), ROA-indicatoren en arbeidsmarktprognose.`,
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
+  type: 'dashboard',
 }
 
 export const BUILTIN_NATIONAAL = {
@@ -38,6 +42,7 @@ export const BUILTIN_NATIONAAL = {
   description: 'Landelijke ranking, marktaandeel per sector en sectortrends voor de instelling.',
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
+  type: 'dashboard',
 }
 
 // Het dashboard Opleidingen (#957) rust op de Studiekeuzedatabase van LCSK: alleen hbo en wo, en alleen waar de sleutel
@@ -53,6 +58,7 @@ export const BUILTIN_OPLEIDINGEN = {
   description: opleidingenBeschrijving(null),
   createdAt: '2026-11-06T00:00:00.000Z',
   builtin: true,
+  type: 'dashboard',
 }
 
 function stripMessage(m) {

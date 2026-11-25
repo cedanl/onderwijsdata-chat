@@ -337,6 +337,78 @@ def test_post_feedback_on_someone_elses_workbook_is_refused(client):
     assert _stored() == []
 
 
+# ── Vaste dashboards (#1210) ─────────────────────────────────────────────────
+
+_VASTE = ["__builtin_nationaal__", "__builtin_mijn_instelling__", "__builtin_arbeidsmarkt__", "__builtin_opleidingen__"]
+
+
+def _dashboard_body(workbook_id: str, report_type: str = "dashboard") -> dict:
+    return {**_body(), "workbook_id": workbook_id, "report_type": report_type, "report_title": "Landelijk"}
+
+
+@pytest.mark.parametrize("wb_id", _VASTE)
+def test_feedback_op_een_vast_dashboard_wordt_bewaard(client, wb_id):
+    """Een vast dashboard staat niet in de werkboeken van de gebruiker; feedback erop hoort toch te lukken."""
+    resp = client.post("/api/feedback", json=_dashboard_body(wb_id))
+    assert resp.status_code == 200
+    assert [(r["username"], r["workbook_id"], r["report_type"]) for r in _stored()] == [("gast", wb_id, "dashboard")]
+
+
+@pytest.mark.parametrize("report_type", ["", "report", "iets-anders"])
+def test_een_vast_dashboard_heet_altijd_dashboard(client, report_type):
+    """Het type van een vast dashboard volgt uit het id, niet uit wat de browser stuurt."""
+    body = _dashboard_body("__builtin_nationaal__", report_type)
+    assert client.post("/api/feedback", json=body).status_code == 200
+    assert [r["report_type"] for r in _stored()] == ["dashboard"]
+    for _ in range(2):
+        assert client.post("/api/feedback", json=body).status_code == 200
+    resp = client.post("/api/feedback", json=body)
+    assert resp.status_code == 429
+    assert "feedback op dit dashboard gegeven" in resp.json()["detail"]
+
+
+@pytest.mark.parametrize("wb_id", ["__builtin_xyz__", "__builtin__", "wb-willekeurig", "__BUILTIN_NATIONAAL__"])
+def test_een_onbekend_vast_dashboard_blijft_geweigerd(client, wb_id):
+    """Alleen de vier vaste ids slaan de eigendomscontrole over (#389 blijft staan)."""
+    resp = client.post("/api/feedback", json=_dashboard_body(wb_id))
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Dashboard niet gevonden"
+    assert _stored() == []
+
+
+def test_given_noemt_een_vast_dashboard(client):
+    from core.auth import get_current_user
+    from server import app
+
+    app.dependency_overrides[get_current_user] = lambda: "alice"
+    try:
+        assert client.post("/api/feedback", json=_dashboard_body("__builtin_arbeidsmarkt__")).status_code == 200
+        assert client.get("/api/feedback/given").json() == ["__builtin_arbeidsmarkt__"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_export_en_verwijderen_met_feedback_op_een_vast_dashboard(client):
+    from persistence import export, verwijderen
+
+    assert client.post("/api/feedback", json=_dashboard_body("__builtin_opleidingen__")).status_code == 200
+    rijen = list(export.feedback("gast"))
+    assert [(r["workbook_id"], r["report_type"]) for r in rijen] == [("__builtin_opleidingen__", "dashboard")]
+    assert verwijderen.verwijder_alles("gast")["feedback"] == 1
+    assert _stored() == []
+
+
+def test_de_vaste_dashboards_volgen_de_frontend():
+    """De lijst in core/feedback.py spiegelt de BUILTIN_*-ids in frontend/src/workbooks.js."""
+    import re
+    from pathlib import Path
+
+    from core.feedback import VASTE_DASHBOARDS
+
+    bron = (Path(__file__).resolve().parents[1] / "frontend" / "src" / "workbooks.js").read_text(encoding="utf-8")
+    assert set(re.findall(r"id: '(__builtin_\w+__)'", bron)) == VASTE_DASHBOARDS == set(_VASTE)
+
+
 def test_feedback_disabled(app_client):
     client = _client(app_client, enabled="false")
     assert client.get("/api/config").json()["feedback_enabled"] is False

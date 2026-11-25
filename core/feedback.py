@@ -17,6 +17,13 @@ MAX_OTHER_LENGTH = 200
 # De instelling die de gebruiker in de app koos, bij de inzending bewaard (kolom feedback.instelling).
 MAX_INSTELLING_LENGTH = 200
 
+# De vaste dashboards (BUILTIN_* in frontend/src/workbooks.js): van iedereen, dus niet in de werkboeken van één
+# gebruiker. Feedback erop slaat de eigendomscontrole over en heet altijd "dashboard" (#1210). Alleen deze ids;
+# elk ander id moet een eigen werkboek zijn (#389). tests/test_feedback.py houdt de lijst gelijk met de frontend.
+VASTE_DASHBOARDS = frozenset(
+    {"__builtin_mijn_instelling__", "__builtin_arbeidsmarkt__", "__builtin_nationaal__", "__builtin_opleidingen__"}
+)
+
 QUESTIONS: tuple[dict, ...] = (
     {
         "id": "nuttig",

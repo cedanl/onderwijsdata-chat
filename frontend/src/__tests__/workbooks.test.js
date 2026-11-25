@@ -19,7 +19,10 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('../api', () => api)
 
-const { saveWorkbook, saveWorkbookWithSync, updateWorkbook, getWorkbooks, deleteWorkbook, loadWorkbook, loadWorkbooksFromServer, isVolledig } = await import('../workbooks.js')
+const {
+  saveWorkbook, saveWorkbookWithSync, updateWorkbook, getWorkbooks, deleteWorkbook, loadWorkbook, loadWorkbooksFromServer, isVolledig,
+  getWorkbookType, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN,
+} = await import('../workbooks.js')
 
 beforeEach(() => {
   localStorageMock.clear()
@@ -258,5 +261,14 @@ describe('updateWorkbook with a summary', () => {
   it('explains the refusal in the words of the app, not as a "werkboek"', async () => {
     const fout = await updateWorkbook({ id: 'r1', title: 'R', samenvatting: true }, { title: 'Nieuw' }).catch(e => e)
     expect(fout.message).toBe('Rapport is nog niet geladen')
+  })
+})
+
+// #1210: de feedback op een vast dashboard stuurt `workbook.type` als report_type; zonder type ging er '' mee.
+describe('vaste dashboards', () => {
+  it.each([BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, BUILTIN_OPLEIDINGEN])('$id heeft type dashboard', wb => {
+    expect(wb.type).toBe('dashboard')
+    expect(getWorkbookType(wb)).toBe('dashboard')
+    expect(isVolledig(wb)).toBe(true)
   })
 })
