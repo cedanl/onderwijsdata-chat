@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from core.pseudoniem import VERSIE
+from core.pseudoniem import VERSIE, pseudoniem
 
 logger = logging.getLogger(__name__)
 
@@ -586,8 +586,9 @@ _REVOKED_USERS_TABLE = """
 # een herlaad van de pagina terugvindt, ook op een andere pod (#984). Stond in het geheugen van de pod. Begrensd zoals
 # daar (#487, privacy M4): een rij vervalt na SESSION_MAX (`expires_at`, seconden sinds epoch) en boven het maximum gaat
 # de langst niet gebruikte eruit (`gebruikt`, ms sinds epoch). De sleutel is een pseudoniem van de accountnaam
-# (core/pseudoniem.py); de gegevens zelf zijn persoonsgegevens en gaan weg bij uitloggen, "verwijder al mijn gegevens"
-# en de opschoning (`verlopen_staat`).
+# (core/pseudoniem.py, `oidc_sleutel`); de gegevens zelf zijn persoonsgegevens: ze staan in de export van "mijn
+# gegevens" en gaan weg bij uitloggen, "verwijder al mijn gegevens" (in de transactie daarvan, #1209) en de opschoning
+# (`verlopen_staat`).
 _OIDC_GEBRUIKERS_TABLE = """
     CREATE TABLE IF NOT EXISTS oidc_gebruikers (
         sleutel    TEXT   PRIMARY KEY,
@@ -816,6 +817,19 @@ def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
     return row is not None
 
 
+# Het domein van het pseudoniem in `oidc_gebruikers` (core/pseudoniem.py): een andere sleutel dan in `tokengebruik`.
+OIDC_PSEUDONIEM_DOMEIN = "oidc_gebruiker"
+
+
+def oidc_sleutel(gebruiker: str) -> str:
+    """De sleutel van `gebruiker` in `oidc_gebruikers`: een pseudoniem van de accountnaam, niet de naam zelf (#984).
+
+    Eén afleiding voor de login (routes/auth.py), de export en het verwijderen (#1209), zodat die drie dezelfde rij
+    vinden; de persistence-laag hoeft daarvoor routes.auth niet te importeren.
+    """
+    return pseudoniem(OIDC_PSEUDONIEM_DOMEIN, gebruiker)
+
+
 def oidc_gebruiker_bewaar(sleutel: str, gegevens: str, expires_at: int, nu: float, maximum: int) -> None:
     """Bewaar (of vervang) de SRAM-gebruikersinfo onder `sleutel` tot `expires_at` (#984).
 
@@ -860,7 +874,8 @@ def oidc_gebruiker_lees(sleutel: str, nu: float) -> str | None:
 
 
 def oidc_gebruiker_vergeet(sleutel: str) -> None:
-    """De SRAM-gebruikersinfo onder `sleutel` weg: bij uitloggen en bij "verwijder al mijn gegevens"."""
+    """De SRAM-gebruikersinfo onder `sleutel` weg, bij uitloggen. "Verwijder al mijn gegevens" wist haar in zijn eigen
+    transactie (persistence/verwijderen.py, #1209)."""
     with _connection() as conn:
         _execute(conn, "DELETE FROM oidc_gebruikers WHERE sleutel = ?", (sleutel,))
         conn.commit()

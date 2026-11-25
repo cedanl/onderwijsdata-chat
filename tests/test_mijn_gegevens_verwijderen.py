@@ -1,7 +1,8 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met rijen van alle zeven soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
-nergens nog een rij, staan die van Bert er ongewijzigd, zijn al haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
+Twee accounts in CHAT_USERS, elk met rijen van alle acht soorten (sinds #1209 ook het SRAM-profiel). Na
+`DELETE /api/mijn-gegevens` van Anna heeft zij nergens nog een rij, staan die van Bert er ongewijzigd, zijn al haar
+tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
 """
 
@@ -14,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent import beurtbewijs, recepten
 from core import foutmeldingen
+from core.pseudoniem import pseudoniem
 from core.tokenbudget import _sleutel
 from persistence import db, export, verwijderen
 from tests.test_mijn_gegevens_export import _vul
@@ -28,6 +30,7 @@ _SOORTEN = [
     "data_recipes",
     "beurtbewijs",
     "tokengebruik",
+    "oidc_gebruiker",
 ]
 _ALLES_NUL = dict.fromkeys(_SOORTEN, 0)
 # Anna's rijen per soort na _vul_anna: elk aantal anders, zodat een verwisselde sleutel opvalt.
@@ -39,6 +42,7 @@ _ANNA = {
     "data_recipes": 1,
     "beurtbewijs": 2,
     "tokengebruik": 3,
+    "oidc_gebruiker": 1,
 }
 # Bert's rijen na _vul.
 _BERT = {
@@ -49,6 +53,7 @@ _BERT = {
     "data_recipes": 1,
     "beurtbewijs": 1,
     "tokengebruik": 1,
+    "oidc_gebruiker": 1,
 }
 
 
@@ -107,30 +112,41 @@ def _vul_anna() -> None:
         db.tokengebruik_boek(_sleutel("anna"), dag, 10)
 
 
-def _filter(tabel: str, gebruiker: str) -> tuple[str, tuple]:
-    """`tokengebruik` staat onder het pseudoniem van de naam (#1112), de andere tabellen onder de naam zelf."""
-    if tabel == "tokengebruik":
-        return "sleutel = ?", (_sleutel(gebruiker),)
-    return "username = ?", (gebruiker,)
+# De soort `oidc_gebruiker` is één rij in de tabel `oidc_gebruikers` (#984, #1209); de andere soorten heten als hun tabel.
+_TABEL = {"oidc_gebruiker": "oidc_gebruikers"}
 
 
-def _aantal(tabel: str, gebruiker: str) -> int:
-    waar, params = _filter(tabel, gebruiker)
+def _filter(soort: str, gebruiker: str) -> tuple[str, str, tuple]:
+    """`tokengebruik` en het SRAM-profiel staan onder een pseudoniem van de naam (#1112, #984), de andere tabellen onder
+    de naam zelf. Het pseudoniem wordt hier zelf afgeleid, los van de code onder test."""
+    tabel = _TABEL.get(soort, soort)
+    if soort == "tokengebruik":
+        return tabel, "sleutel = ?", (_sleutel(gebruiker),)
+    if soort == "oidc_gebruiker":
+        return tabel, "sleutel = ?", (pseudoniem("oidc_gebruiker", gebruiker),)
+    return tabel, "username = ?", (gebruiker,)
+
+
+def _aantal(soort: str, gebruiker: str) -> int:
+    tabel, waar, params = _filter(soort, gebruiker)
     with db._connection() as conn:
         return db._execute(conn, f"SELECT COUNT(*) AS n FROM {tabel} WHERE {waar}", params).fetchone()["n"]
 
 
 def _aantallen(gebruiker: str) -> dict[str, int]:
-    return {tabel: _aantal(tabel, gebruiker) for tabel in _SOORTEN}
+    return {soort: _aantal(soort, gebruiker) for soort in _SOORTEN}
 
 
 def _rijen(gebruiker: str) -> dict[str, list[tuple]]:
-    """Elke rij van deze gebruiker per tabel, volledig en gesorteerd: om 'ongewijzigd' te toetsen."""
+    """Elke rij van deze gebruiker per soort, volledig en gesorteerd: om 'ongewijzigd' te toetsen. Van het SRAM-profiel
+    niet de kolom `gebruikt`: die schuift bij elk lezen op (#487)."""
     rijen = {}
     with db._connection() as conn:
-        for tabel in _SOORTEN:
-            waar, params = _filter(tabel, gebruiker)
-            rijen[tabel] = sorted(tuple(r) for r in db._execute(conn, f"SELECT * FROM {tabel} WHERE {waar}", params))
+        for soort in _SOORTEN:
+            tabel, waar, params = _filter(soort, gebruiker)
+            kolommen = "sleutel, gegevens, expires_at" if soort == "oidc_gebruiker" else "*"
+            sql = f"SELECT {kolommen} FROM {tabel} WHERE {waar}"
+            rijen[soort] = sorted(tuple(r) for r in db._execute(conn, sql, params))
     return rijen
 
 
@@ -346,28 +362,62 @@ def test_een_fout_halverwege_geeft_500_en_het_token_blijft_geldig(client, monkey
     assert _verwijder(client, token).json() == {"ok": True, "verwijderd": _ANNA}
 
 
-def test_een_fout_bij_het_wissen_van_de_sram_gegevens_laat_de_intrekking_staan(client, monkeypatch):
-    """De SRAM-gegevens staan sinds #984 in de database, en dat wissen kan falen. Na de transactie zijn de rijen weg;
-    de tokens moeten dan ook weg, ook die van een ander apparaat. De rij verloopt zelf na SESSION_MAX."""
+def _faal_bij_het_sram_profiel(monkeypatch) -> None:
+    """De DELETE van het SRAM-profiel faalt: die komt als laatste in de transactie (#1209)."""
+    echte = db._execute
+
+    def execute(conn, sql, params=()):
+        if sql.lstrip().upper().startswith("DELETE FROM OIDC_GEBRUIKERS WHERE SLEUTEL"):
+            raise sqlite3.OperationalError("database is locked")
+        return echte(conn, sql, params)
+
+    monkeypatch.setattr(db, "_execute", execute)
+
+
+def test_het_sram_profiel_gaat_mee_in_de_transactie_en_een_fout_daar_laat_alles_staan(client, monkeypatch):
+    """#1209: het SRAM-profiel ging na de transactie weg, apart; faalde dat, dan waren de rijen al weg. Nu is het de
+    laatste DELETE in dezelfde transactie: faalt die, dan blijven alle rijen en het profiel staan en blijven de tokens
+    geldig, zodat opnieuw proberen kan."""
+    import routes.auth
     import server
 
     _vul_anna()
     token = _token("anna")
-    ander_apparaat = _token("anna", start=int(time.time()) - 60)
     zonder_raise = TestClient(server.app, raise_server_exceptions=False)
 
-    def stuk(_sleutel):
-        raise sqlite3.OperationalError("database is locked")
+    with monkeypatch.context() as m, pytest.raises(sqlite3.OperationalError):
+        _faal_bij_het_sram_profiel(m)
+        verwijderen.verwijder_alles("anna")
+    assert _aantallen("anna") == _ANNA
 
     with monkeypatch.context() as m:
-        m.setattr(db, "oidc_gebruiker_vergeet", stuk)
+        _faal_bij_het_sram_profiel(m)
         response = _verwijder(zonder_raise, token)
 
     assert response.status_code == 500
+    assert _aantallen("anna") == _ANNA
+    assert routes.auth._get_oidc_user("anna") is not None
+    assert _ingetrokken() == 0
+    assert _werkt(client, token)
+    assert _verwijder(client, token).json() == {"ok": True, "verwijderd": _ANNA}
     assert _aantallen("anna") == _ALLES_NUL
-    assert _ingetrokken() == 1
-    assert not _werkt(client, token)
-    assert not _werkt(client, ander_apparaat)
+
+
+def test_de_route_wist_het_sram_profiel_niet_meer_na_de_transactie(client, monkeypatch):
+    """#1209: `vergeet_oidc_gebruiker` hoort bij uitloggen; het verwijderen doet het in de transactie. Zou de route het
+    daarna nog aanroepen, dan gaf deze kapotte functie een 500."""
+
+    def stuk(_sleutel):
+        raise AssertionError("oidc_gebruiker_vergeet hoort niet bij verwijderen")
+
+    _vul_anna()
+    monkeypatch.setattr(db, "oidc_gebruiker_vergeet", stuk)
+
+    response = _verwijder(client, _token("anna"))
+
+    assert response.status_code == 200
+    assert response.json()["verwijderd"]["oidc_gebruiker"] == 1
+    assert _aantal("oidc_gebruiker", "anna") == 0
 
 
 # ── 6. Zonder login, onbekende naam, `verwijderd` ────────────────────────────
@@ -414,15 +464,16 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
     response = _verwijder(client, _token("anna"))
 
     log = "\n".join(r.getMessage() for r in caplog.records)
-    # Elke opgeslagen tekst van Anna (titel, berichten, HTML, feedback, recept) draagt ANNA-UNIEK.
-    for tekst in ("ANNA-UNIEK", "RECEPT-UNIEK", "anna"):
+    # Elke opgeslagen tekst van Anna (titel, berichten, HTML, feedback, recept, SRAM-profiel) draagt ANNA-UNIEK; haar
+    # e-mailadres in het profiel draagt `anna`.
+    for tekst in ("ANNA-UNIEK", "RECEPT-UNIEK", "anna", "example.org"):
         assert tekst not in log
         assert tekst not in response.text
     regels = [r.getMessage() for r in caplog.records if r.name == "routes.mijn_gegevens"]
     assert len(regels) == 1
     assert regels[0] == (
         "verwijder mijn gegevens: conversations=3, workbooks=2, feedback=4, algemene_feedback=5, "
-        "data_recipes=1, beurtbewijs=2, tokengebruik=3"
+        "data_recipes=1, beurtbewijs=2, tokengebruik=3, oidc_gebruiker=1"
     )
     assert next(r for r in caplog.records if r.name == "routes.mijn_gegevens").levelno == logging.INFO
 
@@ -431,8 +482,9 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
 
 
 def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path, monkeypatch):
-    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test. `tokengebruik`
-    heeft geen kolom `username` maar een pseudoniem van de naam (#1112), en hoort er toch bij (#1074)."""
+    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test. `tokengebruik` en
+    `oidc_gebruikers` hebben geen kolom `username` maar een pseudoniem van de naam (#1112, #984), en horen er toch bij
+    (#1074, #1209)."""
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     db.init_db()
     with db._connection() as conn:
@@ -441,12 +493,14 @@ def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path
             t for t in tabellen if any(k["name"] == "username" for k in db._execute(conn, f"PRAGMA table_info({t})"))
         }
 
-    assert met_gebruiker == set(_SOORTEN) - {"tokengebruik"}
+    assert met_gebruiker == set(_SOORTEN) - {"tokengebruik", "oidc_gebruiker"}
+    assert "oidc_gebruikers" in tabellen
     assert list(verwijderen.DELETES) == list(export.SOORTEN) == _SOORTEN
 
 
 def test_elke_delete_filtert_op_de_gebruiker():
-    *op_naam, tokengebruik = verwijderen.DELETES.items()
+    *op_naam, tokengebruik, oidc_gebruiker = verwijderen.DELETES.items()
     for soort, sql in op_naam:
         assert sql == f"DELETE FROM {soort} WHERE username = ?"
     assert tokengebruik == ("tokengebruik", "DELETE FROM tokengebruik WHERE sleutel = ?")
+    assert oidc_gebruiker == ("oidc_gebruiker", "DELETE FROM oidc_gebruikers WHERE sleutel = ?")

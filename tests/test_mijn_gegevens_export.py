@@ -1,6 +1,7 @@
 """Exporteer al mijn gegevens (#645, deel 1 van #485): alles onder het eigen account, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met gesprekken, werkboeken, feedback van alle soorten, datarecepten en tokengebruik.
+Twee accounts in CHAT_USERS, elk met gesprekken, werkboeken, feedback van alle soorten, datarecepten, tokengebruik en
+een bewaard SRAM-profiel (#1209).
 De export van Anna bevat precies haar rijen; geen tekst die alleen van Bert is, staat erin. Tokens worden
 direct gemaakt, niet via de login: de login-limiter telt over de hele testrun mee. Zonder login (iedereen is `gast`)
 is er geen eigen account en geen export (#1118).
@@ -9,11 +10,13 @@ is er geen eigen account en geen export (#1118).
 import json
 import logging
 import re
+import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
+from core.pseudoniem import pseudoniem
 from core.tokenbudget import _sleutel
 from persistence import db, export
 
@@ -25,6 +28,7 @@ _SOORTEN = [
     "data_recipes",
     "beurtbewijs",
     "tokengebruik",
+    "oidc_gebruiker",
 ]
 _EXPORT = "/api/mijn-gegevens/export"
 
@@ -99,6 +103,24 @@ def _vul(gebruiker: str, uniek: str) -> None:
     # Het verbruik van het model staat onder een pseudoniem, niet onder de naam (#1112); de export en het verwijderen
     # vinden het via dezelfde sleutel (#1074).
     db.tokengebruik_boek(_sleutel(gebruiker), "2026-11-02", 1234)
+    # Het SRAM-profiel staat onder een pseudoniem van de naam (#984); de export en het verwijderen vinden het (#1209).
+    _bewaar_profiel(gebruiker, _profiel(gebruiker, uniek))
+
+
+def _profiel(gebruiker: str, uniek: str) -> dict:
+    return {"name": f"Naam {uniek}", "email": f"{gebruiker}@example.org", "org": f"Org {uniek}", "institution": uniek}
+
+
+def _bewaar_profiel(gebruiker: str, profiel: dict) -> None:
+    """Zoals de login het bewaart (routes/auth.py), zonder de route zelf."""
+    import routes.auth
+
+    routes.auth._store_oidc_user(gebruiker, profiel)
+
+
+def _oidc_sleutel(gebruiker: str) -> str:
+    """De sleutel van de rij, onafhankelijk van de code onder test afgeleid: domein `oidc_gebruiker` (#984)."""
+    return pseudoniem("oidc_gebruiker", gebruiker)
 
 
 def _export(client: TestClient, gebruiker: str) -> tuple[dict, str]:
@@ -135,11 +157,11 @@ def test_bijlage_met_datum_json_en_nooit_in_een_cache(client):
     assert json.loads(response.text)["exported_at"].startswith(vandaag)
 
 
-def test_een_gebruiker_zonder_gegevens_krijgt_zeven_lege_lijsten(client):
+def test_een_gebruiker_zonder_gegevens_krijgt_acht_lege_lijsten(client):
     _vul("anna", "ANNA-UNIEK")
     data, _ = _export(client, "leeg")
     assert data["username"] == "leeg"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 8
 
 
 def test_zonder_login_404_zoals_bij_verwijderen(app_client):
@@ -177,6 +199,7 @@ def test_alleen_de_eigen_rijen_per_soort(client):
     assert [(r["conv_id"], r["data_key"]) for r in data["data_recipes"]] == [("anna-c1", "key-ANNA-UNIEK")]
     assert [(r["conv_id"], r["tekst_hash"]) for r in data["beurtbewijs"]] == [("anna-c1", "hash-ANNA-UNIEK")]
     assert data["tokengebruik"] == [{"dag": "2026-11-02", "eenheden": 1234}]
+    assert [r["gegevens"] for r in data["oidc_gebruiker"]] == [_profiel("anna", "ANNA-UNIEK")]
     assert "BERT" not in body
     assert "bert" not in body
 
@@ -197,6 +220,49 @@ def test_tokengebruik_per_dag_op_volgorde_zonder_de_sleutel(client):
     ]
     for geheim in (_sleutel("anna"), _sleutel("bert"), "999", "2026-11-03"):
         assert geheim not in body
+
+
+def test_het_sram_profiel_van_het_account_zonder_de_sleutel(client):
+    """#1209: het SRAM-profiel (naam, e-mail, organisatie, instelling) staat sinds #984 in `oidc_gebruikers` en hoort bij
+    het account (AVG art. 15): één rij met de ontlede `gegevens` en `expires_at`, zonder het pseudoniem. Een ander
+    account ziet er niets van; een nieuwe sleutel achteraan, dus `schema_version` blijft 1."""
+    voor = int(time.time())
+    _bewaar_profiel("anna", _profiel("anna", "ANNA-UNIEK"))
+    _bewaar_profiel("bert", _profiel("bert", "BERT-UNIEK"))
+
+    data, body = _export(client, "anna")
+
+    assert data["schema_version"] == 1
+    assert list(data)[-1] == "oidc_gebruiker"
+    assert list(export.SOORTEN)[-1] == "oidc_gebruiker"
+    [rij] = data["oidc_gebruiker"]
+    assert set(rij) == {"gegevens", "expires_at"}
+    assert rij["gegevens"] == _profiel("anna", "ANNA-UNIEK")
+    assert isinstance(rij["expires_at"], int) and rij["expires_at"] > voor
+    for geheim in (_oidc_sleutel("anna"), _oidc_sleutel("bert"), "sleutel", "BERT", "bert"):
+        assert geheim not in body
+
+    data_bert, body_bert = _export(client, "bert")
+    assert [r["gegevens"] for r in data_bert["oidc_gebruiker"]] == [_profiel("bert", "BERT-UNIEK")]
+    assert "ANNA" not in body_bert
+
+
+def test_zonder_of_met_een_verlopen_sram_profiel_een_lege_lijst(client):
+    """Geen rij: `[]`. Een verlopen rij leest de app niet meer (routes/auth.py), dus de export toont haar ook niet."""
+    data, _ = _export(client, "anna")
+    assert data["oidc_gebruiker"] == []
+
+    with db._connection() as conn:
+        db._execute(
+            conn,
+            "INSERT INTO oidc_gebruikers (sleutel, gegevens, expires_at, gebruikt) VALUES (?, ?, ?, ?)",
+            (_oidc_sleutel("anna"), json.dumps({"name": "VERLOPEN"}), int(time.time()) - 1, 0),
+        )
+        conn.commit()
+
+    data, body = _export(client, "anna")
+    assert data["oidc_gebruiker"] == []
+    assert "VERLOPEN" not in body
 
 
 def test_json_kolommen_zijn_ontleed(client):
@@ -342,7 +408,7 @@ def test_de_stukken_vormen_samen_de_json(tmp_path, monkeypatch):
     assert len(stukken) > 1
     data = json.loads("".join(stukken))
     assert data["exported_at"] == "2026-10-20T09:30:00+00:00"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 8
 
 
 def test_werkboeken_een_voor_een(client, monkeypatch):
@@ -375,8 +441,8 @@ def test_werkboeken_een_voor_een(client, monkeypatch):
 
 
 def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
-    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam; `tokengebruik` kent alleen
-    het pseudoniem van de naam (#1112) en filtert daarop."""
+    """Geen query zonder `username = ?`, en elke parameterlijst draagt de gebruikersnaam; `tokengebruik` en
+    `oidc_gebruikers` kennen alleen het pseudoniem van de naam (#1112, #984) en filteren daarop."""
     queries: list[tuple[str, tuple]] = []
 
     def vang(sql, params):
@@ -385,10 +451,12 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
 
     monkeypatch.setattr(export, "_rijen", vang)
     list(export.export_json_chunks("anna"))
-    assert len(queries) == 7
-    *op_naam, tokengebruik = queries
+    assert len(queries) == 8
+    *op_naam, tokengebruik, oidc_gebruiker = queries
     for sql, params in op_naam:
         assert re.search(r"WHERE username = \?", sql)
         assert "anna" in params
     assert re.search(r"FROM tokengebruik WHERE sleutel = \?", tokengebruik[0])
     assert tokengebruik[1] == (_sleutel("anna"),)
+    assert re.search(r"FROM oidc_gebruikers WHERE sleutel = \?", oidc_gebruiker[0])
+    assert oidc_gebruiker[1][0] == _oidc_sleutel("anna")

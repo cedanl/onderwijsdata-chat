@@ -33,7 +33,6 @@ from core.auth import (
 )
 from core.errors import log_interne_fout
 from core.logging_util import foutkenmerk
-from core.pseudoniem import pseudoniem
 from core.rate_limit import RateLimiter
 from persistence import db
 
@@ -107,12 +106,12 @@ def session_check(username: Annotated[str | None, Depends(get_optional_user)]) -
 # _OIDC_CACHE_MAX gebruikers gaat de langst niet gebruikte eruit. De wandklok (time.time), want de tijd moet over pods
 # en herstarts heen kloppen. Elke functie hier gaat naar de database: vanuit async code via asyncio.to_thread (#508).
 _OIDC_CACHE_MAX = 1000
-_PSEUDONIEM_DOMEIN = "oidc_gebruiker"
 
 
 def _oidc_sleutel(username: str) -> str:
-    """De sleutel van de rij: een pseudoniem van de accountnaam (core/pseudoniem.py), niet de naam zelf."""
-    return pseudoniem(_PSEUDONIEM_DOMEIN, username)
+    """De sleutel van de rij: een pseudoniem van de accountnaam (`db.oidc_sleutel`), niet de naam zelf; dezelfde als
+    in de export en het verwijderen van "mijn gegevens" (#1209)."""
+    return db.oidc_sleutel(username)
 
 
 def _store_oidc_user(username: str, user_data: dict) -> None:
@@ -144,7 +143,8 @@ class RefreshBody(BaseModel):
 
 
 def vergeet_oidc_gebruiker(username: str) -> None:
-    """Na uitloggen en na "verwijder al mijn gegevens" (#646) staan naam, e-mail en organisatie niet meer bewaard."""
+    """Na uitloggen staan naam, e-mail en organisatie niet meer bewaard. "Verwijder al mijn gegevens" (#646) wist ze in
+    zijn eigen transactie (persistence/verwijderen.py, #1209)."""
     db.oidc_gebruiker_vergeet(_oidc_sleutel(username))
 
 
