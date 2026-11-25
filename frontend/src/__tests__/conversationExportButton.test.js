@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import ConversationExport from '../components/ConversationExport'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -24,7 +25,7 @@ describe('ConversationExport (#366)', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    act(() => root.render(createElement(ConversationExport, { messages: GESPREK, save })))
+    act(() => root.render(metGeavanceerd(createElement(ConversationExport, { messages: GESPREK, save }))))
   }
 
   const knop = tekst => [...container.querySelectorAll('button')].find(b => b.textContent.includes(tekst))

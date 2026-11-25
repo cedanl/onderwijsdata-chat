@@ -13,6 +13,7 @@ import { vervolgvragenTekst } from '../vervolgvragen'
 import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
 import { WEGGEGAAN } from '../weggegaan'
+import { useGeavanceerd } from '../geavanceerd'
 
 // De bubbel van één bericht: vraag, antwoord, grafieken, verduidelijking en de knoppen eronder. Uit ChatPage.jsx
 // gehaald (#696); ChatPage exporteert Message opnieuw, zodat bestaande imports blijven werken.
@@ -64,6 +65,7 @@ function hasAssistantContent(msg) {
 // vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
 export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
+  const geavanceerd = useGeavanceerd()
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -99,7 +101,7 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
-  const blocks = answerBlocks(msg, { settled })
+  const blocks = answerBlocks(msg, { settled, geavanceerd })
   const dataExport = (
     <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy}
       bewijsVan={msg} vraag={vraag} />

@@ -2,6 +2,7 @@ import ModelPicker from './ModelPicker'
 import MessageCounter from './MessageCounter'
 import ConnectionStatus from './ConnectionStatus'
 import { messageLengthState } from '../messageLength'
+import { useGeavanceerd } from '../geavanceerd'
 
 export default function ChatInputFooter({
   connected,
@@ -20,6 +21,8 @@ export default function ChatInputFooter({
   max,
 }) {
   const length = messageLengthState(text, max)
+  // De modelkeuze hoort bij "Geavanceerd" (#1269); zonder die instelling het standaardmodel, ook op de server.
+  const geavanceerd = useGeavanceerd()
   return (
     <div className="chat-input-footer">
       <ConnectionStatus connected={connected} opgegeven={opgegeven} bijwerken={bijwerken} onOpnieuw={onVerbindOpnieuw} />
@@ -39,7 +42,7 @@ export default function ChatInputFooter({
           </svg>
         </button>
       )}
-      {models.length > 0 && (
+      {geavanceerd && models.length > 0 && (
         <ModelPicker models={models} value={selectedModel} onChange={onModelChange} />
       )}
     </div>

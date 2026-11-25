@@ -64,6 +64,16 @@ export async function deleteMijnGegevens() {
   return apiFetch('/api/mijn-gegevens', { method: 'DELETE', body: JSON.stringify({ bevestig: 'verwijder' }) })
 }
 
+// "Geavanceerd" of this account (#1269): the server keeps it, so it is the same on every device. Resolves to a boolean.
+export async function fetchGeavanceerd() {
+  return (await apiFetch('/api/mijn-gegevens/geavanceerd')).geavanceerd === true
+}
+
+export async function putGeavanceerd(aan) {
+  const body = JSON.stringify({ geavanceerd: aan === true })
+  return (await apiFetch('/api/mijn-gegevens/geavanceerd', { method: 'PUT', body })).geavanceerd === true
+}
+
 export async function fetchConversations(params = {}) {
   const query = new URLSearchParams(params).toString()
   return apiFetch(query ? `/api/conversations?${query}` : '/api/conversations')

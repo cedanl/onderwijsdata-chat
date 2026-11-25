@@ -33,6 +33,7 @@ vi.mock('../hooks/useChat', () => ({
 import ChatPage from '../pages/ChatPage'
 import { STORAGE_TOKEN } from '../constants'
 import { NARROW_SCREEN } from '../hooks/useMediaQuery'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -69,7 +70,7 @@ async function mountChat() {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  await act(async () => { root.render(createElement(ChatPage, { user: 'tester' })) })
+  await act(async () => { root.render(metGeavanceerd(createElement(ChatPage, { user: 'tester' }))) })
 }
 
 describe('Redenering: code per stap op een telefoon (#595)', () => {

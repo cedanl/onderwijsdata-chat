@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import DataExport from '../components/DataExport'
 import { exportKeys, roundSettled } from '../dataExport'
 import { finishStep } from '../toolSteps'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -86,7 +87,7 @@ describe('DataExport', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    act(() => root.render(createElement(DataExport, { settled: true, download: vi.fn(), ...props })))
+    act(() => root.render(metGeavanceerd(createElement(DataExport, { settled: true, download: vi.fn(), ...props }))))
     return [...container.querySelectorAll('button')]
   }
 

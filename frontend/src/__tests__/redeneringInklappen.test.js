@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client'
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
 import { Message } from '../pages/ChatPage'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -43,7 +44,7 @@ function render(msg) {
     document.body.appendChild(container)
     root = createRoot(container)
   }
-  act(() => root.render(createElement(Message, { msg, settled: msg.done, busy: !msg.done })))
+  act(() => root.render(metGeavanceerd(createElement(Message, { msg, settled: msg.done, busy: !msg.done }))))
   return container
 }
 

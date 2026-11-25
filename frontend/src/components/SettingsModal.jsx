@@ -8,6 +8,13 @@ import { useDialog } from '../hooks/useDialog'
 import { FUNCTIES, isFunctie } from '../functies'
 import { effectieveInstelling } from '../profiel'
 
+// De onboardingvraag bij "Geavanceerd" (#1269): over het werk, niet over een rol; "Nee" staat voor.
+export const GEAVANCEERD_VRAAG = 'Wil je de code en de data achter een antwoord zien en zelf bijsturen?'
+const GEAVANCEERD_KEUZES = [
+  { aan: false, label: 'Nee' },
+  { aan: true, label: 'Ja' },
+]
+
 const MODES = [
   { id: 'system', label: 'Systeem' },
   { id: 'light',  label: 'Licht' },
@@ -33,7 +40,9 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, onLogout, onGegevensVerwijderd = null, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity, instellingen = [] }) {
+// geavanceerd: de bewaarde stand van "Geavanceerd" (#1269, standaard uit); Opslaan geeft de nieuwe stand mee als
+// `geavanceerd`, en App.jsx bewaart die los van het profiel.
+export default function SettingsModal({ settings, onSave, onClose, onLogout, onGegevensVerwijderd = null, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity, instellingen = [], geavanceerd = false }) {
   // A saved instelling that is exactly the raw SRAM org/institution string is
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
@@ -43,10 +52,11 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
   // A stored role that is not in the list (an older value) shows as no choice, and is saved as none (#591).
   const [functie, setFunctie] = useState(isFunctie(settings.functie) ? settings.functie : '')
   const [mode, setMode] = useState(settings.mode || 'system')
+  const [geavanceerdAan, setGeavanceerdAan] = useState(geavanceerd === true)
   const dialogRef = useDialog(onClose)
 
   const handleSave = () => {
-    onSave({ instelling, functie, mode })
+    onSave({ instelling, functie, mode, geavanceerd: geavanceerdAan })
     onClose()
   }
 
@@ -170,6 +180,55 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
               ))}
             </div>
           </div>
+
+          {isOnboarding ? (
+            <div>
+              <div id="settings-geavanceerd-vraag" style={{ fontSize: 'var(--font-label)', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+                {GEAVANCEERD_VRAAG}
+              </div>
+              <div role="group" aria-labelledby="settings-geavanceerd-vraag" aria-describedby="settings-geavanceerd-uitleg" style={{ display: 'flex', gap: 8 }}>
+                {GEAVANCEERD_KEUZES.map(k => (
+                  <button type="button"
+                    key={k.label}
+                    aria-pressed={geavanceerdAan === k.aan}
+                    onClick={() => setGeavanceerdAan(k.aan)}
+                    style={{
+                      padding: '7px 18px', borderRadius: 'var(--radius-sm)', fontSize: '.82rem', fontWeight: 600,
+                      border: `1.5px solid ${geavanceerdAan === k.aan ? 'var(--blue-500)' : 'var(--gray-200)'}`,
+                      background: geavanceerdAan === k.aan ? 'var(--blue-50)' : 'var(--white)',
+                      color: geavanceerdAan === k.aan ? 'var(--blue-700)' : 'var(--gray-600)',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {k.label}
+                  </button>
+                ))}
+              </div>
+              <p id="settings-geavanceerd-uitleg" className="settings-geavanceerd-uitleg">
+                Ja zet <strong>Geavanceerd</strong> aan: de code per stap, de CSV-downloads en de modelkeuze. Je kunt het
+                later altijd wijzigen in Instellingen.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <button type="button"
+                role="switch"
+                aria-checked={geavanceerdAan}
+                aria-describedby="settings-geavanceerd-uitleg"
+                className="settings-switch"
+                onClick={() => setGeavanceerdAan(aan => !aan)}
+              >
+                <span className="settings-switch-label">Geavanceerd</span>
+                <span className="settings-switch-baan" aria-hidden="true"><span className="settings-switch-knop" /></span>
+              </button>
+              <p id="settings-geavanceerd-uitleg" className="settings-geavanceerd-uitleg">
+                Toont ook de code en de data achter een antwoord: de Python per stap, de technische key van een getal,
+                de CSV-downloads en de modelkeuze. De controles, waarschuwingen en bronnen bij een antwoord staan er
+                altijd, ook zonder Geavanceerd.
+                {onGegevensVerwijderd && ' Je keuze staat bij je account en geldt op elk apparaat waarop je inlogt.'}
+              </p>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 32 }}>

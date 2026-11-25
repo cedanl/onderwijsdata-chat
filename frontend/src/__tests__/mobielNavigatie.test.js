@@ -42,6 +42,7 @@ import { EXTERNE_AI_MELDING } from '../components/ChatNavActies'
 import { NavSlotContext } from '../navSlot'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { zetBronnenLijst } from '../bronnenLijst'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -294,7 +295,7 @@ describe('invoerkader als pil', () => {
   }
 
   it('toont de modelkiezer en de providerregel in het kader op desktop', async () => {
-    await render(createElement(Composer, props))
+    await render(metGeavanceerd(createElement(Composer, props)))
     expect(container.querySelector('.chat-input-footer .model-picker-provider').textContent).toBe('Via Microsoft Azure AI Foundry')
   })
 

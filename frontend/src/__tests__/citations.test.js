@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import ReactMarkdown from 'react-markdown'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -23,7 +24,7 @@ describe('zichtbare citaties (#365)', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     act(() => root.render(
-      createElement(ReactMarkdown, { rehypePlugins: [rehypeCitaties(citaties)], components: { span: CitedNumber } }, tekst)
+      metGeavanceerd(createElement(ReactMarkdown, { rehypePlugins: [rehypeCitaties(citaties)], components: { span: CitedNumber } }, tekst))
     ))
   }
 
@@ -169,7 +170,7 @@ describe('herkenbaar klikbaar zonder hover (#495, UX F08)', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     act(() => root.render(
-      createElement(ReactMarkdown, { rehypePlugins: [rehypeCitaties(citaties)], components: { span: CitedNumber } }, tekst)
+      metGeavanceerd(createElement(ReactMarkdown, { rehypePlugins: [rehypeCitaties(citaties)], components: { span: CitedNumber } }, tekst))
     ))
   }
 

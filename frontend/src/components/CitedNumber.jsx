@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useGeavanceerd } from '../geavanceerd'
 
 // Een getal uit een dataantwoord met zijn herkomst (#365, #415): eerst bron en selectie in
 // woorden, dan maat en stap, de technische key dichtgeklapt onder "Technische details" (CH-30r).
@@ -73,7 +74,9 @@ function Onbepaald({ reden }) {
   )
 }
 
+// De herkomst in woorden staat er altijd; de technische key alleen met "Geavanceerd" (#1269).
 function Herkomst(props) {
+  const geavanceerd = useGeavanceerd()
   const stap = props['data-stap']
   const label = props['data-label']
   return (
@@ -82,7 +85,7 @@ function Herkomst(props) {
       {props['data-selectie'] && <span>{props['data-selectie']}</span>}
       {props['data-maat'] && <span>{props['data-maat']}</span>}
       {stap && <span className="citatie-stap">Stap {stap}: {label}</span>}
-      {props['data-key'] && (
+      {geavanceerd && props['data-key'] && (
         // CH-30r: de key is het enige spoor van getal naar toolstap en store, maar jargon in de leesregel.
         <details className="citatie-details">
           <summary>Technische details</summary>
