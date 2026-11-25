@@ -8,6 +8,7 @@ import { HERSTART, createHeartbeat, createRetry, opgevenBij, watchNetwork } from
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
 import { markeerWeggegaan } from '../weggegaan'
+import { regelUit } from '../getalWacht'
 import { vasteMaat } from '../vasteMaat'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
@@ -279,7 +280,7 @@ export function useChat({ maxHistory } = {}) {
         setMessages(prev => prev.filter(m => m.id !== sent.id))
         if (sent.draft) setRejectedDraft(sent.content)
       },
-      message_start() {
+      message_start(ev) {
         lastSentRef.current = null
         setThinking(false)
         // Every model round announces itself. A round before the last one called tools: its
@@ -295,7 +296,9 @@ export function useChat({ maxHistory } = {}) {
         currentHasTextRef.current = false
         const msgId = nextId()
         currentMsgRef.current = msgId
-        setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
+        // Welke getallen de controle van de server toetst (#1254): die wachten tot message_end.
+        const getalregel = regelUit(ev)
+        setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false, ...(getalregel && { getalregel }) }])
       },
       // The answer was withdrawn (correction or clarification): the next round writes on in
       // the same card, so the steps before and after the correction stay together (#398).
@@ -339,7 +342,8 @@ export function useChat({ maxHistory } = {}) {
         // The follow-up questions the server picked from the catalogue (#364).
         const vragen = vervolgvragenTekst(ev.vervolgvragen)
         // The server sends the full text; it wins over the accumulated deltas.
-        updateCurrentMsg(m => {
+        // eslint-disable-next-line no-unused-vars -- de regel is na de controle niet meer nodig (#1254)
+        updateCurrentMsg(({ getalregel, ...m }) => {
           const content = typeof ev.content === 'string' ? ev.content : m.content
           return {
             ...m,

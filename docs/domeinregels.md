@@ -13,12 +13,23 @@ bron, en de tests lopen vanzelf over elke regel in het bestand.
 
 | Regelsoort | Wat de tools ermee doen | Waar je het ziet |
 |---|---|---|
-| `[sentinel]` | Maken de waarden leeg in elke DUO-tabel die de chat laadt en melden hoeveel cellen dat waren; een totaal over zo'n cel heet een ondergrens. | `get_duo_data`, `query_data`, het Telling-blok, de voetnoot onder een tabel met lege cellen (#811), de grafiek in de chat per punt (open marker of arcering, "ten minste" in de hover, "≥" in de tabel, #1261), de kolom `ondergrens` in de CSV (#1257), dashboards en code-snippets |
+| `[sentinel]` | Maken de waarden leeg in elke DUO-tabel die de chat laadt en melden hoeveel cellen dat waren; een totaal over zo'n cel heet een ondergrens. Een onderdrukte cel terugrekenen als totaal min de zichtbare delen weigeren `run_analysis` en `compute_kpi`, en het antwoord mag zo'n getal niet noemen (zie onder de tabel, #1265). | `get_duo_data`, `query_data`, het Telling-blok, de voetnoot onder een tabel met lege cellen (#811), de grafiek in de chat per punt (open marker of arcering, "ten minste" in de hover, "≥" in de tabel, #1261), de kolom `ondergrens` in de CSV (#1257), dashboards en code-snippets |
 | `[opleidingsvorm]` | Geven de codes een definitie en een woord (VT → Voltijd), alleen bij de genoemde bestanden; de antwoordcontrole toetst "deeltijd (DU)" eraan. | kolomdefinitie in `get_duo_data`, grafieklabels, rapportdefinities |
 | `[[kolomcorrectie]]` | Vervangen de definitie uit `onderwijsbronnen` van één kolom in de genoemde bestanden. | `get_duo_data`, `dataset_details`, `search_catalog` |
 | `[[herkomst_is_vestiging]]` | Zetten een melding `niet_geschikt_voor` op de genoemde bestanden en herschrijven voorbeeldvragen die naar woonplaats vragen. | `dataset_details`, `search_catalog` |
 
 `[soort]` komt precies één keer voor; `[[soort]]` is een lijst: elk blok met die kop is één regel.
+
+**Geen terugrekenen (#1265).** Een onderdrukte cel (DUO -1, ook een CBS-cel met '.') is vaak terug te rekenen: staat
+het totaal in een totaalrij of in een totaalbestand, dan is totaal min de zichtbare delen precies de cel. Dat heet
+differencing, en de bron onderdrukte de cel juist om dat kleine aantal (bij DUO 1 tot en met 4) niet te publiceren.
+`tools/terugrekenen.py` zoekt per onderdrukte cel de rijen die alleen in één dimensie van haar verschillen en de
+totalen die precies bij die groep horen, uit dezelfde tabel of uit een andere geladen tabel. Een uitkomst van
+`run_analysis` (getal, tabel of grafiek) of `compute_kpi` die gelijk is aan zo'n reconstructie, geeft de vaste melding
+"Deze cel is door de bron onderdrukt; terugrekenen geven we niet." in plaats van het getal, en de antwoordcontrole
+houdt een antwoord in dat het getal zelf uitrekent. Een verschil van twee totalen die allebei de cel bevatten, blijft
+mogelijk: de cel valt daarin weg. De regel dekt één onderdrukte cel per groep; secundaire onderdrukking bij de bron
+(meer cellen leeg maken zodat geen enkele terug te rekenen is) valt erbuiten.
 
 ## Velden
 

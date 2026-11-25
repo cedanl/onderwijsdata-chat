@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from . import cbs_afronding, fouten, optelbaar, periode, store
+from . import cbs_afronding, fouten, optelbaar, periode, store, terugrekenen
 from .cbs import check_aggregation
 from .getal import nl_getal
 
@@ -269,6 +269,9 @@ def compute_kpi(
         return _error(fout)
 
     value = _waarde(metric, series, step)
+    # Een verschil dat een onderdrukte cel exact teruggeeft (totaal min de zichtbare delen), geven we niet (#1265).
+    if terugrekenen.teruggerekend(value, [data_key]):
+        return _error(terugrekenen.MELDING)
     tekst, trend, trend_direction = _opmaak(metric, value)
     periode_van_kpi = _periode(reeks, value_column, sort_column, step, bron, metric)
     if foutief_label := _label_klopt_niet(label, periode_van_kpi):

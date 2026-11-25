@@ -11,8 +11,9 @@ import ClarificationButtons from './ClarificationButtons'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { voorbehoudRegels } from '../voorbehoud'
 import ControleRegel from './ControleRegel'
+import { zonderStaart, zoalsGetoond } from '../getalWacht'
 import { vervolgvragenTekst } from '../vervolgvragen'
-import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken } from './MessageContent'
+import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken, wachtVan } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
 import { WEGGEGAAN } from '../weggegaan'
 
@@ -57,6 +58,14 @@ function hasAssistantContent(msg) {
     msg.interrupted ||
     msg.empty
   )
+}
+
+// De kopieerknop kopieert wat in beeld staat: zolang de getallen op de controle wachten, met "…" (#1254).
+function kopieVan(msg) {
+  const wacht = wachtVan(msg)
+  if (wacht === undefined) return kopieerTekst(msg)
+  const content = msg.done ? msg.content : zonderStaart(msg.content, wacht)
+  return zoalsGetoond(kopieerTekst({ ...msg, content }), wacht)
 }
 
 // onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
@@ -119,11 +128,12 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} />
-        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
+        {/* Getallen die de controle toetst, wachten tot die klaar is (#1254): ook in de tussentekst en een eerdere versie. */}
+        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} wacht={wachtVan(msg)} />
+        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} wacht={wachtVan(msg)} />
         {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
-            {msg.content && <CopyButton text={kopieerTekst(msg)} className="copy-btn-message" />}
+            {msg.content && <CopyButton text={kopieVan(msg)} className="copy-btn-message" />}
             <MessageContent msg={msg} blocks={blocks} />
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}

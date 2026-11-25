@@ -212,6 +212,35 @@ def test_een_beurt_met_het_nepmodel_zoekt_laadt_en_antwoordt():
 
 
 @pytest.mark.usefixtures("geen_provider")
+def test_scenario_verzonnen_wordt_ingetrokken_en_het_getal_komt_in_twee_stukken():
+    """#1254: het getal van de eerste versie stroomt in twee stukken binnen ("27." en "135"), de controle trekt het
+    antwoord in, en het slot noemt het niet. Elke message_start draagt de regel van de getalcontrole."""
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    asyncio.run(
+        run_module.run(
+            [{"role": "user", "content": VRAAG}],
+            {},
+            emit,
+            asyncio.Event(),
+            model="mock/verzonnen",
+        )
+    )
+
+    soorten = [e["type"] for e in events]
+    stukken = [e["content"] for e in events if e["type"] == "text_delta"]
+    assert any(s.endswith("27.") for s in stukken) and any(s.startswith("135") for s in stukken)
+    assert "message_cancel" in soorten
+    slot = next(e for e in events if e["type"] == "message_end")
+    assert nepmodel.VERZONNEN not in slot["content"] and "27135" not in slot["content"]
+    starts = [e for e in events if e["type"] == "message_start"]
+    assert len(starts) >= 2 and all(e["getalregel"]["min_cijfers"] == 4 for e in starts)
+
+
+@pytest.mark.usefixtures("geen_provider")
 def test_het_rapport_van_het_nepmodel_komt_door_de_controles():
     store.put(
         _KEY,
@@ -241,7 +270,7 @@ def test_de_kiezer_toont_de_nepscenarios_zonder_available_models(monkeypatch):
 
     aanbod = runtime.get_available_models() or []
 
-    assert [m[0] for m in aanbod] == ["mock/default", "mock/tekst"]
+    assert [m[0] for m in aanbod] == ["mock/default", "mock/tekst", "mock/verzonnen"]
     assert all(m[1].startswith("Nepmodel") for m in aanbod)
     assert runtime.toegestaan_model(None, "mock/tekst") == "mock/tekst"
 

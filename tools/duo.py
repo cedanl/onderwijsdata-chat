@@ -134,6 +134,11 @@ def onderdrukt_in_groep(key: str, rij: int, kolom: str) -> int | None:
     return int(cells.at[index, kolom])
 
 
+def is_groepstotaal(key: str) -> bool:
+    """Is elke rij van `key` een groepstotaal (query_data met group_by/aggregate)? Haar cellen tellen dan broncellen."""
+    return key in _groepen
+
+
 def sentinel_cells(key: str) -> pd.DataFrame | None:
     """De gemaskeerde cellen van deze key; query_data neemt ze mee naar zijn selectie."""
     return _sentinel_cells.get(key)

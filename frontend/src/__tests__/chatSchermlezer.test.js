@@ -141,6 +141,24 @@ describe('aankondiging van het antwoord (#589, B7)', () => {
     expect(aankondiging()).toBe('')
   })
 
+  // #1254: een getal dat de controle nog toetst, wordt pas na message_end aangekondigd; op het scherm wacht het.
+  it('kondigt een gecontroleerd getal pas aan als het antwoord klaar is', async () => {
+    const regel = (await import('./fixtures/getalregel.json')).default
+    chat.messages = [vraag, antwoord({ done: false, content: 'Er zijn 27.135 studenten.', getalregel: regel })]
+    chat.busy = true
+    await render(createElement(ChatPage, { settings: {}, user: 'gast' }))
+    expect(aankondiging()).toBe('')
+    expect(container.querySelector('.message.assistant').textContent).not.toContain('27.135')
+    expect(container.querySelector('[aria-label="getal wordt gecontroleerd"]')).not.toBeNull()
+
+    act(() => root.unmount())
+    container.remove()
+    chat.messages = [vraag, antwoord({ content: 'Er zijn 27.135 studenten.' })]
+    chat.busy = false
+    await render(createElement(ChatPage, { settings: {}, user: 'gast' }))
+    expect(aankondiging()).toContain('27.135')
+  })
+
   it('blijft leeg als het laatste bericht een vraag is', async () => {
     chat.messages = [vraag, antwoord(), { id: 3, role: 'user', content: 'Nog een vraag', done: true }]
     await render(createElement(ChatPage, { settings: {}, user: 'gast' }))

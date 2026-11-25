@@ -868,6 +868,12 @@ html.dark .login-melding { color: var(--accent-text); }
 /* Een eigen rij, ook als de knoppen naast elkaar staan (max-width 1024px): anders staat de kop naast de eerste knop. */
 .question-buttons-kop { width: 100%; font-size: .75rem; font-weight: 600; color: var(--muted-text); }
 
+/* Een getal dat de controle nog toetst (#1254): een "…" even breed als het getal (width in ch, inline gezet), zodat
+   de regel niet verspringt als het getal verschijnt. Gedempt en zonder animatie: het is wachten, geen melding. */
+.getal-wacht {
+  display: inline-block; text-align: center; color: var(--gray-500);
+  background: var(--gray-100); border-radius: 3px; line-height: 1.25;
+}
 .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
 .ai-typing span {
   width: 7px; height: 7px; border-radius: 50%; background: var(--gray-400);
