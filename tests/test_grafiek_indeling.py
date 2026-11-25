@@ -1,6 +1,7 @@
 """De titel van een grafiek noemt de indeling en de bron uit de metadata, niet uit het model (#1232)."""
 
 import pandas as pd
+import plotly.graph_objects as go
 import plotly.io as pio
 import pytest
 
@@ -41,12 +42,18 @@ def cbs_studierichting():
     return _CBS_KEY
 
 
-def _titel(fig) -> str:
+def _grafiek(*args, **kwargs) -> go.Figure:
+    _, fig = create_plot(*args, **kwargs)
+    assert fig is not None
+    return fig
+
+
+def _titel(fig: go.Figure) -> str:
     return fig.layout.title.text
 
 
 def test_duo_sector_noemt_indeling_en_bron(duo_sector):
-    _, fig = create_plot(data_key=duo_sector, chart_type="bar", x="ONDERDEEL", y="AANTAL", title="Hbo-studenten")
+    fig = _grafiek(data_key=duo_sector, chart_type="bar", x="ONDERDEEL", y="AANTAL", title="Hbo-studenten")
     assert _titel(fig) == "Hbo-studenten per sector (DUO)"
     assert fig.layout.meta["indeling"] == "per sector (DUO)"
 
@@ -57,7 +64,7 @@ def test_duo_mbo_hoofdgroep_is_ook_sector():
 
 
 def test_cbs_studierichting_uit_kolomtitels(cbs_studierichting):
-    _, fig = create_plot(
+    fig = _grafiek(
         data_key=cbs_studierichting, chart_type="bar", x="Studierichting", y="Studenten_1", title="Hbo-studenten"
     )
     assert _titel(fig) == "Hbo-studenten per studierichting (CBS)"
@@ -86,7 +93,7 @@ def test_niets_dubbel(titel, verwacht):
 
 
 def test_niets_dubbel_in_de_grafiek(duo_sector):
-    _, fig = create_plot(
+    fig = _grafiek(
         data_key=duo_sector, chart_type="bar", x="ONDERDEEL", y="AANTAL", title="Hbo-studenten per sector (DUO)"
     )
     assert _titel(fig) == "Hbo-studenten per sector (DUO)"
@@ -94,7 +101,7 @@ def test_niets_dubbel_in_de_grafiek(duo_sector):
 
 def test_zonder_data_key_blijft_de_titel():
     rijen = [{"ONDERDEEL": "Economie", "AANTAL": 1}, {"ONDERDEEL": "Techniek", "AANTAL": 2}]
-    _, fig = create_plot(rijen, "bar", "ONDERDEEL", "AANTAL", "Hbo-studenten")
+    fig = _grafiek(rijen, "bar", "ONDERDEEL", "AANTAL", "Hbo-studenten")
     assert _titel(fig) == "Hbo-studenten"
     assert "indeling" not in fig.layout.meta
 
@@ -103,7 +110,7 @@ def test_zonder_data_key_blijft_de_titel():
 def test_geen_indeling_op_jaren_of_regio(x):
     key = f"duo:p01hoinges:{x}"
     store.put(key, pd.DataFrame([{x: "a", "AANTAL": 1}, {x: "b", "AANTAL": 2}]), KeyMeta(bron="duo", dataset="x"))
-    _, fig = create_plot(data_key=key, chart_type="bar", x=x, y="AANTAL", title="Hbo-studenten")
+    fig = _grafiek(data_key=key, chart_type="bar", x=x, y="AANTAL", title="Hbo-studenten")
     assert _titel(fig) == "Hbo-studenten"
     assert "indeling" not in fig.layout.meta
 
@@ -115,7 +122,7 @@ def test_cbs_regio_is_geen_indeling():
 
 
 def test_csv_kop_noemt_dezelfde_woorden(duo_sector):
-    _, fig = create_plot(data_key=duo_sector, chart_type="bar", x="ONDERDEEL", y="AANTAL", title="Hbo-studenten")
+    fig = _grafiek(data_key=duo_sector, chart_type="bar", x="ONDERDEEL", y="AANTAL", title="Hbo-studenten")
     assert indelingsregel("per sector (DUO)") in fig.layout.meta["herkomst"]
 
 
