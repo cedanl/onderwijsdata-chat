@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import FeedbackModal from '../components/FeedbackModal'
+import { BUILTIN_NATIONAAL } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -109,6 +110,21 @@ describe('FeedbackModal', () => {
       workbook_id: 'wb-1', report_type: 'report', report_title: 'Instroom hbo', instelling: '', answers: { nuttig: '4' },
     })
     expect(onSubmitted).toHaveBeenCalledOnce()
+  })
+
+  it('sends report_type dashboard for a built-in dashboard (#1210)', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+    vi.stubGlobal('fetch', fetch)
+    await render({ workbook: BUILTIN_NATIONAAL })
+
+    await act(async () => { container.querySelector('input[value="4"]').click() })
+    await submit()
+
+    const body = JSON.parse(fetch.mock.calls[1][1].body)
+    expect(body.workbook_id).toBe('__builtin_nationaal__')
+    expect(body.report_type).toBe('dashboard')
   })
 
   it('shows the backend message when sending fails and stays open', async () => {

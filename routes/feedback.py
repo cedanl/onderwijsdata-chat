@@ -12,7 +12,7 @@ from pydantic import BaseModel, StringConstraints
 from core.algemene_feedback import MAX_TEKST, PAGINA_PATROON, Soort
 from core.auth import FALLBACK_USER, get_current_user
 from core.config import FEEDBACK_ENABLED
-from core.feedback import QUESTIONS, clean_instelling, validate_answers
+from core.feedback import QUESTIONS, VASTE_DASHBOARDS, clean_instelling, validate_answers
 from core.rate_limit import RateLimiter
 from persistence import db as persistence_db
 
@@ -74,15 +74,18 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
         answers = validate_answers(body.answers)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
-    # Alleen op een eigen werkboek; anders vervuilt de telling per rapport (#389).
-    if not persistence_db.workbook_belongs_to(username, body.workbook_id):
-        raise HTTPException(status_code=404, detail=f"{_object(body.report_type).capitalize()} niet gevonden")
+    # Een vast dashboard is van iedereen en staat in geen werkboekenlijst; zijn type volgt uit het id (#1210).
+    vast = body.workbook_id in VASTE_DASHBOARDS
+    report_type = "dashboard" if vast else body.report_type
+    # Verder alleen op een eigen werkboek; anders vervuilt de telling per rapport (#389).
+    if not vast and not persistence_db.workbook_belongs_to(username, body.workbook_id):
+        raise HTTPException(status_code=404, detail=f"{_object(report_type).capitalize()} niet gevonden")
     key = f"{username}|{body.workbook_id}"
     if (retry := _limiter.probeer(key)) is not None:
         raise HTTPException(
             status_code=429,
             detail=(
-                f"Je hebt net al feedback op dit {_object(body.report_type)} gegeven. "
+                f"Je hebt net al feedback op dit {_object(report_type)} gegeven. "
                 f"Probeer het over {retry} seconden opnieuw."
             ),
             headers={"Retry-After": str(retry)},
@@ -90,7 +93,7 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
     persistence_db.add_feedback(
         username,
         body.workbook_id,
-        body.report_type,
+        report_type,
         body.report_title,
         answers,
         clean_instelling(body.instelling),
