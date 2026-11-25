@@ -78,9 +78,10 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
   daar bezet achter. De tijdslimieten (login, berichten, feedback, rapport-docx, `/mcp`) en het tokenbudget staan wel in
   Postgres, voor alle pods samen. Hoe vol de tellers zijn, staat per pod in `GET /metrics` (`edudata_websockets_open`,
   `edudata_runs_running`, `edudata_sandbox_running`; [Productiemonitoring](kwaliteit-en-veiligheid.md#productiemonitoring)).
-- **SRAM-gebruikersinfo** (naam, e-mail, organisatie): in Postgres (`oidc_gebruikers`, #984), niet meer in het geheugen
-  van de pod. Een rij vervalt na `SESSION_MAX_HOURS`, er staan er hooguit 1000, en uitloggen, "verwijder al mijn
-  gegevens" en de nachtelijke opschoning halen haar weg.
+- **SRAM-gebruikersinfo** (naam, e-mail, organisatie en instelling): in Postgres (`oidc_gebruikers`, #984), niet meer
+  in het geheugen van de pod. Een rij vervalt na `SESSION_MAX_HOURS`, er staan er hooguit 1000, en uitloggen, "verwijder
+  al mijn gegevens" (in dezelfde transactie als de rest, #1209) en de nachtelijke opschoning halen haar weg. De export
+  van "mijn gegevens" toont haar (`oidc_gebruiker`, #1209).
 - **Metrics** (#678): `GET /metrics` met `Authorization: Bearer <METRICS_TOKEN>`; zonder `METRICS_TOKEN` in het secret
   404. Zie [Productiemonitoring](kwaliteit-en-veiligheid.md#metrics-get-metrics-678).
 - **Image**: non-root `appuser`, base-images op digest, geen compiler of git in het runtime-image (#681).

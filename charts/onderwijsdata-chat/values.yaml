@@ -1,5 +1,5 @@
-# Eén pod, bewust (ADR-011, #677): datastore, limieten en SRAM-cache leven in het procesgeheugen. Geen HPA-knop;
-# opschalen vraagt eerst gedeelde staat (#984).
+# Eén pod, bewust (ADR-011, #677): datastore en limieten leven in het procesgeheugen; de SRAM-gegevens staan sinds
+# #984 in Postgres. Geen HPA-knop; opschalen vraagt eerst gedeelde staat (#984).
 replicaCount: 1
 
 # Deployment rollout strategy. Empty = Kubernetes default (RollingUpdate,

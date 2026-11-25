@@ -18,8 +18,6 @@ from core.auth import get_current_user
 from core.openapi_schema import bijlage
 from persistence import export, verwijderen
 
-from .auth import vergeet_oidc_gebruiker
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["mijn-gegevens"])
@@ -45,8 +43,8 @@ def eigen_account(username: str = Depends(get_current_user)) -> str:
     responses=bijlage("application/json", "Alle gegevens van dit account als JSON-bijlage."),
 )
 def exporteer(username: Annotated[str, Depends(eigen_account)]) -> StreamingResponse:
-    """Alle gesprekken, werkboeken, feedback, datarecepten, het bewijs per antwoord en het tokengebruik van deze
-    gebruiker als JSON-bijlage (#645, #1074).
+    """Alle gesprekken, werkboeken, feedback, datarecepten, het bewijs per antwoord, het tokengebruik en het bewaarde
+    SRAM-profiel van deze gebruiker als JSON-bijlage (#645, #1074, #1209).
 
     De export bevat persoonsgegevens (accountnaam, vrije tekst): alleen met het eigen token en nooit in
     een cache. Zonder login 404, zoals bij verwijderen (#1118). Hij wordt rij voor rij geschreven; breekt hij halverwege af, dan ziet de browser een
@@ -71,12 +69,12 @@ def verwijder_mijn_gegevens(
     bevestiging: Bevestiging,
     username: Annotated[str, Depends(eigen_account)],
 ) -> dict:
-    """Verwijder al mijn gegevens (#646, AVG art. 17): alle rijen van dit account, in één transactie.
+    """Verwijder al mijn gegevens (#646, AVG art. 17): alle rijen van dit account, in één transactie, ook het
+    bewaarde SRAM-profiel (`oidc_gebruikers`, #984, #1209).
 
     Daarna vergeet het geheugen de gebruiker (wachtende recepten en bewijsrijen) en worden alle tokens van het account
     ingetrokken, ook die van een ander apparaat (#786): een open sessie daar kan dan geen gesprek meer terugzetten en
-    sluit bij de volgende vraag. Als laatste gaan de bewaarde SRAM-gegevens weg (#984): faalt dat, dan staat de
-    intrekking al en verloopt de rij na SESSION_MAX. Faalt de transactie, dan blijft alles staan en blijven de tokens
+    sluit bij de volgende vraag. Faalt de transactie, dan blijft alles staan, ook het SRAM-profiel, en blijven de tokens
     geldig, zodat opnieuw proberen kan. Antwoord en log noemen alleen aantallen, nooit inhoud of de naam (#475).
     """
     aantallen = verwijderen.verwijder_alles(username)
@@ -84,5 +82,4 @@ def verwijder_mijn_gegevens(
     recepten.vergeet_gebruiker(username)
     beurtbewijs.vergeet_gebruiker(username)
     auth.revoke_all_tokens(username)
-    vergeet_oidc_gebruiker(username)
     return {"ok": True, "verwijderd": aantallen}

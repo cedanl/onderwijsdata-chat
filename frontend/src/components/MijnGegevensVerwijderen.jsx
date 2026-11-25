@@ -113,7 +113,7 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
           <p>
             Dit verwijdert alles wat de server onder je account bewaart: je gesprekken, je rapporten en dashboards,
             al je feedback (bij rapporten en dashboards en via de link Feedback), je datarecepten en het bewijs achter je
-            antwoorden.{' '}
+            antwoorden. Ook je tokengebruik en je naam, organisatie en instelling uit SRAM gaan weg.{' '}
             <strong>Dit kan niet ongedaan worden gemaakt.</strong>
           </p>
           <p>

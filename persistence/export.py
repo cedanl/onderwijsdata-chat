@@ -6,15 +6,18 @@ ook niet met tachtig rapporten van een paar MB HTML (#633). Gesprekken en werkbo
 lijst van ids en daarna één voor één; een verbinding blijft alleen open voor één query, niet over een
 `yield` heen, zodat een trage download geen plek in de Postgres-pool vasthoudt (#508).
 
-Elke query filtert op `username = ?`, behalve die van `tokengebruik`: dat staat onder een pseudoniem van de naam
-(#1112), dus filtert die op `sleutel = ?` met dat pseudoniem en geeft alleen `dag` en `eenheden`, niet de sleutel
-(#1074). Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser. Kolomnamen zijn
-die van de database (`html_content`, zoals `GET /api/workbooks/{id}`). Een nieuwe soort komt achteraan en verhoogt
-`SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe. Zo ook `reden_leeg` in een lege `beurtbewijs`-rij (#1217).
+Elke query filtert op `username = ?`, behalve die van `tokengebruik` en `oidc_gebruiker`: die staan onder een
+pseudoniem van de naam (#1112, #984), dus filteren die op `sleutel = ?` met dat pseudoniem en geven de sleutel niet mee:
+`tokengebruik` alleen `dag` en `eenheden` (#1074), `oidc_gebruiker` het bewaarde SRAM-profiel (`gegevens`, ontleed) en
+`expires_at` (#1209). Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser.
+Kolomnamen zijn die van de database (`html_content`, zoals `GET /api/workbooks/{id}`). Een nieuwe soort komt achteraan
+en verhoogt `SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe. Zo ook `reden_leeg` in een lege `beurtbewijs`-rij
+(#1217) en `oidc_gebruiker` (#1209).
 """
 
 import json
 import logging
+import time
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 
@@ -140,6 +143,18 @@ def tokengebruik(username: str) -> Iterator[dict]:
     )
 
 
+def oidc_gebruiker(username: str) -> Iterator[dict]:
+    """Het SRAM-profiel van het account (naam, e-mail, organisatie, instelling; #984, #1209): hoogstens één rij, met
+    `gegevens` ontleed en `expires_at` (seconden sinds epoch), zonder de sleutel. Een verlopen rij leest de app niet meer
+    (`db.oidc_gebruiker_lees`), dus de export toont haar ook niet; lezen houdt de rij hier niet jong."""
+    for row in _rijen(
+        "SELECT gegevens, expires_at FROM oidc_gebruikers WHERE sleutel = ? AND expires_at > ?",
+        (db.oidc_sleutel(username), int(time.time())),
+    ):
+        row["gegevens"] = _json_of_tekst(row["gegevens"])
+        yield row
+
+
 SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "conversations": conversations,
     "workbooks": workbooks,
@@ -148,6 +163,7 @@ SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "data_recipes": data_recipes,
     "beurtbewijs": beurtbewijs,
     "tokengebruik": tokengebruik,
+    "oidc_gebruiker": oidc_gebruiker,
 }
 
 

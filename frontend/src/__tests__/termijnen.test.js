@@ -57,7 +57,8 @@ describe('termijnen in de teksten (#835)', () => {
     expect(t).toContain('Rapporten en dashboards verdwijnen 180 dagen nadat')
     expect(t).toContain('Na 30 dagen zonder gebruik verwijderen we een gesprek, na 180 dagen een rapport')
     expect(t).toContain('Een sessie duurt 2 uur en wordt bij gebruik verlengd tot ten hoogste 12,5 uur')
-    expect(t).toContain('(ten hoogste 12,5 uur)')
+    // De SRAM-gegevens staan in de database, ten hoogste de maximale sessieduur (#1230).
+    expect(t).toContain('instelling uit SRAM staan in de database van de server, ten hoogste 12,5 uur')
     expect(t).not.toMatch(/\b(90|365) dagen|\b(8|24) uur/)
   })
 

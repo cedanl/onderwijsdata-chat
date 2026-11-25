@@ -3,7 +3,8 @@
 Ze stond in `_oidc_user_cache`, een OrderedDict in het geheugen van de pod: een tweede pod vond de gebruiker niet en een
 herstart vergat iedereen. Nu staat ze in de tabel `oidc_gebruikers` onder een pseudoniem van de accountnaam. Een rij
 vervalt na SESSION_MAX (wandklok, `time.time`), boven het maximum gaat de langst niet gebruikte gebruiker eruit, de
-opschoning ruimt verlopen rijen op, en uitloggen of "verwijder al mijn gegevens" haalt de rij weg.
+opschoning ruimt verlopen rijen op, en uitloggen of "verwijder al mijn gegevens" (in zijn transactie, #1209) haalt de
+rij weg.
 """
 
 import importlib.util
@@ -54,6 +55,18 @@ def test_de_rij_staat_onder_een_pseudoniem_niet_onder_de_naam():
     assert rij["sleutel"].startswith("h1:")
     assert "anna" not in rij["sleutel"]
     assert json.loads(rij["gegevens"]) == {"name": "Anna"}
+
+
+def test_login_export_en_verwijderen_delen_een_sleutel():
+    """#1209: de export en het verwijderen (persistence) vinden de rij via `db.oidc_sleutel`, dezelfde afleiding als de
+    login, met het domein `oidc_gebruiker`: een ander pseudoniem dan in `tokengebruik`."""
+    from core.pseudoniem import pseudoniem
+
+    auth._store_oidc_user("anna@hu.nl", {"name": "Anna"})
+    (rij,) = _rijen()
+    assert rij["sleutel"] == db.oidc_sleutel("anna@hu.nl") == pseudoniem("oidc_gebruiker", "anna@hu.nl")
+    assert auth._oidc_sleutel("anna@hu.nl") == db.oidc_sleutel("anna@hu.nl")
+    assert db.oidc_sleutel("anna@hu.nl") != db.tokengebruik_sleutel("anna@hu.nl")
 
 
 def _tweede_exemplaar():

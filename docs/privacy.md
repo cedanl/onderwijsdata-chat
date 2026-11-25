@@ -42,7 +42,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987) en de stappen achter de figuren (tool, argumenten, het script van een analyse en de titel van de figuur, #993), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
-| Gegevens uit je SRAM-account voor de kop van de app: naam, voor- en achternaam, e-mailadres, organisatie en instelling, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server). Alleen met SRAM-login; stond tot #984 in het geheugen van de server | `oidc_gebruikers` | tot `SESSION_MAX_HOURS` (standaard 24 uur) na het inloggen, en hooguit 1000 accounts tegelijk; eerder bij uitloggen of als de gebruiker al zijn gegevens verwijdert; verlopen rijen ruimt de nachtelijke taak op en elke start van de app |
+| Gegevens uit je SRAM-account voor de kop van de app: naam, voor- en achternaam, e-mailadres, organisatie en instelling, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`). Alleen met SRAM-login; staat sinds #984 in de database | `oidc_gebruikers` | tot `SESSION_MAX_HOURS` (standaard 24 uur) na het inloggen, en hooguit 1000 accounts tegelijk; eerder bij uitloggen of als de gebruiker al zijn gegevens verwijdert, en in de export (#1209); verlopen rijen ruimt de nachtelijke taak op en elke start van de app |
 | Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`, geen kale hash, #1112); geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget); de nachtelijke taak ruimt ze op (#1113); eerder als de gebruiker al zijn gegevens verwijdert, en in de export (#1074) |
 | Tellers van de limieten (inloggen, berichten, feedback, Word-export, `/mcp`): één rij per meegetelde poging, onder een pseudoniem van de accountnaam, bij het inloggen samen met het IP-adres, of van het IP-adres (een HMAC met een geheim van de server, geen kale hash, #1117); geen inhoud. Alleen met PostgreSQL: lokaal telt het geheugen | `rate_limit_hits` | tot de poging uit het venster van de limiet valt (1 tot 10 minuten); verlopen rijen ruimt de nachtelijke taak op (#1113) en elke start van de app |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
@@ -52,8 +52,9 @@ Een oordeel op een antwoord (👍/👎 met toelichting en een kopie van vraag, a
 
 Inloggen: met `CHAT_USERS` (gebruikersnaam en wachtwoord) bewaart de server alleen de gebruikersnaam bij de
 gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van een rapport (#487); naam,
-organisatie en instelling staan tijdens de sessie in de database (`oidc_gebruikers`, begrensd, ten hoogste
-`SESSION_MAX_HOURS`), zodat ook een tweede server ze kent (#984).
+organisatie en instelling uit SRAM staan in de database (`oidc_gebruikers`, begrensd, ten hoogste
+`SESSION_MAX_HOURS`), zodat ook een tweede server ze kent (#984). Ze gaan eerder weg bij uitloggen en als de gebruiker
+al zijn gegevens verwijdert, en ze staan in de export (#1209).
 
 Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taak wat over zijn termijn is
 (`python -m persistence.opschonen`, een CronJob in de Helm-chart). Ze staat aan in de manifests van `test`,
@@ -115,9 +116,11 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback,
   datarecepten, het bewijs per antwoord en je tokengebruik (`tokengebruik`: per dag `dag` en `eenheden`, zonder het
-  pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Een antwoord zonder toolstap staat er ook in, met
-  lege `lineage`, `rekenbewijs`, `bronnen` en `figuren`; zo'n rij heeft de extra sleutel `reden_leeg` ("geen toolstap
-  in deze beurt"), zodat ze niet als ontbrekende data leest (#1217; `schema_version` blijft 1). Niet erin: wat alleen
+  pseudoniem, #1074; een sleutel erbij, `schema_version` blijft 1). Log je in met SRAM, dan staan ook je naam,
+  organisatie en instelling uit SRAM erin (`oidc_gebruiker`: één rij met het bewaarde profiel in `gegevens` en
+  `expires_at`, zonder het pseudoniem; geen rij of een verlopen rij geeft `[]`; #1209, `schema_version` blijft 1).
+  Een antwoord zonder toolstap staat er ook in, met lege `lineage`, `rekenbewijs`, `bronnen` en `figuren`; zo'n rij
+  heeft de extra sleutel `reden_leeg` ("geen toolstap in deze beurt"), zodat ze niet als ontbrekende data leest (#1217; `schema_version` blijft 1). Niet erin: wat alleen
   in je browser staat. Zonder eigen login (iedereen is dan `gast`) kan het niet: de knop ontbreekt en de server
   antwoordt 404 (#1118).
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
@@ -125,9 +128,10 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen met je accountnaam
   (`conversations`, `workbooks`, `feedback`, `algemene_feedback`, `data_recipes` en `beurtbewijs`: gesprekken, rapporten
   en dashboards, al je feedback, datarecepten en het bewijs per antwoord) en je tokengebruik, dat onder het
-  pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw); direct daarna je
-  SRAM-gegevens in `oidc_gebruikers` (#984), en
-  ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
+  pseudoniem van je accountnaam staat (#1074; de dag- en maandteller beginnen dan opnieuw), en je naam, organisatie
+  en instelling uit SRAM in `oidc_gebruikers`, ook onder een pseudoniem (#984; sinds #1209 in dezelfde transactie:
+  lukt die niet, dan blijft ook dit staan en blijven je sessies geldig). Daarna gaat ook de kopie in deze browser weg;
+  je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
   (#786): een open chat daar sluit bij de volgende vraag. De tellers in `rate_limit_hits` gaan niet direct weg: ze
   staan onder een pseudoniem en hebben geen accountnaam om op te verwijderen (hoogstens tien minuten). Wat blijft
   verder: de serverlogs (zonder gesprekstekst, #475) en de back-ups van de beheerder, de hash van je accountnaam in
