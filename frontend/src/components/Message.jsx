@@ -61,7 +61,8 @@ function hasAssistantContent(msg) {
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
-export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
+export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   if (msg.role === 'user') {
     return (
@@ -100,7 +101,8 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
   const blocks = answerBlocks(msg, { settled })
   const dataExport = (
-    <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+    <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy}
+      bewijsVan={msg} vraag={vraag} />
   )
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
 

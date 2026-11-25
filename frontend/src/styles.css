@@ -624,11 +624,11 @@ html.dark .login-melding { color: var(--accent-text); }
    via de variabele; in de figuur was hij een ondertitel van 11 px. */
 .figuur-noot { margin-top: 4px; font-size: var(--font-label); line-height: 1.45; color: var(--gray-500); }
 .data-export { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.data-export-btn {
+.data-export-btn, .bewijs-btn {
   background: var(--white); border: 1px solid var(--gray-200); border-radius: 4px;
   padding: 3px 8px; font-size: .75rem; color: var(--gray-500); cursor: pointer;
 }
-.data-export-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
+.data-export-btn:hover, .bewijs-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
 .data-export-error { flex-basis: 100%; font-size: .75rem; color: var(--gray-500); }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
@@ -1918,7 +1918,7 @@ html.dark .suggested-btn:hover {
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .navbar-zoek-btn, .wb-delete-btn, .wb-fav-btn,
   .resend-btn, .copy-btn, .modal-close, .modal-overlay-close,
-  .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
+  .scroll-to-bottom-btn, .message-continue, .data-export-btn, .bewijs-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
@@ -2200,7 +2200,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
   .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
-  .csv-download-btn, .data-export-btn, .vaste-maat, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
+  .csv-download-btn, .data-export-btn, .bewijs-btn, .vaste-maat, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
   .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst,

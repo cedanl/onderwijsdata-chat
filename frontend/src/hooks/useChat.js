@@ -311,8 +311,11 @@ export function useChat({ maxHistory } = {}) {
       },
       tool_start(ev) {
         setThinking(false)
+        // The arguments as sent go with the step and the stored conversation: the evidence file of the answer names
+        // them (#1244), also after reopening. Only a plain object; the tool's output never goes in.
+        const args = ev.input && typeof ev.input === 'object' && !Array.isArray(ev.input) ? { arguments: ev.input } : {}
         updateCurrentMsg(m => ({
-          ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false }],
+          ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false, ...args }],
         }))
       },
       tool_end(ev) {

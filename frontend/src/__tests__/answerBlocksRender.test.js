@@ -72,14 +72,16 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
     for (const kind of ['telling', 'bronnen']) {
       expect(blok(el, kind).querySelector('dd').textContent).toBe('n.v.t.')
     }
+    // Zonder getal met herkomst geen CSV; het bewijsbestand van het antwoord blijft (#1244).
     const zonder = render({ ...ALLEEN_CITATIES, citaties: [{ getal: '7.912', vastgesteld: false }] })
-    expect(blok(zonder, 'export').querySelector('dd').textContent).toBe('n.v.t.')
+    expect(blok(zonder, 'export').querySelectorAll('.data-export-btn')).toHaveLength(0)
+    expect(blok(zonder, 'export').querySelector('dd').textContent).toBe('Bewijs (JSON)')
   })
 
   // #605: "Hoeveel vrouwelijke mbo-studenten in 2021/22 en 2024/25?" liep via get_cbs_data met een filter op
   // twee schooljaren en verder niets. De server noemt zo'n volledig getoonde selectie nu als tabel (tool_end
   // export_key), dus de knop hangt niet af van citaties in de tekst: ook een tabel zonder geciteerde getallen
-  // krijgt hem, en zonder tabel-key én zonder citaties is de export bewust n.v.t.
+  // krijgt hem, en zonder tabel-key én zonder citaties is er bewust geen CSV; wel het bewijsbestand (#1244).
   const TABEL = 'Vrouwelijke mbo-studenten:\n\n| Schooljaar | Studenten |\n|---|---|\n| 2021/22 | 248.930 |\n| 2024/25 | 230.450 |'
   const lader = exportKey => ({ name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, exportKey, dataKey: 'cbs:85354NED:c7a8bce6' })
   const tabelantwoord = (tools, citaties) => ({ role: 'assistant', done: true, content: TABEL, tools, citaties, bronnen: [CBS] })
@@ -90,9 +92,9 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
     expect([...el.querySelectorAll('.data-export-btn')].map(k => k.textContent)).toEqual(['Download data als CSV'])
   })
 
-  it('zetten de export op n.v.t. bij een tabel zonder tabel-key en zonder geciteerde getallen', () => {
+  it('geven een tabel zonder tabel-key en zonder geciteerde getallen geen CSV, alleen het bewijs', () => {
     const el = render(tabelantwoord([lader(null)], []))
-    expect(blok(el, 'export').querySelector('dd').textContent).toBe('n.v.t.')
+    expect(blok(el, 'export').querySelector('dd').textContent).toBe('Bewijs (JSON)')
     expect(el.querySelectorAll('.data-export-btn')).toHaveLength(0)
   })
 
