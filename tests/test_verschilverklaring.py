@@ -232,6 +232,16 @@ def test_het_eigen_getal_dekt_geen_ander_getal_in_de_getalcontrole():
         (None, verschilverklaring.GEEN_GETAL),
         (True, verschilverklaring.GEEN_GETAL),
         ("1" * 60, verschilverklaring.TE_LANG),
+        # Een punt of spatie scheidt alleen groepen van drie cijfers (Nederlandse notatie): de rest is geen heel getal.
+        ("1.234.567", 1234567),
+        ("1\u00a0234\u00a0567", 1234567),  # een harde spatie, zoals een spreadsheet hem kopieert
+        ("1.5", verschilverklaring.GROEPERING),
+        ("475.46", verschilverklaring.GROEPERING),
+        ("4.7.5", verschilverklaring.GROEPERING),
+        ("1234.567", verschilverklaring.GROEPERING),
+        ("475.460 123", verschilverklaring.GROEPERING),
+        ("475\n460", verschilverklaring.GEEN_GETAL),
+        (".", verschilverklaring.GEEN_GETAL),
     ],
 )
 def test_alleen_een_heel_getal_van_hoogstens_twaalf_cijfers(invoer, verwacht):

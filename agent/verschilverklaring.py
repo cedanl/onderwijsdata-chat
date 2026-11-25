@@ -36,6 +36,10 @@ LABEL = "Verschil met je eigen cijfer uitgelegd"
 MAX_CIJFERS = 12
 GEEN_GETAL = "Geef alleen een heel getal, zonder tekst of decimalen: bijvoorbeeld 475.460."
 TE_LANG = f"Dat getal is te lang: geef hoogstens {MAX_CIJFERS} cijfers."
+GROEPERING = (
+    "Een punt of spatie staat alleen tussen groepen van drie cijfers, zoals in 475.460. "
+    "Geef een heel getal, zonder decimalen."
+)
 GEEN_HOOFDGETAL = (
     "Bij dit antwoord kan ik je getal niet (meer) naast het onze leggen: stel de vraag opnieuw en probeer het dan."
 )
@@ -43,21 +47,30 @@ ONBEKEND = "kan meespelen, grootte niet te bepalen uit open data"
 _MAX_HOOFDGETALLEN = 20
 _SESSIE = "hoofdgetallen"
 _INVOER_MAX_TEKENS = 40
+# Scheiding van duizendtallen: een spatie, ook de harde spaties die een spreadsheet kopieert, of een punt.
+_SPATIES = " \u00a0\u202f"
+_TEKENS = re.compile(f"[0-9.{_SPATIES}]+")
+_HEEL = re.compile(r"[0-9]+")
+_GEGROEPEERD = re.compile(f"[0-9]{{1,3}}(?:\\.[0-9]{{3}})+|[0-9]{{1,3}}(?:[{_SPATIES}][0-9]{{3}})+")
 
 
 def invoer(waarde) -> int | str:
-    """Het getal dat de gebruiker typte, of de melding waarom het geen getal is. Punten en spaties als scheiding van
-    duizendtallen mogen (475.460, 475 460); een komma, een teken, tekst of meer dan 12 cijfers niet."""
+    """Het getal dat de gebruiker typte, of de melding waarom het geen getal is. Een punt of spatie mag alleen als
+    scheiding van duizendtallen, tussen groepen van drie cijfers (475.460, 475 460, 1.234.567), zoals in het
+    Nederlands; 1.5 of 475.46 is een decimaal getal en geen telling, en wordt geweigerd in plaats van 15 of 47546.
+    Een komma, een teken, tekst of meer dan 12 cijfers ook. frontend/src/eigenGetal.js toetst hetzelfde."""
     if isinstance(waarde, bool) or not isinstance(waarde, str | int):
         return GEEN_GETAL
     tekst = str(waarde).strip()
-    if not tekst or len(tekst) > _INVOER_MAX_TEKENS:
-        return GEEN_GETAL if not tekst or not re.fullmatch(r"[0-9.\s]+", tekst) else TE_LANG
-    kaal = re.sub(r"[.\s]", "", tekst)
-    if not re.fullmatch(r"[0-9]+", kaal):
+    if not tekst or not _TEKENS.fullmatch(tekst):
         return GEEN_GETAL
-    if len(kaal) > MAX_CIJFERS:
+    kaal = re.sub(f"[.{_SPATIES}]", "", tekst)
+    if not kaal:
+        return GEEN_GETAL
+    if len(kaal) > MAX_CIJFERS or len(tekst) > _INVOER_MAX_TEKENS:
         return TE_LANG
+    if not (_HEEL.fullmatch(tekst) or _GEGROEPEERD.fullmatch(tekst)):
+        return GROEPERING
     return int(kaal)
 
 

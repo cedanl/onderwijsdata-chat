@@ -5,7 +5,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import EigenGetal from '../components/EigenGetal'
-import { eigenGetalFout, hoofdgetalUit, GEEN_GETAL, TE_LANG } from '../eigenGetal'
+import { eigenGetalFout, hoofdgetalUit, GEEN_GETAL, GROEPERING, TE_LANG } from '../eigenGetal'
 import { buildHistory } from '../hooks/useChat'
 import { conversationMarkdown } from '../conversationExport'
 
@@ -21,6 +21,14 @@ describe('de invoer (#1258)', () => {
     expect(eigenGetalFout('475,5')).toBe(GEEN_GETAL)
     expect(eigenGetalFout('-12')).toBe(GEEN_GETAL)
     expect(eigenGetalFout('')).toBe(GEEN_GETAL)
+  })
+
+  it('neemt een punt of spatie alleen tussen groepen van drie cijfers, zoals de server', () => {
+    expect(eigenGetalFout('1.234.567')).toBeNull()
+    expect(eigenGetalFout('1\u00a0234\u00a0567')).toBeNull()
+    for (const fout of ['1.5', '475.46', '4.7.5', '1234.567', '475.460 123']) expect(eigenGetalFout(fout), fout).toBe(GROEPERING)
+    expect(eigenGetalFout('475\n460')).toBe(GEEN_GETAL)
+    expect(eigenGetalFout('.')).toBe(GEEN_GETAL)
   })
 
   it('leest het hoofdgetal alleen zoals de server het zet', () => {
