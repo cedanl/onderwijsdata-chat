@@ -126,6 +126,30 @@ Een snippet laadt de bron opnieuw, dus de data kan intussen zijn veranderd. Twee
 - **De Studiekeuzedatabase: versie, exportdatum, laaddatum en sha256** (#981). LCSK levert één ZIP met de export van vandaag. De app legt per lading de versie en exportdatum (uit de bestandsnaam), de laaddatum en de sha256 van het ZIP-bestand vast. De bronregel noemt versie, exportdatum en laaddatum, onder het antwoord ook de eerste twaalf tekens van de sha256; het manifest (`bronhash`), de logregel `GEPUBLICEERD` en de CSV-kop noemen de volle sha256, na te rekenen met `sha256sum` op hetzelfde bestand. De snippet leest de export van vandaag, noemt in zijn kop de lading van de app en print een waarschuwing als de hash anders is. Een export van een eerdere dag haalt hij niet op: LCSK biedt die niet aan, en de data mag niet in de repo (leveringsvoorwaarden). Of de snippet een bestand mag lezen dat de gebruiker zelf bewaarde, is een open besluit.
 - **De herkomst staat vast bij het afleiden** (#985). Een selectie, vaste maat of eigen berekening legt in haar meta de keten vast waar ze op rust: per ouder, brontabel en tussenstap de meta zoals die toen was (dataset, versie of peilmoment met de LCSK-zin en link, afronding, md5) en per brontabel de inhoudshash (`tools/store.py`, `KeyMeta.keten`). Gooit de store een bron weg terwijl de afgeleide key blijft (boven `STORE_MAX_MB`, #13), dan noemt haar CSV-kop die bron toch, met dezelfde regels. Laadt de app de bron later opnieuw met een nieuwere stand, dan blijft de kop van de afgeleide key de stand noemen waaruit ze berekend is. Na een herstart zet het recept (#472) een selectie opnieuw op haar herladen ouder, en die legt de keten dan opnieuw vast.
 
+## De kop van een CSV: '#'-regels en de kolom ondergrens
+
+Elke CSV uit de app (de data-CSV onder een antwoord, de CSV bij een grafiek of kaart en de geciteerde cijfers) begint
+met regels die met `#` beginnen; `pandas.read_csv(bestand, sep=";", comment="#")` slaat ze over en leest de tabel
+ongewijzigd. Bovenaan staat het voorbehoud van het antwoord (#1257), zoals onder het antwoord in de app:
+
+```text
+# Uitgangspunt: Hogeschool Utrecht (25DW), voltijd en deeltijd.
+# Niet meegeteld: masterstudenten en extraneï.
+# Bron en definitie: …
+# Let op: …
+# Wat is gecontroleerd: 2 getallen tegen de opgehaalde data gelegd. … Niet gecontroleerd: …
+```
+
+Daarna de herkomst van de tabel zelf (`tools/exportnoten.py`, #809): bron, selecties, afronding, de inhoudshash of de
+md5 van het DUO-bestand, afkap en de onderdrukte cellen per kolom. Een trendbreuk in een grafiek (#1262) staat er als
+`# Trendbreuk vanaf 2020 (CBS, …): "…"` bij, met de passage letterlijk.
+
+Heeft de tabel onderdrukte cellen die per rij bekend zijn (DUO -1, CBS '.'; ook een groepstotaal van `query_data`),
+dan krijgt ze één kolom erbij: `ondergrens`, met `ja` als er in die rij een onderdrukte cel valt (het getal is dan ten
+minste zo groot) en anders `nee`. Een regel `# kolom ondergrens: …` boven de tabel zegt dat. Een tabel zonder
+onderdrukte cel houdt haar kolommen zoals ze waren. De kopregels van het voorbehoud zet de browser erboven: de server
+kent de tabel, niet het antwoord.
+
 Wat dit **niet** zegt: dat het frame ná de verwerking van de app (maskering van -1, `STUDIEJAAR_LABEL`, provincie) byte-voor-byte gelijk is aan wat de snippet maakt. Een controleregel in de snippet is een aparte stap.
 
 ## Voor onderzoekers

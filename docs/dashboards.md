@@ -233,7 +233,10 @@ niets in de store. De LLM komt er niet aan te pas.
 
 DUO zet kleine aantallen op -1; de dashboards laden DUO via `_duo_load`, dat zo'n cel leeg maakt (`core/sentinels.py`).
 Een som telt een lege cel niet mee en is dan een ondergrens. Elke reeks meldt in `onderdrukt` per jaar (of per sector)
-hoeveel lege cellen erin vallen, en het frontend zegt dan "ten minste" (#902). Een jaar of sector met alleen lege
+hoeveel lege cellen erin vallen, en het frontend zegt dan "ten minste" (#902). De dashboards houden die "ten minste"
+per reeks; de grafiek in de chat toont de ondergrens nu per punt: een open marker of arcering, "ten minste" in de hover
+en "≥" in de tabel, en een trendbreuk (CBS-definitiebreuk of fusie) als gestippelde lijn met noot (#1261, #1262; zie
+`create_plot` in [tools.md](tools.md#create_plot)). Een jaar of sector met alleen lege
 cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een lege cel meetelt, staat in
 `onderdrukt.eigen_positie` en heet in de UI indicatief; een sector zonder eigen waarde staat in `positie_weggelaten`.
 

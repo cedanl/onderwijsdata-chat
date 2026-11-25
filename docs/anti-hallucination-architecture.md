@@ -61,7 +61,13 @@ Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonde
 
 ## Wat dit niet dekt
 
-De controles zijn code, geen begrip. Ze vangen een bepaalde klasse fouten en laten andere door:
+De controles zijn code, geen begrip. Ze vangen een bepaalde klasse fouten en laten andere door. Onder elk data-antwoord
+staat dat in de regel "Wat is gecontroleerd" (#1260) in één vaste zin, gelijk aan deze (`frontend/src/controleRegel.js`;
+`tests/test_controleoverzicht.py` houdt ze gelijk):
+
+> Niet gecontroleerd: of de bron zelf klopt, getallen onder de duizend en jaartallen, conclusies en verbanden die niet uit de cijfers volgen, en bij welke groep een getal hoort als de zin of tabelrij geen jaar of instelling noemt.
+
+In detail:
 
 - **Kleine getallen en jaartallen.** Alleen getallen van vier of meer cijfers, en percentages, worden getoetst.
 - **Een getal dat ergens anders in de data staat.** Staat 27.135 in de data, dan is het getal gedekt, ook als het model het bij de verkeerde groep noemt. De bindingscontrole vangt dat alleen als de zin of tabelrij precies één jaar of instelling noemt. Een decimaal (70,6%) bindt alleen de tabelbinding, en alleen in een tabelrij met een schooljaar en bij een bron die haar waarden met decimalen en een schooljaar meegeeft (#982); in een zin, met een kaal kalenderjaar (de financiën, WOPI, het studiejaar van de Studiekeuzedatabase) of bij een tabel uit de store toetst alleen de getalcontrole of het getal ergens staat. Noemt de tabel de maat niet, dan geldt de maat die de tekst erboven het laatst noemt: daarom is die melding zacht.
@@ -92,6 +98,16 @@ U kunt dit zelf nagaan:
 1. **Vraag de Python-snippet** bij een analyse; de redeneerkaart toont hem.
 2. **Voer hem uit.** Hij begint met het laden van de bron, met bron-ID en filters.
 3. **Vergelijk de getallen** met wat de app rapporteerde.
+4. **Lees wat de controle deed.** Elk data-antwoord krijgt bij `message_end` het veld `controles`, uit code
+   (`agent/controleoverzicht.py`, #1260): `per_controle` met per controle uit `agent/controles.py` of ze draaide
+   (`gedraaid`) en wat ze gaf (`uitkomst`: ok, zacht, hard of niet gecontroleerd), `getallen` (hoeveel getallen en
+   percentages de getalcontrole tegen de opgehaalde data legde), `gebonden` (hoeveel getallen een vastgestelde
+   herkomst kregen: de cel in de data, `agent/citaties.py`), `jaar_en_instelling` (of de controles op schooljaar,
+   instelling en binding alle drie draaiden), `niet_gedraaid`, `ingetrokken` (hoe vaak het antwoord na de controle
+   opnieuw is geschreven) en `gecorrigeerd` (hoe vaak de app zelf zinnen met een ongedekt getal wegliet, #619). Alleen
+   tellingen, geen tekst. De regel "Wat is gecontroleerd" onder het antwoord, de kopie, de gespreksexport en de kop van
+   elke CSV lezen dit veld; wat het model over zijn eigen controle schrijft ("alle getallen gecontroleerd"), verandert
+   het niet. De regel noemt altijd de vaste zin uit "Wat dit niet dekt" en gebruikt geen vinkje.
 
 ---
 
