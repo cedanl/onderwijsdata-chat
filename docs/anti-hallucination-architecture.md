@@ -21,10 +21,20 @@ laatste kolom zegt wie beslist: **code** (deterministisch) of **model**.
 | 6 | Einde zonder gewoon antwoord: afgebroken, een verduidelijkingskaart, of de loop is uitgeput (dan een vaste tekst met wat al is opgehaald). | `_vroeg_einde` | code |
 | 7 | Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619). | `zonder_ongedekte_zinnen` | code |
 | 8 | Eindtekst: zelfcorrectie naar de redeneerkaart (ook een tabel die het antwoord zelf herziet, #982), bronnen en links uit de toolstappen, vaste teleenheidsregel, kopregels (lezing, uitgangspunt en wat de telling niet meetelt, #743). | `_eindtekst`, `_met_kopregels`, `agent/telling.py` | code |
-| 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `_slotbericht` | code (vervolgvragen: uit de catalogus, `agent/vervolgvragen.py`) |
+| 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het label "Vaste maat" (#1242), het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `vaste_maat`, `_slotbericht` | code (vervolgvragen: uit de catalogus, `agent/vervolgvragen.py`) |
 
 Het model formuleert dus in stap 4; de vervolgvragen in stap 9 kiest code uit de voorbeeldvragen van de catalogus, het model beslist er niets over (#364, #539). Alles waarop een getal, bron of selectie rust,
 komt uit code. Een rapport heeft eigen poorten in plaats van stap 5 (`agent/report_checks.py`, zie laag 3).
+
+**Het label "Vaste maat" (#1242).** Rust een antwoord alleen op `get_maat`, dan staat onder de tekst "Vaste maat:
+<naam>", met in een uitklap de teldefinitie en waar en wanneer het recept is vastgelegd (`vastgelegd_in`,
+`vastgelegd_op` in `tools/maten.py`). Code zet het label, na de eindtekst van stap 8: `agent/vaste_maat.py` leest
+alleen `result.steps` en het recept, nooit de modeltekst. Het veld `vaste_maat` in `message_end` komt er alleen als
+elke datastap van de beurt een geslaagde `get_maat` op één maat was; stappen die zoeken, beschrijven of tonen
+(`search_catalog`, `dataset_details`, `get_cbs_dimension`, `clarify_scope`, `create_plot`, `create_choropleth_map`)
+tellen niet mee. Een andere datastap (`query_data`, `run_analysis`, `koppel_data`, een lader, `compute_kpi`), twee
+maten, een vast antwoord uit code (#565) of een ingehouden antwoord geven geen label. Het label zegt welke vaste route
+het getal gaf, niet dat het gecontroleerd of juist is; de controles van laag 3 blijven dezelfde.
 
 ## Drie lagen
 

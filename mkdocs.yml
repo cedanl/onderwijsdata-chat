@@ -52,7 +52,9 @@ nav:
   - API: api.md
   - MCP-server: mcp.md
   - EduGenAI-koppeling: edugenai.md
-  - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
+  - Kwaliteit & veiligheid:
+    - kwaliteit-en-veiligheid.md
+    - Betrouwbaarheid per release: betrouwbaarheid.md
   - Privacy: privacy.md
   - AI-verordening: ai-act.md
   - Architectuur & ontwerp:

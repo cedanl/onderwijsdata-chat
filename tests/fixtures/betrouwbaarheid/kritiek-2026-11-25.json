@@ -1,0 +1,26 @@
+{
+  "gemeten_op": "2026-11-25",
+  "herhalingen": 3,
+  "modellen": {
+    "azure_ai/claude-haiku-4-5": {
+      "gehaald": 2,
+      "totaal": 3,
+      "rood": ["weigering-toekomst"],
+      "vragen": {
+        "ijk-hu-deeltijd": { "runs": 3, "geslaagd": 2, "mislukt": [{ "run": 1, "fouten": ["referentiewaarde ontbreekt: 2025"] }], "drempel": 2, "gehaald": true },
+        "weigering-geen-data": { "runs": 3, "geslaagd": 3, "mislukt": [], "drempel": 3, "gehaald": true },
+        "weigering-toekomst": { "runs": 3, "geslaagd": 2, "mislukt": [{ "run": 2, "fouten": ["verzonnen getallen: 12500"] }], "drempel": 3, "gehaald": false }
+      }
+    },
+    "openai/gpt-oss-120b": {
+      "gehaald": 3,
+      "totaal": 3,
+      "rood": [],
+      "vragen": {
+        "ijk-hu-deeltijd": { "runs": 3, "geslaagd": 3, "mislukt": [], "drempel": 2, "gehaald": true },
+        "weigering-geen-data": { "runs": 3, "geslaagd": 3, "mislukt": [], "drempel": 3, "gehaald": true },
+        "weigering-toekomst": { "runs": 3, "geslaagd": 3, "mislukt": [], "drempel": 3, "gehaald": true }
+      }
+    }
+  }
+}

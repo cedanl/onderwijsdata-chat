@@ -19,9 +19,9 @@ export const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
 const RUNS = resolve(RESULTATEN, 'runs.jsonl')
 
 /**
- * Eén run: { soort: 'vraag', model, label, fouten, tools, bronnen } of { soort: 'rapport', scenario, model, fouten }.
- * `tools` zijn de toolnamen in volgorde, `bronnen` per aanroep met een bron { tool, dataset_id?, resource?, maat? }; elke
- * regel krijgt `op`, het tijdstip (#909).
+ * Eén run: { soort: 'vraag', model, label, fouten, tools, bronnen, must_call? } of { soort: 'rapport', scenario, model,
+ * fouten }. `tools` zijn de toolnamen in volgorde, `bronnen` per aanroep met een bron { tool, dataset_id?, resource?,
+ * maat? }, `must_call` de uitslag per toolassertie (#1243, toolasserties.js); elke regel krijgt `op`, het tijdstip (#909).
  */
 export function legVast(run) {
   mkdirSync(RESULTATEN, { recursive: true })
@@ -52,9 +52,30 @@ export function verslagen(runs, evals, { herhalingen = 1, gemeten_op = new Date(
     }
     uit.slagingspercentage = rapport(matrix, { herhalingen, gemeten_op })
     uit.kritiek = kritiekVerslag(stand, evals, { herhalingen, gemeten_op })
+    const toolasserties = mustCallVerslag(vragen)
+    if (Object.keys(toolasserties).length) uit.must_call = { gemeten_op, herhalingen, modellen: toolasserties }
   }
   const rapporten = runs.filter(r => r.soort === 'rapport')
   if (rapporten.length) uit.rapport = rapportVerslag(rapporten, { herhalingen, gemeten_op })
+  return uit
+}
+
+/**
+ * Per model, vraag en toolassertie in hoeveel runs ze slaagde (#1243): { model: { label: [{ tool, args?, min_count,
+ * runs, geslaagd }] } }, of { ongeldig, runs, geslaagd: 0 } bij een ongeldige assertie. Alleen vragen met must_call.
+ */
+export function mustCallVerslag(vragen) {
+  const uit = {}
+  for (const r of vragen) {
+    if (!Array.isArray(r.must_call)) continue
+    const cellen = ((uit[r.model] ??= {})[r.label] ??= [])
+    r.must_call.forEach((u, i) => {
+      const { aantal: _aantal, geslaagd, ...assertie } = u
+      const cel = (cellen[i] ??= { ...assertie, runs: 0, geslaagd: 0 })
+      cel.runs += 1
+      if (geslaagd) cel.geslaagd += 1
+    })
+  }
   return uit
 }
 

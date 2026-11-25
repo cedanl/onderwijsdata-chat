@@ -40,7 +40,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 
 | Gegevens | Tabel | Tot wanneer |
 |---|---|---|
-| Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
+| Gesprekken: vraag, antwoord, toolstappen (sinds #1244 met hun argumenten, voor het bewijsbestand), titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
 | Rapporten en dashboards | `workbooks` | 365 dagen nadat het rapport of dashboard voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
@@ -114,6 +114,15 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   uit, dan gaan ook deze verwijderingen eerst nog met je login. Is je sessie bij je volgende bezoek verlopen, dan is het
   ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
+- Het bewijs van een dataantwoord downloaden met "Bewijs (JSON)" (#1244). Je browser maakt dat bestand uit het
+  antwoord dat al op je scherm staat: er gaat niets naar de server of de AI-dienst. **Wel erin:** de antwoordtekst, de
+  bronnen met hun links, de citaties, de controlemeldingen, het manifest (model, versies, dataversie, datum), het label
+  "Vaste maat" en per geslaagde toolstap de tool, haar argumenten en de code die haar herhaalt. Die argumenten en de
+  code kunnen tekst uit je vraag bevatten, net als de code onder "Bekijk code": een instelling, of bij het doorzoeken
+  van de catalogus de hele vraag als zoekterm. Staat er een persoonsgegeven in je vraag, dan kan het dus ook in het
+  bestand staan. **Niet erin:** je vraag als eigen veld, je accountnaam of SRAM-gegevens, je profiel, de ruwe uitvoer
+  van een tool en de tekst die het model onderweg herzag. De bestandsnaam komt uit je vraag met dezelfde regel als de gespreksexport (#478): staat
+  er een BSN, e-mailadres of telefoonnummer in, dan heet het bestand `bewijs_Gesprek_persoonsgegevens_weggelaten.json`.
 - Een rapport downloaden als HTML, Markdown of Word, of opslaan als PDF. Het Word-document
   (`POST /api/workbooks/{id}/docx`, #1038) bevat niets meer dan het rapport: de server maakt het uit het bewaarde
   rapport. Je browser stuurt alleen de grafieken als afbeelding mee; de server zet ze in het document en bewaart ze

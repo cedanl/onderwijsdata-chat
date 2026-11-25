@@ -188,6 +188,14 @@ herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snipp
 
 **Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
 
+**Vastlegging per recept** (#1242). Elk recept in `MATEN` heeft de verplichte velden `vastgelegd_in` (het issue,
+bijvoorbeeld `#188`) en `vastgelegd_op` (de datum, ISO, bijvoorbeeld `2026-10-14`); een recept zonder kan niet worden
+gemaakt, en `tests/test_vaste_maat_label.py` toetst de vorm. Nu: de vijf maten van #188 op 2026-10-14,
+`doorstroom_vmbo_mbo` #667 op 2026-10-22 en `mbo_studenten_landelijk` #805 op 2026-10-29. Rust een antwoord alleen op
+`get_maat`, dan noemt het label "Vaste maat" onder het antwoord die vastlegging (`agent/vaste_maat.py`, zie
+`docs/anti-hallucination-architecture.md`). Een nieuw recept krijgt het issue en de datum waarop het erbij kwam; een
+recept dat inhoudelijk verandert (ander bestand, andere codes of teldefinitie), het issue en de datum van die wijziging.
+
 **Geslacht per opleiding** (#742, `tools/geslacht_opleiding.py`). DUO heeft geslacht niet per opleiding: het
 geslachtsbestand telt per instelling, vestigingsgemeente, onderdeel, subonderdeel en type ho, het niveaubestand in
 dezelfde cellen per opleiding. Met `opleiding_naar_geslacht` legt de code ze naast elkaar. In een jaar is de verdeling

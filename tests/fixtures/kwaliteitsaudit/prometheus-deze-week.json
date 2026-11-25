@@ -1,0 +1,133 @@
+{
+ "edudata_controle_uitkomsten_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {
+      "controle": "ongedekte_getallen",
+      "uitkomst": "hard"
+     },
+     "value": [
+      1796083200,
+      "11.98"
+     ]
+    },
+    {
+     "metric": {
+      "controle": "ongedekte_getallen",
+      "uitkomst": "ok"
+     },
+     "value": [
+      1796083200,
+      "230.4"
+     ]
+    },
+    {
+     "metric": {
+      "controle": "metatekst",
+      "uitkomst": "zacht"
+     },
+     "value": [
+      1796083200,
+      "3"
+     ]
+    },
+    {
+     "metric": {
+      "controle": "metatekst",
+      "uitkomst": "ok"
+     },
+     "value": [
+      1796083200,
+      "239.4"
+     ]
+    },
+    {
+     "metric": {
+      "controle": "geheimvak-xyz",
+      "uitkomst": "hard"
+     },
+     "value": [
+      1796083200,
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_herkansingen_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {},
+     "value": [
+      1796083200,
+      "9"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_ingehouden_antwoorden_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {},
+     "value": [
+      1796083200,
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_stappenbudget_op_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {},
+     "value": [
+      1796083200,
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "edudata_tool_weigeringen_total": {
+  "status": "success",
+  "data": {
+   "resultType": "vector",
+   "result": [
+    {
+     "metric": {
+      "tool": "get_cbs_data",
+      "reden": "op_slot"
+     },
+     "value": [
+      1796083200,
+      "4"
+     ]
+    },
+    {
+     "metric": {
+      "tool": "query_data",
+      "reden": "afgekapt"
+     },
+     "value": [
+      1796083200,
+      "7.2"
+     ]
+    }
+   ]
+  }
+ }
+}

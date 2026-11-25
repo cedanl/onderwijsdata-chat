@@ -74,7 +74,9 @@ export function protocollen(token) {
 }
 
 export function nieuwAntwoord() {
-  return { toolCalls: [], bronnen: [], toolResults: [], delen: [], content: '', ingetrokken: 0, einde: null, error: null }
+  return {
+    toolCalls: [], aanroepen: [], bronnen: [], toolResults: [], delen: [], content: '', ingetrokken: 0, einde: null, error: null,
+  }
 }
 
 // De argumenten van tool_start die zeggen welke bron en dataset een tool aanspreekt (#909).
@@ -92,6 +94,8 @@ export function verwerk(a, event) {
   switch (event.type) {
     case 'tool_start': {
       a.toolCalls.push(event.name)
+      // De naam en de volledige input, voor de toolasserties van must_call (#1243); null bij kapotte argumenten.
+      a.aanroepen.push({ tool: event.name, input: event.input ?? null })
       const bron = bronVan(event)
       if (bron) a.bronnen.push(bron)
       break
