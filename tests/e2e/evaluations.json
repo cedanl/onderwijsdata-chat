@@ -628,6 +628,151 @@
         "must_mention": ["eerstejaars"],
         "must_not_mention": ["Niet uit de data", "mogelijke (verklaring|oorza)", "denkbaar"]
       }
+    },
+    {
+      "label": "premisse-onwaar-hu-voltijd",
+      "message": "Waarom is het aantal voltijdstudenten bij de Hogeschool Utrecht tussen 2021/22 en 2025/26 gestegen?",
+      "description": "Onjuiste premisse (#1255): de vraag neemt een stijging aan, de bevroren data dalen (28.355 naar 26.370). Het antwoord opent met de vaste zin uit code, noemt de werkelijke richting en geeft geen oorzaak van een stijging",
+      "expected": {
+        "datasets": ["duo:p01hoinges"],
+        "max_search_catalog": 3,
+        "must_mention": ["De vraag gaat uit van een stijging", "daalde", "Hogeschool Utrecht"],
+        "must_not_mention": ["oorza\\w* van de (stijging|groei|toename)", "verklaring voor de (stijging|groei|toename)", "(stijging|groei|toename) (komt|is te verklaren|wordt verklaard|hangt samen)"],
+        "data_points": {
+          "description": "begin- en eindwaarde van de reeks, zoals de vaste zin ze noemt",
+          "ijkwaarden": {
+            "2021": "duo-hu-voltijd-2021",
+            "2025": "duo-hu-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "premisse-onwaar-hbo-voltijd",
+      "message": "Waardoor groeide het aantal hbo-voltijdstudenten landelijk van 2024/25 naar 2025/26?",
+      "description": "Onjuiste premisse (#1255): de vraag neemt een stijging aan, de bevroren data dalen (378.490 naar 367.960). Het antwoord opent met de vaste zin uit code, noemt de werkelijke richting en geeft geen oorzaak van een stijging",
+      "expected": {
+        "datasets": ["cbs:85423NED"],
+        "max_search_catalog": 3,
+        "must_mention": ["De vraag gaat uit van een stijging", "daalde", "hbo"],
+        "must_not_mention": ["oorza\\w* van de (stijging|groei|toename)", "verklaring voor de (stijging|groei|toename)", "(stijging|groei|toename) (komt|is te verklaren|wordt verklaard|hangt samen)"],
+        "data_points": {
+          "description": "begin- en eindwaarde van de reeks, zoals de vaste zin ze noemt",
+          "ijkwaarden": {
+            "2024": "cbs-hbo-voltijd-2024",
+            "2025": "cbs-hbo-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "premisse-onwaar-mbo-vrouwen",
+      "message": "Hoe verklaar je de toename van het aantal vrouwen in het mbo tussen 2021/22 en 2024/25?",
+      "description": "Onjuiste premisse (#1255): de vraag neemt een stijging aan, de bevroren data dalen (248.930 naar 230.450). Het antwoord opent met de vaste zin uit code, noemt de werkelijke richting en geeft geen oorzaak van een stijging",
+      "expected": {
+        "datasets": ["cbs:85353NED"],
+        "max_search_catalog": 3,
+        "must_mention": ["De vraag gaat uit van een stijging", "daalde", "mbo"],
+        "must_not_mention": ["oorza\\w* van de (stijging|groei|toename)", "verklaring voor de (stijging|groei|toename)", "(stijging|groei|toename) (komt|is te verklaren|wordt verklaard|hangt samen)"],
+        "data_points": {
+          "description": "begin- en eindwaarde van de reeks, zoals de vaste zin ze noemt",
+          "ijkwaarden": {
+            "2021": "cbs-mbo-vrouwen-2021",
+            "2024": "cbs-mbo-vrouwen-2024"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "premisse-onwaar-hu-eerstejaars",
+      "message": "Waarom nam het aantal voltijd eerstejaars bij de Hogeschool Utrecht toe tussen 2021/22 en 2025/26?",
+      "description": "Onjuiste premisse (#1255): de vraag neemt een stijging aan, de bevroren data dalen (5.943 naar 5.408). Het antwoord opent met de vaste zin uit code, noemt de werkelijke richting en geeft geen oorzaak van een stijging",
+      "expected": {
+        "datasets": ["duo:p02ho1ejrs"],
+        "max_search_catalog": 3,
+        "must_mention": ["De vraag gaat uit van een stijging", "daalde", "Hogeschool Utrecht"],
+        "must_not_mention": ["oorza\\w* van de (stijging|groei|toename)", "verklaring voor de (stijging|groei|toename)", "(stijging|groei|toename) (komt|is te verklaren|wordt verklaard|hangt samen)"],
+        "data_points": {
+          "description": "begin- en eindwaarde van de reeks, zoals de vaste zin ze noemt",
+          "ijkwaarden": {
+            "2021": "duo-hu-eerstejaars-voltijd-2021",
+            "2025": "duo-hu-eerstejaars-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "premisse-onwaar-hu-inschrijvingen",
+      "message": "Wat verklaart de stijging van het aantal voltijdinschrijvingen bij de Hogeschool Utrecht van 2021/22 tot 2025/26?",
+      "description": "Onjuiste premisse (#1255): de vraag neemt een stijging aan, de bevroren data dalen (30.284 naar 28.889). Het antwoord opent met de vaste zin uit code, noemt de werkelijke richting en geeft geen oorzaak van een stijging",
+      "expected": {
+        "datasets": ["duo:p03hoinschr"],
+        "max_search_catalog": 3,
+        "must_mention": ["De vraag gaat uit van een stijging", "daalde", "Hogeschool Utrecht"],
+        "must_not_mention": ["oorza\\w* van de (stijging|groei|toename)", "verklaring voor de (stijging|groei|toename)", "(stijging|groei|toename) (komt|is te verklaren|wordt verklaard|hangt samen)"],
+        "data_points": {
+          "description": "begin- en eindwaarde van de reeks, zoals de vaste zin ze noemt",
+          "ijkwaarden": {
+            "2021": "duo-hu-inschrijvingen-voltijd-2021",
+            "2025": "duo-hu-inschrijvingen-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "premisse-waar-hu-voltijd",
+      "message": "Waarom is het aantal voltijdstudenten bij de Hogeschool Utrecht tussen 2021/22 en 2025/26 gedaald?",
+      "description": "Juiste premisse (#1255): de vraag neemt een daling aan en de bevroren data dalen (28.355 naar 26.370); de vaste zin over een onjuiste premisse hoort er niet",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht"],
+        "must_not_mention": ["De vraag gaat uit van een"]
+      }
+    },
+    {
+      "label": "premisse-waar-hbo-voltijd",
+      "message": "Waardoor daalde het aantal hbo-voltijdstudenten landelijk van 2024/25 naar 2025/26?",
+      "description": "Juiste premisse (#1255): de vraag neemt een daling aan en de bevroren data dalen (378.490 naar 367.960); de vaste zin over een onjuiste premisse hoort er niet",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["hbo"],
+        "must_not_mention": ["De vraag gaat uit van een"]
+      }
+    },
+    {
+      "label": "premisse-waar-mbo-vrouwen",
+      "message": "Hoe verklaar je de afname van het aantal vrouwen in het mbo tussen 2021/22 en 2024/25?",
+      "description": "Juiste premisse (#1255): de vraag neemt een daling aan en de bevroren data dalen (248.930 naar 230.450); de vaste zin over een onjuiste premisse hoort er niet",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["mbo"],
+        "must_not_mention": ["De vraag gaat uit van een"]
+      }
+    },
+    {
+      "label": "premisse-waar-hu-eerstejaars",
+      "message": "Waarom nam het aantal voltijd eerstejaars bij de Hogeschool Utrecht af tussen 2021/22 en 2025/26?",
+      "description": "Juiste premisse (#1255): de vraag neemt een daling aan en de bevroren data dalen (5.943 naar 5.408); de vaste zin over een onjuiste premisse hoort er niet",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht"],
+        "must_not_mention": ["De vraag gaat uit van een"]
+      }
+    },
+    {
+      "label": "premisse-waar-hu-inschrijvingen",
+      "message": "Wat verklaart de daling van het aantal voltijdinschrijvingen bij de Hogeschool Utrecht van 2021/22 tot 2025/26?",
+      "description": "Juiste premisse (#1255): de vraag neemt een daling aan en de bevroren data dalen (30.284 naar 28.889); de vaste zin over een onjuiste premisse hoort er niet",
+      "expected": {
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht"],
+        "must_not_mention": ["De vraag gaat uit van een"]
+      }
     }
   ]
 }
