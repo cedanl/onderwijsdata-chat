@@ -3,7 +3,7 @@
 // also say where each number came from. Failed steps and error messages are out by
 // default: an audit file is about the answer, not about the retries on the way.
 import { conversationTitle } from './conversationTitle'
-import { metBronnen } from './answerBlocks'
+import { meldingRegels, metBronnen } from './answerBlocks'
 import { manifestRegels } from './manifestRegels'
 
 const failed = step => ['error', 'empty', 'buiten_scope'].includes(step.status)
@@ -33,7 +33,8 @@ function answerBlocks(msg, options) {
   }
   // The sources come from the server, no longer from the model's text (#416).
   if (msg.content) blocks.push('### Antwoord', metBronnen(msg.content, msg.bronnen))
-  for (const zin of msg.controle || []) blocks.push(`> Let op: ${zin}`)
+  // Dezelfde regels als de kopieerknop (#1257): "Let op" en "Wat is gecontroleerd" (#1260).
+  for (const regel of meldingRegels(msg)) blocks.push(`> ${regel}`)
   for (const fig of msg.figures || []) blocks.push(`_Grafiek: ${fig.label || 'zonder titel'}_`)
   // Where the answer came from (#713): the model and versions that made it, and the version of the data behind it.
   const herkomst = manifestRegels(msg.manifest)

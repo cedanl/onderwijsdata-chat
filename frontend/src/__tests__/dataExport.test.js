@@ -125,7 +125,8 @@ describe('DataExport', () => {
     const [knop] = render({ tools: [stap('duo:x:0:ab')], download })
     expect(knop.textContent).toBe('Download data als CSV')
     await act(async () => knop.click())
-    expect(download).toHaveBeenCalledWith('duo:x:0:ab')
+    // De tweede parameter: de voorbehoudregels van het antwoord, hier geen (#1257).
+    expect(download).toHaveBeenCalledWith('duo:x:0:ab', [])
   })
 
   it('nummert de tabellen als het antwoord er meer gebruikte', () => {

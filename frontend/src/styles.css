@@ -2193,7 +2193,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
   .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
-  .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
+  .message-bubble .controle-regel, .message-bubble .data-export-uitleg, .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
   .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst,
@@ -2210,3 +2210,14 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
    invoerveld erboven blijft. Zonder inkeping is elke waarde 0 en verandert er niets. */
 body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .chat-main { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* "Wat is gecontroleerd" onder een data-antwoord (#1260): ingeklapt, in de maat van de bouwstenen erboven. */
+.controle-regel { margin-top: 8px; font-size: .8rem; color: var(--gray-600); }
+.controle-regel summary { cursor: pointer; }
+.controle-regel[open] summary { margin-bottom: 4px; }
+.controle-regel p { margin: 2px 0 0; line-height: 1.45; }
+.controle-regel-niet { color: var(--gray-700); }
+/* Wat er in de CSV staat (#1257): onder de knoppen, ingeklapt. */
+.data-export-uitleg { flex-basis: 100%; margin-top: 4px; font-size: .78rem; color: var(--gray-600); }
+.data-export-uitleg summary { cursor: pointer; }
+.data-export-uitleg p { margin: 4px 0 0; line-height: 1.45; }
