@@ -11,12 +11,18 @@ Elke meetfunctie is goedkoop en gooit nooit: een fout in het meten mag geen verz
 
 De tellers van wat er tegelijk loopt (core/gelijktijdig.py) staan er als gauges per pod: ze worden pas bij een scrape
 gelezen (`_Bezetting`), dus het tellen zelf verandert niet.
+
+De kwaliteitstellers (#1250) tellen wat de logregels CONTROLES, HERKANSING, ANTWOORD INGEHOUDEN, STAPPENBUDGET OP,
+TOOL OP SLOT, TOOL LIMIET en TOOL_AFGEKAPT zeggen, voor de wekelijkse audit (scripts/kwaliteitsaudit.py). Hun labels
+komen uit vaste lijsten: de controles van agent/controles.py, de tools van de app en vaste woorden; al het andere telt
+als `overig`.
 """
 
 import contextlib
 import logging
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from functools import cache
 from typing import Any, Protocol
 
 from prometheus_client import REGISTRY, Counter, Histogram, disable_created_metrics
@@ -107,6 +113,35 @@ LIMIET_TERUGVAL = Counter(
     "Pogingen die een limiet in het geheugen van de pod telde omdat de database niet bereikbaar was (fail-open).",
     ("limiter",),
 )
+
+CONTROLE_UITKOMSTEN_TELLER = Counter(
+    f"{PREFIX}_controle_uitkomsten",
+    "Per antwoord per controle de uitkomst (hard, zacht, niet_gecontroleerd, ok), zoals de regel CONTROLES.",
+    ("controle", "uitkomst"),
+)
+HERKANSINGEN = Counter(
+    f"{PREFIX}_herkansingen",
+    "Antwoorden die na een controle zijn ingetrokken en herschreven (HERKANSING).",
+)
+INGEHOUDEN_ANTWOORDEN = Counter(
+    f"{PREFIX}_ingehouden_antwoorden",
+    "Antwoorden die na de herkansing nog een hard probleem hadden en zijn ingehouden (ANTWOORD INGEHOUDEN).",
+)
+STAPPENBUDGET_OP = Counter(
+    f"{PREFIX}_stappenbudget_op",
+    "Vragen waarvan het stappenbudget op was, zodat een afrondronde zonder tools volgde (STAPPENBUDGET OP).",
+)
+TOOL_WEIGERINGEN = Counter(
+    f"{PREFIX}_tool_weigeringen",
+    "Toolstappen die niet (helemaal) bij het model kwamen per tool en reden: op_slot, limiet of afgekapt.",
+    ("tool", "reden"),
+)
+
+# Vaste woorden voor de kwaliteitstellers (#1250); de uitkomst `niet gecontroleerd` uit het log wordt één woord.
+CONTROLE_UITKOMSTEN = ("hard", "zacht", "niet_gecontroleerd", "ok")
+TOOL_WEIGERREDENEN = ("op_slot", "limiet", "afgekapt")
+# Een naam of woord buiten de vaste lijsten: één reeks, nooit de tekst zelf.
+OVERIG = "overig"
 
 _SANDBOX_UITKOMSTEN = frozenset({"ok", "fout", "timeout", "gestopt", "bezet"})
 _MODEL_UITKOMSTEN = frozenset({"ok", "gestopt", "geannuleerd", "afgebroken_runlimiet"})
@@ -217,6 +252,70 @@ def meet_weigering(limiet: str | None) -> None:
 def meet_terugval(limiet: str | None) -> None:
     """Een limiet telde in het geheugen omdat de database niet bereikbaar was (core/rate_limit.py)."""
     LIMIET_TERUGVAL.labels(limiet or _ONBENOEMD).inc()
+
+
+# ── Kwaliteitstellers voor de wekelijkse audit (#1250) ───────────────────────
+
+
+@cache
+def controlenamen() -> frozenset[str]:
+    """De controles van een antwoord (agent/controles.py); hier en niet bovenaan, zodat core de agent niet laadt."""
+    from agent.controles import CONTROLENAMEN
+
+    return frozenset(CONTROLENAMEN)
+
+
+@cache
+def toolnamen() -> frozenset[str]:
+    """Elke tool van de app, ook die achter een vlag of sleutel (tools.LABELS); hier om dezelfde reden."""
+    from tools import LABELS
+
+    return frozenset(LABELS)
+
+
+def controle_label(naam: str) -> str:
+    return naam if naam in controlenamen() else OVERIG
+
+
+def uitkomst_label(uitkomst: str) -> str:
+    woord = str(uitkomst).replace(" ", "_")
+    return woord if woord in CONTROLE_UITKOMSTEN else OVERIG
+
+
+def tool_label(naam: str) -> str:
+    return naam if naam in toolnamen() else OVERIG
+
+
+def reden_label(reden: str) -> str:
+    return reden if reden in TOOL_WEIGERREDENEN else OVERIG
+
+
+@_veilig
+def meet_controles(per_controle: Mapping[str, str]) -> None:
+    """Per controle de uitkomst van één antwoord, zoals de regel CONTROLES (agent/controles.py)."""
+    for naam, uitkomst in per_controle.items():
+        CONTROLE_UITKOMSTEN_TELLER.labels(controle_label(naam), uitkomst_label(uitkomst)).inc()
+
+
+@_veilig
+def meet_herkansing() -> None:
+    HERKANSINGEN.inc()
+
+
+@_veilig
+def meet_ingehouden() -> None:
+    INGEHOUDEN_ANTWOORDEN.inc()
+
+
+@_veilig
+def meet_stappenbudget_op() -> None:
+    STAPPENBUDGET_OP.inc()
+
+
+@_veilig
+def meet_toolweigering(tool: str, reden: str) -> None:
+    """Een toolstap op slot, over zijn limiet of afgekapt (agent/loop.py)."""
+    TOOL_WEIGERINGEN.labels(tool_label(tool), reden_label(reden)).inc()
 
 
 # ── Wat er tegelijk loopt, per pod (core/gelijktijdig.py) ────────────────────

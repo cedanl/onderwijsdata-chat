@@ -15,6 +15,7 @@ from core.config import (
 )
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
+from core.metrics import meet_herkansing, meet_ingehouden
 from tools import LABELS, SCHEMAS, cbs_standaard, ho_markers
 from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
@@ -384,6 +385,7 @@ def _beurtcontext(vraag: str, session: dict, verklaring_gevraagd: bool) -> str:
 async def _intrekken(emit: Emit, problems: list[str]) -> None:
     # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
     logger.info("HERKANSING  controles=%s", controlenamen(problems))
+    meet_herkansing()
     # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
     await emit({"type": "message_cancel", "reden": meldingen(problems)})
     await emit(
@@ -509,6 +511,7 @@ def _eindtekst(
         logger.debug("CONTROLE MELDINGEN  %s", result.problems)
     if harde(result.problems):
         logger.warning("ANTWOORD INGEHOUDEN  model=%s  %s", model, tekst_kenmerk(text_content))
+        meet_ingehouden()
         text_content = INGEHOUDEN
     return text_content
 

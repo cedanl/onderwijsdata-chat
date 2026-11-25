@@ -297,8 +297,9 @@ Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
   één uvicorn-proces. De procesmetrics van de bibliotheek (`process_resident_memory_bytes`, `process_cpu_seconds_total`,
   `python_gc_*`) komen mee. Een herstart zet de tellers op nul; PromQL `rate()` en `increase()` vangen dat op.
 - **Labels zijn begrensd:** het routesjabloon (`/api/conversations/{conv_id}`, nooit het pad), de methode (een onbekende
-  wordt `ANDERS`), de statuscode, de modelnaam uit het aanbod en vaste woorden. Geen gebruikersnaam, pseudoniem,
-  sleutel-ID of vraagtekst (`tests/test_metrics.py` toetst de labelsets).
+  wordt `ANDERS`), de statuscode, de modelnaam uit het aanbod, de namen van de controles en tools van de app (een andere
+  naam wordt `overig`) en vaste woorden. Geen gebruikersnaam, pseudoniem, sleutel-ID of vraagtekst
+  (`tests/test_metrics.py` toetst de labelsets).
 
 | Metric | Soort | Labels | Wat |
 |---|---|---|---|
@@ -319,6 +320,11 @@ Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
 | `edudata_sandbox_timeouts_total` | counter | | Scripts die na de tijdslimiet (10 s) zijn afgebroken |
 | `edudata_limiter_refusals_total` | counter | `limiter` | Geweigerd door een limiet: de rate limits (`login`, `bericht`, `feedback`, `feedback_algemeen`, `rapport_docx`, `mcp_ip`, `mcp_sleutel`) en de volle plaatsen (`runplaatsen_chat`, `runplaatsen_dashboard`, `mcp_plaatsen`, `sandbox`, `verbindingen`) |
 | `edudata_limiter_db_fallback_total` | counter | `limiter` | Pogingen die een limiet in het geheugen van de pod telde omdat de database niet bereikbaar was (fail-open, `core/rate_limit.py`) |
+| `edudata_controle_uitkomsten_total` | counter | `controle`, `uitkomst` (`hard`, `zacht`, `niet_gecontroleerd`, `ok`) | Per antwoord per controle de uitkomst, zoals de regel `CONTROLES`; `controle` is een naam uit `CONTROLENAMEN` (`agent/controles.py`) of `overig` (#1250) |
+| `edudata_herkansingen_total` | counter | | Antwoorden die na een controle zijn ingetrokken en herschreven (`HERKANSING`) |
+| `edudata_ingehouden_antwoorden_total` | counter | | Antwoorden die na de herkansing nog een hard probleem hadden en zijn ingehouden (`ANTWOORD INGEHOUDEN`) |
+| `edudata_stappenbudget_op_total` | counter | | Vragen waarvan het stappenbudget op was; er volgde een afrondronde zonder tools (`STAPPENBUDGET OP`) |
+| `edudata_tool_weigeringen_total` | counter | `tool`, `reden` (`op_slot`, `limiet`, `afgekapt`) | Toolstappen die op slot gingen (`TOOL OP SLOT`), over hun limiet gingen (`TOOL LIMIET`) of afgekapt werden (`TOOL_AFGEKAPT`); `tool` is een tool van de app of `overig` |
 
 ### SLO's (voorstel)
 
