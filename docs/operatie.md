@@ -319,7 +319,7 @@ manifest van de vorige geslaagde controle, dat in de GitLab-cache staat (sleutel
 (eerste run, of een runner zonder gedeelde cache), dan legt de run de basis: de vergelijking met de catalogus werkt,
 "gewijzigd sinds vorige keer" pas vanaf de volgende run. De log zegt het als dat zo is.
 
-*Catalogussites.* De Pages-workflow van de GitHub-mirror (`.github/workflows/docs.yml`) kopieert na de MkDocs-build
+*Catalogussites.* De Pages-workflow van de GitHub-mirror (`.github/workflows/docs.yml`) kopieert na de Zensical-build
 `packages/onderwijsbronnen/docs/cbs` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/> en
 `packages/onderwijsbronnen/docs/rio` naar <https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/>. De oude sites
 (cedanl.github.io/cbs-onderwijsdata en /rio-onderwijsdata) worden niet meer onderhouden: die repo's zijn

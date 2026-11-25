@@ -20,7 +20,7 @@ jobs:
         run: uv sync --group docs
 
       - name: Build docs
-        run: uv run mkdocs build --strict
+        run: uv run zensical build --strict --clean
 
       # De catalogussites van de bronpakketten (#887), vroeger op cedanl.github.io/cbs-onderwijsdata en
       # /rio-onderwijsdata. De CI-job catalogus:site in GitLab houdt packages/onderwijsbronnen/docs/{cbs,rio} bij (docs/operatie.md).

@@ -10,55 +10,31 @@ site_dir: site
 
 theme:
   name: material
+  # Zensical: classic bewaart het Material-uiterlijk waar extra.css op is gebouwd
+  variant: classic
   language: nl
-
-  palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: teal
-      accent: teal
-      toggle:
-        icon: material/brightness-7
-        name: Donker thema
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: teal
-      accent: teal
-      toggle:
-        icon: material/brightness-4
-        name: Licht thema
+  logo: assets/logos/npuls_logo.jpg
+  favicon: assets/logos/beeldmerk.svg
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
-    - navigation.top
     - navigation.indexes
-    - search.suggest
+    - navigation.path
+    - navigation.top
     - search.highlight
+    - search.suggest
     - content.code.copy
+    - content.code.annotate
     - content.tabs.link
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
 
-plugins:
-  - search:
-      lang: nl
-
-markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.snippets:
-      base_path: ["."]
-  - admonition
-  - pymdownx.details
-  - attr_list
-  - pymdownx.tabbed:
-      alternate_style: true
-  - tables
-  - toc:
-      permalink: true
+extra_css:
+  - stylesheets/extra.css
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js
@@ -90,3 +66,35 @@ nav:
     - Promoten naar playground: promoten.md
     - Test Environment: test-environment.md
   - Hosting: hosting.md
+extra:
+  generator: false
+
+copyright: >-
+  Centrum Educatieve Data Analyse (CEDA) · Onderdeel van <a href="https://npuls.nl/" target="_blank" rel="noopener">Npuls</a> · <a href="https://edu.nl/twt84" target="_blank" rel="noopener">CEDA-community</a> · <a href="mailto:ceda@surf.nl">ceda@surf.nl</a>
+
+plugins:
+  - search:
+      lang: nl
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets:
+      base_path: ["."]
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
