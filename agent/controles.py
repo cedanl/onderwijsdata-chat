@@ -54,6 +54,7 @@ CONTROLENAMEN = (
     "verkeerd_gebonden",
     "verkeerde_tabeljaren",
     "onjuiste_rekensommen",
+    "teruggerekende_cellen",
     "onjuiste_tabelbeweringen",
     "onvervangen_tabelcorrectie",
     "verkeerde_kenmerken",
