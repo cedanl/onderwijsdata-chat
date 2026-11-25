@@ -239,6 +239,21 @@ describe('tijdens het streamen (useChat en Message)', () => {
     expect(container.querySelector('details.message-ingetrokken').open).toBe(false)
   })
 
+  it('de kopieerknop kopieert wat in beeld staat: zolang de getallen wachten met "…"', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const kopieer = async () => {
+      await act(async () => { container.querySelector('.message.assistant .copy-btn-message').click() })
+      return writeText.mock.calls.at(-1)[0]
+    }
+    await start()
+    await delta('Er zijn 27.135 studenten, van wie 70,6 pro')
+    const tijdens = await kopieer()
+    expect(tijdens).toBe('Er zijn … studenten, van wie ')
+    await einde('Er zijn 27.135 studenten, van wie 70,6 procent slaagt.')
+    expect(await kopieer()).toBe('Er zijn 27.135 studenten, van wie 70,6 procent slaagt.')
+  })
+
   it('de regel blijft niet aan het bericht hangen na message_end', async () => {
     await start()
     await delta('Tekst.')

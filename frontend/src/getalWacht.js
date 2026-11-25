@@ -135,6 +135,11 @@ export function stukken(tekst, regel) {
   return uit
 }
 
+// De tekst zoals ze in beeld staat: elk getal dat wacht als "…" (voor de kopieerknop).
+export function zoalsGetoond(tekst, regel) {
+  return stukken(tekst, regel).map(d => d.tekst ?? WACHT_TEKEN).join('')
+}
+
 function wachtElement(lengte) {
   return {
     type: 'element',
@@ -161,7 +166,7 @@ function vervang(node, regel, inCode) {
     const delen = stukken(kind.value, regel)
     if (!delen.some(d => d.wacht)) return [kind]
     // In code geen element: het codeblok leest zijn tekst als string. Daar staat alleen het teken.
-    if (inCode) return [{ type: 'text', value: delen.map(d => d.tekst ?? WACHT_TEKEN).join('') }]
+    if (inCode) return [{ type: 'text', value: zoalsGetoond(kind.value, regel) }]
     return delen.map(d => (d.wacht ? wachtElement(d.wacht) : { type: 'text', value: d.tekst }))
   })
 }

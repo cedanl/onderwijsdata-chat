@@ -6,6 +6,7 @@
 - Jaartallen, schooljaren en getallen onder 1.000 blijven zichtbaar tijdens het streamen.
 - Ook een getal dat nog binnenkomt ("27." en daarna "135", "70,6 pro" en daarna "cent") en een getal in de
   notatie van het model (9.5%, het Engelse 12,345) staan als "…" tot de controle klaar is.
+- De kopieerknop kopieert zolang de getallen wachten de tekst zoals ze in beeld staat, met "…".
 - De regel komt van de server, bij elke `message_start` (`getalregel`): het scherm en de controle delen één regel.
 - Nieuw nepscenario `mock/verzonnen` en een Playwright-test die bij elke delta controleert dat het ingetrokken getal
   nooit zichtbaar is.
