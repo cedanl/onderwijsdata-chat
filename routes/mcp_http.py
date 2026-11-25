@@ -1,4 +1,4 @@
-"""/mcp: de catalogustools van mcp_server.py over streamable HTTP, in de app zelf (#706).
+"""/mcp en /mcp/: de catalogustools van mcp_server.py over streamable HTTP, in de app zelf (#706).
 
 SURF AI Chat (EduGenAI) koppelt een extensie via een URL; een stdio-server kan het niet aanroepen. Daarom draait de
 MCP-server ook hier, in hetzelfde proces als de chat: één pod, dezelfde ingress, /health en /version blijven werken.
@@ -10,6 +10,9 @@ nodig die zo lang leeft als de app; `draai()` hoort daarom in de lifespan van de
 
 Alleen POST: een GET-stroom of een DELETE van een sessie heeft stateless geen betekenis (405). Zonder sleutels in
 MCP_API_KEYS bestaat /mcp niet: 404, ook voor GET (anders gaf de SPA index.html).
+
+Een client met /mcp/ (met slash) als URL komt bij hetzelfde eindpunt, zonder redirect (#1215): een POST door een
+307/308 breekt veel MCP-clients. De route op beide paden staat in server.create_app.
 
 Elk verzoek draagt `Authorization: Bearer <sleutel>` met een sleutel uit MCP_API_KEYS (#939), anders 401. Meerdere
 sleutels tegelijk: roteren zonder onderbreking, en een eigen sleutel per consument. Het log noemt nooit de sleutel,
