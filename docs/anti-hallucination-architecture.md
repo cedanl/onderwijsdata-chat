@@ -29,7 +29,9 @@ komt uit code. Een rapport heeft eigen poorten in plaats van stap 5 (`agent/repo
 **Het label "Vaste maat" (#1242).** Rust een antwoord alleen op `get_maat`, dan staat onder de tekst "Vaste maat:
 <naam>", met in een uitklap de teldefinitie en waar en wanneer het recept is vastgelegd (`vastgelegd_in`,
 `vastgelegd_op` in `tools/maten.py`). Code zet het label, na de eindtekst van stap 8: `agent/vaste_maat.py` leest
-alleen `result.steps` en het recept, nooit de modeltekst. Het veld `vaste_maat` in `message_end` komt er alleen als
+alleen de stappen van het model en het recept, nooit de modeltekst. De stappen die code daarna onder het antwoord zet
+(andere definities, kruiscontrole, #1271) tellen niet mee: ze veranderen de route van het hoofdgetal niet
+(`modelstappen` in `_slotbericht`). Het veld `vaste_maat` in `message_end` komt er alleen als
 elke datastap van de beurt een geslaagde `get_maat` op één maat was; stappen die zoeken, beschrijven of tonen
 (`search_catalog`, `dataset_details`, `get_cbs_dimension`, `clarify_scope`, `create_plot`, `create_choropleth_map`)
 tellen niet mee. Een andere datastap (`query_data`, `run_analysis`, `koppel_data`, een lader, `compute_kpi`), twee

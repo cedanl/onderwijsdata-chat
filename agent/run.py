@@ -589,6 +589,7 @@ def _slotbericht(
     vervolgvragen: list[str] | None = None,
     code: str = "",
     hoofdgetal: dict | None = None,
+    modelstappen: list[tuple[str, str]] | None = None,
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
@@ -596,7 +597,9 @@ def _slotbericht(
     `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
     `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst.
     `vaste_maat` (#1242) alleen als elke datastap een get_maat was, uit de stappen en het recept; nooit onder een tekst
-    uit code (#565) of een ingehouden antwoord: die rusten niet op de maat."""
+    uit code (#565) of een ingehouden antwoord: die rusten niet op de maat. Het leest `modelstappen` als die er zijn:
+    de stappen van het model, zonder de stappen van code onder het antwoord (#1271). Een andere definitie of de DUO-kant
+    van een bronpaar verandert de route van het hoofdgetal niet; `result.steps` draagt ze wel, voor de citaties."""
     vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
     return {
         "type": "message_end",
@@ -622,7 +625,7 @@ def _slotbericht(
         **(
             {"vaste_maat": maat}
             if text_content not in _ZONDER_BRONNEN | _UIT_CODE
-            and (maat := _veilige_vaste_maat(result.steps))
+            and (maat := _veilige_vaste_maat(result.steps if modelstappen is None else modelstappen))
             else {}
         ),
         **_vast(text_content),
@@ -836,6 +839,7 @@ async def run(
             vervolgvragen=gekozen,
             code=code,
             hoofdgetal=hoofdgetal,
+            modelstappen=result.steps,
         )
     )
     return met_code(text_content, code)

@@ -234,9 +234,9 @@ def test_een_alternatief_zonder_waarde_geeft_geen_regel(bron):
 # --- 5. in het antwoord, de historie, het bewijs, het rapport -----------------------------------------------------
 
 
-def test_run_zet_de_regel_onder_het_antwoord_met_citaties_en_bewijs(bron, zonder_scopekaart):
+def _run(hoofd: tuple[str, str]) -> tuple[str, list[dict], dict]:
+    """Een hele beurt met de stap `hoofd` van het model: de tekst, de events en de sessie."""
     run_module = importlib.import_module("agent.run")
-    hoofd = _hoofdstap()
     resultaat = LoopResult(
         text="In 2024/25 waren er 475.460 mbo-studenten.",
         steps=[hoofd],
@@ -258,6 +258,12 @@ def test_run_zet_de_regel_onder_het_antwoord_met_citaties_en_bewijs(bron, zonder
         patch.object(run_module, "_vervolgvragen", lambda *a, **k: asyncio.sleep(0, [])),
     ):
         tekst = asyncio.run(run_module.run([{"role": "user", "content": _VRAAG}], session=session, emit=emit))
+    return tekst, events, session
+
+
+def test_run_zet_de_regel_onder_het_antwoord_met_citaties_en_bewijs(bron, zonder_scopekaart):
+    hoofd = _hoofdstap()
+    tekst, events, session = _run(hoofd)
 
     assert tekst.rstrip().splitlines()[-1].startswith(KOP_DEFINITIES) and tekst.count(KOP_DEFINITIES) == 1
     (einde,) = [e for e in events if e["type"] == "message_end"]
@@ -269,6 +275,23 @@ def test_run_zet_de_regel_onder_het_antwoord_met_citaties_en_bewijs(bron, zonder
     assert inhoud["regel"] in tekst and inhoud["data_key"] == json.loads(hoofd[1])["data_key"]
     # De historie naar het model houdt de regel niet: het model schrijft haar nooit over.
     assert KOP_DEFINITIES not in zonder_vaste_blokken({"role": "assistant", "content": tekst})["content"]
+
+
+def test_het_label_vaste_maat_blijft_naast_de_stappen_van_code(bron, zonder_scopekaart):
+    """#1242 naast #1256: de get_maat-stappen van code (een andere telling) veranderen de route van het hoofdgetal niet.
+    Het label noemt de maat met de teldefinitie van de stap van het model, niet die van het recept of een alternatief."""
+    hoofd = _hoofdstap()
+    _, events, _ = _run(hoofd)
+
+    (einde,) = [e for e in events if e["type"] == "message_end"]
+    assert sum(e["type"] == "tool_start" for e in events) >= 1  # de stap van code liep echt
+    recept = MATEN[MBO_STUDENTEN_LANDELIJK]
+    assert einde["vaste_maat"] == {
+        "maat": MBO_STUDENTEN_LANDELIJK,
+        "teldefinitie": json.loads(hoofd[1])["teldefinitie"],
+        "vastgelegd_in": recept.vastgelegd_in,
+        "vastgelegd_op": recept.vastgelegd_op,
+    }
 
 
 def test_een_regel_die_het_model_overnam_vervalt(bron):

@@ -198,7 +198,8 @@ niet en het model krijgt een melding, want de standaard van de tabel en het gesp
 niveau in de koppeltabel (nu alleen `mbo_studenten_landelijk`, landelijk), dan haalt code ook de DUO-kant op (stap
 "Kruiscontrole met de andere bron") en zet de regel "**Ter controle:** …" onder het antwoord: het DUO-getal, het verschil
 met het CBS-getal (absoluut en in %) en de bekende redenen uit de tabel. Geen toolargument kiest een paar; zie
-`docs/domeinregels.md`, "Bronparen".
+`docs/domeinregels.md`, "Bronparen". De stappen van code onder het antwoord tellen niet mee voor het label "Vaste
+maat" (#1242): dat leest alleen de stappen van het model, want de route van het hoofdgetal blijft dezelfde.
 
 **Geslacht per opleiding** (#742, `tools/geslacht_opleiding.py`). DUO heeft geslacht niet per opleiding: het
 geslachtsbestand telt per instelling, vestigingsgemeente, onderdeel, subonderdeel en type ho, het niveaubestand in

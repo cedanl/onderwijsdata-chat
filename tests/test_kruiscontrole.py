@@ -247,9 +247,9 @@ def test_boven_de_drempel_zonder_reden_de_vaste_zin_nooit_fout(bronnen):
 # --- 5. in het antwoord, het bewijs en het rapport --------------------------------------------------------------------
 
 
-def test_run_zet_de_kruiscontrole_onder_het_antwoord_en_in_het_bewijs(bronnen, zonder_scopekaart):
+def _run(hoofd: tuple[str, str]) -> tuple[str, list[dict], dict]:
+    """Een hele beurt met de stap `hoofd` van het model: de tekst, de events en de sessie."""
     run_module = importlib.import_module("agent.run")
-    hoofd = _hoofdstap()
     events: list[dict] = []
 
     async def nep_loop(history, **kwargs):
@@ -270,6 +270,11 @@ def test_run_zet_de_kruiscontrole_onder_het_antwoord_en_in_het_bewijs(bronnen, z
         patch.object(run_module, "_vervolgvragen", lambda *a, **k: asyncio.sleep(0, [])),
     ):
         tekst = asyncio.run(run_module.run([{"role": "user", "content": _VRAAG}], session=session, emit=emit))
+    return tekst, events, session
+
+
+def test_run_zet_de_kruiscontrole_onder_het_antwoord_en_in_het_bewijs(bronnen, zonder_scopekaart):
+    tekst, events, session = _run(_hoofdstap())
 
     assert tekst.count(KOP_KRUISCONTROLE) == 1 and "476.079" in tekst
     (einde,) = [e for e in events if e["type"] == "message_end"]
@@ -282,3 +287,35 @@ def test_run_zet_de_kruiscontrole_onder_het_antwoord_en_in_het_bewijs(bronnen, z
 
     (item,) = controlestappen.rapportdefinities(rekenbewijs(session))
     assert item["begrip"] == "Ter controle" and "476.079" in item["definitie"]
+
+
+def test_het_label_vaste_maat_blijft_naast_de_kruiscontrole(bronnen, zonder_scopekaart):
+    """#1242 naast #1259: de DUO-stap van code is geen datastap van het antwoord. Het hoofdgetal rust alleen op
+    get_maat, dus het label "Vaste maat" blijft, met de teldefinitie van de stap van het model."""
+    hoofd = _hoofdstap()
+    tekst, events, _ = _run(hoofd)
+
+    assert KOP_KRUISCONTROLE in tekst  # de kruiscontrole liep
+    (einde,) = [e for e in events if e["type"] == "message_end"]
+    assert einde["vaste_maat"]["maat"] == MBO_STUDENTEN_LANDELIJK
+    assert einde["vaste_maat"]["teldefinitie"] == json.loads(hoofd[1])["teldefinitie"]
+
+
+def test_het_bewijsbestand_krijgt_de_regel_de_stap_van_code_en_haar_citatie(bronnen, zonder_scopekaart):
+    """#1244 naast #1259: "Bewijs (JSON)" bouwt de browser uit het bericht (`bewijsJson.js`): de antwoordtekst, per
+    geslaagde stap de naam en de argumenten van `tool_start` (`input`), en de citaties uit `message_end`. De stap van
+    code levert die velden zoals een modelstap: de regel staat in de tekst, de stap met haar argumenten, het DUO-getal
+    met een citatie naar die stap."""
+    tekst, events, _ = _run(_hoofdstap())
+
+    (start,) = [e for e in events if e["type"] == "tool_start"]
+    assert start["name"] == controlestappen.STAP_KRUISCONTROLE
+    assert start["input"] == {"bronpaar": "mbo-studenten-landelijk", "schooljaar": "2024/25"}
+    (eind,) = [e for e in events if e["type"] == "tool_end"]
+    assert "status" not in eind  # een geslaagde stap: het bewijsbestand neemt haar op
+    (einde,) = [e for e in events if e["type"] == "message_end"]
+    (regel,) = [r for r in einde["content"].split("\n\n") if r.startswith(KOP_KRUISCONTROLE)]
+    assert regel in tekst
+    # Stap 1 is de get_maat van het model, stap 2 de kruiscontrole: de volgorde van de stappen in het bericht.
+    duo = next(c for c in einde["citaties"] if c["getal"] == "476.079")
+    assert duo["stap"] == 2 and duo["vastgesteld"] and "DUO" in duo["bron"]
