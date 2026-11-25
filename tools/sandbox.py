@@ -24,6 +24,7 @@ import pandas as pd
 from core.config import MAX_SANDBOX_RUNS, SANDBOX_QUEUE_TIMEOUT_S
 from core.gelijktijdig import Procesplaatsen
 from core.logging_util import tekst_kenmerk
+from core.metrics import meet_sandbox, meet_weigering, volg_plaatsen
 
 from . import afbreken
 
@@ -34,10 +35,12 @@ _KIND = Path(__file__).with_name("sandbox_kind.py")
 _EEN_DRAAD = dict.fromkeys(("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"), "1")
 # Hooguit zoveel kindprocessen tegelijk op de pod (#688); de rest wacht even, daarna een melding voor het model.
 _PROCESSEN = Procesplaatsen(max_tegelijk=MAX_SANDBOX_RUNS, wacht_s=SANDBOX_QUEUE_TIMEOUT_S)
+volg_plaatsen("sandbox", _PROCESSEN)  # `edudata_sandbox_running`, per pod (core/metrics.py, #678)
 GESTOPT = "Het script is afgebroken omdat de gebruiker stopte."
 # Zo vaak kijkt de wachtlus of het kindproces klaar is of de beurt is gestopt.
 _POLL_S = 0.1
 BEZET = "De analyseomgeving is nu bezet door andere gebruikers. Probeer het over een minuut opnieuw."
+TIJDSLIMIET = "Script duurde langer dan {s} seconden en is afgebroken."
 
 
 @dataclass(frozen=True)
@@ -53,8 +56,21 @@ def voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Ui
     with _PROCESSEN.plaats() as vrij:
         if not vrij:
             logger.warning("SANDBOX bezet  max=%d  wacht=%ss", MAX_SANDBOX_RUNS, SANDBOX_QUEUE_TIMEOUT_S)
+            meet_sandbox("bezet")
+            meet_weigering("sandbox")
             return Uitkomst(fout=BEZET)
-        return _voer_uit(code, df, tabellen)
+        uitkomst = _voer_uit(code, df, tabellen)
+        meet_sandbox(_soort(uitkomst))
+        return uitkomst
+
+
+def _soort(uitkomst: Uitkomst) -> str:
+    """De uitkomst voor de metrics (#678): ok, timeout, gestopt of fout. Nooit de fouttekst zelf."""
+    if uitkomst.fout is None:
+        return "ok"
+    if uitkomst.fout == GESTOPT:
+        return "gestopt"
+    return "timeout" if uitkomst.fout == TIJDSLIMIET.format(s=TIMEOUT_SECONDS) else "fout"
 
 
 def _voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Uitkomst:
@@ -88,7 +104,7 @@ def _draai(invoer: bytes, werkmap: str) -> subprocess.CompletedProcess | Uitkoms
             if afbreken.gevraagd():
                 melding = GESTOPT
             elif time.monotonic() >= eind:
-                melding = f"Script duurde langer dan {TIMEOUT_SECONDS} seconden en is afgebroken."
+                melding = TIJDSLIMIET.format(s=TIMEOUT_SECONDS)
             else:
                 continue
             proces.kill()

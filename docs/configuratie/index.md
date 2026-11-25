@@ -75,6 +75,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MCP_MAX_GELIJKTIJDIG` | `4` | Verzoeken die tegelijk op `/mcp` lopen, en threads voor hun toolaanroepen; los van `MAX_CONCURRENT_RUNS` van de chat |
 | `MCP_WACHT_S` | `1` | Seconden dat een verzoek op `/mcp` op een plaats wacht; daarna HTTP 503 met `Retry-After`, geen lange wachtrij |
 | `MCP_TOOL_TIMEOUT_S` | `30` | Seconden per toolaanroep op `/mcp`; daarna een MCP-fout (`isError`). De eerste zoekactie laadt het DUO-instellingenregister (enkele seconden). De grootte van een resultaat volgt `TOOL_RESULT_MAX_CHARS`, zoals in de chat |
+| `METRICS_TOKEN` | *(niet ingesteld)* | Bearer-token voor `GET /metrics`, de Prometheus-metrics van de pod (#678). Zonder token bestaat `/metrics` niet (404); met token vraagt elk verzoek `Authorization: Bearer <token>`, anders 401. Een geheim: via SOPS/Flux, nooit in de repo; test leest hem optioneel uit de secret. Zie [Productiemonitoring](../kwaliteit-en-veiligheid.md#metrics-get-metrics-678) |
 | `LOG_HASH_SECRET` | *(niet ingesteld)* | Geheim voor de hash in logregels (`len=… hash=…`, #475): met geheim een HMAC, zodat wie het log heeft geen geraden vraag tegen de hash kan controleren (#502). Via SOPS/Flux, nooit in de repo; zonder geheim een kale SHA-256 |
 
 ---

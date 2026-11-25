@@ -53,6 +53,7 @@ from core.config import (
 from core.foutmeldingen import NIET_GEVONDEN
 from core.gelijktijdig import DRUK, Druk, Runplaatsen
 from core.logging_util import tekst_kenmerk
+from core.metrics import meet_weigering, volg_plaatsen
 from core.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -174,11 +175,13 @@ class McpEindpunt:
         self._manager = StreamableHTTPSessionManager(app=self._server, stateless=True, json_response=True)
         self._plaatsen = Runplaatsen(max_tegelijk=self._grenzen.max_gelijktijdig, wacht_s=self._grenzen.wacht_s)
         self._threads = anyio.CapacityLimiter(self._grenzen.max_gelijktijdig)
+        volg_plaatsen("mcp", self._plaatsen)  # per pod in de metrics (core/metrics.py, #678)
         try:
             async with self._manager.run():
                 logger.info("MCP aan op %s: streamable HTTP, stateless, %s", PAD, self._grenzen)
                 yield
         finally:
+            volg_plaatsen("mcp", None)
             self._manager = self._plaatsen = self._threads = None
 
     async def _voer_uit(self, naam: str, argumenten: dict[str, Any] | None) -> tuple[str, bool]:
@@ -238,6 +241,7 @@ class McpEindpunt:
                 await manager.handle_request(scope, receive, send)
         except Druk:
             logger.warning("MCP 503: %d verzoeken tegelijk", self._grenzen.max_gelijktijdig)
+            meet_weigering("mcp_plaatsen")
             await _weiger(scope, receive, send, 503, DRUK, {"Retry-After": str(RETRY_DRUK_S)})
 
     async def _te_veel(self, scope: Scope, receive: Receive, send: Send, wacht: int) -> None:

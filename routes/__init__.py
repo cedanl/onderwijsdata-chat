@@ -5,6 +5,7 @@ from .config import router as config_router
 from .data_export import router as data_export_router
 from .feedback import router as feedback_router
 from .instellingen import router as instellingen_router
+from .metrics import router as metrics_router
 from .mijn_gegevens import router as mijn_gegevens_router
 from .persistence import router as persistence_router
 from .rapport_docx import router as rapport_docx_router
@@ -17,6 +18,7 @@ __all__ = [
     "data_export_router",
     "feedback_router",
     "instellingen_router",
+    "metrics_router",
     "mijn_gegevens_router",
     "persistence_router",
     "rapport_docx_router",

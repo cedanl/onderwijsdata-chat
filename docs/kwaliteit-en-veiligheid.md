@@ -243,3 +243,99 @@ Transparantie over wat nog niet getest is:
 - **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
 - **Tokengebruik:** per run (vraag, rapport) één regel `TOKENS` (INFO) met model, aantal modelaanroepen, invoer, uitvoer en gelezen en geschreven cache (#678). De regel draagt het verbindings-ID; `VERBINDING open` noemt bij dat ID het pseudoniem `gebruiker=` (een HMAC met `LOG_HASH_SECRET`; zonder dat geheim `-`, want een kale hash van een e-mailadres is terug te rekenen). Per modelaanroep precies één regel `MODELAANROEP` (INFO), zonder gebruikerstekst: model, uitkomst (`ok`, `gestopt` na de stopknop of het stopsignaal van de grens, `afgebroken_runlimiet` als de harde grens van de run (`RUN_TIMEOUT_S` plus de uitloop) of van het rapport (`GENEREER_TIMEOUT_S`) een vastzittende aanroep afbrak, `geannuleerd` bij een annulering van buitenaf zoals een gesloten WebSocket, reset of ander gesprek, of anders het fouttype), de seconden tot de provider antwoordde (`open`, inclusief wachten na een rate limit of time-out), tot de eerste chunk en tot het einde (`totaal`, bij een afbraak de duur tot de afbraak), en de uitvoertokens. Een veld dat niet bereikt werd, staat op `-`. Daarop kiest #800 `LITELLM_REQUEST_TIMEOUT`
 - **Herkomstlog:** per gepubliceerd resultaat één regel `GEPUBLICEERD` (INFO) met soort, data-keys en versies; de selectiestappen op DEBUG (#169)
+- **Metrics:** `GET /metrics` in het tekstformaat van Prometheus, per pod (#678); zie hieronder
+
+### Metrics (`GET /metrics`, #678)
+
+Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
+
+- **Zonder `METRICS_TOKEN`** bestaat het niet: 404, net als een onbekende route. Zo staat het op elke omgeving tot het
+  token in het secret staat.
+- **Met `METRICS_TOKEN`** (een geheim uit `onderwijsdata-chat-secrets`, `optional: true` in
+  `manifests/<omgeving>/values.yaml`, nu op test) vraagt elk verzoek `Authorization: Bearer <token>`; zonder of met een
+  fout token 401. De vergelijking is constant-time. De scraper van het platform krijgt hetzelfde token
+  (`authorization.credentials` in een ServiceMonitor of `bearer_token_file` in een scrape-config).
+- **Per pod, één proces:** de standaardregistry van `prometheus_client` zonder multiprocess-modus; de Dockerfile start
+  één uvicorn-proces. De procesmetrics van de bibliotheek (`process_resident_memory_bytes`, `process_cpu_seconds_total`,
+  `python_gc_*`) komen mee. Een herstart zet de tellers op nul; PromQL `rate()` en `increase()` vangen dat op.
+- **Labels zijn begrensd:** het routesjabloon (`/api/conversations/{conv_id}`, nooit het pad), de methode (een onbekende
+  wordt `ANDERS`), de statuscode, de modelnaam uit het aanbod en vaste woorden. Geen gebruikersnaam, pseudoniem,
+  sleutel-ID of vraagtekst (`tests/test_metrics.py` toetst de labelsets).
+
+| Metric | Soort | Labels | Wat |
+|---|---|---|---|
+| `edudata_http_requests_total` | counter | `method`, `route`, `status` | HTTP-verzoeken (geen WebSocket); `route="<geen route>"` als geen route paste |
+| `edudata_http_request_duration_seconds` | histogram | `method`, `route` | Duur tot het antwoord klaar is (bij een gestreamd antwoord tot het einde) |
+| `edudata_http_server_errors_total` | counter | `method`, `route` | Verzoeken met een 5xx, ook de 503 van `/ready` en een druk dashboard |
+| `edudata_websockets_open` | gauge | | Open chatverbindingen op deze pod |
+| `edudata_websockets_per_user_max` | gauge | | Het grootste aantal open verbindingen van één gebruiker, zonder te zeggen wie |
+| `edudata_runs_running` | gauge | `pool` (`chat`, `dashboard`, `mcp`) | Lopende runs per wachtrij; `mcp` alleen met `MCP_API_KEYS` |
+| `edudata_sandbox_running` | gauge | | Lopende sandboxprocessen van `run_analysis` |
+| `edudata_concurrency_limit` | gauge | `counter` | De grens van elke teller hierboven (`websockets_total`, `websockets_per_user`, `chat`, `dashboard`, `mcp`, `sandbox`) |
+| `edudata_model_calls_total` | counter | `model`, `outcome` | Modelaanroepen; `outcome` is die van `MODELAANROEP` (`ok`, `gestopt`, `geannuleerd`, `afgebroken_runlimiet`), een fouttype telt als `fout` |
+| `edudata_model_call_errors_total` | counter | `model` | Mislukte modelaanroepen: `fout` en `afgebroken_runlimiet` |
+| `edudata_model_call_duration_seconds` | histogram | `model` | Duur van een modelaanroep (`totaal` in `MODELAANROEP`) |
+| `edudata_model_first_chunk_seconds` | histogram | `model` | Tijd tot de eerste chunk (`eerste_chunk`), per aanroep die er een kreeg |
+| `edudata_model_tokens_total` | counter | `model`, `direction` (`input`, `output`) | Tokens per run, zoals `TOKENS` |
+| `edudata_sandbox_runs_total` | counter | `outcome` (`ok`, `fout`, `timeout`, `gestopt`, `bezet`) | Scripts van `run_analysis` |
+| `edudata_sandbox_timeouts_total` | counter | | Scripts die na de tijdslimiet (10 s) zijn afgebroken |
+| `edudata_limiter_refusals_total` | counter | `limiter` | Geweigerd door een limiet: de rate limits (`login`, `bericht`, `feedback`, `feedback_algemeen`, `rapport_docx`, `mcp_ip`, `mcp_sleutel`) en de volle plaatsen (`runplaatsen_chat`, `runplaatsen_dashboard`, `mcp_plaatsen`, `sandbox`, `verbindingen`) |
+| `edudata_limiter_db_fallback_total` | counter | `limiter` | Pogingen die een limiet in het geheugen van de pod telde omdat de database niet bereikbaar was (fail-open, `core/rate_limit.py`) |
+
+### SLO's (voorstel)
+
+Interne doelen om de metrics op te lezen, geen afspraak met gebruikers: publiek blijft de beschikbaarheid best effort
+(ADR-011, [Operatie](operatie.md#beschikbaarheid)). De waarden zijn een startpunt; stel ze bij na een maand meten.
+
+| SLO | Doel | Zo lees je het af |
+|---|---|---|
+| Beschikbaarheid | 99% van de HTTP-verzoeken zonder 5xx, over 30 dagen; daarnaast `up` van de scrape | `1 - sum(rate(edudata_http_server_errors_total{route!="/metrics"}[30d])) / sum(rate(edudata_http_requests_total{route!="/metrics"}[30d]))` |
+| Tijd tot het eerste token | p95 onder 10 s, over een uur | `histogram_quantile(0.95, sum by (le) (rate(edudata_model_first_chunk_seconds_bucket[1h])))` |
+| Foutpercentage model | onder 2% van de modelaanroepen, over een uur | `sum(rate(edudata_model_call_errors_total[1h])) / sum(rate(edudata_model_calls_total[1h]))` |
+
+De tijd tot het eerste token geldt per modelaanroep, niet per vraag: een vraag met tools doet er meerdere, en de
+gebruiker ziet eerder de stappen van de tools. Een pod die niet antwoordt, schrijft zelf geen 5xx; dan zegt `up == 0`
+het, of de 502/503 van de ingress.
+
+### Alertvoorstellen
+
+Nog niet geïnstalleerd op het SDP-platform (#678). Als `PrometheusRule`, met `job="onderwijsdata-chat"` als de naam van
+de scrape:
+
+```yaml
+groups:
+  - name: onderwijsdata-chat
+    rules:
+      - alert: EdudataVeel5xx
+        expr: |
+          sum(rate(edudata_http_server_errors_total{route!="/metrics"}[10m]))
+            / sum(rate(edudata_http_requests_total{route!="/metrics"}[10m])) > 0.05
+        for: 10m
+        annotations:
+          summary: "Meer dan 5% van de HTTP-verzoeken eindigt in een 5xx"
+      - alert: EdudataModelFouten
+        expr: |
+          sum(rate(edudata_model_call_errors_total[15m]))
+            / sum(rate(edudata_model_calls_total[15m])) > 0.10
+        for: 15m
+        annotations:
+          summary: "Meer dan 10% van de modelaanroepen mislukt (provider, sleutel of runlimiet)"
+      - alert: EdudataLimietZonderDatabase
+        expr: sum(increase(edudata_limiter_db_fallback_total[5m])) > 0
+        annotations:
+          summary: "Een limiet telt per pod: de database was niet bereikbaar (fail-open)"
+      - alert: EdudataOpschoningMislukt
+        # kube-state-metrics; de CronJob heet <release>-opschonen (charts/onderwijsdata-chat/templates/cronjob-opschonen.yaml).
+        expr: increase(kube_job_status_failed{job_name=~".*-opschonen-.*"}[1d]) > 0
+        annotations:
+          summary: "De nachtelijke opschoning (persistence/opschonen.py) is mislukt: bewaartermijnen worden niet gehaald"
+      - alert: EdudataPodWeg
+        expr: up{job="onderwijsdata-chat"} == 0
+        for: 5m
+        annotations:
+          summary: "De scrape van /metrics faalt: de pod antwoordt niet of het token klopt niet"
+```
+
+`bron:ping` draait in GitLab CI, niet in de pod, en staat dus niet in de metrics: het signaal is een rode geplande
+pipeline. Zet daarvoor in GitLab de melding bij een mislukte pipeline aan (Settings > Integrations > Pipeline status
+emails, "Notify only broken pipelines", branch `main`).

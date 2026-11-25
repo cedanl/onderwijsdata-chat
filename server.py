@@ -22,6 +22,7 @@ from core.appversie import app_versie
 from core.catalogusversie import arbeidsmarktversie, catalogusdigest, catalogusversie
 from core.config import MAX_REQUEST_BYTES
 from core.logging_util import foutkenmerk
+from core.metrics import HttpMeting
 from core.pakketherkomst import korte_commit
 from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
@@ -51,6 +52,7 @@ from routes import (
     data_export_router,
     feedback_router,
     instellingen_router,
+    metrics_router,
     mijn_gegevens_router,
     persistence_router,
     rapport_docx_router,
@@ -250,6 +252,7 @@ _ROUTERS = (
     data_export_router,
     mijn_gegevens_router,
     chat_router,
+    metrics_router,
 )
 
 
@@ -285,6 +288,9 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
     # Bundel, catalogus en API-antwoorden gecomprimeerd: de ingress doet het niet (#110).
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.middleware("http")(security_headers)
+    # Als laatste, dus de buitenste: telt elk verzoek met zijn uiteindelijke status, ook een 500 van security_headers
+    # (GET /metrics, #678).
+    app.add_middleware(HttpMeting)
     app.include_router(_routes)
     for router in _ROUTERS:
         app.include_router(router)

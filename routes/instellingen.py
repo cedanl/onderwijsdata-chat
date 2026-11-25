@@ -17,6 +17,7 @@ from core.config import (
     get_available_models_for_user,
 )
 from core.gelijktijdig import Druk, Runplaatsen
+from core.metrics import meet_weigering, volg_plaatsen
 from data.dashboard import (
     BronNietBeschikbaar,
     load_dashboard_arbeidsmarktmatch,
@@ -107,6 +108,7 @@ _INGELOGD = [Depends(get_current_user)]
 
 # Hoeveel dashboardladingen tegelijk (#901), met dezelfde wachtrij als de runs van de chat (#688).
 _dashboardplaatsen = Runplaatsen(max_tegelijk=MAX_DASHBOARD_LOADS, wacht_s=DASHBOARD_QUEUE_TIMEOUT_S)
+volg_plaatsen("dashboard", _dashboardplaatsen)  # per pod in de metrics (core/metrics.py, #678)
 # Een lading die de tijdsgrens haalde, loopt door in haar thread en houdt haar plaats tot ze klaar is: anders telde de
 # limiet een thread die nog laadt niet meer mee. De verwijzing houdt de taak in leven.
 _uitlopend: set[asyncio.Task] = set()
@@ -173,6 +175,7 @@ async def _laad_dashboard(
         return JSONResponse({"error": _over_de_tijdsgrens()}, status_code=504)
     except Druk as e:
         logger.warning("DASHBOARDPLAATSEN vol  max=%d  wacht=%ss", MAX_DASHBOARD_LOADS, DASHBOARD_QUEUE_TIMEOUT_S)
+        meet_weigering("runplaatsen_dashboard")
         return JSONResponse({"error": str(e)}, status_code=503)
     except BronNietBeschikbaar as e:
         # Geen "niet gevonden": de instelling is niet te bepalen zolang de bron uitligt.

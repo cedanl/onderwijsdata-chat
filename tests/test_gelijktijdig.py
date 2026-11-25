@@ -178,3 +178,33 @@ def test_procesplaatsen_werken_over_threads():
     with plaatsen.plaats() as vrij:
         assert vrij
     t.join()
+
+
+# ── Bezetting voor de metrics (#678, #984: per pod) ──
+
+
+def test_de_tellers_geven_hun_bezetting_zonder_iets_te_veranderen():
+    v = Verbindingen(per_sleutel=3, totaal=5)
+    assert (v.meeste_per_sleutel, v.max_per_sleutel, v.max_totaal) == (0, 3, 5)
+    assert v.open("anna") and v.open("anna") and v.open("bob") and v.open(None)
+    assert v.meeste_per_sleutel == 2
+    v.sluit("anna")
+    assert v.meeste_per_sleutel == 1
+
+    async def runs():
+        plaatsen = Runplaatsen(max_tegelijk=2, wacht_s=0.05)
+        async with plaatsen.plaats():
+            tijdens = plaatsen.bezet
+        with pytest.raises(Druk):
+            async with plaatsen.plaats(), plaatsen.plaats(), plaatsen.plaats():
+                pass
+        return tijdens, plaatsen.bezet, plaatsen.max_tegelijk
+
+    assert asyncio.run(runs()) == (1, 0, 2)
+
+    processen = Procesplaatsen(max_tegelijk=1, wacht_s=0.01)
+    with processen.plaats() as vrij:
+        assert vrij and processen.bezet == 1
+        with processen.plaats() as tweede:
+            assert not tweede and processen.bezet == 1
+    assert processen.bezet == 0 and processen.max_tegelijk == 1

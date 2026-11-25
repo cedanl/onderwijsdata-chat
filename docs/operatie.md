@@ -32,9 +32,9 @@ Waarden uit `manifests/<omgeving>/values.yaml`, met de chart (`charts/onderwijsd
 | Opschonen (CronJob) | aan | aan | uit | uit |
 | `APP_ENV` | `test` | `playground` | `development` | `production` |
 
-**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`), de gelijktijdigheidstellers
-(verbindingen en runs) en de SRAM-gebruikerscache leven in het procesgeheugen; een tweede pod kent die niet. Alleen de
-tijdslimieten staan al in Postgres (#984). De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py`
+**Eén pod, bewust** (ADR-011, besluit 09-11 op #677). De datastore (`tools/store.py`) leeft in het procesgeheugen; een
+tweede pod kent die niet. De gelijktijdigheidstellers (verbindingen, runs, sandbox) tellen bewust per pod (zie Pod). De
+tijdslimieten en de SRAM-gebruikersinfo staan in Postgres (#984). De chart heeft daarom geen HPA en geen PDB, en `tests/test_manifests.py`
 bewaakt per omgeving één replica. Wat dat betekent:
 
 - **Elke uitrol of herstart is een onderbreking.** Bij `Recreate` (test, playground) is de app weg tot de nieuwe pod
@@ -63,6 +63,26 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
   komt vanzelf terug." en blijft de frontend tot 12 minuten herverbinden (`HERSTART_MS` in
   `frontend/src/socketHealth.js`); daarna "Geen verbinding." met een knop.
 - **Bestandssysteem**: read-only, behalve een `emptyDir` op `/tmp` (werkmappen van `run_analysis`).
+- **Gelijktijdigheid per pod** (#688, besluit #984 stap 1, ADR-011): wat er tegelijk mag, telt elke pod zelf, in het
+  geheugen (`core/gelijktijdig.py`). Dat blijft zo met twee pods, want de grenzen beschermen de pod (geheugen, CPU), niet
+  het account:
+
+    | Teller | Grens | Per pod, omdat |
+    |---|---|---|
+    | Open chatverbindingen per gebruiker | `MAX_WS_PER_USER` (10) | een WebSocket leeft op één pod en kost daar geheugen; met twee pods mag een gebruiker tot twee keer zoveel vensters open hebben |
+    | Open chatverbindingen in totaal | `MAX_WS_TOTAL` (100) | idem, de grens van wat één pod aankan |
+    | Runplaatsen (chat, dashboards, `/mcp`) | `MAX_CONCURRENT_RUNS` (8), `MAX_DASHBOARD_LOADS` (4), `MCP_MAX_GELIJKTIJDIG` (4) | een run gebruikt CPU, geheugen en de event loop van zijn eigen pod |
+    | Sandboxplaatsen (`run_analysis`) | `MAX_SANDBOX_RUNS` (2) | een kindproces laadt pandas en de data in het geheugen van de pod |
+
+  Een gedeelde telling kost per open, sluit en run een rondje naar de database, en een pod die wegvalt laat zijn plaatsen
+  daar bezet achter. De tijdslimieten (login, berichten, feedback, rapport-docx, `/mcp`) en het tokenbudget staan wel in
+  Postgres, voor alle pods samen. Hoe vol de tellers zijn, staat per pod in `GET /metrics` (`edudata_websockets_open`,
+  `edudata_runs_running`, `edudata_sandbox_running`; [Productiemonitoring](kwaliteit-en-veiligheid.md#productiemonitoring)).
+- **SRAM-gebruikersinfo** (naam, e-mail, organisatie): in Postgres (`oidc_gebruikers`, #984), niet meer in het geheugen
+  van de pod. Een rij vervalt na `SESSION_MAX_HOURS`, er staan er hooguit 1000, en uitloggen, "verwijder al mijn
+  gegevens" en de nachtelijke opschoning halen haar weg.
+- **Metrics** (#678): `GET /metrics` met `Authorization: Bearer <METRICS_TOKEN>`; zonder `METRICS_TOKEN` in het secret
+  404. Zie [Productiemonitoring](kwaliteit-en-veiligheid.md#metrics-get-metrics-678).
 - **Image**: non-root `appuser`, base-images op digest, geen compiler of git in het runtime-image (#681).
 - **Login** (#787): buiten `APP_ENV=local` start de app niet zonder login. Is `CHAT_USERS` in het secret leeg of ontbreekt `OIDC_PROVIDER`, dan stopt de pod bij het opstarten met een melding in het log (`start niet zonder login`) in plaats van stil als `gast` te draaien. Voor een bewust openbare demo zet je `ALLOW_ANONYMOUS=true`; het startlog geeft dan een WARNING. Een lege waarde komt voor na een rotatie van het secret: controleer `CHAT_USERS` vóór je uitrolt.
 - **Logs**: JSON op elke SDP-omgeving (`APP_ENV`, #676); vraag- en antwoordtekst alleen als lengte en hash

@@ -551,11 +551,13 @@ gesprekken en rapporten op test en playground allerlei ID-vormen (#909): `85423N
 
 ## ADR-011: De eerste productie draait bewust één pod; schaalbaar maken is een vervolgepic
 
-**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677); bijgewerkt 2026-11-19 (stand #984 stap 1)
+**Date:** 2026-11-09 (besluit gebruiker 09-11 op #677); bijgewerkt 2026-11-19 en 2026-11-25 (stand #984 stap 1)
 **Status:** Decided; van #984 stap 1 zijn de tijdslimieten (login, berichten, feedback, rapport-docx, `/mcp`) naar
-Postgres verhuisd (`rate_limit_hits`, gedeeld door alle pods en bestand tegen een herstart) en migreren startende pods om
-de beurt onder een advisory lock. Nog per pod: de gelijktijdigheidstellers, de SRAM-gebruikerscache en de herlaadvlag;
-"Limieten beginnen na een herstart op nul" (Trade-offs) geldt alleen nog voor die tellers
+Postgres verhuisd (`rate_limit_hits`, gedeeld door alle pods en bestand tegen een herstart), migreren startende pods om
+de beurt onder een advisory lock en staat de SRAM-gebruikersinfo in Postgres (`oidc_gebruikers`, 2026-11-25). De
+gelijktijdigheidstellers blijven bewust per pod (Decision, hieronder). Nog open: de herlaadvlag (`tools/herlaad.py`);
+"Limieten beginnen na een herstart op nul" (Trade-offs) geldt alleen nog voor de gelijktijdigheidstellers, en die zijn na
+een herstart ook echt nul
 **Issue:** #677 (vervolgepic #984; graceful shutdown #675; productie uitrolbaar #674)
 
 ### Problem
@@ -586,6 +588,20 @@ betekent één pod: geen hoge beschikbaarheid, en elke uitrol een onderbreking (
       Chat (#711). Niet in de app.
 - **Optie B als vervolgepic (#984):** limieten en SRAM-cache naar Postgres, sticky sessions of een gedeelde store,
   daarna twee replica's met RollingUpdate en een PDB.
+- **Gelijktijdigheidstellers per pod** (#984 stap 1, 2026-11-25; `core/gelijktijdig.py`): alle drie blijven in het
+  geheugen van de pod, ook met twee pods. Ze beschermen de pod zelf, niet het account of de kosten (dat doen de
+  tijdslimieten en het tokenbudget, in Postgres):
+    - **Verbindingen per gebruiker en in totaal** (`MAX_WS_PER_USER`, `MAX_WS_TOTAL`): een open WebSocket kost geheugen
+      op de pod waar hij open staat. Met twee pods mag een gebruiker tot twee keer `MAX_WS_PER_USER` vensters open hebben.
+    - **Runplaatsen** (`MAX_CONCURRENT_RUNS`, `MAX_DASHBOARD_LOADS`, `MCP_MAX_GELIJKTIJDIG`): een run gebruikt de CPU,
+      het geheugen en de event loop van zijn pod.
+    - **Sandboxplaatsen** (`MAX_SANDBOX_RUNS`): een kindproces van `run_analysis` laadt pandas en de data in het geheugen
+      van de pod.
+
+  Een gedeelde telling zou per open, sluit en run een rondje naar de database kosten zonder dat een pod er minder door
+  belast wordt, en een pod die wegvalt zonder af te tellen liet zijn plaatsen in de database bezet achter. De tellers
+  staan per pod in de metrics (`edudata_websockets_open`, `edudata_runs_running`, `edudata_sandbox_running`,
+  `docs/kwaliteit-en-veiligheid.md`).
 
 ### Rationale
 - **Klein en nu:** A vraagt geen wijziging in de datalaag; B raakt limieten, gelijktijdigheid, recepten en de ingress,

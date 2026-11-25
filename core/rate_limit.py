@@ -11,6 +11,7 @@ import logging
 import sqlite3
 import time
 
+from core.metrics import meet_terugval, meet_weigering
 from core.pseudoniem import pseudoniem
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class RateLimiter:
             wacht_ms = self._poging_in_database(naam, key, tel=tel)
         except Exception as exc:
             self._meld_fout("Limiet %s telt per pod: database niet bereikbaar (%s)", naam, exc)
+            meet_terugval(naam)  # `edudata_limiter_db_fallback_total` (#678): de limiet staat open per pod
             return False, None
         # Los van het tellen: faalt de opruiming, dan staat de poging al in de database en mag het geheugen haar niet
         # nog eens tellen (#1194).
@@ -92,6 +94,12 @@ class RateLimiter:
     def probeer(self, key: str) -> int | None:
         """Telt een poging mee en geeft None, of geeft na hoeveel seconden het weer mag. Eén ronde naar de database,
         dus vanuit async code via `asyncio.to_thread`."""
+        wacht = self._probeer(key)
+        if wacht is not None:
+            meet_weigering(self._naam)  # `edudata_limiter_refusals_total` (#678)
+        return wacht
+
+    def _probeer(self, key: str) -> int | None:
         if naam := self._gedeelde_naam():
             gelukt, wacht = self._uit_database(naam, key, tel=True)
             if gelukt:
