@@ -35,6 +35,7 @@ from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalc
 from .datasetcontext import herstel_data_voor_beurt
 from .genoemde_bronnen import genoemde_bronnen
 from .getalnotatie import heeft_tabel, nl_notatie, versienummers
+from .grounding import getalregel
 from .history import afgeronde_stappen, trim, zonder_vaste_blokken
 from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import interpretatie_bij, is_vervolgvraag
@@ -44,6 +45,7 @@ from .models import build_system
 from .niet_meegeteld import met_niet_meegeteld
 from .periodetekst import periodecode_als_label
 from .po_vraag import po_vraag
+from .premisse import met_premissezin, premisse_instructie
 from .probleem import INGEHOUDEN, controlenamen, harde, meldingen
 from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .schrappen import zonder_ongedekte_zinnen
@@ -401,6 +403,24 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     return f"{zin}\n\n{tekst}" if zin else tekst
 
 
+def _berichtstart() -> dict:
+    """message_start met de regel van de getalcontrole: de frontend houdt die getallen achter tot message_end (#1254)."""
+    return {"type": "message_start", "getalregel": getalregel()}
+
+
+def _met_premisse(tekst: str, vraag: str, steps: list[tuple[str, str]]) -> str:
+    """De vaste zin over een aangenomen richting die de reeks tegenspreekt, bovenaan (#1255); een deelantwoord houdt
+    zijn melding erboven. Een fout in de toets laat het antwoord zoals het was."""
+    deel = f"{DEELANTWOORD}\n\n"
+    if tekst.startswith(deel):
+        return deel + _met_premisse(tekst.removeprefix(deel), vraag, steps)
+    try:
+        return met_premissezin(tekst, vraag, steps)
+    except Exception as exc:
+        log_interne_fout(exc, "premisse")
+        return tekst
+
+
 def _veilige_werkwijze(session: dict) -> str:
     """De werkwijze van de vorige databeurt (#992) is context, geen controle: lukt het niet, dan gaat de beurt zonder."""
     try:
@@ -421,6 +441,7 @@ def _beurtcontext(vraag: str, session: dict, verklaring_gevraagd: bool) -> str:
         wisselcontext(settings.get("instelling"), eerdere_instellingen(session.get("turns") or [])),
         _veilige_werkwijze(session),
         verklaringinstructie(verklaring_gevraagd),
+        premisse_instructie(vraag),
     )
     return "\n\n".join(tekst for tekst in delen if tekst)
 
@@ -691,7 +712,7 @@ async def run(
 
     # Wat code zelf beantwoordt (-1, een vo-school, een po/so/vo-vraag), krijgt geen kaart en geen model.
     if vast := await _vast_vooraf(last_user_msg, messages, session):
-        await emit({"type": "message_start"})
+        await emit(_berichtstart())
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
 
@@ -755,7 +776,7 @@ async def run(
                         stop_event=stop,
                         system=system,
                         stream_text=True,
-                        on_llm_start=lambda: emit({"type": "message_start"}),
+                        on_llm_start=lambda: emit(_berichtstart()),
                         on_tool_result=partial(_bewaar_stap, session, emit),
                         tool_limits=_TOOL_LIMITS,
                         halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
@@ -801,6 +822,8 @@ async def run(
     if result.steps and bronnen and text_content not in _ZONDER_BRONNEN:
         # Vóór het eerste getal: op welke lezing het antwoord rust (#514) en wat de selectie afbakent (#620).
         text_content = _met_kopregels(text_content, messages, session, result.steps)
+        # Spreekt de reeks de richting tegen die de vraag aanneemt, dan opent het antwoord daarmee (#1255).
+        text_content = _met_premisse(text_content, last_user_msg, result.steps)
     controles = controlestappen.Controles()
     if result.steps and text_content not in _ZONDER_BRONNEN:
         # Onder het antwoord, uit code: andere definities, de kruiscontrole en de vergelijkingsgroep (#1271). Hun

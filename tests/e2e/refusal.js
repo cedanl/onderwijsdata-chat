@@ -11,6 +11,8 @@ const WEIGERING = new RegExp([
   'niet beschikbaar', 'geen (?:open )?(?:data|gegevens|informatie|cijfers)', 'niet gevonden',
   'bestaat niet', 'niet bekend', 'ontbreekt', 'ontbreken', 'valt buiten', 'niet in de (?:open )?data',
   'kan (?:ik )?(?:dit|dat|deze vraag )?niet', 'not available', 'no data',
+  // Een onderdrukte cel terugrekenen weigert de app met een vaste zin (#1265).
+  'door (?:de bron|DUO|CBS) onderdrukt', 'terugrekenen geven we niet',
 ].join('|'), 'i')
 
 // Getallen met of zonder duizendtalscheiding (punt, spatie, NBSP, U+202F), zoals in eval_assertions.py.
