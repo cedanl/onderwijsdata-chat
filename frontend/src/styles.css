@@ -955,6 +955,17 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 }
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
+/* "Wijkt af van je eigen cijfer?" (#1258): een tekstknop onder het antwoord, open een veld voor één getal. */
+.eigen-getal { margin-top: 8px; font-size: .82rem; }
+.eigen-getal-open { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
+.eigen-getal-label { font-weight: 600; color: var(--gray-700); }
+.eigen-getal-rij { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.eigen-getal-veld { font: inherit; width: 12ch; min-height: 44px; padding: 6px 10px; border: 1px solid var(--gray-400); border-radius: var(--radius-sm); background: var(--white); color: var(--gray-900); }
+.eigen-getal-veld[aria-invalid="true"] { border-color: var(--red-500); }
+.eigen-getal-knop { font: inherit; font-weight: 600; min-height: 44px; padding: 6px 14px; border: none; border-radius: var(--radius-sm); background: var(--npuls-groen); color: var(--npuls-zwart); cursor: pointer; }
+.eigen-getal-knop:disabled { opacity: .6; cursor: default; }
+.eigen-getal-fout { color: var(--gray-900); border-left: 3px solid var(--red-500); padding-left: 8px; }
+.eigen-getal-uitleg { margin: 0; color: var(--muted-text); font-size: var(--font-klein); line-height: 1.45; }
 .message-continue {
   font: inherit; font-style: normal; font-weight: 600; color: var(--accent-text);
   background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer;
