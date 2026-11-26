@@ -39,7 +39,10 @@ export function limietWacht(melding) {
 
 export const slaap = (ms) => new Promise(klaar => setTimeout(klaar, ms))
 
-/** Het token van /api/auth/login met de inloggegevens uit de omgeving; bij 429 eerst de Retry-After afwachten. */
+/**
+ * Het token van /api/auth/login met de inloggegevens uit de omgeving; bij 429 eerst de Retry-After afwachten.
+ * Elke runner kiest een model, dus het account krijgt daarna "Geavanceerd" aan (zie geavanceerdAan).
+ */
 export async function haalToken(base = BASE_URL) {
   for (let ronde = 0; ; ronde++) {
     const resp = await fetch(`${base}/api/auth/login`, {
@@ -47,11 +50,32 @@ export async function haalToken(base = BASE_URL) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(inloggegevens()),
     })
-    if (resp.status !== 429 || ronde >= MAX_WACHTRONDES) return (await resp.json()).token
+    if (resp.status !== 429 || ronde >= MAX_WACHTRONDES) {
+      const token = (await resp.json()).token
+      await geavanceerdAan(token, base)
+      return token
+    }
     const wacht = Number(resp.headers.get('retry-after')) || 60
     console.log(`  INLOGLIMIET: ${wacht} s wachten`)
     await slaap((wacht + 1) * 1000)
   }
+}
+
+/**
+ * Zet "Geavanceerd" aan voor het account van dit token (#1269). Met login neemt de server de modelkeuze uit `settings`
+ * alleen over als die instelling aan staat; anders draait elke vraag op het standaardmodel terwijl het verslag het
+ * gekozen model noemt. Zonder login (404) neemt de server de keuze al over. Lukt het niet, dan een fout: een
+ * modelvergelijking die stil het standaardmodel meet, is erger dan een rode run.
+ */
+export async function geavanceerdAan(token, base = BASE_URL) {
+  const resp = await fetch(`${base}/api/mijn-gegevens/geavanceerd`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ geavanceerd: true }),
+  })
+  if (resp.status === 404) return
+  const aan = resp.ok && (await resp.json()).geavanceerd === true
+  if (!aan) throw new Error(`Geavanceerd aanzetten voor het eval-account mislukt (HTTP ${resp.status}): de modelkeuze telt dan niet`)
 }
 
 /**
