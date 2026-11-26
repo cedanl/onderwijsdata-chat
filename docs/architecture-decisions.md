@@ -52,6 +52,9 @@ Every tool call automatically generates a Python snippet. Users can export and r
 - Gebruikers zien de snippet bij elke stap in de chat en exporteren het gesprek als Markdown ("Exporteer gesprek"): per
   antwoord de stappen, elk met zijn snippet als `python`-codeblok (`frontend/src/conversationExport.js`, #366). Een
   los `.py`-bestand is er niet
+- Of als Jupyter-notebook (#1247): per beurt een markdowncel met vraag, antwoord en herkomst, per stap zijn snippet als
+  codecel, bovenaan één cel met de versiekop en `%pip install`. De browser maakt het uit dezelfde snippets, zonder
+  endpoint; `tests/test_notebook_export.py` draait het in een kernel
 - Code matches what the model actually called
 
 ### Rationale
