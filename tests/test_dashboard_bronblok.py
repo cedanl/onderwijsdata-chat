@@ -13,6 +13,7 @@ from onderwijsbronnen import duo
 import data.dashboard as dashboard
 from core import actualiteit
 from data import arbeidsmarkt, bronblok
+from tests import bestandskeuze_hulp
 from tools import scopeprofiel
 
 pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
@@ -60,10 +61,12 @@ def test_de_arbeidsmarkt_noemt_de_duo_bestanden_uwv_en_roa_die_ze_laadde(bronver
     dipl = bronnen["p04hogdipl"]
     assert dipl["url"] == "https://onderwijsdata.duo.nl/dataset/p04hogdipl"
     assert dipl["titel"]  # de titel uit de catalogus, zoals de chat hem noemt
+    # De bestanden die de bestandskeuze per instelling en jaar gebruikte (#1238), niet elk bestand dat ze laadde.
     assert dipl["bestanden"] == [
-        {"resource": 0, "resource_id": "p04hogdipl-r0", "last_modified": "2026-04-08T03:04:43.123456"},
-        {"resource": 1, "resource_id": "p04hogdipl-r1", "last_modified": "2026-04-08T03:04:43.123456"},
+        {"resource": i, "resource_id": f"p04hogdipl-r{i}", "last_modified": "2026-04-08T03:04:43.123456"}
+        for i in bestandskeuze_hulp.gebruikt("p04hogdipl")
     ]
+    assert len(dipl["bestanden"]) >= 2
     assert dipl["last_modified"] == "2026-04-08T03:04:43.123456"
     assert dipl["peilmoment"] == "versie van 08-04-2026"  # de woorden van de bronregel in de chat (#717)
     assert dipl["peildatum"] == "1 oktober"

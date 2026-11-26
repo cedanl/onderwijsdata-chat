@@ -3,6 +3,8 @@ import importlib
 import pandas as pd
 import pytest
 
+from tests import bestandskeuze_hulp
+
 # Register en dashboards draaien op bevroren DUO-bestanden, niet op live DUO (#766), en zonder live UWV en ROA (#915).
 pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
 
@@ -12,10 +14,9 @@ _INST = "INSTELLINGSNAAM_ACTUEEL"
 
 
 def _duo_ho(dataset_id: str, waardekolom: str) -> pd.DataFrame:
-    """Beide resources van een HO-bestand uit de fixtures; DUO's -1 (onderdrukt) telt als 0, zoals het dashboard."""
-    from onderwijsbronnen import duo
-
-    df = pd.concat([duo.load(dataset_id, 0), duo.load(dataset_id, 1)], ignore_index=True)
+    """Een HO-dataset uit de fixtures, per instelling en jaar uit het bestand dat het dashboard kiest (#1238); DUO's -1
+    (onderdrukt) telt als 0, zoals het dashboard."""
+    df = bestandskeuze_hulp.gekozen(dataset_id)
     df[waardekolom] = df[waardekolom].where(df[waardekolom] >= 0, 0)
     return df
 
@@ -167,7 +168,7 @@ def test_regio_dashboard_ho_telt_zoals_de_fixture():
     assert result["type"] == "ho"
 
     verwacht = _som_per_jaar(ins, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
-    assert verwacht[2025] == 35058  # ijkpunt: HU 2025 in de bevroren fixture
+    assert verwacht[2025] == 35064  # ijkpunt: HU 2025 in de bevroren fixtures (35.058 in het geslacht-bestand, #1238)
     assert result["ingeschrevenen"] == verwacht
     assert result["laatste_jaar"] == max(verwacht) == 2025
 
@@ -175,7 +176,11 @@ def test_regio_dashboard_ho_telt_zoals_de_fixture():
     per_sector = laatste.groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
     assert len(per_sector) > 1
     assert result["sectoren"] == {k: int(v) for k, v in per_sector.items()}
-    per_geslacht = laatste.groupby("GESLACHT")["AANTAL_INGESCHREVENEN"].sum()
+    # Geslacht staat alleen in het geslacht-bestand (#1238): die verdeling komt daaruit.
+    geslacht = bestandskeuze_hulp.geslacht()
+    geslacht = geslacht[(geslacht[_INST] == _HU) & (geslacht["STUDIEJAAR"] == 2025)]
+    aantal = geslacht["AANTAL_INGESCHREVENEN"].where(geslacht["AANTAL_INGESCHREVENEN"] >= 0, 0)
+    per_geslacht = aantal.groupby(geslacht["GESLACHT"]).sum()
     assert result["geslacht"] == {k: int(v) for k, v in per_geslacht.items()}
 
     ej = _duo_ho("p02ho1ejrs", "AANTAL_EERSTEJAARS_INGESCHREVENEN")
@@ -465,7 +470,7 @@ def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
     # De ranking loopt ook over de hogescholen (#928), met HvA en haar paar wo-studenten.
     laatste = hogescholen[hogescholen["STUDIEJAAR"] == 2025]
     per_inst = laatste.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
-    assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan het regiodashboard
+    assert int(per_inst[_HU]) == 35064  # ijkpunt, gelijk aan het regiodashboard
     alle = result["alle_instellingen"]
     assert {i["naam"]: i["ingeschrevenen"] for i in alle} == {k: int(v) for k, v in per_inst.items()}
     aantallen = [i["ingeschrevenen"] for i in alle]

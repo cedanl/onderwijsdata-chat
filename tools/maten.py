@@ -30,7 +30,7 @@ import pandas as pd
 
 from data import instellingen
 
-from . import cbs_selectie, cbs_standaard, dekking, duo, geslacht_opleiding, periode, store
+from . import cbs_selectie, cbs_standaard, dekking, duo, duo_bestandskeuze, geslacht_opleiding, periode, store
 from .catalog import tabelbestanden
 from .cbs import get_cbs_data
 from .duo import get_duo_data
@@ -45,8 +45,10 @@ VORMEN_HO_CBS = {"voltijd": "A028666", "deeltijd": "A028667", "duaal": "A028668"
 LEERWEGEN_MBO = {"bol": ("BOLVT", "BOLDT"), "bbl": ("BBL",), ALLE: ("BBL", "BOLDT", "BOLVT", "EX")}
 SECTORCODES_CBS = {"hbo": "A025294", "wo": "A025297"}
 _HO = ("hbo", "wo")
-# Het bestand per sector, aan de woorden in zijn titel: het opleidingsvorm-bestand is leidend (het
-# geslacht-bestand onderdrukt de meeste cellen, #325) en heeft de kolom waar de vorm op filtert (#173).
+# Het bestand per sector, aan de woorden in zijn titel: het opleidingsvorm-bestand heeft de kolom waar de vorm op
+# filtert (#173), dus bij een vorm is het de enige kandidaat. Bij alle vormen kiest `_bestandskeuze` per instelling en
+# jaar uit de groep van de sector het bestand met de minste onderdrukte cellen (#1238, duo_bestandskeuze.kies_rijen),
+# zoals het dashboard; dit bestand is dan het plan tot die keuze is gemaakt.
 _BESTAND_HO: Mapping[str, tuple[str, ...]] = {
     "hbo": ("hoger beroepsonderwijs", "opleidingsvorm"),
     "wo": ("wetenschappelijk", "opleidingsvorm"),
@@ -584,14 +586,110 @@ def _geslacht(p: Plan) -> dict | str:
 _PUBLICATIEREGEL_STATUS = ("publicatieregel_status", "publicatieregel_melding", "publicatieregel_waargenomen")
 
 
+_VORMREGEL = (
+    "een opleidingsvorm filtert op de kolom OPLEIDINGSVORM, en die staat alleen in het opleidingsvorm-bestand: dat "
+    "bestand dus, zonder keuze per jaar"
+)
+
+
+def kiest_per_jaar(p: Plan) -> bool:
+    """Kiest deze maat per instelling en jaar haar bestand (#1238)? Alleen een ho-totaal over alle vormen."""
+    r = p.recept
+    return (
+        isinstance(r, DuoRecept)
+        and r.dataset in duo_bestandskeuze.TELKOLOMMEN
+        and p.instelling is not None
+        and p.vorm == ALLE
+        and not p.opleiding
+        and p.per_opleiding is None
+    )
+
+
+@dataclass(frozen=True)
+class _Gekozen:
+    """Wat de bestandskeuze per jaar opleverde: het plan met het bestand, en de key en lading waar de selectie op rust."""
+
+    plan: Plan
+    key: str
+    geladen: dict
+    keuze: dict  # voor het model: de regel en het bestand per schooljaar
+
+
+def _bestandskeuze(p: Plan) -> _Gekozen | str:
+    """Per instelling en jaar het bestand met de minste onderdrukte cellen, zoals het dashboard (#1238).
+
+    Laadt elke kandidaat van de sector met get_duo_data (scopegrens, maskering, store) en kiest met
+    `duo_bestandskeuze.kies_rijen` op de rijen van de instelling. Kiest elk jaar hetzelfde bestand, dan rust de selectie
+    gewoon op dat bestand. Anders op een eigen key met per jaar de rijen van het gekozen bestand en hun onderdrukte
+    cellen; zijn bronregel noemt het bestand per schooljaar. Een kandidaat die niet laadt, doet niet mee (`niet_geladen`).
+    """
+    r = p.recept
+    assert isinstance(r, DuoRecept) and p.instelling is not None
+    periodekolom, waardekolom = duo_bestandskeuze.TELKOLOMMEN[r.dataset]
+    codes = instellingscodes(p.instelling)
+    geladen: dict[int, dict] = {}
+    kandidaten, niet_geladen, eerste_fout = [], [], None
+    for index in duo_bestandskeuze.kandidaten(r.dataset, p.sector):
+        uit = _json(get_duo_data(r.dataset, index))
+        df = store.get(str(uit["data_key"])) if isinstance(uit, dict) and "data_key" in uit else None
+        if df is None or r.instellingskolom not in df.columns or periodekolom not in df.columns:
+            niet_geladen.append(duo_bestandskeuze.titel(r.dataset, index))
+            eerste_fout = eerste_fout or uit
+            continue
+        geladen[index] = uit
+        eigen = df[df[r.instellingskolom].astype(str).isin(codes)]
+        if p.jaren:
+            eigen = eigen[eigen[periodekolom].isin(p.jaren)]
+        cellen = duo.sentinel_cells(str(uit["data_key"]))
+        kandidaten.append((index, eigen, cellen if cellen is not None else pd.DataFrame(index=eigen.index[:0])))
+    if not kandidaten:
+        return _melding(eerste_fout)
+    keuze = duo_bestandskeuze.kies_rijen(kandidaten, periodekolom, waardekolom, r.instellingskolom)
+    gebruikt = keuze.gebruikt() or [p.bestand if p.bestand in geladen else kandidaten[0][0]]
+    per_jaar = keuze.per_jaar()
+    tekst = {
+        "regel": duo_bestandskeuze.KEUZEREGEL,
+        "per_schooljaar": {
+            periode.label(jaar): " + ".join(f"'{duo_bestandskeuze.titel(r.dataset, i)}'" for i in indexen)
+            for jaar, indexen in per_jaar.items()
+        },
+        **({"niet_geladen": niet_geladen} if niet_geladen else {}),
+    }
+    # Het bestand van het laatste jaar draagt de selectie: de bronregel en de publicatieregels komen daarvandaan.
+    hoofd = per_jaar[max(per_jaar)][0] if per_jaar else gebruikt[0]
+    hoofdkey = str(geladen[hoofd]["data_key"])
+    if len(gebruikt) == 1:
+        return _Gekozen(replace(p, bestand=hoofd), hoofdkey, geladen[hoofd], tekst)
+    regel = "; ".join(f"{jaar} uit {titels}" for jaar, titels in tekst["per_schooljaar"].items())
+    jaren = f":{'-'.join(map(str, p.jaren))}" if p.jaren else ""
+    key = f"{hoofdkey}:bestandskeuze:{'+'.join(codes)}{jaren}"
+    stap = f"bestandskeuze {r.naam}: {duo_bestandskeuze.KEUZEREGEL}; {regel}"
+    telregel = f"{r.dataset}, bestand per schooljaar ({duo_bestandskeuze.KEUZEREGEL}): {regel}."
+    store.derive(
+        hoofdkey, key, keuze.rijen, stap=stap, telregels=(telregel,), **dekking.van(keuze.rijen, store.meta(hoofdkey))
+    )
+    duo.record_sentinel_cells(key, keuze.cellen)  # de -1 van elk gekozen bestand reist mee
+    return _Gekozen(replace(p, bestand=hoofd), key, geladen[hoofd], tekst)
+
+
 def _duo(p: Plan) -> dict | str:
     r = p.recept
     assert not isinstance(r, CbsRecepten)
     if p.opleiding:
         return _geslacht(p)
-    geladen = _json(get_duo_data(r.dataset, p.bestand))
-    if not isinstance(geladen, dict) or "data_key" not in geladen:
-        return _melding(geladen)
+    keuze: dict | None = None
+    if kiest_per_jaar(p):
+        gekozen = _bestandskeuze(p)
+        if isinstance(gekozen, str):
+            return gekozen
+        p, bron, geladen, keuze = gekozen.plan, gekozen.key, gekozen.geladen, gekozen.keuze
+    else:
+        geladen = _json(get_duo_data(r.dataset, p.bestand))
+        if not isinstance(geladen, dict) or "data_key" not in geladen:
+            return _melding(geladen)
+        bron = str(geladen["data_key"])
+        if isinstance(r, DuoRecept) and r.dataset in duo_bestandskeuze.TELKOLOMMEN and p.vorm != ALLE:
+            keuze = {"regel": _VORMREGEL}
     # Een gevraagd schooljaar dat het bestand niet heeft, blijft weg uit de selectie en komt terug als
     # `ontbrekende_schooljaren`; staat er geen enkel gevraagd jaar in, dan is dat de melding (#187).
     known = store.meta(geladen["data_key"])
@@ -604,15 +702,18 @@ def _duo(p: Plan) -> dict | str:
                 f"beschikbaar: {', '.join(periode.labels(sorted(beschikbaar)))}."
             )
         p = replace(p, jaren=binnen)
-    gekozen = _json(
-        query_data(geladen["data_key"], filters=filters(p), group_by=[r.periodekolom], aggregate=aggregate(p))
-    )
+    gekozen = _json(query_data(bron, filters=filters(p), group_by=[r.periodekolom], aggregate=aggregate(p)))
     if not isinstance(gekozen, dict) or "data_key" not in gekozen:
         return _melding(gekozen)
     key, rijen = gekozen["data_key"], gekozen["rijen"]
     if isinstance(r, DuoBreedRecept):
         key, rijen = _met_totaal(key, p)
-    uit = {"data_key": key, "rijen": rijen, "bestand": geladen.get("resource_titel"), "recept": _recept(p)}
+    bestand = geladen.get("resource_titel")
+    if keuze and len(set((keuze.get("per_schooljaar") or {}).values())) > 1:
+        bestand = "; ".join(f"{jaar}: {titels}" for jaar, titels in keuze["per_schooljaar"].items())
+    uit = {"data_key": key, "rijen": rijen, "bestand": bestand, "recept": _recept(p)}
+    if keuze:
+        uit["bestandskeuze"] = keuze
     # De publicatieregel met wat de data ervan zegt (#1092): zonder status las een client de regel '1-4 als 4' ook waar
     # het bestand hem tegenspreekt (get_duo_data: `publicatieregel_status: conflict`).
     for veld in ("databewerking", "beschikbare_schooljaren", "publicatieregels", *_PUBLICATIEREGEL_STATUS):

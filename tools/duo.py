@@ -347,7 +347,8 @@ def _resource_index(dataset_id: str, resource: int | str) -> int | str:
             return i
     treffers = [i for i, r in enumerate(bestanden) if gezocht in r.get("naam", "").lower()]
     if len(treffers) > 1:
-        # Het leidende bestand voor totalen vooraan, ook als voorbeeld (#325).
+        # Het leidende bestand voor totalen (over alle jaren, #325) vooraan, ook als voorbeeld; get_maat kiest per
+        # instelling en jaar zelf (#1238).
         leidend = duo_bestandskeuze.leidende_ids(dataset_id)
         treffers.sort(key=lambda i: bestanden[i].get("id") not in leidend)
         opties = ", ".join(

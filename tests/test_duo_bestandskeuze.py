@@ -214,3 +214,91 @@ def test_prognosemelding_zonder_bekend_realisatiebestand_noemt_de_dataset():
         melding = duo_bestandskeuze.melding("studentprognoses-mbo-per-instelling", 3)
     assert melding is not None
     assert "None" not in melding and "mbo-studenten-per-instelling" in melding
+
+
+# --- De keuze per instelling en jaar (#1238) -------------------------------------------------------------------------
+
+T = duo_bestandskeuze.Telling
+
+
+@pytest.mark.parametrize(
+    ("tellingen", "gekozen"),
+    [
+        ([T(2, 1000), T(1, 990), T(3, 1010)], 1),  # eerst de minste onderdrukte cellen, ook bij een lager totaal
+        ([T(1, 1000), T(1, 1004), T(2, 1010)], 1),  # gelijk aantal: het hoogste totaal
+        ([T(0, 700), T(0, 700), T(0, 700)], 0),  # nog gelijk: het eerste bestand van de groep
+        ([T(1, 500), T(0, 700), T(0, 700)], 1),  # gelijk na het eerste: het eerste van de gelijke
+        ([None, T(3, 10), None], 1),  # een bestand zonder rijen doet niet mee
+        ([None, None], None),  # geen enkel bestand: geen keuze
+        ([], None),
+    ],
+)
+def test_kies_minste_onderdrukte_cellen_dan_hoogste_totaal_dan_het_eerste(tellingen, gekozen):
+    assert duo_bestandskeuze.kies(tellingen) == gekozen
+
+
+def test_kandidaten_zijn_de_groep_van_de_sector_in_groepsvolgorde():
+    assert duo_bestandskeuze.kandidaten("p01hoinges", "hbo") == [2, 0, 3]
+    assert duo_bestandskeuze.kandidaten("p01hoinges", "wo") == [4, 1, 5]
+    assert duo_bestandskeuze.kandidaten("p02ho1ejrs", "hbo") == [3, 0, 2]
+    assert duo_bestandskeuze.kandidaten("p01hoinges", "mbo") == []
+    assert duo_bestandskeuze.kandidaten("mbo-studenten-per-instelling", "mbo") == []  # mbo valt buiten de keuze
+
+
+def test_de_geslachtbestanden_zijn_hbo_en_wo_inclusief_geslacht():
+    assert duo_bestandskeuze.geslachtbestanden("p01hoinges") == [0, 1]
+    assert duo_bestandskeuze.geslachtbestanden("p04hogdipl") == [0, 1]
+
+
+def _ruw(rijen: list[tuple]) -> pd.DataFrame:
+    return pd.DataFrame(rijen, columns=["STUDIEJAAR", "INSTELLINGSCODE_ACTUEEL", "AANTAL_INGESCHREVENEN"])
+
+
+def test_tellingen_per_instelling_en_jaar_en_landelijk():
+    df = _ruw([(2024, "25DW", 100), (2024, "25DW", -1), (2024, "28DN", 50), (2025, "25DW", 7)])
+    per = duo_bestandskeuze.tellingen(df, None, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
+    assert per == {("25DW", 2024): T(1, 100.0), ("28DN", 2024): T(0, 50.0), ("25DW", 2025): T(0, 7.0)}
+    landelijk = duo_bestandskeuze.tellingen(df, None, "STUDIEJAAR", "AANTAL_INGESCHREVENEN", instellingskolom=None)
+    assert landelijk == {2024: T(1, 150.0), 2025: T(0, 7.0)}
+
+
+def test_kies_rijen_neemt_per_instelling_en_jaar_de_rijen_van_een_bestand():
+    a = _ruw([(2024, "25DW", 100), (2024, "25DW", -1), (2025, "25DW", 80), (2024, "28DN", 9)])
+    b = _ruw([(2024, "25DW", 101), (2025, "25DW", 40), (2025, "25DW", -1)])
+    keuze = duo_bestandskeuze.kies_rijen([(3, a, None), (0, b, None)], "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
+    assert keuze.bestand == {("25DW", 2024): 0, ("25DW", 2025): 3, ("28DN", 2024): 3}
+    som = keuze.rijen.groupby(["INSTELLINGSCODE_ACTUEEL", "STUDIEJAAR"])["AANTAL_INGESCHREVENEN"].sum().to_dict()
+    assert som == {("25DW", 2024): 101, ("25DW", 2025): 80, ("28DN", 2024): 9}
+    assert keuze.cellen.empty  # de gekozen rijen hebben geen -1
+    assert keuze.gebruikt() == [0, 3] and keuze.per_jaar() == {2024: [0, 3], 2025: [3]}
+
+
+def test_kies_rijen_houdt_de_onderdrukte_cellen_van_de_gekozen_rijen():
+    a = _ruw([(2024, "25DW", 100), (2024, "25DW", -1)])
+    b = _ruw([(2024, "25DW", 90), (2024, "25DW", -1), (2024, "25DW", -1)])
+    keuze = duo_bestandskeuze.kies_rijen([(2, b, None), (0, a, None)], "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
+    assert keuze.bestand == {("25DW", 2024): 0}
+    assert keuze.rijen["AANTAL_INGESCHREVENEN"].isna().sum() == 1
+    assert int(keuze.cellen["AANTAL_INGESCHREVENEN"].sum()) == 1
+    assert set(keuze.cellen.index) <= set(keuze.rijen.index)
+
+
+def test_kies_rijen_landelijk_kiest_per_jaar_een_bestand_voor_alle_instellingen():
+    a = _ruw([(2024, "25DW", 100), (2024, "28DN", -1)])
+    b = _ruw([(2024, "25DW", 90), (2024, "28DN", 5)])
+    keuze = duo_bestandskeuze.kies_rijen(
+        [(2, a, None), (0, b, None)], "STUDIEJAAR", "AANTAL_INGESCHREVENEN", instellingskolom=None
+    )
+    assert keuze.bestand == {2024: 0}
+    assert int(keuze.rijen["AANTAL_INGESCHREVENEN"].sum()) == 95
+
+
+def test_kies_rijen_zonder_rijen_geeft_een_lege_keuze():
+    leeg = _ruw([])
+    keuze = duo_bestandskeuze.kies_rijen([(2, leeg, None)], "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
+    assert keuze.rijen.empty and keuze.bestand == {} and keuze.gebruikt() == []
+
+
+def test_de_docstring_beschrijft_de_keuze_en_de_tiebreak():
+    tekst = duo_bestandskeuze.__doc__ or ""
+    assert "onderdrukte cellen" in tekst and "hoogste totaal" in tekst and "eerst staat" in tekst
