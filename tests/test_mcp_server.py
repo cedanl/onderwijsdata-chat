@@ -304,6 +304,112 @@ def test_protocol_markeert_een_sessietool_als_fout():
     assert "query_data" in resultaat.content[0].text
 
 
+# ── Bronregels als prompt en resource (#1249) ───────────────────────────────────────────
+
+
+def test_bronregels_noemen_de_vaste_gebruiksregels():
+    from tools import kernvragen
+
+    tekst = mcp_server.bronregels_tekst()
+
+    assert mcp_server.REGEL_GETALLEN in tekst
+    assert "reken niet zelf" in tekst.lower()
+    assert "`bewijs.versie`" in tekst
+    assert "ondergrens" in tekst and kernvragen.ondergrens_zin() in tekst
+    assert "niet dat de data niet bestaat" in tekst, "een miss is geen 'bestaat niet'"
+    assert "`no_match`" in tekst and "`niet_gevonden`" in tekst and "`ontbrekende_schooljaren`" in tekst
+
+
+def test_bronregels_noemen_de_domeinregels_met_hun_eigen_tekst():
+    """Onderdrukte cel = ondergrens, DT = deeltijd, vestiging is niet woonplaats: de tekst uit data/domeinregels.toml."""
+    from core import domeinregels
+
+    regels = domeinregels.laad()
+    tekst = mcp_server.bronregels_tekst()
+
+    assert regels.sentinel.betekenis in tekst
+    assert "DT = deeltijd" in tekst and "VT = voltijd" in tekst and "DU = duaal" in tekst
+    for regel in regels.herkomst_is_vestiging:
+        assert regel.melding in tekst
+
+
+def test_elke_domeinregel_staat_in_de_bronregels_of_is_uitgezonderd():
+    """Een nieuwe regel in data/domeinregels.toml die de tekst niet noemt, laat deze test falen, tot hij in de tekst
+    komt of met een reden in BRONREGELS_UITGEZONDERD staat."""
+    from core import domeinregels
+
+    regels = domeinregels.laad()
+    assert mcp_server.ontbrekende_domeinregels(regels) == []
+    ids = {regel.id for regel in regels.alle()}
+    assert set(mcp_server.BRONREGELS_UITGEZONDERD) <= ids, "een uitzondering voor een regel die er niet meer is"
+    tekst = mcp_server.bronregels_tekst(regels)
+    for regel_id, reden in mcp_server.BRONREGELS_UITGEZONDERD.items():
+        assert f"`{regel_id}`" not in tekst, regel_id
+        assert reden.strip(), regel_id
+
+
+def test_een_nieuwe_domeinregel_buiten_de_datatools_valt_op():
+    """De bewaking zelf: een kolomcorrectie voor een bestand dat de datatools niet laden, komt niet vanzelf in de tekst
+    en is dan een ontbrekende regel; een voor een bestand dat ze wel laden, staat er meteen in."""
+    import dataclasses
+    from datetime import date
+
+    from core import domeinregels
+
+    regels = domeinregels.laad()
+
+    def met(regel_id: str, dataset: str) -> domeinregels.Domeinregels:
+        nieuw = domeinregels.Kolomcorrectie(
+            id=regel_id, bron="test", gecontroleerd=date(2026, 11, 26), datasets=(dataset,), kolom="X", definitie="Y"
+        )
+        return dataclasses.replace(regels, kolomcorrecties=(*regels.kolomcorrecties, nieuw))
+
+    assert mcp_server.ontbrekende_domeinregels(met("nieuw-p04", "p04hogdipl")) == ["nieuw-p04"]
+    assert mcp_server.ontbrekende_domeinregels(met("nieuw-p01", "p01hoinges")) == []
+    assert "`nieuw-p01`" in mcp_server.bronregels_tekst(met("nieuw-p01", "p01hoinges"))
+
+
+def test_bronregels_hebben_geen_tekst_die_in_de_client_actief_wordt():
+    tekst = mcp_server.bronregels_tekst()
+    assert not any(teken in tekst.replace("\\[", "").replace("\\]", "") for teken in "<>[]")
+
+
+def test_instructies_verwijzen_naar_de_prompt_bronregels():
+    assert "`bronregels`" in mcp_server.INSTRUCTIES
+    assert mcp_server.BRONREGELS_URI in mcp_server.INSTRUCTIES
+
+
+def test_protocol_noemt_prompt_en_resource_bronregels():
+    async def lijsten(sessie):
+        return await sessie.list_prompts(), await sessie.list_resources()
+
+    _, (prompts, resources) = _via_protocol(lijsten)
+    assert [p.name for p in prompts.prompts] == ["bronregels"]
+    assert [(r.name, r.uri) for r in resources.resources] == [("bronregels", "onderwijsdata://bronregels")]
+
+
+def test_protocol_geeft_dezelfde_tekst_als_prompt_en_als_resource():
+    async def lees(sessie):
+        return await sessie.get_prompt("bronregels"), await sessie.read_resource("onderwijsdata://bronregels")
+
+    _, (prompt, resource) = _via_protocol(lees)
+    assert [m.content.text for m in prompt.messages] == [mcp_server.bronregels_tekst()]
+    assert [c.text for c in resource.contents] == [mcp_server.bronregels_tekst()]
+
+
+@pytest.mark.parametrize("actie", ["prompt", "resource"])
+def test_protocol_weigert_een_onbekende_prompt_of_resource(actie):
+    from mcp.shared.exceptions import MCPError
+
+    async def vraag(sessie):
+        if actie == "prompt":
+            return await sessie.get_prompt("iets-anders")
+        return await sessie.read_resource("onderwijsdata://iets-anders")
+
+    with pytest.raises((MCPError, ExceptionGroup)):
+        _via_protocol(vraag)
+
+
 # ── Resultaatgrootte over HTTP (#940) ───────────────────────────────────────────────────
 
 
