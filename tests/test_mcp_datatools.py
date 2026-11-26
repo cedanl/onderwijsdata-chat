@@ -375,21 +375,37 @@ def test_een_volledige_reeks_heeft_een_lege_kwaliteit():
 
 
 @pytest.mark.parametrize(
-    "argumenten",
-    [{"instelling": UU, "opleiding": "50400"}, {"instelling": UU}],
-    ids=["opleiding-met-min-een-in-2023", "uu-alle-vormen"],
+    ("argumenten", "cellen"),
+    [
+        ({"instelling": UU, "opleiding": "50400"}, 1),
+        ({"instelling": UU, "vorm": "deeltijd"}, 1),
+        ({"instelling": "Hogeschool Utrecht"}, 2),
+    ],
+    ids=["opleiding-met-min-een-in-2023", "uu-deeltijd", "hu-alle-vormen"],
 )
-def test_een_onderdrukte_cel_maakt_de_reeks_een_ondergrens(argumenten):
-    """De onderdrukte cel (-1) van B Rechtsgeleerdheid in 2023 (het niveaubestand hierboven), en die in de bevroren
-    p01hoinges bij UU over alle vormen: de som is een ondergrens, met de zin uit de domeinregel [sentinel]."""
+def test_een_onderdrukte_cel_maakt_de_reeks_een_ondergrens(argumenten, cellen):
+    """De onderdrukte cel (-1) van B Rechtsgeleerdheid in 2023 (het niveaubestand hierboven), die van de UU deeltijd in
+    2022 (het opleidingsvorm-bestand), en over alle vormen die van de HU in 2021 en 2022: daar heeft elk hbo-bestand
+    een -1, dus ook het bestand dat de keuze per instelling en jaar neemt (#1238). De som is een ondergrens, met de zin
+    uit de domeinregel [sentinel]. De UU over alle vormen heeft er geen meer: de keuze neemt voor 2022 een bestand
+    zonder -1."""
     from core import domeinregels
 
     kwaliteit = _kwaliteit("aantallen_per_jaar", argumenten)
 
-    assert kwaliteit["onderdrukte_cellen"] == 1
+    assert kwaliteit["onderdrukte_cellen"] == cellen
     assert kwaliteit["ondergrens"] is True
     assert domeinregels.laad().sentinel.betekenis in kwaliteit["ondergrens_regel"]
     assert "ondergrens" in kwaliteit["ondergrens_regel"]
+
+
+def test_de_kwaliteit_telt_alleen_de_cellen_van_het_gekozen_bestand_per_jaar():
+    """#1238 naast #1248: de UU over alle vormen neemt 2022 uit het niveaubestand (geen -1) en de andere jaren uit het
+    opleidingsvorm-bestand. De -1 van de UU deeltijd in 2022 staat in een bestand dat voor dat jaar niet gekozen is: hij
+    telt niet mee, ook al rust de selectie op dat bestand."""
+    kwaliteit = _kwaliteit("aantallen_per_jaar", {"instelling": UU})
+
+    assert (kwaliteit["onderdrukte_cellen"], kwaliteit["ondergrens"]) == (0, False)
 
 
 def test_een_jaar_dat_niet_in_de_bron_staat_is_een_ontbrekend_schooljaar():
@@ -464,9 +480,11 @@ _LEGE_KWALITEIT = {
 
 
 def test_een_instelling_zonder_rijen_krijgt_geen_onderdrukte_cellen_van_het_hele_bestand():
-    """De UvA heeft in de bevroren p01hoinges geen rij voltijd in 2020 of 2024; de -1 in dat bestand is van de UU
-    (alle vormen). Geen ondergrens voor de UvA, wel beide jaren ontbrekend en haar code niet gevonden."""
-    assert _kwaliteit("aantallen_per_jaar", {"instelling": UU})["onderdrukte_cellen"] == 1, "het bestand heeft een -1"
+    """De UvA heeft in de bevroren p01hoinges geen rij voltijd in 2020 of 2024; de -1 in dat bestand (het
+    opleidingsvorm-bestand) is van de UU deeltijd. Geen ondergrens voor de UvA, wel beide jaren ontbrekend en haar code
+    niet gevonden."""
+    deeltijd = _kwaliteit("aantallen_per_jaar", {"instelling": UU, "vorm": "deeltijd"})
+    assert deeltijd["onderdrukte_cellen"] == 1, "het bestand heeft een -1"
 
     uit = _mcp(
         "vergelijk_instellingen",
