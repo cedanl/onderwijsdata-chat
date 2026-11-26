@@ -332,7 +332,10 @@ def test_bronregels_met_sleutel_als_prompt_en_resource(maak_app):
 
     _, (prompts, prompt, resources, resource) = via_mcp(maak_app(SLEUTEL), lees)
     assert [p.name for p in prompts.prompts] == ["bronregels"]
-    assert [r.uri for r in resources.resources] == ["onderwijsdata://bronregels"]
+    assert [str(r.uri) for r in resources.resources] == [
+        "onderwijsdata://bronregels",
+        "onderwijscatalogus://bronactualiteit",
+    ]
     assert prompt.messages[0].content.text == resource.contents[0].text == mcp_server.bronregels_tekst()
 
 
