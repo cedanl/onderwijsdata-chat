@@ -46,6 +46,7 @@ from core import dashboard_opwarmen  # hier, na Config.validate, zoals routes: l
 from persistence import db as persistence_db
 from routes import (
     auth_router,
+    bronactualiteit_router,
     bronstatus_router,
     chat_router,
     config_router,
@@ -244,6 +245,7 @@ def levensloop(mcp: McpEindpunt) -> Callable[[FastAPI], contextlib.AbstractAsync
 _ROUTERS = (
     config_router,
     bronstatus_router,
+    bronactualiteit_router,
     feedback_router,
     auth_router,
     persistence_router,

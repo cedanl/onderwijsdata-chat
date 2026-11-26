@@ -19,6 +19,7 @@ from collections.abc import Callable
 
 import pandas as pd
 
+from core.bronactualiteit_overzicht import verwacht_binnenkort
 from data.arbeidsmarkt import ROA_LANDELIJK
 from tools import (
     collegegeld,
@@ -118,22 +119,30 @@ def _opsomming(delen: list[str]) -> str:
     return delen[0] if len(delen) == 1 else f"{', '.join(delen[:-1])} en {delen[-1]}"
 
 
-def _voorlopig(known: KeyMeta, df: object) -> str:
-    """De jaren met een voorlopige CBS-status in de geladen rijen, als "cijfers 2025/26 voorlopig" (#1097).
+def _voorlopige_jaren(known: KeyMeta, df: object) -> list[str] | None:
+    """De jaren met een voorlopige CBS-status in de geladen rijen, als label ("2025/26"); een lege lijst als er
+    voorlopige rijen zijn zonder periodekolom, None zonder voorlopige rijen (#1097, #1266).
 
-    Voorlopige cijfers kan CBS nog herzien; de Periodestatus staat per rij in de tabel. Leeg bij een andere bron, een
+    Voorlopige cijfers kan CBS nog herzien; de Periodestatus staat per rij in de tabel. None bij een andere bron, een
     tabel zonder statuskolom of met alleen definitieve jaren. "Nader voorlopig" is ook nog niet definitief.
     """
     if known.bron != "cbs" or not isinstance(df, pd.DataFrame) or _PERIODESTATUS not in df.columns:
-        return ""
+        return None
     voorlopig = df[df[_PERIODESTATUS].astype(str).str.contains("voorlopig", case=False, na=False)]
     if voorlopig.empty:
-        return ""
+        return None
     kolom = next((k for k in (known.periodekolom, _PERIODEKOLOM) if k and k in df.columns), None)
     if kolom is None:
-        return ", cijfers deels voorlopig"
-    jaren = sorted({str(w).strip() for w in voorlopig[kolom].dropna().unique()})
-    return f", cijfers {_opsomming([_jaarlabel(j) for j in jaren])} voorlopig" if jaren else ", cijfers deels voorlopig"
+        return []
+    return [_jaarlabel(j) for j in sorted({str(w).strip() for w in voorlopig[kolom].dropna().unique()})]
+
+
+def _voorlopig(known: KeyMeta, df: object) -> str:
+    """De voorlopige CBS-jaren voor de bronregel, als ", cijfers 2025/26 voorlopig" (#1097); leeg zonder."""
+    jaren = _voorlopige_jaren(known, df)
+    if jaren is None:
+        return ""
+    return f", cijfers {_opsomming(jaren)} voorlopig" if jaren else ", cijfers deels voorlopig"
 
 
 def _actualiteit(known: KeyMeta, df: object = None) -> str:
@@ -326,6 +335,38 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
         if bron and regels and str(bron.get("url") or "").startswith("https://"):
             links.setdefault(regels[0][0], str(bron["url"]))
     return links
+
+
+# --- hoe actueel de gelezen data is (#1266) ---
+
+VOORLOPIG_REGEL = "Let op: voorlopig cijfer"
+
+
+def _cbs_ladingen(steps: list[tuple[str, str]]) -> dict[str, tuple[KeyMeta, object]]:
+    """De CBS-ladingen achter de stappen, per key één keer, met hun rijen als de store ze nog heeft."""
+    ladingen: dict[str, tuple[KeyMeta, object]] = {}
+    for _tool, result in steps:
+        for key in stapkeys(result):
+            bron = laadkey(key)
+            if bron not in ladingen and (known := store.meta(bron)) is not None and known.bron == "cbs":
+                ladingen[bron] = (known, store.gezien(bron))
+    return ladingen
+
+
+def actualiteitsregels(steps: list[tuple[str, str]]) -> list[str]:
+    """De regels over de actualiteit onder een data-antwoord, uit de stappen (#1266): één regel "Let op: voorlopig
+    cijfer" als de beurt voorlopige CBS-cijfers las, en per CBS-tabel "Nieuwe editie verwacht op …" als CBS zelf een dag
+    noemt binnen 30 dagen. Leeg zonder voorlopige cijfers of zo'n dag: geen regel uit een geraden datum."""
+    voorlopig: dict[str, None] = {}
+    verwacht: dict[str, None] = {}
+    for known, df in _cbs_ladingen(steps).values():
+        jaren = _voorlopige_jaren(known, df)
+        if jaren is not None:
+            voorlopig[f"{_opsomming(jaren)} in {known.dataset}" if jaren else str(known.dataset)] = None
+        if regel := verwacht_binnenkort(str(known.dataset)):
+            verwacht[regel] = None
+    regels = [f"{VOORLOPIG_REGEL}: {'; '.join(voorlopig)}. CBS kan het nog herzien."] if voorlopig else []
+    return regels + list(verwacht)
 
 
 # --- een vervolgantwoord zonder eigen datastap (#975) ---

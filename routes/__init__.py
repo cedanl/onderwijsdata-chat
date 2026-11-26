@@ -1,4 +1,5 @@
 from .auth import router as auth_router
+from .bronactualiteit import router as bronactualiteit_router
 from .bronstatus import router as bronstatus_router
 from .chat import router as chat_router
 from .config import router as config_router
@@ -12,6 +13,7 @@ from .rapport_docx import router as rapport_docx_router
 
 __all__ = [
     "auth_router",
+    "bronactualiteit_router",
     "bronstatus_router",
     "chat_router",
     "config_router",
