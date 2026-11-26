@@ -1095,7 +1095,12 @@ koppeling de kolom `onzeker` (na `koppelstatus` en een eventuele `koppelreden`):
 `alleen SKDB` per `graad` (`bachelor`, `master`, `associate degree`, een andere waarde in kleine letters, zonder graad
 `onbekend`), samen precies de `telling` van `alleen SKDB`. De `toelichting` van `beide` en `alleen SKDB` zegt de vlag en
 die aantallen over te nemen en niet zelf te tellen. Heeft de SKDB-tabel zelf al een kolom `onzeker`, dan blijft die
-staan. Andere koppelingen krijgen geen van beide.
+staan. Dat geldt ook bij een koppeling op alleen `croho`, mits beide kanten uit één BRIN bestaan: elke kolom met de
+sleutel brin (de SKDB-kolom `brin`, bij DUO `INSTELLINGSCODE_ACTUEEL`) heeft in elke rij dezelfde BRIN, aan beide kanten
+dezelfde (#1273). Twee tabellen die al tot één instelling zijn begrensd, krijgen zo dezelfde waarborgen als op `brin` en
+`croho`. Over meer dan één BRIN, met een lege brin-cel of zonder brin-kolom krijgt een koppeling op alleen `croho` geen
+van beide, en de opvolgers uit RIO (`koppelreden`) blijven bij `brin` en `croho`. Andere koppelingen krijgen geen van
+beide.
 
 De key is afgeleid van de eerste tabel en rust op beide (`gelezen`): de herkomst en de CSV-kop noemen beide bronnen,
 bij de Studiekeuzedatabase met de verplichte zin van LCSK (#977, #985), en de CSV-knop staat eronder zoals bij

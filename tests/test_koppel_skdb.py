@@ -174,6 +174,42 @@ def test_zonder_rijen_alleen_skdb_geen_telling_per_graad():
     assert koppel.PER_GRAAD not in uit and _ALLEEN not in uit["telling"]
 
 
+# --- alleen croho bij één instelling (#1273) --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("sleutels", [["croho"], ["croho", "brin"]])
+def test_de_hu_koppeling_geeft_bij_beide_sleutelvormen_de_vlag_en_de_telling(sleutels):
+    """Beide tabellen zijn al tot HU (25DW) begrensd: de sleutelnamen veranderen niets aan de waarborgen."""
+    _hu()
+    uit = _koppel(sleutels=sleutels)
+    assert uit[koppel.PER_GRAAD] == {"bachelor": 1, "master": 29, "associate degree": 1}
+    vlaggen = _vlaggen(uit)
+    assert vlaggen["80166"] is True  # 28 respondenten
+    assert {c: vlaggen[c] for c in _VERWACHT} == _VERWACHT
+    for status in ("beide", _ALLEEN):
+        assert "onzeker: true" in uit["toelichting"][status]
+
+
+def test_alleen_croho_en_brin_plus_croho_geven_dezelfde_kolom_onzeker():
+    _hu()
+    beide = store.get(_koppel(sleutels=["brin", "croho"])["data_key"])
+    alleen = store.get(_koppel(sleutels=["croho"])["data_key"])
+    assert koppel.ONZEKER in alleen.columns
+    assert list(alleen.columns).index(koppel.ONZEKER) == list(alleen.columns).index("koppelstatus") + 1
+    assert beide.set_index("croho")[koppel.ONZEKER].to_dict() == alleen.set_index("croho")[koppel.ONZEKER].to_dict()
+    assert alleen.set_index("croho").loc["80166", koppel.ONZEKER] is True
+
+
+def test_alleen_croho_vraagt_rio_niet_om_opvolgers(monkeypatch):
+    """De opvolgers van #1060 vragen RIO per brin + CROHO: bij alleen croho blijven ze uit."""
+    _hu()
+    gevraagd: list[str] = []
+    monkeypatch.setattr(opvolger, "onderwijslicenties", lambda brin, peildatum=None: gevraagd.append(brin) or ())
+    uit = _koppel(sleutels=["croho"])
+    assert gevraagd == []
+    assert opvolger.KOPPELREDEN not in store.get(uit["data_key"]).columns
+
+
 # --- andere koppelingen blijven zoals ze waren ----------------------------------------------------------------------
 
 
@@ -188,10 +224,51 @@ def test_een_koppeling_zonder_skdb_kant_krijgt_geen_vlag_of_telling():
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
 
 
-def test_een_koppeling_op_alleen_croho_krijgt_geen_vlag_of_telling():
+def _twee_brins(kant: str) -> None:
+    """Een rij van een tweede instelling (21PK) aan één kant, met een CROHO die geen DUO-rij heeft."""
+    if kant == "skdb":
+        rij = {"brin": "21PK", "croho": "34000", "graad": "Master", "nse_oordeel": 3.5, "nse_respondenten": 12}
+        store.put(_SKDB, pd.concat([store.get(_SKDB), pd.DataFrame([rij])], ignore_index=True), _SKDB_META)
+    else:
+        rij = {"STUDIEJAAR": 2025, "INSTELLINGSCODE_ACTUEEL": "21PK", "OPLEIDINGSCODE_ACTUEEL": 34000.0}
+        store.put(_DUO, pd.concat([store.get(_DUO), pd.DataFrame([rij])], ignore_index=True), _DUO_META)
+
+
+@pytest.mark.parametrize("kant", ["skdb", "duo"])
+def test_een_koppeling_op_alleen_croho_over_meer_instellingen_krijgt_geen_vlag_of_telling(kant):
+    """Zonder brin als sleutel kan een CROHO van twee instellingen op één rij vallen: dan geen waarborgen (#1273)."""
+    _hu()
+    _twee_brins(kant)
+    uit = _koppel(sleutels=["croho"])
+    assert koppel.PER_GRAAD not in uit
+    assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
+    assert "onzeker" not in json.dumps(uit.get("toelichting", {}), ensure_ascii=False)
+
+
+def test_een_koppeling_op_alleen_croho_zonder_brin_kolom_krijgt_geen_vlag_of_telling():
+    """Zonder brin-kolom aan de SKDB-kant is niet aantoonbaar één instelling: zoals vóór #1273."""
     _hu()
     store.put(_SKDB, store.get(_SKDB).drop(columns="brin"), _SKDB_META)
     uit = _koppel(sleutels=["croho"])
+    assert koppel.PER_GRAAD not in uit
+    assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
+
+
+def test_een_koppeling_op_alleen_croho_met_een_lege_brin_krijgt_geen_vlag_of_telling():
+    _hu()
+    skdb = store.get(_SKDB)
+    skdb.loc[0, "brin"] = None
+    store.put(_SKDB, skdb, _SKDB_META)
+    uit = _koppel(sleutels=["croho"])
+    assert koppel.PER_GRAAD not in uit
+    assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
+
+
+def test_een_koppeling_op_alleen_brin_krijgt_geen_vlag_of_telling():
+    _hu()
+    skdb = store.get(_SKDB).drop_duplicates("brin")
+    store.put(_SKDB, skdb, _SKDB_META)
+    uit = _koppel(sleutels=["brin"])
     assert koppel.PER_GRAAD not in uit
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
 
@@ -212,11 +289,14 @@ def test_een_eigen_kolom_onzeker_blijft_staan():
     assert set(df.loc[df["koppelstatus"] != "alleen DUO", koppel.ONZEKER]) == {"eigen"}
 
 
-def test_de_celtelling_vooraf_rekent_de_kolom_onzeker_mee(monkeypatch):
-    """De grens van #1011 telt wat er in de store komt: de koppeling plus de kolom onzeker."""
+@pytest.mark.parametrize("sleutels", [("brin", "croho"), ("croho",)])
+def test_de_celtelling_vooraf_rekent_de_kolom_onzeker_mee(monkeypatch, sleutels):
+    """De grens van #1011 telt wat er in de store komt: de koppeling plus de kolom onzeker, ook bij alleen croho."""
     _hu()
-    cellen = store.get(_koppel()["data_key"]).size
+    df = store.get(_koppel(sleutels=sleutels)["data_key"])
+    assert koppel.ONZEKER in df.columns
+    cellen = df.size
     monkeypatch.setattr(koppel, "MAX_CELLEN", cellen)
-    assert "data_key" in _koppel()
+    assert "data_key" in _koppel(sleutels=sleutels)
     monkeypatch.setattr(koppel, "MAX_CELLEN", cellen - 1)
-    assert _koppel()["verwachte_cellen"] == cellen
+    assert _koppel(sleutels=sleutels)["verwachte_cellen"] == cellen
