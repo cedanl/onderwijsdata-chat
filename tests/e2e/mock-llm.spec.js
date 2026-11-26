@@ -5,7 +5,7 @@
 // Draaien: `cd frontend && npm run build`, dan `npx playwright test --config=playwright.mock.config.js`.
 // In CI: job e2e:nepmodel (.gitlab-ci.yml).
 import { test, expect } from 'playwright/test'
-import { handleLoginIfNeeded } from './helpers.js'
+import { handleLoginIfNeeded, zetGeavanceerdAan } from './helpers.js'
 
 const VRAAG = 'Hoeveel mbo-studenten zijn er landelijk?'
 // De eerste zin van elk antwoord van het nepmodel (agent/nepmodel.py, KOP).
@@ -18,9 +18,7 @@ test('vraag, antwoord en rapport met het nepmodel', async ({ page }) => {
 
   // De modelkiezer hoort bij "Geavanceerd" (#1269), standaard uit; zonder login houdt deze browser de instelling.
   await expect(page.getByRole('combobox', { name: 'Model' })).toHaveCount(0)
-  await page.locator('button[title="Instellingen"]').click()
-  await page.getByRole('switch', { name: 'Geavanceerd' }).click()
-  await page.getByRole('button', { name: 'Opslaan' }).click()
+  await zetGeavanceerdAan(page)
 
   // De modelkiezer biedt de nepscenario's aan (core/config.py, get_available_models).
   await expect(page.getByRole('combobox', { name: 'Model' }).first()).toContainText('Nepmodel')
@@ -94,6 +92,8 @@ test('een ingetrokken getal is bij geen enkele delta zichtbaar (#1254)', async (
   await page.goto('/chat')
   await handleLoginIfNeeded(page)
   await expect(page.locator('.chat-welcome')).toBeVisible()
+  // Het scenario kiezen kan alleen met "Geavanceerd" aan: de modelkiezer staat erachter (#1269).
+  await zetGeavanceerdAan(page)
   await page.getByRole('combobox', { name: 'Model' }).first().selectOption('mock/verzonnen')
 
   // Een vraag zonder open slot: anders komt er eerst een verduidelijkingskaart in plaats van het model.
