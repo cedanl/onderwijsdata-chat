@@ -18,10 +18,11 @@ op `true` staat (standaard uit in de code, #765; op test en playground staat hij
 | **Opleidingen** (alleen met de sleutel van LCSK) | `/api/dashboard/opleidingen` | Hbo en wo: per opleiding en vorm het NSE-oordeel, doorstroom, diplomarendement en numerus fixus naast het landelijke cijfer van LCSK, de NSE-thema's, de arbeidsmarkt van de opleidingsrichting met het ROA-opleidingstype en de numerus-fixuslijst; zie [Opleidingen](#opleidingen-studiekeuzedatabase) |
 
 **Bronnen.** De dashboards rekenen met DUO (open onderwijsdata per instelling, en de financiële verantwoording per
-bestuur), UWV (vacatures per provincie, een momentopname van mei 2023), ROA (schoolverlaters en prognoses, landelijk per
+bestuur), CBS-tabel 83599NED (openstaande vacatures per kwartaal, per provincie en bedrijfstak, licentie CC BY 4.0;
+sinds #1225, daarvoor de UWV-momentopname van mei 2023), ROA (schoolverlaters en prognoses, landelijk per
 opleidingsniveau) en, alleen met `ENABLE_WO_PERSONEEL`, WOPI van Universiteiten van Nederland (personeel per
-universiteit); Opleidingen met de Studiekeuzedatabase van LCSK. CBS-data gebruiken
-ze niet; alleen de indeling in arbeidsmarktregio's (per gemeente) komt van CBS. Over de landelijke CBS-maat van de chat:
+universiteit); Opleidingen met de Studiekeuzedatabase van LCSK. Andere CBS-data gebruiken ze niet; de indeling in
+arbeidsmarktregio's (per gemeente) komt ook van CBS. Over de landelijke CBS-maat van de chat:
 zie "Landelijk, groei en het regiogemiddelde" hieronder.
 
 **Frontend.** De dashboards staan in `frontend/src/components/dashboards/` (een map per dashboard, gedeelde delen in
@@ -86,9 +87,10 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   `p01hoinges`) telt niet mee.
 - **DUO:** per bestand het resource-ID en `last_modified` uit `onderwijsbronnen.duo` (#717); `peilmoment` in de woorden van de
   bronregel in de chat. `peildatum` en `voorlopig_jaren` komen uit de DUO-beschrijving in de catalogus.
-- **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM. `peilmoment` noemt de datum met haar
-  ouderdom ("peildatum 16 mei 2023, ruim 3 jaar oud"), en de regel draagt `peildatum_ouderdom_maanden` en `verouderd`
-  (zie "Ouderdom van de UWV-vacatures" hieronder, #1219).
+- **CBS 83599NED** (de vacatures, #1225): titel, link (de tabel in StatLine) en `licentie` ("CC BY 4.0") uit de
+  melding van `data/vacatures_cbs.py`; `peilmoment` noemt het laatste kwartaal en het gemiddelde ("2026 3e kwartaal;
+  gemiddelde 2025 4e kwartaal t/m 2026 3e kwartaal"), `voorlopig_jaren` de kwartalen daarvan die CBS voorlopig noemt.
+  Geen `peildatum`: het kwartaal staat in het peilmoment.
 - **ROA:** `editie` uit het schema van `onderwijsbronnen.roa`, `versie` uit de kolom `versie` van het bestand.
 - **DUO-financiën en WOPI** (#935, #936): één editie per lading, geen versie per bestand. De lader meldt `editie`
   ("verslagjaren 2021-2025", "2025"), `peildatum` en bij de financiën de publicatiedatum als versie; WOPI noemt titel en
@@ -100,30 +102,37 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   en de NAE/HBO-monitor), met de laaddatum en de eerste twaalf tekens van de sha256 van de geladen export (#981), en
   met de zin die LCSK verplicht stelt. De footer toont die zin letterlijk, met de link naar
   lcsk.nl/over-ons/studiekeuzedata-raadplegen.
-- `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
+- `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (CBS en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 
-### Ouderdom van de UWV-vacatures
+### Vacatures: CBS 83599NED
 
-De vacatures zijn een momentopname van UWV Open Match; UWV maakt sinds 16 mei 2023 geen nieuwe bestanden (zie
-[Databronnen](databronnen.md)). Naast diplomajaren tot 2025 lijkt dat een achterstand van de app, dus zegt elke plek met
-de UWV-peildatum hoe oud ze is (#1219). De backend rekent, de frontend niet:
+Sinds #1225 (besluit #1221) komen de vacatures van de dashboards uit CBS-tabel 83599NED "Openstaande vacatures; SBI
+2008, regio" (zie [Databronnen](databronnen.md#cbs-83599ned-openstaande-vacatures)), niet meer uit UWV Open Match (een
+momentopname van 16 mei 2023, die UWV niet meer bijwerkt). `data/vacatures_cbs.py` laadt de 12 provincies en alle
+kwartalen sinds 2011 in één lading (met de TTL van `actualiteit`):
 
-- `peildatum_ouderdom_maanden`: de hele maanden van de (jongste) peildatum tot nu (`actualiteit.nu`); een maand is vol
-  op dezelfde dag van de maand. `null` zonder peildatum.
-- `verouderd`: `true` als dat meer dan 12 maanden is (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`, één
-  grens voor dashboards en chat; UWV en CBS publiceren vacatures per kwartaal); 12 maanden of minder is `false`.
-- Beide velden staan in `vacatureaanbod` (`/api/dashboard/regio`), in `match_duiding`
-  (`/api/dashboard/arbeidsmarktmatch`, bij `vacatures_peildatum`), in de UWV-regel van het bronblok en in het resultaat
-  van `get_uwv_vacatures` ([Tools](tools.md#get_uwv_vacatures)).
-- De banner boven de UWV-grafieken noemt de peildatum met de ouderdom ("peildatum 16 mei 2023 (ruim 3 jaar geleden)"),
-  de ondertitels "UWV Open Match, peildatum 16 mei 2023, ruim 3 jaar oud". Bij `verouderd` is de banner een
-  waarschuwing: UWV werkt deze open dataset sinds mei 2023 niet meer bij, en UWV (dashboard Vacaturemarkt) en CBS (tabel
-  83599NED) publiceren de actuele vacatures per kwartaal, met links. De app laadt die niet.
-- De ouderdom in woorden: onder een maand "minder dan een maand", dan "1 maand", "11 maanden", vanaf 12 maanden in
-  jaren, met "ruim" als er maanden over zijn ("1 jaar", "ruim 1 jaar", "ruim 3 jaar").
-- Zonder vacatures noemt het UWV-blok de peildatum uit de payload, of anders `uwv_periode` (de periode uit de
-  UWV-catalogus, `uwv_resources.json`, in de payload van `/api/dashboard/regio`), geen vaste maand (#1220).
+- **Vacatureaanbod** (`vacatureaanbod` in `/api/dashboard/regio`, op Arbeidsmarkt "Vacatureaanbod in de provincie"): per
+  bedrijfstak (SBI-sectie, "C Industrie") het aantal openstaande vacatures in het laatste kwartaal, aflopend, met
+  `periode` ("2026 3e kwartaal"), `voorlopig` (wat CBS in de Perioden-dimensie zegt) en `totaal` (alle bedrijfstakken,
+  A-U). CBS geeft duizendtallen; de payload aantallen (34,4 → 34.400). Een lege cel is `geen_gegevens` (de sectie staat
+  er onder de grafiek bij), nooit 0; een totaal zonder cijfer is een streepje.
+- **Matchscore**: het gemiddelde van de laatste vier kwartalen per bedrijfstak, via de koppeltabel naar onderwijssectoren
+  (zie "Aansluiting op de arbeidsmarkt" hieronder).
+- **Ouderdom**: `peildatum_ouderdom_maanden` en `verouderd` gelden voor het laatste kwartaal (zijn laatste dag), met de
+  grens van tot #1225 bij UWV (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`: meer dan 12 maanden is
+  verouderd). Een kwartaalcijfer is jong; stopt CBS met de tabel, dan wordt de bronregel een amberen waarschuwing. De
+  backend rekent, de frontend schrijft de ouderdom alleen in woorden ("minder dan een maand", "11 maanden", "ruim 1
+  jaar").
+- **Bronregel**: boven de match, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod staat een
+  neutrale regel met de tabel (link), de licentie, het kwartaal of het gemiddelde, en "CBS noemt deze cijfers voorlopig"
+  waar dat zo is (`VacatureBron` in `shared/vacatures.jsx`). Zonder vacatures zegt het blok "Geen vacaturegegevens
+  beschikbaar voor <provincie> in CBS-tabel 83599NED".
+- Laadt CBS niet, dan staat het gat in `niet_beschikbaar` ("Vacatures (CBS)", bron `CBS`) en heeft geen sector een
+  score; er staat nergens een 0.
+
+De chattool `get_uwv_vacatures` gebruikt UWV Open Match nog wel, met de ouderdom van de UWV-peildatum (#1219,
+[Tools](tools.md#get_uwv_vacatures)).
 
 ### Jaren en getalnotatie
 
@@ -145,7 +154,7 @@ welk soort jaar elke reeks heeft (#904, `PERIODEN` in `data/dashboard.py`).
 Alle getallen gaan door één formatter, `fmt` in `frontend/src/components/dashboards/shared/getal.js`: komma als
 decimaalteken, punt als duizendtal, in tegels, tabellen, tooltips en de callbacks van de assen. Een aandeel vrouw staat
 met `fmtProcent` altijd op één decimaal ("32,0%" naast "67,2%", #951). Een sector heet bij zijn naam uit
-`SECTOR_LABELS` ("Gedrag & Maatschappij"), ook in de genderbalken, de ondergrensnoot en het UWV-blok; de leerwegen op
+`SECTOR_LABELS` ("Gedrag & Maatschappij"), ook in de genderbalken en de ondergrensnoot; de leerwegen op
 Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar hun DUO-kolom (`_mbo_per_leerweg`). Chart.js zelf staat op
 `nl-NL` voor de ticks zonder eigen callback.
 
@@ -161,17 +170,21 @@ Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar
 - **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
   laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
   Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
-- **Aansluiting op de arbeidsmarkt** (`match_score`): per sector het aandeel in de gewogen vacatures (`vacatures_per_sector`) tegenover het
-  aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. Schaarste als het vacature-aandeel meer dan
-  `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht; `None` voor een sector
-  zonder beroepenclusters in de indeling. `match_duiding` zegt waar de score op rust (#900): `drempel`,
-  `min_gediplomeerden`, `vacatures_peildatum` (de UWV-momentopname in de provincie) met `peildatum_ouderdom_maanden` en
-  `verouderd` (#1219), `diplomajaren` (de jaren van het
-  gemiddelde), `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet
-  van UWV; een veld dat de mapping niet vastlegt, zoals nu het model, staat er niet in, #951). De
-  tegels, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod tonen de peildatum en haar ouderdom uit de payload; onder de
-  tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
-  tegen een meerjarig gemiddelde).
+- **Aansluiting op de arbeidsmarkt** (`match_score`): per sector het aandeel in de vacatures van zijn bedrijfstakken
+  (`vacatures_per_sector`) tegenover het aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. De
+  vacatures zijn het gemiddelde van de laatste vier kwartalen van CBS 83599NED per SBI-sectie
+  (`vacatures_per_bedrijfstak`), verdeeld over de sectoren met de koppeltabel `data/sbi_onderwijssector.csv` (kolom mbo,
+  of hbo of wo naar het type van de instelling; `sector_sbi_mapping` geeft per sector zijn secties). Een sectie bij meer
+  sectoren telt voor elk naar rato mee, zodat de som het totaal blijft (#455, #1225). Schaarste als het
+  vacature-aandeel meer dan `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht;
+  `None` voor een sector zonder koppeling, met in `match_weggelaten` "geen vacaturegegevens per bedrijfstak voor deze
+  sector" (zoals Entree en sectoroverstijgend). `match_duiding` zegt waar de score op rust (#900, #1225): `drempel`,
+  `min_gediplomeerden`, `vacatures` (bron, tabel, link, licentie, `periode` en `perioden` van het gemiddelde,
+  `kwartalen` en `voorlopig`) met `peildatum_ouderdom_maanden` en `verouderd` van het laatste kwartaal, `diplomajaren`
+  (de jaren van het gemiddelde), `roa_versie`, `koppeltabel` (herkomst: met de hand opgesteld, en de datum) en `uitleg`
+  met `indicatief`: de vacatures tellen per bedrijfstak van de werkgever, niet per beroep, dus het label per sector is
+  indicatief. De tegels, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod tonen kwartaal en
+  voorlopig uit de payload; onder de tegels staan de drie labels met de drempel en die uitleg.
 - **Match als staafgrafiek** (#949): vanaf acht sectoren met een score (`MATCH_GRAFIEK_VANAF` in
   `shared/charts-arbeidsmarkt.jsx`) staat de match niet als tegels maar als liggende staafgrafiek "Aansluiting per sector";
   onder de acht blijven het tegels. De staaf is `match_verhouding`: per sector het vacature-aandeel gedeeld door het
@@ -185,9 +198,10 @@ Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar
   gemiddelde over drie jaar) krijgt geen label en geen verhouding: daar verschoof één diploma de verhouding met
   tientallen procenten (Tilburg University, Techniek: 52,15 bij 63 gediplomeerden; BUas 7,73 bij 13). Hij telt wel mee
   in de totalen, dus de aandelen van de andere sectoren veranderen niet. `match_weggelaten` geeft per sector zonder
-  label de reden (te weinig gediplomeerden, geen beroepenclusters, geen vacatures); het dashboard noemt ze per reden.
-  De duiding zegt ook dat teller en noemer verschillende grootheden zijn: een voorraad vacatures in de provincie op
-  één dag tegen een jaarlijkse stroom diploma's van één instelling.
+  label de reden (te weinig gediplomeerden, geen koppeling met een bedrijfstak, geen cijfer van CBS, geen vacatures);
+  het dashboard noemt ze per reden. De duiding zegt ook dat teller en noemer verschillende grootheden zijn: een
+  gemiddelde voorraad vacatures over vier kwartalen in de provincie tegen een jaarlijkse stroom diploma's van één
+  instelling.
 - **ROA-prognose** (`arbeidsmarkt_prognose`): per niveau de typering van het arbeidsmarktperspectief en de aantallen
   verwachte baanopeningen en instroom van schoolverlaters tot 2030. ROA geeft die twee als aantal, zonder typering; tot
   #951 las het dashboard alleen typeringen en stonden ze overal als "—".
@@ -383,7 +397,7 @@ peers en hetzelfde peergemiddelde geven.
   `data/dashboard.py`, #904).
 - **Het voorbehoud** (besluit B op #904): de regio- en provinciebadge krijgen een sterretje en één noot eronder
   (`RegioBadges`, `regioNoot` in `shared/shell.jsx`). Zonder adres zegt de noot dat de provincie uit de inschrijvingen
-  komt; zonder herkomst staat er geen provinciebadge. Op Arbeidsmarkt zegt de noot ook dat de vacatures (UWV) over deze
+  komt; zonder herkomst staat er geen provinciebadge. Op Arbeidsmarkt zegt de noot ook dat de vacatures (CBS) over deze
   provincie gaan.
 - **Afdrukken** (besluit B op #904): elk dashboard heeft een knop "Afdrukken of als pdf bewaren" (`AfdrukKnop` in de
   `DashboardShell`). De print-CSS in `styles.css` toont alleen het dashboard over zijn volle lengte, zonder knoppen, met

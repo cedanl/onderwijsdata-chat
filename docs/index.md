@@ -25,7 +25,7 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 | **RIO** | Register van onderwijsinstellingen en opleidingen, met sectorfilter op mbo/hbo/wo (8 resources) | [catalogus/rio](https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/) |
 | **DUO** | 15 open datasets over mbo, hbo en wo: prognoses, diplomering, instroom, adressen; één daarvan (`voprognoses`) is alleen vo-context voor vervolgonderwijs | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | **ROA** | Arbeidsmarkt-prognoses per opleidingsniveau en -sector (AIS 2030, de nieuwste editie in de catalogus, met de schoolverlatersinformatie SIS); in de chat via `get_roa_benchmark` en in de dashboards | — |
-| **UWV** | Open match vacatures (momentopname mei 2023); in de chat via `get_uwv_vacatures` en in de dashboards | — |
+| **UWV** | Open match vacatures (momentopname mei 2023); in de chat via `get_uwv_vacatures`. De dashboards nemen hun vacatures sinds #1225 uit CBS-tabel 83599NED (per kwartaal, per provincie en bedrijfstak) | — |
 
 ## Snel aan de slag
 
