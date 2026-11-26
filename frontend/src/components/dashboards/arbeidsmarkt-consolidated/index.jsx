@@ -3,17 +3,17 @@ import TabelScroll from '../../TabelScroll'
 import {
   useArbeidsmarktmatchDashboardData, useRegioDashboardData,
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
-  RoaSection, PrognoseSection, UwvSection,
+  RoaSection, PrognoseSection, VacatureSection,
   darkColors, horizontalBarOpts, staafHoogte, SECTOR_LABELS, ChartCard, Grafiek, oordeelKleur,
   DashboardSources, bronnenVan, bronBadge, buildSupplyDemandData, WeggelatenNoot,
-  NietGeladen, DeelLading, gatenVan, MomentopnameBanner, MatchDuiding, uwvBron, jarenTekst, fmt,
+  NietGeladen, DeelLading, gatenVan, VacatureBron, MatchDuiding, cbsBron, jarenTekst, fmt,
   MatchVerhoudingChart, MatchWeggelaten, MATCH_OORDEEL, MATCH_LABELS, MATCH_GRAFIEK_VANAF,
 } from '../shared/index'
 import { AANSLUITING_ARBEIDSMARKT } from '../../../dashboardNamen'
 
-// Van /api/dashboard/regio toont dit dashboard alleen de UWV- en ROA-onderdelen en -bronnen; de DUO-gaten en
-// -bronnen daarvan horen bij mijn instelling.
-const REGIO_BRONNEN = ['UWV', 'ROA']
+// Van /api/dashboard/regio toont dit dashboard alleen de vacatures (CBS 83599NED, #1225) en de ROA-onderdelen en
+// -bronnen; de DUO-gaten en -bronnen daarvan horen bij mijn instelling.
+const REGIO_BRONNEN = ['CBS', 'ROA']
 
 function MatchTegels({ entries, dark }) {
   return (
@@ -30,12 +30,12 @@ function MatchTegels({ entries, dark }) {
   )
 }
 
-// De labels zijn een indicatie op een momentopname (#900): daarom de banner met de peildatum erboven en eronder wat
-// de drie labels betekenen, met de drempel, de jaren en de herkomst van de sectorindeling uit de payload. Vanaf
+// De labels zijn een indicatie (#900, #1225): daarom de bronregel met de kwartalen van CBS erboven en eronder wat de
+// drie labels betekenen, met de drempel, de jaren en de koppeltabel uit de payload. Vanaf
 // MATCH_GRAFIEK_VANAF sectoren staat de match als staafgrafiek van `match_verhouding` met de drempels als lijn (#949);
 // zonder verhoudingen (een oudere payload) blijven het tegels. Een sector zonder label staat met zijn reden eronder
-// (`weggelaten`, #952: te weinig gediplomeerden, geen beroepenclusters); een oudere payload zonder redenen noemt de
-// reden van toen.
+// (`weggelaten`, #952: te weinig gediplomeerden, geen bedrijfstak in de koppeltabel); een payload zonder redenen noemt
+// de koppeling.
 export function MatchScoreSection({ matchScore, verhouding, weggelaten, duiding, dark }) {
   if (!matchScore) return null
   const entries = Object.entries(matchScore).filter(([, v]) => v != null)
@@ -45,13 +45,13 @@ export function MatchScoreSection({ matchScore, verhouding, weggelaten, duiding,
   return (
     <>
       <SectionHeader title={AANSLUITING_ARBEIDSMARKT} subtitle="Indicatie per sector: aandeel in de vacatures tegenover aandeel in de gediplomeerden" />
-      {duiding && <MomentopnameBanner peildatum={duiding.vacatures_peildatum} ouderdomMaanden={duiding.peildatum_ouderdom_maanden} verouderd={duiding.verouderd} />}
+      {duiding && <VacatureBron periode={duiding.vacatures?.periode} voorlopig={duiding.vacatures?.voorlopig} gemiddelde ouderdomMaanden={duiding.peildatum_ouderdom_maanden} verouderd={duiding.verouderd} />}
       {alsGrafiek
         ? <MatchVerhoudingChart matchScore={matchScore} verhouding={verhouding} drempel={duiding?.drempel} dark={dark} />
         : <MatchTegels entries={entries} dark={dark} />}
       {weggelaten
         ? <MatchWeggelaten weggelaten={weggelaten} />
-        : <WeggelatenNoot namen={zonderScore} reden="geen beroepenclusters in de sectorindeling" />}
+        : <WeggelatenNoot namen={zonderScore} reden="geen vacaturegegevens per bedrijfstak voor deze sector" />}
       <MatchDuiding duiding={duiding} />
     </>
   )
@@ -71,9 +71,9 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, duidin
   return (
     <ChartCard
       title="Gediplomeerden en vacatures per sector"
-      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) tegenover gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum, duiding?.peildatum_ouderdom_maanden)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
+      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) tegenover de openstaande vacatures in de bedrijfstakken van de sector (${cbsBron(duiding?.vacatures?.periode && `gemiddelde ${duiding.vacatures.periode}`, duiding?.vacatures?.voorlopig)}). Een bedrijfstak die bij meer sectoren hoort, telt per sector naar rato mee.`}
     >
-      <MomentopnameBanner peildatum={duiding?.vacatures_peildatum} ouderdomMaanden={duiding?.peildatum_ouderdom_maanden} verouderd={duiding?.verouderd} />
+      <VacatureBron periode={duiding?.vacatures?.periode} voorlopig={duiding?.vacatures?.voorlopig} gemiddelde ouderdomMaanden={duiding?.peildatum_ouderdom_maanden} verouderd={duiding?.verouderd} />
       <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={staafHoogte(barData.labels, { perRij: 50, kader: 60, minimum: 200 })} options={{
           ...baseOpts,
           plugins: {
@@ -152,7 +152,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <DeelLading titel="Vacatures en prognoses in de regio" loading={regio.loading} error={regio.error} onOpnieuw={regio.opnieuw} hoogte={480}>
           <RoaSection data={regioData} dark={dark} />
           <PrognoseSection data={regioData} />
-          <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} />
+          <VacatureSection data={regioData} provincie={regioData?.provincie} dark={dark} />
         </DeelLading>
 
         <DashboardSources sources={bronnen} />

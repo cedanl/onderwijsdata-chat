@@ -5,8 +5,7 @@ import { fmt } from './getal'
 import { SectionHeader, ChartCard, ROA_AIS, roaEditie, roaSis } from './shell'
 import { Grafiek } from './grafiek'
 import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks, staafHoogte, SECTOR_LABELS, DREMPELLIJNEN } from './chart-opts'
-import { MomentopnameBanner, uwvBron, peildatumTekst } from './momentopname'
-import { datumsInTekst } from './datum'
+import { VacatureBron, cbsBron } from './vacatures'
 import { WeggelatenNoot } from './ondergrens'
 
 // ─── Arbeidsmarktmatch ───────────────────────────────────────────────────────
@@ -112,7 +111,8 @@ export function MatchVerhoudingChart({ matchScore, verhouding, drempel, dark }) 
 }
 
 // Per reden de sectoren zonder label en verhouding (`match_weggelaten`, #952): te weinig gediplomeerden, geen
-// beroepenclusters, geen vacatures. De redenen komen uit de payload; een oudere payload zonder het veld noemt niets.
+// bedrijfstak in de koppeltabel (#1225), geen vacatures. De redenen komen uit de payload; een oudere payload zonder het
+// veld noemt niets.
 export function MatchWeggelaten({ weggelaten }) {
   const perReden = new Map()
   for (const [sector, reden] of Object.entries(weggelaten || {})) perReden.set(reden, [...(perReden.get(reden) || []), sectorNaam(sector)])
@@ -264,64 +264,55 @@ export function PrognoseSection({ data }) {
   )
 }
 
-// Zonder vacatures: wat de data van UWV Open Match wel beslaat, uit de payload (#1220). De peildatum als die er is,
-// anders de periode uit de UWV-catalogus (`uwv_periode`); nooit een vaste maand in de code.
-function uwvBereik(vac, data) {
-  if (peildatumTekst(vac?.peildatum)) return `, peildatum ${peildatumTekst(vac.peildatum)}`
-  if (data?.uwv_periode) return `, die loopt van ${datumsInTekst(data.uwv_periode)}`
-  return ''
-}
-
-export function UwvSection({ data, provincie, dark }) {
+// Het vacatureaanbod in de provincie (#1225): per bedrijfstak (SBI-sectie) de openstaande vacatures in het laatste
+// kwartaal van CBS 83599NED, aflopend, met kwartaal en "voorlopig" uit de payload. Een bedrijfstak zonder cijfer staat
+// eronder (`geen_gegevens`), niet als 0. Tot #1225 waren dit de beroepenclusters van UWV Open Match.
+export function VacatureSection({ data, provincie, dark }) {
   const vac = data?.vacatureaanbod
-  if (!vac?.clusters || Object.keys(vac.clusters).length === 0) {
+  if (!vac?.bedrijfstakken || Object.keys(vac.bedrijfstakken).length === 0) {
     return (
       <ChartCard title="Vacatureaanbod in de provincie">
         <p style={{ color: 'var(--gray-500)', fontSize: '.85rem', padding: '8px 0' }}>
-          Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''} in de data van UWV Open Match{uwvBereik(vac, data)}.
+          Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''} in CBS-tabel 83599NED.
         </p>
       </ChartCard>
     )
   }
-  const bron = uwvBron(vac.peildatum, vac.peildatum_ouderdom_maanden)
-  const gefilterdOp = vac.gefilterd_op || []
-  const clusterHeight = staafHoogte(Object.keys(vac.clusters), { perRij: 32, minimum: 180 })
-  // Het blok heette "in de regio"; data en KPI zijn per provincie (UWV, F5 in #951).
+  const bedrijfstakken = Object.keys(vac.bedrijfstakken)
+  const hoogte = staafHoogte(bedrijfstakken, { perRij: 32, minimum: 180 })
   return (
     <>
       <SectionHeader
         title="Vacatureaanbod in de provincie"
-        subtitle={gefilterdOp.length > 0
-          ? `Clusters passend bij opleidingssectoren — ${bron} (momentopname)`
-          : `Openstaande vacatures per beroepencluster — ${bron} (momentopname)`}
+        subtitle={`Openstaande vacatures per bedrijfstak — ${cbsBron(vac.periode, vac.voorlopig)}`}
       />
-      <MomentopnameBanner peildatum={vac.peildatum} ouderdomMaanden={vac.peildatum_ouderdom_maanden} verouderd={vac.verouderd} />
+      <VacatureBron periode={vac.periode} voorlopig={vac.voorlopig} ouderdomMaanden={vac.peildatum_ouderdom_maanden} verouderd={vac.verouderd} />
       <div className="kpi-grid" style={{ marginBottom: 12 }}>
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Totaal vacatures provincie {provincie}</span>
+            <span className="kpi-label">Openstaande vacatures provincie {provincie}</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
             </div>
           </div>
-          <div className="kpi-value">{fmt(vac.totaal)}</div>
-          <div className="kpi-trend">alle sectoren in provincie</div>
+          <div className="kpi-value">{vac.totaal != null ? fmt(vac.totaal) : '—'}</div>
+          <div className="kpi-trend">alle bedrijfstakken, {vac.periode}{vac.voorlopig ? ' (voorlopig)' : ''}</div>
         </div>
       </div>
       <ChartCard
-        title={`Beroepencluster${gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}`}
-        subtitle={`Provincie ${provincie}${gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(sectorNaam).join(', ')}` : ''}`}
+        title="Openstaande vacatures per bedrijfstak"
+        subtitle={`Provincie ${provincie} — een vacature telt bij de bedrijfstak van de werkgever, niet bij het beroep`}
       >
         <Grafiek
           soort="bar"
-          hoogte={clusterHeight}
-          categorie="Beroepencluster"
+          hoogte={hoogte}
+          categorie="Bedrijfstak"
           data={{
-            labels: Object.keys(vac.clusters),
+            labels: bedrijfstakken,
             datasets: [{
-              label: 'Vacatures',
-              data: Object.values(vac.clusters),
-              // Eén kleur: de clusters staan al op de as, een kleur per staaf zei niets (#905).
+              label: 'Openstaande vacatures',
+              data: Object.values(vac.bedrijfstakken),
+              // Eén kleur: de bedrijfstakken staan al op de as, een kleur per staaf zei niets (#905).
               backgroundColor: COLOR_EIGEN,
               borderWidth: 0,
               borderRadius: 4,
@@ -329,6 +320,7 @@ export function UwvSection({ data, provincie, dark }) {
           }}
           options={horizontalBarOpts(dark)}
         />
+        <WeggelatenNoot namen={vac.geen_gegevens || []} reden="CBS heeft voor dit kwartaal geen cijfer" />
       </ChartCard>
     </>
   )

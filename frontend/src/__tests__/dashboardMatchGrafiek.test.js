@@ -5,6 +5,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { MATCH_DUIDING as DUIDING } from './fixtures/matchDuiding'
 
 // Zoals react-chartjs-2 zich gedraagt: een canvas met role="img"; data, opties en plugins gaan naar Chart.js en zijn
 // hier na te lezen.
@@ -26,7 +27,6 @@ import { DREMPELLIJNEN } from '../components/dashboards/shared/chart-opts'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const DUIDING = { drempel: 1.2, vacatures_peildatum: '2023-05-16', diplomajaren: [2023, 2024, 2025], sectormapping: {} }
 
 // n sectoren met een score en een verhouding die bij dat label past.
 function sectoren(n) {
@@ -88,12 +88,12 @@ describe('tegels of staafgrafiek (#949)', () => {
     expect(container.querySelector('.db-match-duiding')).not.toBeNull()
   })
 
-  it('telt alleen sectoren met een score: acht sectoren waarvan één zonder clusters blijven tegels', () => {
+  it('telt alleen sectoren met een score: acht sectoren waarvan één zonder bedrijfstak blijven tegels', () => {
     const { score, verhouding } = sectoren(7)
     render({ matchScore: { ...score, ONDERWIJS: null }, verhouding: { ...verhouding, ONDERWIJS: null } })
 
     expect(container.querySelectorAll('.kpi-card')).toHaveLength(7)
-    expect(container.textContent).toMatch(/Niet getoond \(geen beroepenclusters in de sectorindeling\): Onderwijs/)
+    expect(container.textContent).toMatch(/Niet getoond \(geen vacaturegegevens per bedrijfstak voor deze sector\): Onderwijs/)
   })
 
   it('een payload zonder verhoudingen krijgt de tegels', () => {
@@ -227,12 +227,12 @@ describe('kap op de staaf en kleine sectoren (#952)', () => {
     const { score, verhouding } = sectoren(8)
     const weggelaten = {
       RECHT: 'te weinig gediplomeerden: minder dan 30 per jaar',
-      ONDERWIJS: 'geen beroepenclusters in de sectorindeling',
+      ONDERWIJS: 'geen vacaturegegevens per bedrijfstak voor deze sector',
     }
     render({ matchScore: { ...score, RECHT: null, ONDERWIJS: null }, verhouding, weggelaten })
 
     expect(container.textContent).toContain('Niet getoond (te weinig gediplomeerden: minder dan 30 per jaar): Recht.')
-    expect(container.textContent).toContain('Niet getoond (geen beroepenclusters in de sectorindeling): Onderwijs.')
+    expect(container.textContent).toContain('Niet getoond (geen vacaturegegevens per bedrijfstak voor deze sector): Onderwijs.')
   })
 
   it('de duiding zegt dat teller en noemer verschillende grootheden zijn, en noemt de drempel', () => {
@@ -240,7 +240,7 @@ describe('kap op de staaf en kleine sectoren (#952)', () => {
     render({ matchScore: score, verhouding, duiding: { ...DUIDING, min_gediplomeerden: 30 } })
 
     const duiding = container.querySelector('.db-match-duiding').textContent
-    expect(duiding).toContain('Teller en noemer zijn dus verschillende grootheden')
+    expect(duiding).toContain('een gemiddelde voorraad over 4 kwartalen in de hele provincie, de gediplomeerden een jaarlijkse')
     expect(duiding).toContain('minder dan 30 gediplomeerden per jaar krijgt geen label')
   })
 })
