@@ -2040,7 +2040,7 @@ html.dark .suggested-btn:hover {
 .privacy-page-footer { margin-top: 32px; font-size: .92rem; }
 /* Actualiteit van de bronnen (#1266): per bron de kerngegevens als lijst, per dataset een tabel die zelf zijwaarts
    scrolt (.tabel-scroll), zodat de pagina op 320 px niet breder wordt dan het scherm (WCAG 1.4.10). */
-.bronact-page { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; overflow-wrap: break-word; }
+.bronact-page { width: 100%; max-width: 960px; min-width: 0; margin: 0 auto; padding: 48px 24px 96px; overflow-wrap: break-word; }
 .bronact-page h1 { font-size: 1.75rem; margin-bottom: 8px; }
 .bronact-lead { color: var(--gray-700); line-height: 1.6; max-width: 70ch; margin-bottom: 8px; }
 .bronact-bron { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
@@ -2056,7 +2056,7 @@ html.dark .suggested-btn:hover {
 .bronact-verwacht-bron, .bronact-id { color: var(--muted-text); font-size: .85em; }
 .bronact-id { display: block; font-weight: 400; }
 .bronact-verouderd { font-weight: 600; }
-.bronact-datasets { margin-top: 16px; }
+.bronact-datasets { margin-top: 16px; min-width: 0; max-width: 100%; }
 .bronact-datasets summary { cursor: pointer; font-weight: 600; color: var(--accent-text); min-height: var(--tap-min-aa); }
 .bronact-datasets[open] summary { margin-bottom: 8px; }
 .bronact-tabel { border-collapse: collapse; width: 100%; min-width: 44rem; font-size: .85rem; }
@@ -2064,6 +2064,7 @@ html.dark .suggested-btn:hover {
 .bronact-tabel thead th { font-size: var(--font-label); color: var(--muted-text); font-weight: 600; }
 .bronact-tabel tbody th { font-weight: 600; max-width: 18rem; }
 .bronact-tabel a { color: var(--accent-text); }
+.bronact-page time { white-space: nowrap; }
 .bronact-fout { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
 .bronact-voet { margin-top: 40px; font-size: .92rem; }
 @media (max-width: 600px) {

@@ -169,9 +169,12 @@ describe('de pagina op 320 px', () => {
   const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
   const regel = kiezer => new RegExp(`(?:^|})\\s*${kiezer.replace(/[.]/g, '\\.')}\\s*{([^}]*)}`).exec(css)?.[1] ?? ''
 
-  it('heeft geen vaste breedte, alleen een maximum, en breekt lange woorden af', () => {
+  // In de flexkolom van <main> nam de pagina met margin: auto de breedte van haar inhoud aan: open tabellen maakten haar
+  // op 320 px 692 px breed (gemeten met Playwright). width: 100% houdt haar binnen het scherm; de tabel scrolt zelf.
+  it('is zo breed als het scherm tot een maximum, nooit een vaste breedte, en breekt lange woorden af', () => {
+    expect(regel('.bronact-page')).toMatch(/(?:^|;)\s*width:\s*100%/)
     expect(regel('.bronact-page')).toMatch(/max-width:\s*960px/)
-    expect(regel('.bronact-page')).not.toMatch(/(?:^|;)\s*width:/)
+    expect(regel('.bronact-page')).not.toMatch(/(?:^|;)\s*width:\s*\d+(?:px|rem)/)
     expect(regel('.bronact-page')).toMatch(/overflow-wrap:\s*break-word/)
   })
 
