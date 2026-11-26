@@ -25,9 +25,27 @@ Achter de schermen roept de app functies aan, bijvoorbeeld:
 ### 3. De code per stap
 
 Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat staat die bij de stap, onder "Redenering".
-"Exporteer gesprek" zet het hele gesprek in één Markdown-bestand: per antwoord de stappen, elk met zijn snippet als
-`python`-codeblok (`frontend/src/conversationExport.js`, #366). Een los `.py`-bestand levert de app niet; je kopieert de
-code van de stap die je wilt herhalen.
+"Exporteer gesprek" zet het hele gesprek in één bestand, naar keuze Markdown (de standaard) of een Jupyter-notebook
+(`frontend/src/conversationExport.js`, #366, #1247). In het Markdown-bestand staan per antwoord de stappen, elk met zijn
+snippet als `python`-codeblok. Het notebook (`.ipynb`, nbformat 4) open je in Jupyter, VS Code, Hex of Deepnote en draai
+je van boven naar beneden:
+
+```text
+[markdown] # <de eerste vraag>               titel en exportdatum
+[code]     # Gemaakt met onderwijsbronnen …   één installcel: de versiekop van de snippets en
+           %pip install "onderwijsbronnen[analyse] @ git+…@<commit>…" plotly
+[markdown] ## Vraag 1 … ### Antwoord …       vraag, antwoord, bronnen, meldingen en Herkomst, zoals in Markdown
+[markdown] Stap 1, "Catalogus doorzocht", heeft geen code: voor die stap maakt de app geen code om zelf na te rekenen.
+[code]     # Stap 2: Data gefilterd           de snippet van de stap, zonder de versiekop
+           import pandas as pd …
+```
+
+Mislukte stappen en foutmeldingen gaan alleen mee met "Mislukte stappen en foutmeldingen"; een ingetrokken antwoord
+staat alleen als citaat in de markdowncel, nooit als code. In Markdown kopieer je de code van de stap die je wilt
+herhalen, in het notebook draai je de cellen. Draaien geeft niet altijd hetzelfde
+getal: een bron kan sinds de export nieuwe of herziene cijfers hebben; de regel Dataversie onder Herkomst zegt waarmee
+de app rekende. `tests/test_notebook_export.py` draait een geëxporteerd notebook in een kernel tegen een bevroren kopie
+van het DUO-bestand.
 
 Vraag je in de chat om de code ("Geef de code om dit zelf na te rekenen"), dan zet de app de snippet van de laatste
 datastap van het gesprek onder het antwoord, onder de kop **Code**: dezelfde tekst als bij de stap. Het model schrijft

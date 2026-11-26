@@ -1500,6 +1500,11 @@ html.dark .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); bord
 .confirm-primary { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-700); color: white; cursor: pointer; font-weight: 600; }
 .export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
 .export-option:last-of-type { margin-bottom: 20px; }
+/* De formaatkeuze van de gespreksexport (#1247): Markdown of Jupyter-notebook, boven de opties. */
+.export-formaat { border: 0; margin: 0 0 4px; padding: 0; min-width: 0; }
+.export-formaat-legend { padding: 0; margin-bottom: 8px; font-size: .8rem; color: var(--muted-text); }
+.export-formaat .export-option:last-of-type { margin-bottom: 12px; }
+.export-option:has(input:disabled) { cursor: default; color: var(--muted-text); }
 /* De onderzoeksvraag vóór een rapport (#751): breder dan een bevestiging, want de vraag beslaat vaak twee regels. */
 .onderzoeksvraag-dialoog { max-width: 480px; }
 .onderzoeksvraag-form { display: flex; flex-direction: column; gap: 8px; }

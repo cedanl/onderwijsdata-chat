@@ -23,6 +23,10 @@ Voorbeeld: het script dat de app voor die vraag maakt (DUO `p02ho1ejrs`, resourc
 de sector van de opleiding, geen opleidingsnaam. Boven het script zet de app nog twee regels met de versie van onderwijsbronnen en
 commit waarmee het gemaakt is, en een `pip install` die precies die code ophaalt; `tests/test_readme_voorbeeld.py` draait dit voorbeeld tegen een bevroren kopie van het bestand.
 
+"Exporteer gesprek" geeft het hele gesprek als Markdown of als Jupyter-notebook (`.ipynb`): per vraag het antwoord met
+bronnen en herkomst, per stap het script als codecel en bovenaan één `%pip install`-cel, te openen in Jupyter, Hex of
+Deepnote.
+
 ```python
 import pandas as pd
 from onderwijsbronnen import duo
