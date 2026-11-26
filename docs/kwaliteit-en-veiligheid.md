@@ -23,7 +23,8 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
   CBS, DUO en RIO zijn opgehaald (#190), en de CI-job `eval:bronwaarheid` draait ze gepland of met de hand tegen de
   testomgeving (`EVAL_BASE_URL`, `EVAL_USERNAME`, `EVAL_PASSWORD`), los van `/health` en `/ready`: dat de server draait
   zegt niets over de juistheid van een antwoord. Het slagingspercentage per model en vraag komt als artifact in
-  `eval_results/`.
+  `eval_results/`. Na de login zet de runner Geavanceerd aan voor dat account (`haalToken` in `tests/e2e/chatstream.js`,
+  #1269): met login telt de modelkeuze anders niet en zou elke run stil het standaardmodel meten.
 - **Bronnen, gepland**: de CI-job `bron:ping` doet dagelijks één aanroep per bron door de toollaag van de chat (CBS,
   DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt zodra één
   bron niet antwoordt. Een verwijderde API of een gewijzigd filtercontract (RIO v2 → v3 op 19 oktober 2026, #627) komt
