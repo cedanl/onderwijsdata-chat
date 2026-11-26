@@ -28,7 +28,7 @@ from tools.schemas import (
 CODEKOP = "### Code"
 GEEN_DATASTAP = (
     "Sinds dit gesprek open staat, heeft de app nog geen data opgehaald: er is hier geen code om te tonen. "
-    'Bij een eerder antwoord staat de code onder "Bekijk code" bij de stap.'
+    'Bij een eerder antwoord staat de code onder "Bekijk code" bij de stap, als de instelling "Geavanceerd" aan staat.'
 )
 
 # De sessiesleutel: {"label": ..., "snippet": ... of None}. Een nieuw of heropend gesprek begint met een lege sessie.
@@ -100,7 +100,8 @@ def codeblok(session: dict) -> str:
             "zelf na te rekenen."
         )
     return (
-        f'{CODEKOP}\nDe code van de laatste datastap, "{label}", dezelfde als onder "Bekijk code" bij die stap:\n\n'
+        f'{CODEKOP}\nDe code van de laatste datastap, "{label}", dezelfde als onder "Bekijk code" bij die stap '
+        '(met de instelling "Geavanceerd"):\n\n'
         f"```python\n{snippet.strip()}\n```"
     )
 

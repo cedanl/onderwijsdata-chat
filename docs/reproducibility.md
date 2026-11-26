@@ -36,7 +36,8 @@ datastap van het gesprek onder het antwoord, onder de kop **Code**: dezelfde tek
 geen eigen script; dat las eerder een verzonnen CSV-bestand in (#959, `agent/codeverzoek.py`). Heeft de laatste
 datastap geen snippet (collegegeld, een Inspectie-oordeel, mbo-indicatoren, accreditatie, een instelling uit RIO), dan
 zegt een vaste zin dat er voor die stap geen code is, in plaats van de code van een eerdere stap te tonen; in een
-heropend gesprek zonder nieuwe datastap verwijst die zin naar "Bekijk code" bij het eerdere antwoord (#969). Alleen een
+heropend gesprek zonder nieuwe datastap verwijst die zin naar "Bekijk code" bij het eerdere antwoord (#969), met de
+instelling "Geavanceerd" erbij: zonder die instelling staat die knop er niet (#1269). Alleen een
 verzoek om programmacode telt: een vraag naar een CROHO-, BRIN-, ISCED- of opleidingscode, naar "de code van" een
 instelling of naar Python-cursussen niet.
 

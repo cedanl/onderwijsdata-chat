@@ -451,6 +451,9 @@ def _gesprek(client: TestClient, token: str) -> list[dict]:
 
 
 def test_beschermende_uitvoer_is_met_en_zonder_geavanceerd_gelijk(client, monkeypatch):
+    """De serverhelft van criterium 6: de websocket filtert met of zonder Geavanceerd geen event weg en verandert er
+    geen. Dat de beschermende tekst er komt, toetst de weergave (frontend/src/__tests__/beschermingInvariant.test.js);
+    de agent is hier bevroren."""
     gezien: list[str | None] = []
 
     async def bevroren(messages, session, emit, stop_event, model=None):
@@ -478,3 +481,38 @@ def test_beschermende_uitvoer_is_met_en_zonder_geavanceerd_gelijk(client, monkey
     for naam, (veld, tekst) in BESCHERMEND.items():
         bron = kaart if veld == "clarification" else eind
         assert tekst in json.dumps(bron.get(veld if veld != "clarification" else "options"), ensure_ascii=False), naam
+
+
+# ── Teksten van de server die een knop achter Geavanceerd noemen ──
+
+
+def _codeblok_met_snippet() -> str:
+    from agent import codeverzoek
+    from tools.schemas import TOOL_GET_CBS_DATA
+
+    sessie: dict = {}
+    codeverzoek.onthoud(sessie, {"type": "tool_end", "name": TOOL_GET_CBS_DATA, "snippet": "rijen = []"})
+    return codeverzoek.codeblok(sessie)
+
+
+def _teksten_met_een_knop() -> dict[str, str]:
+    from agent import codeverzoek
+    from prompts import SYSTEM_PROMPT
+    from tools import studiekeuze
+
+    return {
+        "codeverzoek zonder datastap": codeverzoek.GEEN_DATASTAP,
+        "codeverzoek met snippet": _codeblok_met_snippet(),
+        "studiekeuze bestand": studiekeuze.BESTAND,
+        "systeemprompt bestand": next(r for r in SYSTEM_PROMPT.splitlines() if r.startswith("- **Bestand:**")),
+    }
+
+
+@pytest.mark.parametrize("naam", sorted(_teksten_met_een_knop()))
+def test_een_tekst_die_een_knop_achter_geavanceerd_noemt_noemt_ook_de_instelling(naam):
+    """De knoppen "Bekijk code" en "Download data als CSV" staan er alleen met Geavanceerd; zonder die instelling
+    verwees de tekst naar een knop die de gebruiker niet ziet (#1269). De tekst geldt in beide standen: hij noemt de
+    instelling."""
+    tekst = _teksten_met_een_knop()[naam]
+    assert "Bekijk code" in tekst or "Download data als CSV" in tekst, naam
+    assert '"Geavanceerd"' in tekst or "'Geavanceerd'" in tekst, naam
