@@ -21,7 +21,7 @@ from onderwijsbronnen import duo
 import data.dashboard as dashboard
 import routes.instellingen
 from core.gelijktijdig import DRUK, Runplaatsen
-from data import arbeidsmarkt
+from data import arbeidsmarkt, vacatures_cbs
 
 _LADERS = [
     dashboard.load_dashboard_regio,
@@ -57,20 +57,10 @@ _ROA = pd.DataFrame(
 )
 
 
-_UWV = pd.DataFrame(
-    {
-        "PROVINCIE": ["Utrecht"],
-        "GEMEENTE": ["Utrecht"],
-        "BEROEPENCLUSTER": ["ICT"],
-        "AANTAL": [10],
-        "PEILDATUM": ["16-05-2023"],
-    }
-)
-
-
 @pytest.fixture
-def storing_bij(duo_fixtures, monkeypatch):
-    """DUO uit de fixtures, behalve de datasets in de verzameling: die geven een verbindingsfout."""
+def storing_bij(duo_fixtures, cbs_vacatures, monkeypatch):
+    """DUO uit de fixtures, behalve de datasets in de verzameling: die geven een verbindingsfout. De CBS-vacatures uit
+    het opgenomen antwoord (fixture `cbs_vacatures`)."""
     fixture_load = duo.load
     uit: set[str] = set()
 
@@ -81,7 +71,6 @@ def storing_bij(duo_fixtures, monkeypatch):
 
     monkeypatch.setattr(duo, "load", load)
     monkeypatch.setattr(arbeidsmarkt, "_roa", lambda: _ROA)
-    monkeypatch.setattr(arbeidsmarkt, "_uwv", lambda: _UWV)
     return uit
 
 
@@ -141,21 +130,23 @@ def test_een_tikfout_in_een_mbo_naam_geeft_de_juiste_suggestie(storing_bij):
 
 
 def test_een_onderdeel_dat_niet_laadde_staat_in_de_payload_met_de_reden(storing_bij, monkeypatch):
-    monkeypatch.setattr(arbeidsmarkt, "uwv_stand", lambda *a, **k: (_ for _ in ()).throw(ConnectionError("UWV")))
+    monkeypatch.setattr(vacatures_cbs, "stand", lambda *a, **k: (_ for _ in ()).throw(ConnectionError("CBS")))
 
     uit = dashboard.load_dashboard_regio("Hogeschool Utrecht")
 
     assert uit["gevonden"] is True
     assert uit["niet_beschikbaar"] == [
-        {"onderdeel": "Vacatures (UWV)", "bron": "UWV", "reden": "de bron was niet bereikbaar"}
+        {"onderdeel": "Vacatures (CBS)", "bron": "CBS", "reden": "de bron was niet bereikbaar"}
     ]
+    # Geen vacaturegrafiek en geen 0: het dashboard noemt het gat (#901).
     assert uit["vacatureaanbod"] == {}
 
 
-def test_een_volledige_lading_heeft_geen_gaten(storing_bij, monkeypatch):
-    monkeypatch.setattr(arbeidsmarkt, "uwv_stand", lambda *a, **k: None)
+def test_een_volledige_lading_heeft_geen_gaten(storing_bij):
+    uit = dashboard.load_dashboard_regio("Hogeschool Utrecht")
 
-    assert "niet_beschikbaar" not in dashboard.load_dashboard_regio("Hogeschool Utrecht")
+    assert "niet_beschikbaar" not in uit
+    assert uit["vacatureaanbod"]["dataset"] == "83599NED"
 
 
 def test_de_reden_noemt_nooit_de_fouttekst():

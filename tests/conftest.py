@@ -197,8 +197,9 @@ def cbs_vacatures(monkeypatch):
     from data import vacatures_cbs
     from tests import cbs_83599ned
 
+    tabel = vacatures_cbs._tabel  # een test kan de lader vervangen; de cache is die van de echte
     yield cbs_83599ned.zet_klaar(monkeypatch)
-    vacatures_cbs._tabel.cache_clear()
+    tabel.cache_clear()
 
 
 @pytest.fixture
@@ -240,8 +241,9 @@ def arbeidsmarkt_fixtures(monkeypatch, cbs_vacatures):
 
 
 @pytest.fixture
-def gouden(duo_fixtures, monkeypatch):
-    """De bevroren bronnen van de gouden tests (`tests/gouden.py`, #870), met het netwerk dicht."""
+def gouden(duo_fixtures, cbs_vacatures, monkeypatch):
+    """De bevroren bronnen van de gouden tests (`tests/gouden.py`, #870), met het netwerk dicht; de vacatures van de
+    dashboards (CBS 83599NED) uit het opgenomen antwoord (`cbs_vacatures`)."""
     from tests import gouden
 
     gouden.zet_klaar(monkeypatch)
