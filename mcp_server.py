@@ -415,7 +415,9 @@ def maak_server(uitvoerder: Uitvoerder = _direct):
         return types.GetPromptResult(description=beschrijving, messages=[bericht])
 
     async def bronlijst(_context, _params) -> types.ListResourcesResult:
-        regels = types.Resource(uri=BRONREGELS_URI, name=BRONREGELS, description=beschrijving, mime_type="text/markdown")
+        regels = types.Resource(
+            uri=BRONREGELS_URI, name=BRONREGELS, description=beschrijving, mime_type="text/markdown"
+        )
         return types.ListResourcesResult(resources=[regels, *(types.Resource(**r) for r in resources())])
 
     async def bronlezing(_context, params: types.ReadResourceRequestParams) -> types.ReadResourceResult:
