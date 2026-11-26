@@ -5,7 +5,8 @@ Tot CH-23 haalden de tools private functies uit dashboard.py, terwijl dashboards
 omgevingen uit staan.
 
 - UWV: Open Match, een momentopname. De peildatum komt uit de kolom PEILDATUM, niet uit tekst.
-  Alleen de chat (`get_uwv_vacatures`) gebruikt UWV nog; de dashboards lezen hun vacatures sinds #1225 uit
+  Alleen de chat (`get_uwv_vacatures`) gebruikt UWV nog, sinds #1226 als archief (`uwv_archief`); de actuele vacatures
+  van de chat komen van CBS (tools/vacatures.py). De dashboards lezen hun vacatures sinds #1225 uit
   CBS 83599NED (data/vacatures_cbs.py). `ouderdom` geldt voor beide.
   Vacatures hebben geen opleidingsniveau: de kolommen AANT_OPLNIV_* zijn alleen bij werkzoekenden
   gevuld (nagekeken voor de snapshots van 2021 en 2023, #449).
@@ -251,9 +252,26 @@ def uwv_actualiteit(peildatum: str | None) -> str | None:
     jongste = max(datums)
     return (
         f"De peildatum is {ouderdom_tekst(stand['peildatum_ouderdom_maanden'])} oud: UWV werkt deze open dataset "
-        f"sinds {_MAANDNAMEN[jongste.month - 1]} {jongste.year} niet meer bij. Actuele vacatures per kwartaal staan bij "
-        "UWV (dashboard Vacaturemarkt) en CBS (tabel 83599NED); deze app laadt die (nog) niet."
+        f"sinds {_MAANDNAMEN[jongste.month - 1]} {jongste.year} niet meer bij. Actuele vacatures per kwartaal en "
+        "provincie staan bij CBS (tabel 83599NED, in de chat get_vacatures) en bij UWV (dashboard Vacaturemarkt)."
     )
+
+
+# Waarom get_uwv_vacatures een archief is (#1226, besluit #1221): de melding komt uit code, niet uit het model.
+UWV_ARCHIEF = (
+    "UWV maakt deze reeks niet meer: Open Match is een momentopname die UWV sinds de peildatum niet bijwerkt. Actuele "
+    "vacatures per provincie en kwartaal: get_vacatures (CBS 83599NED); per beroep en jaar: get_ontstane_vacatures "
+    "(CBS 85081NED)."
+)
+
+
+def uwv_archief(peildatum: str | None) -> dict[str, str]:
+    """Het archiefveld vooraan elk UWV-resultaat (#1226): de peildatum als dd-mm-jjjj ("16-05-2023") en de melding."""
+    datums = _peildata(peildatum)
+    return {
+        "peildatum": ", ".join(f"{d:%d-%m-%Y}" for d in datums) or (peildatum or "onbekend"),
+        "melding": UWV_ARCHIEF,
+    }
 
 
 def _in_provincie(df: pd.DataFrame, provincie: str) -> pd.DataFrame:

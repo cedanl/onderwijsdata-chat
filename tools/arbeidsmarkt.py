@@ -1,5 +1,8 @@
 """Arbeidsmarkt na mbo/hbo/wo in de chat: UWV-vacatures en ROA-schoolverlatersinformatie (#441).
 
+UWV Open Match is sinds #1226 een archief (besluit #1221): elk resultaat van get_uwv_vacatures begint met `archief`,
+de peildatum en de melding dat UWV de reeks niet meer maakt. De actuele vacatures staan in tools/vacatures.py (CBS).
+
 UWV is per provincie of gemeente, ROA landelijk of per arbeidsmarktregio of provincie; geen van
 beide is per instelling. De data komt uit `data/arbeidsmarkt.py` (gedeeld met de dashboards,
 CH-23) en elke aanroep loopt langs dezelfde scopepoort als CBS, DUO en RIO (`scope_blokkade`, CH-37). Elk getal komt uit de
@@ -166,15 +169,24 @@ def _geen_vacatures(provincie: str, gemeente: str | None) -> str:
     return f"Geen UWV-vacatures voor provincie '{provincie}'. Provincies: {arbeidsmarkt.provincies()}."
 
 
+def _archiefmelding(melding: str) -> str:
+    """Een melding zonder cijfers begint ook met het archief (#1226): peildatum en dat UWV de reeks niet meer maakt."""
+    archief = arbeidsmarkt.uwv_archief(arbeidsmarkt.uwv_peildatum())
+    return f"Archief (UWV Open Match, peildatum {archief['peildatum']}): {archief['melding']} {melding}"
+
+
 def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str | None = None) -> str:
+    """UWV Open Match als archief (#1226): elk resultaat begint met `archief`, de peildatum en de melding uit code."""
     if blokkade := scope_blokkade(UWV_ID):
         return blokkade
-    if sector and sector not in arbeidsmarkt.SECTOR_CLUSTER_MAP:
-        return f"Sector '{sector}' is onbekend. Kies een van: {sorted(arbeidsmarkt.SECTOR_CLUSTER_MAP)}."
     try:
+        if sector and sector not in arbeidsmarkt.SECTOR_CLUSTER_MAP:
+            return _archiefmelding(
+                f"Sector '{sector}' is onbekend. Kies een van: {sorted(arbeidsmarkt.SECTOR_CLUSTER_MAP)}."
+            )
         stand = arbeidsmarkt.uwv_stand(provincie, gemeente)
         if stand is None:
-            return _geen_vacatures(provincie, gemeente)
+            return _archiefmelding(_geen_vacatures(provincie, gemeente))
     except Exception as e:
         return fouten.bronfout("UWV", e)
 
@@ -185,6 +197,8 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str |
     # De ouderdom uit code, niet uit het model (#1219); bij een verouderde stand ook waarom en waar het actuele staat.
     toelichting = arbeidsmarkt.uwv_actualiteit(stand.peildatum)
     result = {
+        # Vooraan: UWV maakt deze reeks niet meer (#1226); het model leest dit vóór de cijfers.
+        "archief": arbeidsmarkt.uwv_archief(stand.peildatum),
         "bron": catalogus_titel(UWV_ID),
         "dataset": UWV_ID,
         "data_key": key,
