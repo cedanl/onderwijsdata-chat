@@ -135,8 +135,8 @@ Zonder instelling (landelijk) telt de keuze de onderdrukte cellen per jaar over 
 totaal van het dashboard is de som per instelling, dus daar telt de keuze per instelling. Een bestand zonder rijen voor
 die instelling en dat jaar doet niet mee; laadt een bestand niet, dan kiest `get_maat` uit de andere en noemt het onder
 `bestandskeuze.niet_geladen`. Binnen één reeks kan het bestand per jaar wisselen: `get_maat` noemt dan het bestand per
-schooljaar (`bestandskeuze.per_schooljaar` en een regel in het Telling-blok), het dashboard per reeks en jaar
-(`bestandskeuze`) en in zijn bronblok elk bestand dat minstens één instelling en jaar leverde. Een vorm (voltijd,
+schooljaar (`bestandskeuze.per_schooljaar` en een regel in het Telling-blok), het regiodashboard van een
+ho-instelling per reeks en jaar (`bestandskeuze`), en elk dashboard in zijn bronblok elk bestand dat minstens één instelling en jaar leverde. Een vorm (voltijd,
 deeltijd, duaal) filtert op OPLEIDINGSVORM, die alleen het opleidingsvorm-bestand heeft: dan is dat het bestand. De
 verdeling naar geslacht op het dashboard komt uit het geslacht-bestand, het enige met GESLACHT; haar som kan een paar
 studenten van het totaal afwijken. Mbo (één bestand per instelling en leerweg) en de prognosebestanden vallen buiten
