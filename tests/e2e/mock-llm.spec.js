@@ -111,3 +111,45 @@ test('een ingetrokken getal is bij geen enkele delta zichtbaar (#1254)', async (
   expect(meting.zichtbaar).toEqual([])
   expect(meting.inDom).toEqual([])
 })
+
+// #1268: de plankaart met Geavanceerd aan. Een koppelvraag laat het nepmodel na de zoekactie een plan over twee bronnen
+// voorleggen (agent/nepmodel.py, PLAN): de kaart komt vóór het laden, krijgt de focus, is met het toetsenbord te bedienen
+// en axe vindt er niets op. "Pas aan" zet de vraag met het plan in het invoerveld; er wordt niets geladen, dus deze test
+// heeft geen netwerk naar CBS of DUO nodig. axe-core komt uit frontend/node_modules (de job bouwt de frontend eerst).
+test('de plankaart: focus, toetsenbord, axe en Pas aan (#1268)', async ({ page }) => {
+  const KOPPELVRAAG = 'Koppel de mbo-studenten en de ingeschrevenen in het ho per schooljaar'
+  await page.goto('/chat')
+  await handleLoginIfNeeded(page)
+  await expect(page.locator('.chat-welcome')).toBeVisible()
+  await zetGeavanceerdAan(page)
+
+  await page.locator('textarea.chat-input').fill(KOPPELVRAAG)
+  await page.getByRole('button', { name: 'Verstuur bericht' }).click()
+
+  const kaart = page.getByRole('region', { name: 'Eerst het plan: klopt dit?' })
+  await expect(kaart).toBeVisible({ timeout: 60_000 })
+  await expect(kaart).toBeFocused()
+  await expect(kaart).toContainText('85354NED')
+  await expect(kaart).toContainText('p01hoinges')
+  await expect(kaart).toContainText('Koppelen op schooljaar.')
+
+  await page.addScriptTag({ path: 'frontend/node_modules/axe-core/axe.min.js' })
+  const bevindingen = await page.evaluate(async () => {
+    const { violations } = await window.axe.run(document.querySelector('.plan-kaart'))
+    return violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)
+  })
+  expect(bevindingen).toEqual([])
+
+  await page.keyboard.press('Tab')
+  await expect(kaart.getByRole('button', { name: 'Klopt, ga door' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  const aanpassen = kaart.getByRole('button', { name: 'Pas aan: zet je vraag en het plan in het invoerveld' })
+  await expect(aanpassen).toBeFocused()
+  await page.keyboard.press('Enter')
+
+  const veld = page.locator('textarea.chat-input')
+  await expect(veld).toHaveValue(new RegExp(`^${KOPPELVRAAG}`))
+  await expect(veld).toHaveValue(/Koppelen op: schooljaar\./)
+  await expect(kaart.getByRole('status')).toContainText('Pas aan')
+  await expect(kaart.getByRole('button', { name: 'Klopt, ga door' })).toHaveCount(0)
+})

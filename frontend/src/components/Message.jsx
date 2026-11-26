@@ -8,6 +8,7 @@ import { hasExport } from '../dataExport'
 import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
+import PlanKaart from './PlanKaart'
 import EigenGetal from './EigenGetal'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { actualiteitRegels, voorbehoudRegels } from '../voorbehoud'
@@ -50,6 +51,12 @@ function QuestionButtons({ questions, onPick, busy, label, kop = false }) {
   )
 }
 
+const AVATAR = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+  </svg>
+)
+
 function hasAssistantContent(msg) {
   return !!(
     msg.content ||
@@ -76,7 +83,8 @@ function kopieVan(msg) {
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
 // vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
 // onEigenGetal: (id, getal) => verstuurd?; onder een antwoord met één hoofdgetal de knop "Wijkt af van je eigen cijfer?" (#1258).
-export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
+// planStatus, onPlanBevestig, onPlanAanpassen: de plankaart (#1268), zie planState.js.
+export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null, planStatus = null, onPlanBevestig = null, onPlanAanpassen = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   const geavanceerd = useGeavanceerd()
   if (msg.role === 'user') {
@@ -105,6 +113,18 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
     )
   }
 
+  // De plankaart komt uit code (#1268): geen modellabel, geen kopieerknop, alleen de kaart.
+  if (msg.plan) {
+    return (
+      <div className="message assistant">
+        <div className="message-avatar">{AVATAR}</div>
+        <div className="message-bubble message-bubble-assistant message-bubble-plan">
+          <PlanKaart plan={msg.plan} status={planStatus || 'verlopen'} onBevestig={onPlanBevestig} onAanpassen={onPlanAanpassen} busy={busy} />
+        </div>
+      </div>
+    )
+  }
+
   const awaiting = isAwaitingFirstToken(msg)
   // Een grafiek komt binnen zodra create_plot draait, vóór de eindtekst; in de bubbel staat ze onder de tekst, dus
   // op een telefoon duwde elke gestreamde regel haar omlaag (CLS 0,096, #639). Daar verschijnt ze pas als het
@@ -126,11 +146,7 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
 
   return (
     <div className="message assistant">
-      <div className="message-avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
+      <div className="message-avatar">{AVATAR}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {/* Getallen die de controle toetst, wachten tot die klaar is (#1254): ook in de tussentekst en een eerdere versie. */}
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} wacht={wachtVan(msg)} />

@@ -12,6 +12,7 @@ import { regelUit } from '../getalWacht'
 import { vasteMaat } from '../vasteMaat'
 import { hoofdgetalUit } from '../eigenGetal'
 import { actualiteitRegels } from '../voorbehoud'
+import { aanpasTekst, planUit } from '../planState'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // a few minutes (#417); the server ends a report itself after GENEREER_TIMEOUT_S (8 min, #759), which
@@ -51,8 +52,15 @@ const GEEN_CHECKLIST = null
 const itemsUit = ev => (Array.isArray(ev.items) ? ev.items.filter(i => Number.isInteger(i?.beurt) && typeof i.vraag === 'string') : null)
 
 // maxHistory: the server's MAX_HISTORY from /api/config (#789); without it the constant.
-export function useChat({ maxHistory } = {}) {
+// geavanceerd: "Geavanceerd" staat aan (#1269). Zonder login beslist de server daarover alleen met de boolean in het
+// bericht (de plankaart, #1268); met login leest hij de database en telt de boolean niet.
+export function useChat({ maxHistory, geavanceerd = false } = {}) {
   const [messages, setMessages] = useState([])
+  // Het plan waarop de server wacht (#1268): alleen die kaart kan nog "Klopt, ga door". Een nieuwe vraag, een nieuwe
+  // verbinding of een ander gesprek maakt het leeg.
+  const [openPlanId, setOpenPlanId] = useState(null)
+  const geavanceerdRef = useRef(geavanceerd)
+  useEffect(() => { geavanceerdRef.current = geavanceerd })
   const [busy, setBusy] = useState(false)
   // The stop button was pressed and the server has not ended the run yet (#1087): the button says so.
   const [stopping, setStopping] = useState(false)
@@ -400,6 +408,19 @@ export function useChat({ maxHistory } = {}) {
         }])
         finishStream()
       },
+      // De plankaart (#1268): de beurt stopt vóór het laden; de kaart komt uit code, dus zonder modellabel.
+      plan(ev) {
+        setThinking(false)
+        closeCurrentMsg()
+        const plan = planUit(ev)
+        if (plan) {
+          setOpenPlanId(plan.id)
+          setMessages(prev => [...prev, {
+            id: nextId(), role: 'assistant', content: typeof ev.tekst === 'string' ? ev.tekst : '', plan, done: true, vast: true,
+          }])
+        }
+        finishStream()
+      },
       // The explanation of a user's own number (#1258): a message from code, with its step for the export.
       verschilverklaring(ev) {
         if (typeof ev.content !== 'string' || !ev.content) return
@@ -466,10 +487,10 @@ export function useChat({ maxHistory } = {}) {
 
     const chatStreamEvents = new Set([
       'message_start', 'message_cancel', 'text_delta', 'tool_start',
-      'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error', 'run_slow',
+      'tool_end', 'figure', 'message_end', 'clarification', 'plan', 'starter_questions', 'error', 'run_slow',
     ])
     const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
-    const runEndEvents = new Set(['message_end', 'clarification', 'starter_questions', 'error'])
+    const runEndEvents = new Set(['message_end', 'clarification', 'plan', 'starter_questions', 'error'])
     const reportRefusals = new Set(['busy', 'error'])
 
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
@@ -548,7 +569,8 @@ export function useChat({ maxHistory } = {}) {
         setConnected(true)
         setBijwerken(false)
         heartbeat.start()
-        // A new connection is a new server session, so a pending reset is moot.
+        // A new connection is a new server session, so a pending reset is moot, and so is an open plan (#1268).
+        setOpenPlanId(null)
         resettingRef.current = false
         runVerlatenRef.current = false
         setResetting(false)
@@ -632,8 +654,10 @@ export function useChat({ maxHistory } = {}) {
     setThinking(true)
     const id = nextId()
     lastSentRef.current = { id, content, draft: true }
+    // Een nieuwe vraag: de server laat een open plan vallen (#1268).
+    setOpenPlanId(null)
     setMessages(prev => [...prev, { id, role: 'user', content, done: true, model: modelRef.current }])
-    wsRef.current.send(JSON.stringify({ action: 'message', content }))
+    wsRef.current.send(JSON.stringify({ action: 'message', content, ...(geavanceerdRef.current && { geavanceerd: true }) }))
     return true
   }, [canSend])
 
@@ -646,9 +670,41 @@ export function useChat({ maxHistory } = {}) {
     const id = nextId()
     lastSentRef.current = { id, content: choice, draft: false }
     setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true, model: modelRef.current }])
-    wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
+    setOpenPlanId(null)
+    wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice, ...(geavanceerdRef.current && { geavanceerd: true }) }))
     return true
   }, [canSend])
+
+  // "Klopt, ga door" op de plankaart `kaartId` (#1268): de beurt gaat verder met precies dit plan. De keuze staat als
+  // vraag in het gesprek, zodat een heropend gesprek haar toont; zegt net als send() of ze wegging.
+  const sendPlanBevestiging = useCallback((kaartId, plan) => {
+    if (!plan?.id || plan.id !== openPlanId || !canSend()) return false
+    busyRef.current = true
+    setBusy(true)
+    setSlow(false)
+    setThinking(true)
+    const id = nextId()
+    const content = 'Klopt, ga door'
+    lastSentRef.current = { id, content, draft: false }
+    setOpenPlanId(null)
+    setMessages(prev => [
+      ...prev.map(m => (m.id === kaartId ? { ...m, planKeuze: 'bevestigd' } : m)),
+      { id, role: 'user', content, done: true, model: modelRef.current, planBevestiging: true },
+    ])
+    wsRef.current.send(JSON.stringify({ action: 'plan_bevestigen', id: plan.id, ...(geavanceerdRef.current && { geavanceerd: true }) }))
+    return true
+  }, [canSend, openPlanId])
+
+  // "Pas aan" (#1268): het plan vervalt zonder run, en de vraag met de plankeuzes gaat terug naar het invoerveld. Ook na
+  // herladen, als de server het plan niet meer kent. Geeft de tekst voor het invoerveld terug.
+  const planAanpassen = useCallback((kaartId, plan) => {
+    if (plan?.id && plan.id === openPlanId && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'plan_aanpassen', id: plan.id }))
+    }
+    if (plan?.id === openPlanId) setOpenPlanId(null)
+    setMessages(prev => prev.map(m => (m.id === kaartId ? { ...m, planKeuze: 'aangepast' } : m)))
+    return aanpasTekst(plan)
+  }, [openPlanId])
 
   // Een eigen getal naast het hoofdgetal van een antwoord (#1258): geen run en geen model, dus ook niet bezig.
   // Zegt of het wegging; de server antwoordt met verschilverklaring of eigen_getal_fout.
@@ -795,6 +851,7 @@ export function useChat({ maxHistory } = {}) {
     setBusy(false)
     setThinking(false)
     setHistoryDataKeys(0)
+    setOpenPlanId(null)
     clearTimeout(checklistTimeoutRef.current)
     setReportChecklist(GEEN_CHECKLIST)
     currentMsgRef.current = null
@@ -825,5 +882,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, openPlanId, sendPlanBevestiging, planAanpassen, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }
