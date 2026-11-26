@@ -304,6 +304,13 @@ CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
     ),
 }
 
+# CBS-tabellen over de arbeidsmarkt (#1226, #1227): vacatures, geen onderwijsdata. CBS labelt ze 'Allen', maar ze hebben
+# geen dimensie naar onderwijssoort, dus ook geen po- of vo-rijen om weg te filteren.
+ARBEIDSMARKT_CBS: dict[str, str] = {
+    "83599NED": "CBS-vacatures per provincie en bedrijfstak (get_vacatures)",
+    "85081NED": "CBS-vacatures per beroep, landelijk (get_ontstane_vacatures)",
+}
+
 # Records waarvan `onderwijstype` de sector niet noemt ('Allen', 'Arbeidsmarkt') of
 # meer sectoren omvat. Een nieuw record zonder besluit hier valt erbuiten.
 TOEGELATEN: dict[str, str] = {
@@ -324,11 +331,13 @@ TOEGELATEN: dict[str, str] = {
     **dict.fromkeys(SECTORFILTER, "RIO-register; alleen met een mbo/hbo/wo-sectorfilter"),
     # Examenlicenties bestaan alleen in het mbo (WEB).
     "examenlicenties": "RIO-register; examenlicenties bestaan alleen in het mbo",
-    # Arbeidsmarkt na mbo/hbo/wo: de arbeidsmarktkant van het chatprofiel, via get_uwv_vacatures
-    # en get_roa_benchmark (besluit 08-10, #441).
+    # Arbeidsmarkt na mbo/hbo/wo: de arbeidsmarktkant van het chatprofiel, via get_vacatures, get_ontstane_vacatures,
+    # get_uwv_vacatures (archief) en get_roa_benchmark (besluit 08-10, #441; de CBS-vacatures sinds #1226, #1227).
+    # Vacatures zijn arbeidsmarktcontext, geen onderwijsdata over po of vo.
     "ais2030": "ROA-prognoses per mbo/hbo/wo-opleiding",
     "ais2028": "ROA-prognoses per mbo/hbo/wo-opleiding",
-    "uwv-open-match-data": "UWV-vacatures; arbeidsmarktkant van het chatprofiel",
+    "uwv-open-match-data": "UWV-vacatures (archief, mei 2023); arbeidsmarktkant van het chatprofiel",
+    **{tabel: f"{reden}; arbeidsmarktkant van het chatprofiel" for tabel, reden in ARBEIDSMARKT_CBS.items()},
 }
 
 # Vo-bronnen die een vraag over vervolgonderwijs van context voorzien: wie er van het vo naar het mbo of het ho kan

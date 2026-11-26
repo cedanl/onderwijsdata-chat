@@ -16,6 +16,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from onderwijsbronnen.duo.financien import KENGETALLEN
 
+from data import vacatures_ontstaan
 from tools import TOOL_RUN_ANALYSIS, cbs_meta, collegegeld, financien, mbo_indicatoren, studiekeuze, wo_personeel
 from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, ROA_SCHOOLVERLATERS_OUD, UWV_ID, roa_blokken, roa_onderdeelnaam
@@ -413,6 +414,23 @@ def _uit_mbo_indicatoren(parsed: dict) -> Iterator[Meetwaarde]:
                 yield from _afgerond(jaar.get(veld), maat, selectie, None, eenheid, regel)
 
 
+def _uit_ontstane_vacatures(parsed: dict) -> Iterator[Meetwaarde]:
+    """get_ontstane_vacatures (#1227): per beroep en jaar het aantal ontstane vacatures, met beroep en jaar als
+    selectie. De rij is die in de tabel achter data_key: per beroep elk jaar, in de volgorde van het resultaat. Een
+    jaar zonder cijfer (null, geen gegevens) heeft geen meetwaarde, maar telt wel als rij."""
+    data_key = _sleutel(parsed)
+    rij = 0
+    for reeks in parsed.get("reeksen") or ():
+        per_jaar = reeks.get("per_jaar") if isinstance(reeks, dict) else None
+        if not isinstance(per_jaar, dict):
+            continue
+        for jaar, aantal in per_jaar.items():
+            if (cijfers := _getal(aantal)) is not None:
+                selectie = (f"Beroep: {reeks.get('beroep')}", f"Jaar: {jaar}")
+                yield Meetwaarde(cijfers, "Ontstane vacatures", selectie, data_key, rij=rij)
+            rij += 1
+
+
 # Per dataset de vertaler van een tool met een eigen resultaatvorm: arbeidsmarkt (CH-39), financien en WOPI (#956), de
 # Studiekeuzedatabase (#957), het wettelijk collegegeld (#970), de mbo-indicatoren (#982).
 _EIGEN_VORM = {
@@ -423,6 +441,7 @@ _EIGEN_VORM = {
     studiekeuze.DATASET: _uit_skdb,
     collegegeld.DATASET: _uit_collegegeld,
     mbo_indicatoren.DATASET: _uit_mbo_indicatoren,
+    vacatures_ontstaan.DATASET: _uit_ontstane_vacatures,
 }
 
 

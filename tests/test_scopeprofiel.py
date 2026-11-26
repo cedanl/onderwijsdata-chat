@@ -673,9 +673,13 @@ def test_in_de_echte_catalogus_valt_geen_gemengde_of_po_vo_cbs_tabel_binnen_de_g
 
     # Een tabel die ook over po/vo of alle onderwijssoorten gaat, alleen als de code de rijen
     # voor mbo/hbo/wo selecteert (CBS_SECTORFILTER), met een besluit dat hij alleen over ho gaat,
-    # of als vo-context voor vervolgonderwijs (VO_CONTEXT, #557).
+    # of als vo-context voor vervolgonderwijs (VO_CONTEXT, #557). De vacaturetabellen (#1226, #1227) gaan over de
+    # arbeidsmarkt, zonder dimensie naar onderwijssoort (ARBEIDSMARKT_CBS).
     gemengd = {i for i, e in cbs.items() if not set(e.get("onderwijstype") or []) <= scopeprofiel.SECTOREN}
-    assert gemengd <= set(scopeprofiel.CBS_SECTORFILTER) | {"71229ned"} | set(scopeprofiel.VO_CONTEXT)
+    toegestaan = {"71229ned", *scopeprofiel.CBS_SECTORFILTER, *scopeprofiel.VO_CONTEXT, *scopeprofiel.ARBEIDSMARKT_CBS}
+    assert gemengd <= toegestaan
+    for tabel in scopeprofiel.ARBEIDSMARKT_CBS:
+        assert not any("onderwijs" in d.lower() for d in _echt()[tabel].get("_dimensies") or []), tabel
     # De gearchiveerde vo-reeksen blijven erbuiten (#877): pas mee bij een echte vraag.
     assert not {"80040ned", "80041ned", "80042ned", "80043ned", "71215ned"} & set(cbs)
     assert {"85701NED", "85702NED"} <= gemengd  # Assen-replay: toegelaten, met de sectorselectie (#473)

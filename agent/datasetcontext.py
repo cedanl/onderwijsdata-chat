@@ -19,27 +19,31 @@ from agent.session_data import (
 )
 from agent.stream import Emit
 from core.errors import Gebruikersfout
-from tools import arbeidsmarkt, financien, store, studiekeuze, wo_personeel
+from tools import arbeidsmarkt, financien, store, studiekeuze, vacatures, wo_personeel
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_ONTSTANE_VACATURES,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_VACATURES,
     TOOL_GET_WO_PERSONEEL,
 )
 
 # De tools die data laden: alleen hun aanroep gaat als herlaadaanroep het recept in (#505).
-# De arbeidsmarkttools laden sinds #577 ook een dataset, de financiën en WOPI sinds #956.
+# De arbeidsmarkttools laden sinds #577 ook een dataset, de financiën en WOPI sinds #956, de CBS-vacatures sinds #1226.
 LAADTOOLS = frozenset(
     {
         TOOL_GET_DUO_DATA,
         TOOL_GET_CBS_DATA,
         TOOL_GET_RIO_DATA,
+        TOOL_GET_VACATURES,
+        TOOL_GET_ONTSTANE_VACATURES,
         TOOL_GET_UWV_VACATURES,
         TOOL_GET_ROA_BENCHMARK,
         TOOL_GET_BESTUURSFINANCIEN,
@@ -50,6 +54,7 @@ LAADTOOLS = frozenset(
 # De vaste dataset achter een tool waarvan de aanroep geen dataset-ID noemt (#577, #956).
 _VASTE_DATASET = {
     **arbeidsmarkt.DATASET,
+    **vacatures.DATASET,
     TOOL_GET_BESTUURSFINANCIEN: financien.DATASET,
     TOOL_GET_WO_PERSONEEL: wo_personeel.DATASET,
     TOOL_GET_STUDIEKEUZE: studiekeuze.DATASET,
@@ -197,6 +202,8 @@ _SOURCE_PREFIXES = {
     TOOL_GET_DUO_DATA: "DUO",
     TOOL_GET_CBS_DATA: "CBS",
     TOOL_GET_RIO_DATA: "RIO",
+    TOOL_GET_VACATURES: "CBS",
+    TOOL_GET_ONTSTANE_VACATURES: "CBS",
     TOOL_GET_UWV_VACATURES: "UWV",
     TOOL_GET_ROA_BENCHMARK: "ROA",
     TOOL_GET_BESTUURSFINANCIEN: "DUO",
@@ -234,7 +241,7 @@ def sources_from_recipe(recipe: list[dict]) -> list[str]:
         dataset = args.get("dataset_id") or args.get("resource") or _VASTE_DATASET.get(call["name"], "")
         resource = args.get("resource") if args.get("dataset_id") else None
         label = _source_label(prefix, dataset, resource, args.get("vo_context") is True)
-        if peilmoment := arbeidsmarkt.peilmoment(call["name"]):
+        if peilmoment := arbeidsmarkt.peilmoment(call["name"]) or vacatures.peilmoment(call["name"]):
             label += f", {peilmoment}"
         if label not in sources:
             sources.append(label)
