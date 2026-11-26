@@ -16,10 +16,13 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 
 | Je wilt | Ga naar |
 |---------|---------|
-| Weten waar de cijfers vandaan komen | [Databronnen](databronnen.md) en [Betrouwbaarheid per release](betrouwbaarheid.md) |
-| De vaste dashboards begrijpen | [Dashboards](dashboards.md) |
-| Zien welke tools de assistent gebruikt | [Tools](tools.md) |
-| Weten wat er met je vraag en je gegevens gebeurt | [Privacy](privacy.md) |
+| Weten wat dit is en voor wie | [Over Onderwijsdata Chat](product/over.md) |
+| Zien wat je ermee kunt | [Wat kun je ermee](product/mogelijkheden.md) en [Voorbeeldvragen](product/voorbeelden.md) |
+| Zelf beginnen | [Aan de slag als gebruiker](product/aan-de-slag.md) |
+| Weten waar de cijfers vandaan komen | [Databronnen begrijpen](product/databronnen.md) |
+| Weten of een antwoord klopt | [Een antwoord lezen en controleren](product/betrouwbaarheid.md) |
+| Weten wat er met je gegevens gebeurt | [Privacy in gewone taal](product/privacy.md) |
+| Een vraag of een probleem hebben | [Veelgestelde vragen](product/faq.md) en [Problemen oplossen](product/problemen-oplossen.md) |
 | De app zelf draaien of koppelen | [Installatie voor ontwikkelaars](aan-de-slag.md), [API](api.md) en [MCP-server](mcp.md) |
 | De app beheren | [Configuratie](configuratie/index.md), [Operatie & runbook](operatie.md) en [Hosting](hosting.md) |
 
