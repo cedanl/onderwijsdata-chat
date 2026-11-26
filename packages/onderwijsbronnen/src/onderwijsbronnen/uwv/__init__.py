@@ -3,7 +3,11 @@
 UWV publiceert wekelijkse snapshots van vacatures en werkzoekenden
 per beroep, postcodegebied en provincie — inclusief opleidingsniveau-uitsplitsing.
 
-Data loopt t/m mei 2023 (daarna gestopt met deze publicatievorm).
+Data loopt t/m 16 mei 2023. Volgens de documentatie van UWV op data.overheid.nl is de
+reden een technische storing tijdens de productie: "De databestanden vanaf 31-05-2023 zijn
+niet aanwezig en zullen niet alsnog gemaakt worden", en tot nader order verschijnen er geen
+nieuwe. Actuele vacatures per kwartaal publiceren UWV (Vacaturemarkt, Spanningsindicator) en
+CBS (tabel 83599NED); dit pakket laadt die niet.
 
 Gebruik:
     from onderwijsbronnen import uwv

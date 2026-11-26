@@ -172,7 +172,12 @@ bewaarde gesprek. Een vast antwoord uit code zonder bronnen heeft geen bewijsbes
 | `antwoord` | De antwoordtekst zoals hij er staat |
 
 Een sleutel die niet van toepassing is, is `null`: een antwoord zonder vaste maat heeft `"vaste_maat": null`, een
-antwoord van vóór #1244 heeft per stap `"arguments": null`, een antwoord van vóór #1260 `"controles": null`. Een voorbeeld, ingekort:
+antwoord van vóór #1244 heeft per stap `"arguments": null`, een antwoord van vóór #1260 `"controles": null`.
+
+De regels die code onder het antwoord zet ("Andere definities", "Ter controle", "Vergelijkingsgroep", #1271) staan in
+`antwoord`, want ze horen bij de tekst. Hun stappen staan in `toolstappen` na die van het model, met hun argumenten
+(een andere telling als `vorm`, het bronpaar en het schooljaar), en hun getallen in `citaties`, met de stap waaruit ze
+komen. Het schema blijft daarmee `onderwijsdata-chat/bewijs/1`. Een voorbeeld, ingekort:
 
 ```json
 {

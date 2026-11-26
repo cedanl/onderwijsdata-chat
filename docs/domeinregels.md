@@ -277,3 +277,77 @@ Het alternatief is het eerste bestand: het onderdrukt de minste cellen en is het
 
 `tests/test_mbo_studenten_landelijk.py` toetst de maat, de regel en deze sectie; `tests/test_maten_ijk.py` de live
 waarden (475.460 incl. en 465.820 excl. extranei voor 2024/25).
+
+## Andere definities per vaste maat
+
+Bij een vaste maat (`get_maat`) rekent code het getal ook uit onder de gangbare andere definities en zet het in één
+regel onder het antwoord, "**Andere definities:** …" (#1256). Beide getallen kloppen bij hun eigen definitie; de regel
+maakt de keuze zichtbaar in plaats van één getal met schijnzekerheid. De lijst staat in
+[`tools/andere_definities.py`](https://github.com/cedanl/onderwijsdata-chat/blob/main/tools/andere_definities.py), per
+maat hooguit drie, elk met een uitleg van één regel en een recept (de get_maat-argumenten die anders zijn):
+
+| Maat | Andere definities | Recept |
+|---|---|---|
+| `ingeschreven_personen_ho` | inschrijvingen; alleen voltijd | `maat=inschrijvingen_ho`; `vorm=voltijd` |
+| `inschrijvingen_ho` | personen; alleen voltijd | `maat=ingeschreven_personen_ho`; `vorm=voltijd` |
+| `eerstejaars_ho` | alleen voltijd | `vorm=voltijd` |
+| `deelnemers_ho_landelijk` | alleen voltijd | `vorm=voltijd` |
+| `mbo_studenten_instelling` | zonder extranei (zonder de kolom `EX`) | `vorm=zonder_extranei` |
+| `mbo_studenten_landelijk` | zonder extranei, of met extranei als het gesprek extranei uitsluit | `vorm=zonder_extranei` (`A041867`) of `vorm=met_extranei` (`A025290`) |
+| `doorstroom_vmbo_mbo` | zonder extranei, of met extranei als het gesprek extranei uitsluit | idem, op `Leerweg` |
+
+- Code rekent elk alternatief op dezelfde afbakening (instelling of sector) en voor het schooljaar van het hoofdgetal:
+  het laatste jaar met een waarde. Een vorm-alternatief geldt alleen bij vorm `alle`; personen ↔ inschrijvingen houdt
+  de vorm van het antwoord. Een alternatief dat gelijk is aan het recept van het antwoord valt weg.
+- Wijkt een alternatief meer dan 1% af (`DREMPEL_PCT`), dan noemt de regel de getallen met het verschil in procenten:
+  "in 2024/25 telt dit antwoord 475.460; zonder extranei 465.820 (-2,0%)". Anders de vaste zin "andere definities
+  geven hetzelfde beeld", zonder getallen.
+- `met_extranei` en `zonder_extranei` zijn interne vormen: het schema van `get_maat` noemt ze niet en het model krijgt
+  een melding als het ze toch kiest. De telling in het antwoord volgt de standaard van de tabel en het gesprek (#653).
+- Geen alternatief bij geslacht per opleiding, en geen bij vrije `query_data`- of `run_analysis`-antwoorden.
+
+`tests/test_andere_definities.py` faalt als een maat geen alternatief heeft, of een alternatief geen recept dat
+`get_maat` kan plannen.
+
+## Bronparen
+
+Voor een deel van de maten tellen DUO en CBS hetzelfde, met een andere definitie of peildatum. Welke DUO-maat bij
+welke CBS-maat hoort, is een gecureerde tabel: [`data/bronparen.toml`](https://github.com/cedanl/onderwijsdata-chat/blob/main/data/bronparen.toml)
+(#1259). Het model koppelt nooit zelf, en geen toolargument kiest een paar: alleen de maat en het niveau van het
+get_maat-resultaat tellen (`tools/bronparen.paar_voor`).
+
+Per paar:
+
+| Veld | Wat |
+|---|---|
+| `id`, `maat`, `niveau` | het paar haakt op een vaste maat op een niveau; nu alleen `landelijk` |
+| `drempel_pct` | boven dit verschil (in % van het CBS-getal) zonder bekende reden: "verschil, reden niet vastgesteld" |
+| `issue`, `vastgesteld` | waar en wanneer het paar is vastgesteld; zonder beide laadt het bestand niet |
+| `waarneming` | de waarneming waaruit het paar kwam |
+| `[paar.cbs]` | tabel en vaste codes |
+| `[paar.duo]` | dataset, bestand (woorden in de titel), periodekolom, telkolommen en afbakening |
+| `[[paar.reden]]` | per bekende reden de tekst en de bron; een reden zonder bron laadt niet |
+
+Het enige paar nu is **mbo-studenten landelijk** (vastgesteld 25-11-2026, #1259): CBS 85354NED (incl. extranei, de
+standaard van de tabel) tegenover DUO "Mbo-studenten per instelling", het bestand per instelling en leerweg van
+`mbo_studenten_instelling`, opgeteld over alle instellingen. Dat bestand onderdrukt de minste cellen (zie de tabel
+hierboven: 476.079 voor 2024, vier cellen op -1); het getal van de waarneming, 474.963, kwam uit het bestand per
+sectorkamer. Bekende redenen: DUO laat aantallen van 1 tot en met 4 weg (een ondergrens) en CBS rondt af op tientallen.
+
+Onder het antwoord: "**Ter controle:** DUO 'Mbo-studenten per instelling' telt in 2024/25 476.079 (…): 619 meer dan CBS
+85354NED (475.460), +0,1%. Bekende redenen voor een verschil: …". Het DUO-getal komt uit een eigen stap van code
+(laden met `get_duo_data`, selecteren met `query_data`), met een citatie naar DUO en de dataset in de Bronnen. De regel
+staat ook in het bewijs van de beurt, in de export van het gesprek en in het definitieblok van het rapport.
+
+**Wat de kruiscontrole niet zegt.** Niet welk getal klopt: beide kloppen bij hun eigen definitie. Niet hoeveel elke
+reden verklaart: de redenen zijn bekend, hun grootte bij dit paar niet (het verschil van ongeveer 600 is nog niet
+verklaard, zie hierboven). Binnen de drempel betekent niet dat het verschil toeval is, en "reden niet vastgesteld" niet
+dat er een fout is.
+
+**Een paar toevoegen.** Alleen na een besluit van de gebruiker, met een bron per reden:
+
+1. Zet een `[[paar]]` in `data/bronparen.toml` met een vaste maat uit `tools/maten.py`, het niveau, de drempel, het
+   issue en de datum van vaststelling, en per kant de dataset en codes of kolommen.
+2. Noem elke bekende reden met haar bron (de passage of het bestand waaruit ze volgt). Zonder bekende reden mag een paar
+   ook: dan zegt de regel boven de drempel "verschil, reden niet vastgesteld".
+3. Draai `tests/test_kruiscontrole.py`; een ongeldig paar laadt niet (`BronpaarFout`) en de test noemt het veld.

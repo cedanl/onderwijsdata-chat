@@ -8,6 +8,7 @@ import { hasExport } from '../dataExport'
 import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
+import EigenGetal from './EigenGetal'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { voorbehoudRegels } from '../voorbehoud'
 import ControleRegel from './ControleRegel'
@@ -73,7 +74,8 @@ function kopieVan(msg) {
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
 // vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
-export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// onEigenGetal: (id, getal) => verstuurd?; onder een antwoord met één hoofdgetal de knop "Wijkt af van je eigen cijfer?" (#1258).
+export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   if (msg.role === 'user') {
     return (
@@ -155,6 +157,7 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
             )}
+            {settled && msg.done && <EigenGetal hoofdgetal={msg.hoofdgetal} onVerstuur={onEigenGetal} busy={busy} />}
             {msg.stopped && !msg.timeout && !msg.weggegaan && <div className="message-stopped">Genereren gestopt</div>}
             {/* De gebruiker ging zelf weg tijdens het antwoord (#772): geen "Verbinding verbroken". Wie terugkomt, kan de
                 vraag met één klik opnieuw stellen, zoals na een afgebroken antwoord. */}

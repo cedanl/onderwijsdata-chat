@@ -86,7 +86,9 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   `p01hoinges`) telt niet mee.
 - **DUO:** per bestand het resource-ID en `last_modified` uit `onderwijsbronnen.duo` (#717); `peilmoment` in de woorden van de
   bronregel in de chat. `peildatum` en `voorlopig_jaren` komen uit de DUO-beschrijving in de catalogus.
-- **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM.
+- **UWV:** de momentopname van mei 2023; `peildatum` uit de kolom PEILDATUM. `peilmoment` noemt de datum met haar
+  ouderdom ("peildatum 16 mei 2023, ruim 3 jaar oud"), en de regel draagt `peildatum_ouderdom_maanden` en `verouderd`
+  (zie "Ouderdom van de UWV-vacatures" hieronder, #1219).
 - **ROA:** `editie` uit het schema van `onderwijsbronnen.roa`, `versie` uit de kolom `versie` van het bestand.
 - **DUO-financiën en WOPI** (#935, #936): één editie per lading, geen versie per bestand. De lader meldt `editie`
   ("verslagjaren 2021-2025", "2025"), `peildatum` en bij de financiën de publicatiedatum als versie; WOPI noemt titel en
@@ -100,6 +102,28 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
   lcsk.nl/over-ons/studiekeuzedata-raadplegen.
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (UWV en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
+
+### Ouderdom van de UWV-vacatures
+
+De vacatures zijn een momentopname van UWV Open Match; UWV maakt sinds 16 mei 2023 geen nieuwe bestanden (zie
+[Databronnen](databronnen.md)). Naast diplomajaren tot 2025 lijkt dat een achterstand van de app, dus zegt elke plek met
+de UWV-peildatum hoe oud ze is (#1219). De backend rekent, de frontend niet:
+
+- `peildatum_ouderdom_maanden`: de hele maanden van de (jongste) peildatum tot nu (`actualiteit.nu`); een maand is vol
+  op dezelfde dag van de maand. `null` zonder peildatum.
+- `verouderd`: `true` als dat meer dan 12 maanden is (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`, één
+  grens voor dashboards en chat; UWV en CBS publiceren vacatures per kwartaal); 12 maanden of minder is `false`.
+- Beide velden staan in `vacatureaanbod` (`/api/dashboard/regio`), in `match_duiding`
+  (`/api/dashboard/arbeidsmarktmatch`, bij `vacatures_peildatum`), in de UWV-regel van het bronblok en in het resultaat
+  van `get_uwv_vacatures` ([Tools](tools.md#get_uwv_vacatures)).
+- De banner boven de UWV-grafieken noemt de peildatum met de ouderdom ("peildatum 16 mei 2023 (ruim 3 jaar geleden)"),
+  de ondertitels "UWV Open Match, peildatum 16 mei 2023, ruim 3 jaar oud". Bij `verouderd` is de banner een
+  waarschuwing: UWV werkt deze open dataset sinds mei 2023 niet meer bij, en UWV (dashboard Vacaturemarkt) en CBS (tabel
+  83599NED) publiceren de actuele vacatures per kwartaal, met links. De app laadt die niet.
+- De ouderdom in woorden: onder een maand "minder dan een maand", dan "1 maand", "11 maanden", vanaf 12 maanden in
+  jaren, met "ruim" als er maanden over zijn ("1 jaar", "ruim 1 jaar", "ruim 3 jaar").
+- Zonder vacatures noemt het UWV-blok de peildatum uit de payload, of anders `uwv_periode` (de periode uit de
+  UWV-catalogus, `uwv_resources.json`, in de payload van `/api/dashboard/regio`), geen vaste maand (#1220).
 
 ### Jaren en getalnotatie
 
@@ -141,10 +165,11 @@ Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar
   aandeel in de gediplomeerden, beide binnen de sectoren van de instelling. Schaarste als het vacature-aandeel meer dan
   `_MATCH_DREMPEL` (1,2) keer het diploma-aandeel is, overaanbod omgekeerd, anders evenwicht; `None` voor een sector
   zonder beroepenclusters in de indeling. `match_duiding` zegt waar de score op rust (#900): `drempel`,
-  `min_gediplomeerden`, `vacatures_peildatum` (de UWV-momentopname in de provincie), `diplomajaren` (de jaren van het
+  `min_gediplomeerden`, `vacatures_peildatum` (de UWV-momentopname in de provincie) met `peildatum_ouderdom_maanden` en
+  `verouderd` (#1219), `diplomajaren` (de jaren van het
   gemiddelde), `roa_versie` en `sectormapping` (herkomst, versie en model van de indeling: een LLM-classificatie, niet
   van UWV; een veld dat de mapping niet vastlegt, zoals nu het model, staat er niet in, #951). De
-  tegels, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod tonen de peildatum uit de payload; onder de
+  tegels, de grafiek "Gediplomeerden en vacatures per sector" en het vacatureaanbod tonen de peildatum en haar ouderdom uit de payload; onder de
   tegels staan de drie labels met de drempel en wat de score niet zegt (geen opleidingsniveau bij vacatures, één dag
   tegen een meerjarig gemiddelde).
 - **Match als staafgrafiek** (#949): vanaf acht sectoren met een score (`MATCH_GRAFIEK_VANAF` in
@@ -329,6 +354,19 @@ dicht bij de grens kan per jaar in of uit de groep vallen.
 
 Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / landelijk: hbo 20 / 12 / 4 bij drempel
 twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
+
+**Dezelfde groep in de chat (#1267).** Vraagt iemand in de chat naar "vergelijkbare instellingen", "peers" of "de
+vergelijkingsgroep", dan roept het model de tool `vergelijkingsgroep` aan (`tools/vergelijkingsgroep.py`, zie
+[Tools](tools.md#vergelijkingsgroep)). Die vraagt `data.dashboard.vergelijkingsgroep`, met dezelfde context
+(`_build_regio_context`) en dezelfde peerreeks (`_ho_regio_benchmark`, `_mbo_regio_benchmark`) als dit dashboard: dezelfde
+peers, regio-trede, terugval en hetzelfde peergemiddelde van de ingeschrevenen per jaar. De chat kopieert de regels
+niet en voegt er geen toe. Per peer noemt de tool naam, code, omvang en waarom hij erin zit. Onder het antwoord zet code
+één vaste zin met het aantal, de regio-trede en de terugval ("**Vergelijkingsgroep:** Vergeleken met de dashboardgroep van
+Mijn instelling: 3 hogescholen landelijk, …"). Hebben in het laatste jaar minder dan drie peers cijfers, dan geeft de
+chat net als het kerncijfer geen gemiddelde en zegt dat. Noemt de gebruiker zelf instellingen, dan rekent dezelfde
+reeksfunctie over die groep, en zegt de zin dat het niet de dashboardgroep is. `tests/test_vergelijkingsgroep.py` legt
+voor een hogeschool, een universiteit en een mbo-instelling op de bevroren bestanden vast dat chat en dashboard dezelfde
+peers en hetzelfde peergemiddelde geven.
 
 ### Regio, provincie en afdrukken
 

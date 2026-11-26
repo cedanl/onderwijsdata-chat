@@ -81,6 +81,9 @@ describe('bronregel (#904)', () => {
 
   it('herhaalt de peildatum van UWV niet', () => {
     expect(bronDetails(UWV)).toEqual(['peildatum 16 mei 2023', 'opgehaald 5 november 2026'])
+    // #1219: het peilmoment noemt de datum voluit, met de ouderdom; de peildatum komt er niet nog eens bij.
+    const metOuderdom = { ...UWV, peilmoment: 'peildatum 16 mei 2023, ruim 3 jaar oud', peildatum_ouderdom_maanden: 41, verouderd: true }
+    expect(bronDetails(metOuderdom)).toEqual(['peildatum 16 mei 2023, ruim 3 jaar oud', 'opgehaald 5 november 2026'])
   })
 
   // #1143: elke datum als "16 mei 2023"; een technische versiecode staat in een tooltip, niet in de tekst.

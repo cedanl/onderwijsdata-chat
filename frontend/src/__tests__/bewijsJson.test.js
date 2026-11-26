@@ -224,3 +224,66 @@ describe('hetzelfde bewijs na heropenen (#1244)', () => {
     expect(bewijs(heropend[1]).toolstappen).toEqual([{ name: 'get_maat', arguments: ARGS, snippet: 'df = maat()' }])
   })
 })
+
+// #1256 en #1259 naast #1244: de regels onder het antwoord komen uit stappen van code na de modelronde. Die stappen
+// sturen dezelfde events als een modelstap (tool_start met input, tool_end), de regels staan in de tekst van
+// message_end en hun getallen in de citaties (tests/test_kruiscontrole.py toetst die events aan de serverkant).
+describe('de regels onder het antwoord in het bewijs (#1256, #1259)', () => {
+  let root
+
+  afterEach(() => act(() => root.unmount()))
+
+  const MAAT = { maat: 'mbo_studenten_landelijk', schooljaren: ['2024/25'] }
+  const ALTERNATIEF = { ...MAAT, vorm: 'zonder_extranei' }
+  const PAAR = { bronpaar: 'mbo-studenten-landelijk', schooljaar: '2024/25' }
+  const DEFINITIES = '**Andere definities:** in 2024/25 telt dit antwoord 475.460; zonder extranei 465.820 (-2,0%).'
+  const KRUIS = "**Ter controle:** DUO 'Mbo-studenten per instelling' telt in 2024/25 476.079 (alle instellingen): 619 meer dan CBS 85354NED (475.460), +0,1%."
+  const TEKST = `In 2024/25 waren er 475.460 mbo-studenten.\n\n${DEFINITIES}\n\n${KRUIS}`
+  const CITATIES = [
+    { getal: '475.460', stap: 1, bron: 'CBS 85354NED', vastgesteld: true },
+    { getal: '465.820', stap: 2, bron: 'CBS 85354NED', vastgesteld: true },
+    { getal: '476.079', stap: 3, bron: "DUO 'Mbo-studenten per instelling'", vastgesteld: true },
+  ]
+  const VM = { maat: 'mbo_studenten_landelijk', teldefinitie: 'mbo-studenten landelijk; Leerweg: Totaal mbo (incl. extranei)', vastgelegd_in: '#805', vastgelegd_op: '2026-10-29' }
+
+  it('zet de regels in het antwoord, de stappen van code met hun argumenten en hun getallen in de citaties', async () => {
+    globalThis.WebSocket = FakeWebSocket
+    let chat
+    function Harness() {
+      chat = useChat()
+      return null
+    }
+    root = createRoot(document.createElement('div'))
+    await act(async () => { root.render(createElement(Harness)) })
+    await act(async () => {
+      const ws = FakeWebSocket.last
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'get_maat', label: 'Vaste maat opgehaald', input: MAAT })
+      ws.emit({ type: 'tool_end', name: 'get_maat', output: '{}', snippet: 'df = maat()' })
+      ws.emit({ type: 'tool_start', name: 'get_maat', label: 'Andere definitie berekend: zonder extranei', input: ALTERNATIEF })
+      ws.emit({ type: 'tool_end', name: 'get_maat', output: '{}', snippet: 'df = maat(vorm="zonder_extranei")' })
+      ws.emit({ type: 'tool_start', name: 'kruiscontrole', label: 'Kruiscontrole met de andere bron', input: PAAR })
+      ws.emit({ type: 'tool_end', name: 'kruiscontrole', output: '{}', data_key: 'duo:mbo:som' })
+      ws.emit({
+        type: 'message_end', content: TEKST, bronnen: ['CBS 85354NED', "DUO 'Mbo-studenten per instelling'"],
+        citaties: CITATIES, manifest: MANIFEST, vaste_maat: VM,
+      })
+    })
+    const live = chat.messages.find(m => m.role === 'assistant')
+    const b = bewijs(live)
+    expect(Object.keys(b)).toEqual(BEWIJS_SLEUTELS)
+    expect(b.antwoord).toContain(DEFINITIES)
+    expect(b.antwoord).toContain(KRUIS)
+    expect(b.toolstappen).toEqual([
+      { name: 'get_maat', arguments: MAAT, snippet: 'df = maat()' },
+      { name: 'get_maat', arguments: ALTERNATIEF, snippet: 'df = maat(vorm="zonder_extranei")' },
+      { name: 'kruiscontrole', arguments: PAAR, snippet: null },
+    ])
+    // Hier wijst elke citatie naar haar stap in het bestand: de stappen van code komen na die van het model.
+    expect(b.citaties.map(c => b.toolstappen[c.stap - 1].name)).toEqual(['get_maat', 'get_maat', 'kruiscontrole'])
+    expect(b.vaste_maat).toEqual(VM)
+
+    const heropend = conversationMessages({ messages: JSON.stringify([{ role: 'user', content: 'Hoeveel?' }, live]) })
+    expect(bewijsJson(heropend[1])).toBe(bewijsJson(live))
+  })
+})

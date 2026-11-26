@@ -13,8 +13,11 @@ export const VRAAG_TIMEOUT_MS = 300_000
 // Zoals REPORT_TIMEOUT_MS in de app (useChat.js): daarna geldt een rapport als mislukt.
 export const RAPPORT_TIMEOUT_MS = 600_000
 
-/** Open een gesprek met `model`; het belooft het gesprek zodra de instellingen verstuurd zijn. */
-export function verbind(token, model, url = WS_URL) {
+/**
+ * Open een gesprek met `model`; het belooft het gesprek zodra de instellingen verstuurd zijn. `instellingen` komen erbij,
+ * zoals de profielinstelling van een eval (`instelling`, #1267).
+ */
+export function verbind(token, model, url = WS_URL, instellingen = {}) {
   return new Promise((resolve) => {
     const ws = new WebSocket(url, protocollen(token))
     let luisteraar = null
@@ -123,7 +126,7 @@ export function verbind(token, model, url = WS_URL) {
     }
 
     ws.on('open', () => {
-      ws.send(JSON.stringify({ action: 'settings', settings: { model } }))
+      ws.send(JSON.stringify({ action: 'settings', settings: { ...instellingen, model } }))
       setTimeout(() => resolve(gesprek), 200)
     })
     // Gaat de verbinding meteen mis, dan meldt de eerste stap dat; het gesprek bestaat dan toch.
@@ -132,8 +135,8 @@ export function verbind(token, model, url = WS_URL) {
 }
 
 /** Eén losse vraag in een eigen gesprek, zoals real-questions.spec.js die stelt. */
-export async function losseVraag(token, tekst, model, timeoutMs = VRAAG_TIMEOUT_MS) {
-  const gesprek = await verbind(token, model)
+export async function losseVraag(token, tekst, model, timeoutMs = VRAAG_TIMEOUT_MS, instellingen = {}) {
+  const gesprek = await verbind(token, model, WS_URL, instellingen)
   try {
     return await gesprek.vraag(tekst, timeoutMs)
   } finally {

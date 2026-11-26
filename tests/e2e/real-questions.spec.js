@@ -45,7 +45,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
 
       for (const model of MODELS) for (let beurt = 1; beurt <= REPEATS; beurt++) {
         const short = REPEATS > 1 ? `${model.split('/').pop()}#${beurt}` : model.split('/').pop()
-        const r = await losseVraag(token, ev.message, model)
+        // Een eval met een profielinstelling (#1267) stuurt die mee, zoals de instellingen van de app.
+        const r = await losseVraag(token, ev.message, model, undefined, ev.instelling ? { instelling: ev.instelling } : {})
         const scores = ev.expected.must_refuse ? scoreWeigering(r, ev) : scoreResult(r, ev)
         allScores[short] = scores
         // Op schijf, niet in het geheugen: na een mislukte test begint een nieuwe worker (#753). Met de tools en de
