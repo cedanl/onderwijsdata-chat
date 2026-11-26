@@ -25,6 +25,7 @@ from agent import manifest, rapportselectie
 from agent.aanspreekvorm import in_je_vorm
 from agent.afkapping import afkappingsregels
 from agent.antwoordtaal import taal
+from agent.controlestappen import rapportdefinities
 from agent.datasetcontext import build_dataset_context, build_recipe, herstel_data, sources_from_recipe
 from agent.figuurbron import figuurbron, figuurperiode
 from agent.getalnotatie import nl_notatie
@@ -550,6 +551,9 @@ def _parse_spec_from_response(
         definities=[
             *definities_uit_bron(context.get("datasets", []), rapporttekst),
             *vergelijken(context.get("datasets", [])),
+            # De regels onder de antwoorden waarop het rapport rust, uit het bewijs: andere definities en de
+            # kruiscontrole met de tweede bron (#1256, #1259).
+            *rapportdefinities(context.get("berekeningen") or []),
         ],
         beantwoordt=beantwoordt,
         beantwoordt_niet=beantwoordt_niet,

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from dataclasses import replace
 from functools import partial
 
 import plotly.io as pio
@@ -21,7 +22,7 @@ from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.verklaring_markers import vraagt_verklaring
 
-from . import figuurstappen, manifest, recepten, vervolgvragen
+from . import controlestappen, figuurstappen, manifest, recepten, verschilverklaring, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
 from .beurtbewijs import eerdere_antwoorden
@@ -50,7 +51,7 @@ from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .schrappen import zonder_ongedekte_zinnen
 from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys
-from .session_data import record_data_key, record_rekenbewijs, vorige_databeurt
+from .session_data import record_data_key, record_rekenbewijs, voeg_controlebewijs_toe, vorige_databeurt
 from .stream import Emit
 from .tabelnoot import met_tabelnoot
 from .tekens import zonder_citaatkop
@@ -246,6 +247,38 @@ def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
     except Exception as exc:
         log_interne_fout(exc, "bronlinks")
         return {}
+
+
+async def _veilige_controles(
+    result: LoopResult, messages: list[dict], session: dict, emit: Emit, stop: asyncio.Event
+) -> controlestappen.Controles:
+    """De regels onder het antwoord uit code (#1256, #1259, #1267): een extra, zoals de citaties. Lukt het niet, of
+    stopte de gebruiker, dan gaat het antwoord zonder. In de context van de beurt: dezelfde zoekpoort en standaard.
+
+    De stappen van code worden geen data van het gesprek (geen `data_keys`): een rapport of een heropend gesprek rust
+    niet op een key die het model nooit zag, en hoeft die dus ook niet terug te halen. Hun getallen en de regel staan in
+    het bewijs (`voeg_controlebewijs_toe`)."""
+    if not result.steps or stop.is_set():
+        return controlestappen.Controles()
+    try:
+        with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
+            gestopt, controles = await tenzij_gestopt(controlestappen.voer_uit(result.steps, emit), stop)
+    except Exception as exc:
+        log_interne_fout(exc, "controlestappen")
+        return controlestappen.Controles()
+    if gestopt or controles is None:
+        return controlestappen.Controles()
+    voeg_controlebewijs_toe(session, controles.bewijs())
+    return controles
+
+
+def _veilig_hoofdgetal(session: dict, result: LoopResult, controles: controlestappen.Controles) -> dict | None:
+    """Het ene hoofdgetal onder dit antwoord, voor "Wijkt af van je eigen cijfer?" (#1258); een extra, faalt zacht."""
+    try:
+        return verschilverklaring.onthoud(session, result.steps, controles)
+    except Exception as exc:
+        log_interne_fout(exc, "hoofdgetal")
+        return None
 
 
 def _veilige_vaste_maat(steps: list[tuple[str, str]]) -> dict | None:
@@ -576,6 +609,8 @@ def _slotbericht(
     manifest: dict | None = None,
     vervolgvragen: list[str] | None = None,
     code: str = "",
+    hoofdgetal: dict | None = None,
+    modelstappen: list[tuple[str, str]] | None = None,
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
@@ -583,7 +618,9 @@ def _slotbericht(
     `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
     `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst.
     `vaste_maat` (#1242) alleen als elke datastap een get_maat was, uit de stappen en het recept; nooit onder een tekst
-    uit code (#565) of een ingehouden antwoord: die rusten niet op de maat."""
+    uit code (#565) of een ingehouden antwoord: die rusten niet op de maat. Het leest `modelstappen` als die er zijn:
+    de stappen van het model, zonder de stappen van code onder het antwoord (#1271). Een andere definitie of de DUO-kant
+    van een bronpaar verandert de route van het hoofdgetal niet; `result.steps` draagt ze wel, voor de citaties."""
     vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
     return {
         "type": "message_end",
@@ -603,9 +640,13 @@ def _slotbericht(
             else {}
         ),
         **({"vervolgvragen": vervolgvragen} if vervolgvragen else {}),
+        # Precies één hoofdgetal uit een vaste maat of een enkele selectie: de knop "Wijkt af van je eigen cijfer?"
+        # (#1258). Nooit onder een vast of ingehouden antwoord.
+        **({"hoofdgetal": hoofdgetal} if hoofdgetal and not vast_zonder_bronnen else {}),
         **(
             {"vaste_maat": maat}
-            if text_content not in _ZONDER_BRONNEN | _UIT_CODE and (maat := _veilige_vaste_maat(result.steps))
+            if text_content not in _ZONDER_BRONNEN | _UIT_CODE
+            and (maat := _veilige_vaste_maat(result.steps if modelstappen is None else modelstappen))
             else {}
         ),
         **_vast(text_content),
@@ -783,6 +824,16 @@ async def run(
         text_content = _met_kopregels(text_content, messages, session, result.steps)
         # Spreekt de reeks de richting tegen die de vraag aanneemt, dan opent het antwoord daarmee (#1255).
         text_content = _met_premisse(text_content, last_user_msg, result.steps)
+    controles = controlestappen.Controles()
+    if result.steps and text_content not in _ZONDER_BRONNEN:
+        # Onder het antwoord, uit code: andere definities, de kruiscontrole en de vergelijkingsgroep (#1271). Hun
+        # stappen tellen voor de citaties, de bronnen en het manifest, niet voor de modeltekst en haar controle.
+        controles = await _veilige_controles(result, messages, session, emit, stop)
+        text_content = controlestappen.met_regels(text_content, controles)
+        bronnen = [*bronnen, *(b for b in _veilige_bronnen(controles.stappen) if b not in bronnen)]
+        bronlinks = {**_veilige_bronlinks(controles.stappen), **bronlinks} if controles.stappen else bronlinks
+    hoofdgetal = _veilig_hoofdgetal(session, result, controles) if text_content not in _ZONDER_BRONNEN else None
+    met_controles = replace(result, steps=[*result.steps, *controles.stappen])
     code = _codeblok_bij_verzoek(text_content, last_user_msg, session)
     session["_last_turn_tool_calls"] = result.tool_calls
     _log_export(text_content, result.steps)
@@ -791,15 +842,18 @@ async def run(
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
     mani = manifest.bouw(
-        chosen_model, data_keys(result.tool_results), model_versie=result.model_versie, username=session.get("username")
+        chosen_model,
+        data_keys(met_controles.tool_results),
+        model_versie=result.model_versie,
+        username=session.get("username"),
     )
     gekozen = await _vervolgvragen(result, text_content, last_user_msg, session)
     if text_content not in _ZONDER_BRONNEN:
-        log_publicatie(ANTWOORD, data_keys(result.tool_results), mani, username=session.get("username"))
+        log_publicatie(ANTWOORD, data_keys(met_controles.tool_results), mani, username=session.get("username"))
     await emit(
         _slotbericht(
             text_content,
-            result,
+            met_controles,
             herzien,
             truncated,
             bronnen,
@@ -807,6 +861,8 @@ async def run(
             manifest=mani,
             vervolgvragen=gekozen,
             code=code,
+            hoofdgetal=hoofdgetal,
+            modelstappen=result.steps,
         )
     )
     return met_code(text_content, code)

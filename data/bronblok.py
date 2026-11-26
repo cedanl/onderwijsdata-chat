@@ -9,6 +9,8 @@ hij staat in `niet_beschikbaar` (#901). Per dataset één regel, in de volgorde 
 - `editie`, `last_modified` en `peilmoment`: de versie van wat er geladen is. DUO: `last_modified` per bestand (#717)
   en het peilmoment in de woorden van de bronregel in de chat ("versie van 08-04-2026"). ROA: de editie uit het schema
   van riodata, het SIS-jaar uit de thema's van het bestand (`sis`, #1091) en de kolom `versie` van het bestand. UWV: geen editie; de momentopname heeft een peildatum.
+  Het peilmoment van UWV noemt haar ouderdom ("peildatum 16 mei 2023, ruim 3 jaar oud"), met
+  `peildatum_ouderdom_maanden` en `verouderd` erbij (#1219).
   LCSK (de Studiekeuzedatabase, dashboard Opleidingen): het versienummer van de export als editie, en als peilmoment
   versie, exportdatum, NSE-jaar en 1cijferHO-jaar; `vermelding` is de bronregel met de zin die LCSK verplicht stelt.
 - `peildatum`: DUO de teldatum uit de DUO-beschrijving ("1 oktober"), UWV de PEILDATUM uit de data.
@@ -57,8 +59,13 @@ def _duo(meldingen: list[Mapping]) -> dict:
 
 
 def _uwv(meldingen: list[Mapping]) -> dict:
+    """De peildatum met haar ouderdom, in de woorden van de bronregel in de chat (#1219)."""
     peildatum = meldingen[0].get("peildatum")
-    return {"peildatum": peildatum, "peilmoment": f"peildatum {peildatum}" if peildatum else None}
+    return {
+        "peildatum": peildatum,
+        "peilmoment": arbeidsmarkt.uwv_peiltekst(peildatum) if peildatum else None,
+        **arbeidsmarkt.ouderdom(peildatum),
+    }
 
 
 def _roa(meldingen: list[Mapping]) -> dict:

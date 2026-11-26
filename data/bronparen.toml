@@ -1,0 +1,50 @@
+# Bronparen voor de kruiscontrole DUO-CBS (#1259)
+#
+# Welke DUO-maat bij welke CBS-maat hoort, staat hier en nergens anders: het model koppelt nooit zelf,
+# en geen toolargument kiest een paar. Antwoordt een beurt met de vaste maat `maat` (get_maat) op het
+# niveau van het paar, dan haalt code de andere bron op hetzelfde niveau en zet het getal, het verschil
+# en de bekende redenen onder het antwoord (agent/controlestappen.py). tools/bronparen.py laadt en
+# controleert dit bestand; uitleg per veld en hoe een paar erbij komt: docs/domeinregels.md, "Bronparen".
+#
+# Elk paar heeft:
+#   id            uniek in dit bestand
+#   maat          de vaste maat (tools/maten.py) waarop het paar haakt: de CBS-kant
+#   niveau        waarop beide bronnen vergelijkbaar zijn; nu alleen "landelijk"
+#   drempel_pct   boven dit verschil (in % van het CBS-getal) zonder bekende reden: "verschil, reden niet vastgesteld"
+#   issue         het issue waarin het paar is vastgesteld
+#   vastgesteld   de datum van vaststelling, zonder aanhalingstekens
+#   [paar.cbs]    de CBS-maat: tabel en de vaste codes
+#   [paar.duo]    de DUO-maat: dataset, bestand (woorden in de titel), periodekolom, telkolommen, afbakening
+#   [[paar.reden]]  per bekende reden voor een verschil de tekst en de bron; een paar zonder reden mag
+#
+# Een ongeldig bestand laadt niet: de tests in tests/test_kruiscontrole.py falen dan, en de kruiscontrole valt weg.
+
+[[paar]]
+id = "mbo-studenten-landelijk"
+maat = "mbo_studenten_landelijk"
+niveau = "landelijk"
+drempel_pct = 1.0
+issue = "#1259"
+vastgesteld = 2026-11-25
+waarneming = "Functionele test 29-10-2026: 'Hoeveel mbo-studenten waren er in 2024/25?' gaf DUO 474.963 (het bestand per sectorkamer) en CBS 475.460 (85354NED, incl. extranei); docs/domeinregels.md, 'CBS: mbo-studenten landelijk'."
+
+[paar.cbs]
+naam = "CBS 85354NED"
+dataset = "85354NED"
+codes = { Leerweg = "A025290", Geslacht = "T001038", Niveau = "T001336", Herkomstland = "T001040", GeboortelandOuders = "T001638" }
+
+[paar.duo]
+naam = "DUO 'Mbo-studenten per instelling'"
+dataset = "mbo-studenten-per-instelling"
+bestand = ["instelling", "en leerweg"]
+periodekolom = "JAAR"
+kolommen = ["BBL", "BOLDT", "BOLVT", "EX"]
+afbakening = "alle instellingen opgeteld, bol, bbl en examendeelnemers, bekostigd en niet-bekostigd, op 1 oktober"
+
+[[paar.reden]]
+tekst = "DUO laat aantallen van 1 tot en met 4 weg (-1), dus de DUO-som is een ondergrens"
+bron = "DUO-datasetbeschrijving van mbo-studenten-per-instelling: 'alle cellen met kleine aantallen (1, 2, 3, of 4) zijn vervangen door -1' (data/domeinregels.toml, regel duo-onderdrukte-cel)"
+
+[[paar.reden]]
+tekst = "CBS rondt de aantallen af op tientallen"
+bron = "CBS 85354NED, toelichting bij de tabel (afronding op tientallen; tools/cbs_afronding.py leest haar uit de metadata en de vaste maat noemt haar in de teldefinitie)"

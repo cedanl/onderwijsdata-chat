@@ -18,13 +18,14 @@ omgevingen uit staan.
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import math
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from fractions import Fraction
 from pathlib import Path
 
@@ -158,6 +159,108 @@ def provincies() -> list[str]:
 def uwv_peildatum() -> str:
     """De peildatum van de hele UWV-momentopname, voor een bronregel zonder selectie (#577)."""
     return _peildatum(_uwv())
+
+
+# Een UWV-stand van meer hele maanden oud dan dit heet verouderd (#1219): UWV en CBS publiceren de vacatures per
+# kwartaal, dus een stand van meer dan een jaar oud is geen beeld van nu. Eén grens voor dashboards en chat.
+VACATURES_VEROUDERD_MAANDEN = 12
+_MAANDNAMEN = (
+    "januari",
+    "februari",
+    "maart",
+    "april",
+    "mei",
+    "juni",
+    "juli",
+    "augustus",
+    "september",
+    "oktober",
+    "november",
+    "december",
+)
+
+
+def _peildata(peildatum: str | None) -> list[date]:
+    """De ISO-datums in een peildatum zoals `_peildatum` hem geeft ("2023-05-16" of "2023-05-09, 2023-05-16")."""
+    datums = []
+    for deel in (peildatum or "").split(","):
+        try:
+            datums.append(date.fromisoformat(deel.strip()))
+        except ValueError:
+            continue
+    return datums
+
+
+def peildatum_ouderdom_maanden(peildatum: str | None) -> int | None:
+    """Hoeveel hele maanden de (jongste) peildatum voor nu ligt, met de klok van `actualiteit.nu`; None zonder datum.
+
+    Een maand is vol op dezelfde dag van de maand: 16 mei 2023 is op 15 juni 2023 nul maanden oud, op 16 juni één.
+    Een peildatum na nu is nul maanden oud, niet negatief."""
+    datums = _peildata(peildatum)
+    if not datums:
+        return None
+    jongste, vandaag = max(datums), actualiteit.nu().date()
+    maanden = (vandaag.year - jongste.year) * 12 + vandaag.month - jongste.month - (vandaag.day < jongste.day)
+    return max(maanden, 0)
+
+
+def ouderdom(peildatum: str | None) -> dict:
+    """`peildatum_ouderdom_maanden` en `verouderd` voor een payload of toolresultaat (#1219); zo rekent de frontend
+    niet zelf. Verouderd is een stand van meer dan `VACATURES_VEROUDERD_MAANDEN` hele maanden oud."""
+    maanden = peildatum_ouderdom_maanden(peildatum)
+    return {
+        "peildatum_ouderdom_maanden": maanden,
+        "verouderd": maanden is not None and maanden > VACATURES_VEROUDERD_MAANDEN,
+    }
+
+
+def ouderdom_tekst(maanden: int) -> str:
+    """De ouderdom in woorden: "minder dan een maand", "11 maanden", "1 jaar", "ruim 3 jaar" (42 maanden). De frontend
+    schrijft hem met dezelfde regel (`ouderdomTekst` in momentopname.jsx)."""
+    if maanden < 1:
+        return "minder dan een maand"
+    if maanden < 12:
+        return f"{maanden} {'maand' if maanden == 1 else 'maanden'}"
+    jaren, rest = divmod(maanden, 12)
+    return f"{'ruim ' if rest else ''}{jaren} jaar"
+
+
+def _lange_datum(dag: date) -> str:
+    return f"{dag.day} {_MAANDNAMEN[dag.month - 1]} {dag.year}"
+
+
+def uwv_peiltekst(peildatum: str | None) -> str:
+    """Het peilmoment van UWV voor de bronregels (#1219): "peildatum 16 mei 2023, ruim 3 jaar oud". Zonder leesbare
+    datum de peildatum zoals hij is ("peildatum onbekend")."""
+    datums = _peildata(peildatum)
+    maanden = peildatum_ouderdom_maanden(peildatum)
+    if not datums or maanden is None:
+        return f"peildatum {peildatum or 'onbekend'}"
+    return f"peildatum {' en '.join(_lange_datum(d) for d in datums)}, {ouderdom_tekst(maanden)} oud"
+
+
+def uwv_actualiteit(peildatum: str | None) -> str | None:
+    """Bij een verouderde stand: hoe oud hij is, waarom er niets nieuwers is en waar de actuele kwartaalcijfers staan
+    (#1219, #1220); None bij een jonge stand. De app laadt die kwartaalcijfers niet: dat staat er ook."""
+    datums = _peildata(peildatum)
+    stand = ouderdom(peildatum)
+    if not datums or not stand["verouderd"]:
+        return None
+    jongste = max(datums)
+    return (
+        f"De peildatum is {ouderdom_tekst(stand['peildatum_ouderdom_maanden'])} oud: UWV werkt deze open dataset "
+        f"sinds {_MAANDNAMEN[jongste.month - 1]} {jongste.year} niet meer bij. Actuele vacatures per kwartaal staan bij "
+        "UWV (dashboard Vacaturemarkt) en CBS (tabel 83599NED); deze app laadt die (nog) niet."
+    )
+
+
+@functools.cache
+def uwv_periode() -> str | None:
+    """De periode van de UWV-catalogus (`uwv_resources.json`, "periode"), zonder netwerk: voor een lege UWV-sectie,
+    die zo geen vaste maand noemt (#1220). Pakketdata, dus één keer gelezen."""
+    from onderwijsbronnen import uwv
+
+    return next((r["periode"] for r in uwv.catalogusrecords() if r.get("periode")), None)
 
 
 def _in_provincie(df: pd.DataFrame, provincie: str) -> pd.DataFrame:

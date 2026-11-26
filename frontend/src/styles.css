@@ -961,6 +961,17 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 }
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
+/* "Wijkt af van je eigen cijfer?" (#1258): een tekstknop onder het antwoord, open een veld voor één getal. */
+.eigen-getal { margin-top: 8px; font-size: .82rem; }
+.eigen-getal-open { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
+.eigen-getal-label { font-weight: 600; color: var(--gray-700); }
+.eigen-getal-rij { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.eigen-getal-veld { font: inherit; width: 12ch; min-height: 44px; padding: 6px 10px; border: 1px solid var(--gray-400); border-radius: var(--radius-sm); background: var(--white); color: var(--gray-900); }
+.eigen-getal-veld[aria-invalid="true"] { border-color: var(--red-500); }
+.eigen-getal-knop { font: inherit; font-weight: 600; min-height: 44px; padding: 6px 14px; border: none; border-radius: var(--radius-sm); background: var(--npuls-groen); color: var(--npuls-zwart); cursor: pointer; }
+.eigen-getal-knop:disabled { opacity: .6; cursor: default; }
+.eigen-getal-fout { color: var(--gray-900); border-left: 3px solid var(--red-500); padding-left: 8px; }
+.eigen-getal-uitleg { margin: 0; color: var(--muted-text); font-size: var(--font-klein); line-height: 1.45; }
 /* Het label "Vaste maat" (#1242): herkomst, geen waarschuwing en geen keurmerk. Zelfde plek en maat als de
    controlemelding, met een neutrale grijze streep; de teldefinitie en de vastlegging staan in de uitklap. */
 .vaste-maat { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--gray-300); padding: 2px 0 2px 8px; margin-top: 6px; }
@@ -1342,6 +1353,16 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
   html:not(.dark):not(.light) .db-momentopname {
     background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
   }
+}
+.db-momentopname p { margin: 0; }
+.db-momentopname p + p { margin-top: 6px; }
+/* Een UWV-stand van meer dan 12 maanden oud (#1219): dezelfde amberen noot, nadrukkelijker, met de links naar de
+   actuele kwartaalcijfers. Tekst #78350F op #FEF3C7 haalt ruim 4,5:1 (WCAG 1.4.3). */
+.db-momentopname--verouderd { background: #FEF3C7; border-color: #F59E0B; border-left-width: 4px; color: #78350F; }
+.db-momentopname--verouderd a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
 }
 /* Wat de match-tegels zeggen en niet zeggen (#900). */
 .db-match-duiding { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 16px; }

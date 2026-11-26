@@ -6,9 +6,11 @@ zijn met pandas op de bevroren bestanden nagerekend, buiten de tools om; de bere
 """
 
 import json
+from datetime import UTC, datetime
 
 import pytest
 
+from core import actualiteit
 from tools.arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 
 pytestmark = pytest.mark.usefixtures("gouden")
@@ -34,6 +36,16 @@ def test_uwv_vacatures_in_een_provincie():
         ("Productiemedewerkers", 204),
     ]
     assert uit["clusters_getoond"] == "de 15 grootste van 301 beroepenclusters"
+
+
+def test_uwv_vacatures_noemen_de_ouderdom_van_de_peildatum(monkeypatch):
+    # #1219: 16-05-2023 is op 25-11-2026 42 hele maanden oud (3 jaar, 6 maanden en 9 dagen), meer dan de grens van 12.
+    monkeypatch.setattr(actualiteit, "nu", lambda: datetime(2026, 11, 25, tzinfo=UTC))
+
+    uit = json.loads(get_uwv_vacatures("Flevoland"))
+
+    assert (uit["peildatum"], uit["peildatum_ouderdom_maanden"], uit["verouderd"]) == ("2023-05-16", 42, True)
+    assert uit["ouderdom_toelichting"].startswith("De peildatum is ruim 3 jaar oud")
 
 
 def test_uwv_vacatures_in_een_gemeente():
