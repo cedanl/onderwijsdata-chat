@@ -84,6 +84,11 @@ daarna opnieuw na met pandas op de nieuwe bestanden (de berekening staat bij elk
 xlsx-bestanden en eenheden (`packages/onderwijsbronnen/tests/test_financien.py`, `tests/test_financien.py`, #935), met de
 snippet als equivalentietest.
 
+Naast verwachte getallen toetsen de metamorfe tests in `tests/metamorf/` de relaties tussen uitkomsten: delen en
+totaal, een jaar uit een reeks en dat jaar alleen, een verschil uit `compute_kpi` en uit twee losse jaren (#1263). Een
+nieuwe rekentool krijgt minstens één metamorfe relatie in `tests/metamorf/relaties.py`; `test_scherpte.py` controleert
+dan vanzelf dat de relaties een kapotte variant vangen. Zie `tests/metamorf/README.md`.
+
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
 baseline niet bij om een nieuwe diagnostic weg te krijgen; los die op.
