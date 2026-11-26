@@ -20,7 +20,7 @@ from datetime import date
 
 from core.logging_util import foutkenmerk
 
-from . import beschikbaarheid, store
+from . import beschikbaarheid, maten, store
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import bron_titel, catalogus_laatste_update, is_scopeweigering
 from .cbs import laad_cbs_data
@@ -304,7 +304,9 @@ def _hermaat(key: str, recept: dict, username: str | None) -> Herlaadresultaat:
     if not isinstance(args, dict):
         return _niet(key, "onbruikbaar recept", f"Het recept voor {_de_data_van(key)} is onbruikbaar.")
     try:
-        uitkomst = get_maat(**args)
+        # Code herlaadt hier een stap die er al was: ook een interne vorm van de regel "Andere definities" (#1256).
+        with maten.codestap():
+            uitkomst = get_maat(**args)
     except Exception as e:  # argumenten die get_maat niet (meer) aanneemt
         logger.warning("herladen %s via get_maat mislukt: %s", key, foutkenmerk(e))
         logger.debug("herladen %s via get_maat mislukt: %r", key, e)

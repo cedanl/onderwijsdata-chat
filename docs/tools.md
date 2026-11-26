@@ -196,6 +196,23 @@ gemaakt, en `tests/test_vaste_maat_label.py` toetst de vorm. Nu: de vijf maten v
 `docs/anti-hallucination-architecture.md`). Een nieuw recept krijgt het issue en de datum waarop het erbij kwam; een
 recept dat inhoudelijk verandert (ander bestand, andere codes of teldefinitie), het issue en de datum van die wijziging.
 
+**Andere definities onder het antwoord** (#1256, `tools/andere_definities.py`, `agent/controlestappen.py`). Per maat
+ligt in code een korte lijst andere definities vast (personen ↔ inschrijvingen, alle vormen ↔ alleen voltijd, met ↔
+zonder extranei), elk met een uitleg van één regel en een recept: de get_maat-argumenten die anders zijn. Na het
+antwoord roept code `get_maat` zelf aan met elk recept, op dezelfde afbakening en voor het schooljaar van het
+hoofdgetal; die stappen staan in de redeneerkaart als "Andere definitie berekend". Onder het antwoord komt één regel
+"**Andere definities:** in 2024/25 telt dit antwoord 475.460; zonder extranei 465.820 (-2,0%)." Wijkt geen alternatief
+meer dan 1% af, dan de vaste zin "andere definities geven hetzelfde beeld", zonder getallen. Met en zonder extranei zijn
+de interne vormen `met_extranei` en `zonder_extranei`: alleen code kiest ze (`maten.codestap`), het schema noemt ze
+niet en het model krijgt een melding, want de standaard van de tabel en het gesprek beslissen de telling (#653).
+
+**Kruiscontrole met de andere bron** (#1259, `data/bronparen.toml`, `tools/bronparen.py`). Staat de maat met haar
+niveau in de koppeltabel (nu alleen `mbo_studenten_landelijk`, landelijk), dan haalt code ook de DUO-kant op (stap
+"Kruiscontrole met de andere bron") en zet de regel "**Ter controle:** …" onder het antwoord: het DUO-getal, het verschil
+met het CBS-getal (absoluut en in %) en de bekende redenen uit de tabel. Geen toolargument kiest een paar; zie
+`docs/domeinregels.md`, "Bronparen". De stappen van code onder het antwoord tellen niet mee voor het label "Vaste
+maat" (#1242): dat leest alleen de stappen van het model, want de route van het hoofdgetal blijft dezelfde.
+
 **Geslacht per opleiding** (#742, `tools/geslacht_opleiding.py`). DUO heeft geslacht niet per opleiding: het
 geslachtsbestand telt per instelling, vestigingsgemeente, onderdeel, subonderdeel en type ho, het niveaubestand in
 dezelfde cellen per opleiding. Met `opleiding_naar_geslacht` legt de code ze naast elkaar. In een jaar is de verdeling
@@ -204,6 +221,28 @@ zijn; dan krijgt dat jaar rijen per geslacht (aantal en `AANDEEL_PROCENT`). Een 
 `niet_af_te_leiden` met de reden, zonder getal. Zonder enig exact jaar geeft de tool een vaste melding in plaats van een
 `data_key`. De opleiding wordt bij de instelling gezocht op code, dan op de hele naam, dan op een deel ervan; passen er
 meer, dan noemt de melding ze met hun code. Het resultaat noemt de gekozen `opleiding` en een vaste `afleiding`.
+
+---
+
+## vergelijkingsgroep
+
+De vergelijkingsgroep van het dashboard Mijn instelling, ook in de chat (#1267, `tools/vergelijkingsgroep.py`). De
+tool vraagt dezelfde functie als het dashboard (`data.dashboard.vergelijkingsgroep`: `_build_regio_context` en
+`_ho_regio_benchmark`/`_mbo_regio_benchmark`), dus dezelfde peers, regio-trede, terugval en hetzelfde peergemiddelde.
+Het model roept haar aan bij "vergelijkbare instellingen", "peers" of "de vergelijkingsgroep"; het kiest de peers niet
+zelf.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string | Officiële naam of alias, meestal de profielinstelling |
+| `eigen_groep` | array | Alleen als de gebruiker zelf instellingen noemt: namen of codes, hoogstens 25 van hoogstens 120 tekens (`MAX_EIGEN_GROEP`, `MAX_NAAM_TEKENS` in `tools/schemas.py`; de code kapt zelf af en zet het aantal weggelaten namen in `ingekort` en in de zin). Onbekende namen en instellingen van een ander onderwijstype tellen niet mee en staan in `onbekend` en `ander_type` |
+
+Het resultaat: `peers` (naam, code, omvang en waarom elke peer erin zit), `regio_trede`, `regio`, `terugval`, de `regel`
+in woorden, `rijen` per schooljaar (de eigen ingeschrevenen, het peergemiddelde en het aantal peers met cijfers) en
+`zin`, de vaste zin over de groep. De app zet die zin zelf onder het antwoord: "**Vergelijkingsgroep:** Vergeleken met de
+dashboardgroep van Mijn instelling: 3 hogescholen landelijk, …". Hebben in het laatste jaar minder dan drie peers
+cijfers, dan geen gemiddelde, zoals het dashboard (#1007), en de zin zegt dat. Een eigen groep heet in de zin "niet de
+dashboardgroep van Mijn instelling".
 
 ---
 

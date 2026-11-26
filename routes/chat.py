@@ -8,9 +8,10 @@ from typing import TypeGuard
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from agent import beurtbewijs, rapportselectie, recepten
+from agent import beurtbewijs, rapportselectie, recepten, verschilverklaring
 from agent import run as agent_run
 from agent.history import afgebroken_beurt, trim, zonder_vaste_blokken
+from agent.onder_antwoord import is_verschilverklaring
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from agent.timebox import harde_grens
@@ -280,6 +281,10 @@ def _parse_history(raw: list) -> list[dict]:
         if not isinstance(m, dict) or m.get("role") not in valid_roles or not isinstance(m.get("content"), str):
             continue
         content = m["content"]
+        if m["role"] == "assistant" and is_verschilverklaring(content):
+            # De uitkomst bij een eigen getal (#1258) komt uit code en noemt een getal van de gebruiker: niet naar het
+            # model, zoals in het live gesprek.
+            continue
         if m["role"] == "assistant":
             # De Uitgangspunt-regel en het Telling-blok zet de app zelf bij elk antwoord: ze tellen niet mee (#1083).
             content = zonder_vaste_blokken({"role": "assistant", "content": content})["content"]
@@ -558,6 +563,28 @@ async def _handle_report_checklist(
     return current_task
 
 
+async def _handle_eigen_getal(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    """Een eigen getal naast het hoofdgetal van een antwoord (#1258): de verschilverklaring uit code, geen model.
+
+    Alleen een getal (hoogstens 12 cijfers), en alleen bij een hoofdgetal dat deze sessie zelf onder een antwoord zette:
+    de client kiest het antwoord met `id`, de server kent de rest. In het log alleen of het lukte, nooit het getal.
+    """
+    if _task_busy(current_task):
+        await _reject_busy(emit)
+        return current_task
+    uitkomst = verschilverklaring.behandel(session, msg.get("id"), msg.get("getal"))
+    id_ = msg.get("id") if isinstance(msg.get("id"), str) else None
+    if isinstance(uitkomst, str):
+        logger.info("EIGEN GETAL geweigerd")
+        await emit({"type": "eigen_getal_fout", "melding": uitkomst, "id": id_})
+        return current_task
+    logger.info("EIGEN GETAL uitgelegd  redenen=%d", len(uitkomst["redenen"]))
+    await emit({"type": "verschilverklaring", "content": uitkomst["tekst"], "id": id_, "stap": uitkomst["stap"]})
+    # Het bewijs van deze uitkomst, met het eigen getal als invoer van de gebruiker (ADR-009, #875).
+    beurtbewijs.zet_klaar(session, uitkomst["tekst"])
+    return current_task
+
+
 Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]
 
 # Per actie van de frontend een handler: (bericht, sessie, emit, lopende taak) -> lopende taak (#206).
@@ -571,6 +598,7 @@ ACTIES: dict[str, Handler] = {
     "clarification_choice": _handle_clarification,
     "generate_report": _handle_generate_report,
     "report_checklist": _handle_report_checklist,
+    "eigen_getal": _handle_eigen_getal,
 }
 
 

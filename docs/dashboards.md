@@ -352,6 +352,19 @@ dicht bij de grens kan per jaar in of uit de groep vallen.
 Gemeten op live DUO (05-11, #948), per type arbeidsmarktregio / provincie / landelijk: hbo 20 / 12 / 4 bij drempel
 twee, 8 / 21 / 7 bij drie; wo 4 / 6 / 8 → 4 / 0 / 14; mbo 25 / 24 / 5 → 16 / 33 / 5.
 
+**Dezelfde groep in de chat (#1267).** Vraagt iemand in de chat naar "vergelijkbare instellingen", "peers" of "de
+vergelijkingsgroep", dan roept het model de tool `vergelijkingsgroep` aan (`tools/vergelijkingsgroep.py`, zie
+[Tools](tools.md#vergelijkingsgroep)). Die vraagt `data.dashboard.vergelijkingsgroep`, met dezelfde context
+(`_build_regio_context`) en dezelfde peerreeks (`_ho_regio_benchmark`, `_mbo_regio_benchmark`) als dit dashboard: dezelfde
+peers, regio-trede, terugval en hetzelfde peergemiddelde van de ingeschrevenen per jaar. De chat kopieert de regels
+niet en voegt er geen toe. Per peer noemt de tool naam, code, omvang en waarom hij erin zit. Onder het antwoord zet code
+één vaste zin met het aantal, de regio-trede en de terugval ("**Vergelijkingsgroep:** Vergeleken met de dashboardgroep van
+Mijn instelling: 3 hogescholen landelijk, …"). Hebben in het laatste jaar minder dan drie peers cijfers, dan geeft de
+chat net als het kerncijfer geen gemiddelde en zegt dat. Noemt de gebruiker zelf instellingen, dan rekent dezelfde
+reeksfunctie over die groep, en zegt de zin dat het niet de dashboardgroep is. `tests/test_vergelijkingsgroep.py` legt
+voor een hogeschool, een universiteit en een mbo-instelling op de bevroren bestanden vast dat chat en dashboard dezelfde
+peers en hetzelfde peergemiddelde geven.
+
 ### Regio, provincie en afdrukken
 
 - **Kaart**: de punten staan op benaderde coördinaten van de plaats van de hoofdvestiging (`_CITY_COORDS` in

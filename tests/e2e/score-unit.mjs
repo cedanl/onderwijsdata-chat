@@ -648,3 +648,14 @@ test('de verslagen: per vraag en assertie hoe vaak must_call slaagde (#1243)', (
   })
   assert.ok(!('must_call' in verslagen(runs.slice(2), evals)))
 })
+
+test('vergelijkingsgroep-chat: must_call eist de tool vergelijkingsgroep, met de profielinstelling (#1267)', () => {
+  const ev = EVALS.find(e => e.label === 'vergelijkingsgroep-chat')
+  assert.deepEqual(ev.expected.must_call, [{ tool: 'vergelijkingsgroep' }])
+  assert.ok(ev.instelling, 'de eval stuurt een profielinstelling mee')
+  // Zelf peers kiezen met get_maat is geen vergelijkingsgroep: de run faalt op de assertie.
+  const zelf = scoreResult(aanroepen(['get_maat', { maat: 'ingeschreven_personen_ho', instelling: ev.instelling }]), ev)
+  assert.ok(zelf.fouten.includes('must_call: vergelijkingsgroep: 0 aanroepen, minstens 1'), zelf.fouten.join('; '))
+  const met = scoreResult(aanroepen(['vergelijkingsgroep', { instelling: ev.instelling }]), ev)
+  assert.ok(!met.fouten.some(f => f.startsWith('must_call')), met.fouten.join('; '))
+})

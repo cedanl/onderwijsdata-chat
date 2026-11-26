@@ -717,6 +717,13 @@ Een regel heeft bewust geen link:
 
 Kopiëren en de gespreksexport geven de bronnen als tekst, zoals voorheen.
 
+**Een tweede bron bij een vaste maat (#1259).** Staat de maat van een antwoord in de gecureerde koppeltabel
+`data/bronparen.toml`, dan haalt code ook de andere bron op hetzelfde niveau en staat die bron ook in de Bronnen. Nu is
+dat één paar: mbo-studenten landelijk, CBS 85354NED tegenover DUO "Mbo-studenten per instelling" opgeteld over alle
+instellingen. De regel "**Ter controle:**" onder het antwoord noemt het getal van de tweede bron, het verschil en de
+bekende redenen uit de tabel. Welke bronnen een paar zijn, hoe een paar erbij komt en wat de kruiscontrole niet zegt:
+[Domeinregels, "Bronparen"](domeinregels.md#bronparen).
+
 ---
 
 ## Catalogus doorzoeken

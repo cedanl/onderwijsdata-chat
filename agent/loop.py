@@ -179,8 +179,11 @@ def _is_hit(content: str) -> bool:
     return isinstance(envelop, dict) and envelop.get("status") == "candidates" and bool(envelop.get("kandidaten"))
 
 
-async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | None = None) -> tuple[str, Any]:
-    label = LABELS.get(call.name, call.name)
+async def _execute_tool(
+    call: ToolCall, emit: Emit, recept_van: Receptbron | None = None, label: str | None = None
+) -> tuple[str, Any]:
+    """Voer één toolaanroep uit met haar events voor de redeneerkaart; `label` noemt een stap die code zette (#1256)."""
+    label = label or LABELS.get(call.name, call.name)
     logger.debug("TOOL CALL  %-30s args=%s", call.name, call.arguments)
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
     # Met een afbreeksignaal: wordt de aanroep geannuleerd (stop), dan stopt een tool die dat kan, zoals de sandbox (#1087).
@@ -222,6 +225,15 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
     await emit(end_event)
     logger.debug("TOOL RESULT %-29s → %s", call.name, result[:_EVENT_OUTPUT_CHARS])
     return result, figure
+
+
+async def codestap(
+    name: str, args: dict, emit: Emit, label: str, recept_van: Receptbron | None = None
+) -> tuple[str, Any]:
+    """Een toolaanroep die code zet na het antwoord, niet het model (#1256, #1259): dezelfde uitvoering, snippet en
+    events als een modelstap, met een eigen label in de redeneerkaart."""
+    call = ToolCall(id=f"code-{name}", name=name, arguments=json.dumps(args, ensure_ascii=False), args=args)
+    return await _execute_tool(call, emit, recept_van, label=label)
 
 
 @dataclass

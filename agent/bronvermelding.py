@@ -51,6 +51,7 @@ from tools.schemas import (
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_WO_PERSONEEL,
+    TOOL_VERGELIJKINGSGROEP,
 )
 from tools.scopeprofiel import VO_CONTEXT_DEEL
 from tools.store import KeyMeta
@@ -237,6 +238,8 @@ _BESTANDSBRONNEN = {
     TOOL_GET_BESTUURSFINANCIEN: f"{financien.BRONNAAM}{SCHEIDING}{financien.BRONTITEL}",
     # De bronregel komt uit de tool zelf (`bron.regel`), met het versienummer en de verplichte zin van LCSK (#957).
     TOOL_GET_STUDIEKEUZE: f"{studiekeuze.BRONNAAM}{SCHEIDING}{studiekeuze.BRONTITEL}",
+    # De vergelijkingsgroep van Mijn instelling (#1267): de bronregel komt uit de tool zelf (`bron.regel`).
+    TOOL_VERGELIJKINGSGROEP: "DUO",
 }
 # Welke velden van `bron` in de bronregel komen, en met welk woord ervoor.
 _BRONVELDEN = {"editie": "editie", "peildatum": "peildatum", "versie": "versie van", "opgehaald": "opgehaald op"}
