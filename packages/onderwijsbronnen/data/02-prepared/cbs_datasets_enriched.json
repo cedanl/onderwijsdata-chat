@@ -82924,5 +82924,140 @@
       "inputhash": "fde43fa8c137532d",
       "bronrevisie": "d27a53575ea2cfdf"
     }
+  },
+  {
+    "leverancier": "CBS",
+    "bron": "Ontstane vacatures; beroepenindeling ROA-CBS 2014 (BRC 2014), SBI 2008",
+    "periode": "2018-2025",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Ontstane vacatures per jaar naar beroep (BRC 2014: beroepsklasse en beroepssegment) en bedrijfstak (SBI 2008), landelijk. Geschikt om te zien voor welke beroepen werkgevers het meest werven; een stroom over het hele jaar, geen stand op één moment, en niet per regio of opleidingsniveau.",
+    "frequentie": "Perjaar",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "Arbeidsmarkt",
+    "documentatie": {
+      "tekst": "CBS Open Data 85081NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85081NED"
+    },
+    "licentie": "CC BY 4.0",
+    "repositories": [],
+    "publieke_producten": [],
+    "_cbs_id": "85081NED",
+    "_thema": "Arbeidsmarkt",
+    "tags": [
+      "vacatures",
+      "arbeidsmarkt",
+      "beroep",
+      "brc",
+      "jaar",
+      "landelijk"
+    ],
+    "voorbeeldvragen": [
+      "Hoeveel vacatures ontstonden er in 2025 voor ICT-beroepen?",
+      "Voor welke beroepen ontstaan de meeste vacatures?",
+      "Hoe ontwikkelt het aantal ontstane vacatures voor zorgberoepen zich sinds 2018?"
+    ],
+    "_archief": false,
+    "_laatste_update": "2026-06-30",
+    "samenvatting": "Ontstane vacatures per jaar naar beroep (BRC 2014: beroepsklasse en beroepssegment) en bedrijfstak (SBI 2008), landelijk. Geschikt om te zien voor welke beroepen werkgevers het meest werven; een stroom over het hele jaar, geen stand op één moment, en niet per regio of opleidingsniveau.",
+    "_dimensies": [
+      "Bedrijfstakken/branches (SBI2008)",
+      "Beroepenindeling",
+      "Perioden"
+    ],
+    "_meetwaarden": [
+      "OntstaneVacatures_1"
+    ],
+    "_meetwaarden_details": {
+      "OntstaneVacatures_1": {
+        "title": "Ontstane vacatures",
+        "unit": "x 1 000",
+        "description": "Het aantal ontstane vacatures per jaar heeft betrekking op de vacatures die tijdens het verslagjaar zijn ontstaan. Bij de ontstane en vervulde vacatures worden ook gerekend de vacatures die in de verslagperiode zowel ontstaan als inmiddels weer vervuld zijn. De jaaruitkomst van de ontstane en vervulde vacatures is het totaal van de vier kwartalen. Het jaarcijfer van de openstaande vacatures is een gewogen gemiddelde. De ontstane vacatures worden in duizendtallen weergegeven.",
+        "datatype": "Double",
+        "decimals": 1
+      }
+    },
+    "_geo_niveau": [],
+    "_perioden_formaat": [
+      "JJ"
+    ],
+    "_kolommen": {
+      "Bedrijfstakken/branches (SBI2008)": [
+        "A-U Alle economische activiteiten",
+        "B-E Nijverheid (geen bouw) en energie",
+        "B-F Nijverheid en energie",
+        "C Industrie",
+        "10-12 Voedings-, genotmiddelenindustrie",
+        "24-25 Basismetaal, metaalprod.-industrie",
+        "29-30 Transportmiddelenindustrie",
+        "31-33 Overige industrie en reparatie",
+        "D Energievoorziening",
+        "F Bouwnijverheid",
+        "G-I Handel, vervoer en horeca",
+        "G-N Commerciële dienstverlening",
+        "G Handel",
+        "45 Autohandel en -reparatie",
+        "46 Groothandel en handelsbemiddeling",
+        "47 Detailhandel (niet in auto's)",
+        "471 Supermarkten en warenhuizen",
+        "472 Winkels in voedingsmiddelen",
+        "H Vervoer en opslag",
+        "49 Vervoer over land",
+        "52 Opslag, dienstverlening voor vervoer",
+        "53 Post en koeriers",
+        "I Horeca",
+        "J Informatie en communicatie",
+        "K Financiële dienstverlening"
+      ],
+      "Beroepenindeling": [
+        "Totaal",
+        "01 Pedagogische beroepen",
+        "011 Docenten",
+        "013 Leidsters kinderopvang en onderw...",
+        "02 Creatieve en taalkundige beroepen",
+        "021 Auteurs en kunstenaars",
+        "03 Commerciële beroepen",
+        "031 Adviseurs marketing, public relat...",
+        "032 Vertegenwoordigers en inkopers",
+        "033 Verkopers",
+        "04 Bedrijfseconomische en administrat...",
+        "041 Specialisten bedrijfsbeheer en ad...",
+        "042 Vakspecialisten bedrijfsbeheer en...",
+        "043 Administratief personeel",
+        "05 Managers",
+        "052 Managers op administratief en com...",
+        "053 Managers productie en gespecialis...",
+        "06 Openbaar bestuur, veiligheid en ju...",
+        "061 Overheidsambtenaren en -bestuurders",
+        "062 Juristen",
+        "07 Technische beroepen",
+        "072 Vakspecialisten natuur en techniek",
+        "073 Bouwarbeiders",
+        "074 Metaalarbeiders, machinemonteurs",
+        "076 Elektriciens en elektronicamonteurs"
+      ],
+      "OntstaneVacatures_1": "Ontstane vacatures (x 1 000)"
+    },
+    "_kolomtypes": {
+      "Bedrijfstakken/branches (SBI2008)": "dimensie",
+      "Beroepenindeling": "dimensie",
+      "Perioden": "tijd-dimensie",
+      "OntstaneVacatures_1": "meetwaarde (x 1 000)"
+    },
+    "_dimensie_sleutels": {
+      "Bedrijfstakken/branches (SBI2008)": "BedrijfstakkenBranchesSBI2008",
+      "Beroepenindeling": "Beroepenindeling",
+      "Perioden": "Perioden"
+    },
+    "_periode_waarden": [
+      "2018",
+      "2025"
+    ],
+    "_verrijking": {
+      "versie": 2,
+      "inputhash": "a6886dfe8a6d7907",
+      "bronrevisie": "0941e8e913dc015d"
+    }
   }
 ]

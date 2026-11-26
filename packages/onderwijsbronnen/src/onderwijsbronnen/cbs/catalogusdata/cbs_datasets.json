@@ -50428,5 +50428,49 @@
     "_perioden_formaat": [
       "KW"
     ]
+  },
+  {
+    "leverancier": "CBS",
+    "bron": "Ontstane vacatures; beroepenindeling ROA-CBS 2014 (BRC 2014), SBI 2008",
+    "periode": "2018-2025",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Ontstane vacatures; beroepenindeling ROA-CBS 2014 (BRC 2014), SBI 2008",
+    "frequentie": "Perjaar",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "Arbeidsmarkt",
+    "documentatie": {
+      "tekst": "CBS Open Data 85081NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85081NED"
+    },
+    "licentie": "CC BY 4.0",
+    "repositories": [],
+    "publieke_producten": [],
+    "_cbs_id": "85081NED",
+    "_thema": "Arbeidsmarkt",
+    "_archief": false,
+    "_laatste_update": "2026-06-30",
+    "_dimensies": [
+      "Bedrijfstakken/branches (SBI2008)",
+      "Beroepenindeling",
+      "Perioden"
+    ],
+    "_meetwaarden": [
+      "OntstaneVacatures_1"
+    ],
+    "_meetwaarden_details": {
+      "OntstaneVacatures_1": {
+        "title": "Ontstane vacatures",
+        "unit": "x 1 000",
+        "description": "Het aantal ontstane vacatures per jaar heeft betrekking op de vacatures die tijdens het verslagjaar zijn ontstaan. Bij de ontstane en vervulde vacatures worden ook gerekend de vacatures die in de verslagperiode zowel ontstaan als inmiddels weer vervuld zijn. De jaaruitkomst van de ontstane en vervulde vacatures is het totaal van de vier kwartalen. Het jaarcijfer van de openstaande vacatures is een gewogen gemiddelde. De ontstane vacatures worden in duizendtallen weergegeven.",
+        "datatype": "Double",
+        "decimals": 1
+      }
+    },
+    "_geo_niveau": [],
+    "_perioden_formaat": [
+      "JJ"
+    ]
   }
 ]
