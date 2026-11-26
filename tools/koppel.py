@@ -600,21 +600,49 @@ def _koppel(links: _Kant, rechts: _Kant, sleutels: list[str]) -> _Uitkomst:
     )
 
 
-def _skdb_duo(links: _Kant, rechts: _Kant, sleutels: list[str]) -> tuple[_Kant, _Kant] | None:
+def _een_brin(kant: _Kant) -> str | None:
+    """De BRIN van een tabel die aantoonbaar uit één instelling bestaat: elke kolom die de sleutel brin draagt
+    (`_kandidaten`; labelkolommen niet als er een bronkolom is) heeft in elke rij dezelfde BRIN. Geen brin-kolom, een
+    lege tabel, een lege cel of twee BRINs: None."""
+    opties = kant.kandidaten.get("brin", [])
+    kolommen = [k for k in opties if not is_labelkolom(k)] or opties
+    if not kolommen or kant.df.empty:
+        return None
+    normaliseer = kern.SLEUTELS["brin"].normaliseer
+    waarden: set[str] = set()
+    for kolom in kolommen:
+        reeks = kant.df[kolom].map(normaliseer)
+        if reeks.isna().any():
+            return None
+        waarden.update(reeks)
+    return next(iter(waarden)) if len(waarden) == 1 else None
+
+
+def _skdb_duo(
+    links: _Kant, rechts: _Kant, sleutels: list[str], *, een_instelling: bool = False
+) -> tuple[_Kant, _Kant] | None:
     """De SKDB- en de DUO-kant bij SKDB naast DUO op precies brin + croho, geen van beide zelf een koppeling; anders
-    None."""
-    if set(sleutels) != {"brin", "croho"}:
+    None. Met `een_instelling` ook op alleen croho, als beide kanten aantoonbaar dezelfde ene BRIN hebben (`_een_brin`,
+    #1273): twee tabellen die al tot één instelling zijn begrensd, koppelen dan zoals op brin + croho. Over meer
+    instellingen kan één CROHO rijen van verschillende instellingen samenbrengen: dan None, zoals vóór #1273."""
+    vormen = ({"brin", "croho"}, {"croho"}) if een_instelling else ({"brin", "croho"},)
+    if set(sleutels) not in vormen:
         return None
     bron = {k.key: m.bron.lower() for k in (links, rechts) if (m := store.meta(k.key)) and not _is_koppeling(k.key)}
     skdb = next((k for k in (links, rechts) if bron.get(k.key) == "skdb"), None)
     duo = next((k for k in (links, rechts) if bron.get(k.key) == "duo"), None)
-    return (skdb, duo) if skdb and duo else None
+    if not (skdb and duo):
+        return None
+    if "brin" not in sleutels and ((brin := _een_brin(skdb)) is None or _een_brin(duo) != brin):
+        return None
+    return skdb, duo
 
 
 def _opvolgers(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst) -> tuple[_Uitkomst, dict]:
     """SKDB naast DUO op brin + croho: per SKDB-rij zonder DUO-rij de reden uit RIO (#1060, `tools/opvolger.py`).
 
-    Een andere koppeling (andere bronnen, andere sleutels, of een kant die zelf een koppeling is) raakt RIO niet aan.
+    Een andere koppeling (andere bronnen, andere sleutels, of een kant die zelf een koppeling is) raakt RIO niet aan,
+    ook alleen croho bij één instelling niet: RIO wordt per brin + CROHO van een rij gevraagd.
     """
     paar = _skdb_duo(links, rechts, sleutels)
     tabel = opvolger.DuoTabel.van(paar[1].df, paar[1].kolommen, store.meta(paar[1].key)) if paar else None
@@ -625,9 +653,10 @@ def _opvolgers(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitk
 
 
 def _met_onzeker(links: _Kant, rechts: _Kant, sleutels: list[str]) -> bool:
-    """Krijgt de koppeling de kolom `onzeker`: SKDB naast DUO, de SKDB-kant heeft een NSE-cijfer en geen van beide
-    tabellen heeft zelf een kolom met die naam. Ook de celtelling vooraf rekent haar mee."""
-    paar = _skdb_duo(links, rechts, sleutels)
+    """Krijgt de koppeling de kolom `onzeker`: SKDB naast DUO (op brin + croho, of op alleen croho bij één instelling),
+    de SKDB-kant heeft een NSE-cijfer en geen van beide tabellen heeft zelf een kolom met die naam. Ook de celtelling
+    vooraf rekent haar mee."""
+    paar = _skdb_duo(links, rechts, sleutels, een_instelling=True)
     if paar is None or any(ONZEKER in k.df.columns for k in paar):
         return False
     return any(k in paar[0].df.columns for k in studiekeuze.NSE_CIJFERS)
@@ -676,9 +705,10 @@ def _onzekerheid(df: pd.DataFrame, van_skdb: pd.Series, nse: dict[str, str]) -> 
 
 
 def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _Uitkomst) -> tuple[_Uitkomst, dict]:
-    """SKDB naast DUO op brin + croho (#1231): de kleine-n-vlag per SKDB-rij en de SKDB-rijen zonder DUO-rij per graad,
-    in code. Bij HU telde het model zelf: een opleiding met 28 respondenten heette niet onzeker, en 31 opleidingen
-    zonder DUO-rij heetten "bijna allemaal masters".
+    """SKDB naast DUO op brin + croho (#1231), of op alleen croho als beide kanten uit dezelfde ene BRIN bestaan
+    (#1273): de kleine-n-vlag per SKDB-rij en de SKDB-rijen zonder DUO-rij per graad, in code. Bij HU telde het model
+    zelf: een opleiding met 28 respondenten heette niet onzeker, en 31 opleidingen zonder DUO-rij heetten "bijna allemaal
+    masters".
 
     De kolom `onzeker` (na `koppelstatus` en een `koppelreden`) volgt dezelfde regel als get_studiekeuze
     (`studiekeuze.is_onzeker`, MIN_RESPONDENTEN): true of false bij een SKDB-rij, leeg bij een rij alleen uit DUO. Alleen
@@ -686,9 +716,9 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
     `niet_gekoppeld_per_graad` telt de rijen `alleen SKDB` per `graad`, `gekoppeld_per_graad` de rijen `beide` (#1274),
     elk per graad met `rijen`, `met_score` (een NSE-cijfer) en `onzeker` (dezelfde regel, ook als de tabel een eigen
     kolom onzeker heeft); `alleen_duo` noemt de rijen `alleen DUO` met een vaste reden. De delen tellen op tot hun
-    `telling`. Koppelen op alleen croho (#1273) krijgt dit nog niet. Andere koppelingen blijven zoals ze waren.
+    `telling`. Ook bij alleen croho voor één BRIN (#1273) dezelfde vorm. Andere koppelingen blijven zoals ze waren.
     """
-    paar = _skdb_duo(links, rechts, sleutels)
+    paar = _skdb_duo(links, rechts, sleutels, een_instelling=True)
     if paar is None:
         return uitkomst, {}
     skdb, duo = paar
