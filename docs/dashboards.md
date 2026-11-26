@@ -131,8 +131,9 @@ kwartalen sinds 2011 in één lading (met de TTL van `actualiteit`):
 - Laadt CBS niet, dan staat het gat in `niet_beschikbaar` ("Vacatures (CBS)", bron `CBS`) en heeft geen sector een
   score; er staat nergens een 0.
 
-De chattool `get_uwv_vacatures` gebruikt UWV Open Match nog wel, met de ouderdom van de UWV-peildatum (#1219,
-[Tools](tools.md#get_uwv_vacatures)).
+De chat gebruikt dezelfde CBS-tabel met `get_vacatures` (#1226, [Tools](tools.md#get_vacatures)); de chattool
+`get_uwv_vacatures` geeft UWV Open Match nog als archief, met de peildatum, de archiefmelding en de ouderdom van de
+UWV-peildatum (#1219, [Tools](tools.md#get_uwv_vacatures)).
 
 ### Jaren en getalnotatie
 

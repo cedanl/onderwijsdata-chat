@@ -2,13 +2,13 @@
 
 De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste bron wordt automatisch gekozen op basis van je vraag.
 
-**ROA** en **UWV** geeft de assistent als arbeidsmarkt-context bij een onderwijsvraag, met een eigen tool: landelijk of per provincie, niet per instelling. ROA voedt ook de [dashboards](dashboards.md); hun vacatures komen sinds #1225 uit [CBS 83599NED](#cbs-83599ned-openstaande-vacatures), niet meer van UWV.
+**Vacatures** en **ROA** geeft de assistent als arbeidsmarkt-context bij een onderwijsvraag, met een eigen tool: landelijk of per provincie, niet per instelling. De actuele vacatures komen van CBS: [83599NED](#cbs-83599ned-openstaande-vacatures) per provincie en bedrijfstak (`get_vacatures`) en [85081NED](#cbs-85081ned-ontstane-vacatures-per-beroep) per beroep (`get_ontstane_vacatures`); [UWV](#uwv-uitvoeringsinstituut-werknemersverzekeringen) (`get_uwv_vacatures`) is een archief van mei 2023. ROA voedt ook de [dashboards](dashboards.md); hun vacatures komen sinds #1225 uit CBS 83599NED, niet meer van UWV.
 
 ---
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**130 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo (waaronder `85368NED` en `85367NED`, naar leeftijd) laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Bij een doorstroomvraag die zelf het vo noemt, komen hun vo- en vavo-rijen erbij, als [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs) (#879). Die regio is waar de student woont, niet waar de instelling staat. `84312NED` geeft de mbo-studenten van Caribisch Nederland (Bonaire, Sint Eustatius en Saba); de tabel over po, vo en mbo samen (`84732NED`) laadt de chat niet. Negen tabellen over het vo (doorstroom, vo-leerlingen en -gediplomeerden, vo-cohorten, vavo en de terugkeer van voortijdig schoolverlaters) zijn [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs): de zoekfunctie toont ze alleen bij een vraag over het ho of over doorstroom uit het vo, en elke bronvermelding zegt "…, vo-context voor vervolgonderwijs". Ongeveer twee derde van de tabellen is gearchiveerd: CBS werkt ze niet meer bij. De zoekfunctie toont ze pas als er geen lopende tabel past, en de zoektreffer, het resultaat van `get_cbs_data` (`gearchiveerd`, `laatste_periode`), de Bronnen, de bronregel onder een rapportgrafiek en de kop van een CSV-export zeggen "…, gearchiveerd, laatste periode 2016/'17" (#865).
+**132 datasets** met statistische onderwijsdata over mbo, hbo en wo, waarvan twee met vacatures als arbeidsmarkt-context ([83599NED](#cbs-83599ned-openstaande-vacatures) en [85081NED](#cbs-85081ned-ontstane-vacatures-per-beroep)): aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo (waaronder `85368NED` en `85367NED`, naar leeftijd) laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Bij een doorstroomvraag die zelf het vo noemt, komen hun vo- en vavo-rijen erbij, als [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs) (#879). Die regio is waar de student woont, niet waar de instelling staat. `84312NED` geeft de mbo-studenten van Caribisch Nederland (Bonaire, Sint Eustatius en Saba); de tabel over po, vo en mbo samen (`84732NED`) laadt de chat niet. Negen tabellen over het vo (doorstroom, vo-leerlingen en -gediplomeerden, vo-cohorten, vavo en de terugkeer van voortijdig schoolverlaters) zijn [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs): de zoekfunctie toont ze alleen bij een vraag over het ho of over doorstroom uit het vo, en elke bronvermelding zegt "…, vo-context voor vervolgonderwijs". Ongeveer twee derde van de tabellen is gearchiveerd: CBS werkt ze niet meer bij. De zoekfunctie toont ze pas als er geen lopende tabel past, en de zoektreffer, het resultaat van `get_cbs_data` (`gearchiveerd`, `laatste_periode`), de Bronnen, de bronregel onder een rapportgrafiek en de kop van een CSV-export zeggen "…, gearchiveerd, laatste periode 2016/'17" (#865).
 
 | Eigenschap | Details |
 |------------|---------|
@@ -241,9 +241,11 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 
 **Openstaande vacatures; SBI 2008, regio** ([83599NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table)) is
 de vacaturebron van de [dashboards](dashboards.md#vacatures-cbs-83599ned) Arbeidsmarkt en Mijn instelling (de
-payload van `/api/dashboard/regio`), sinds #1225 (besluit #1221). Tot dan was dat UWV Open Match, een momentopname van
-16 mei 2023 die UWV niet meer bijwerkt (zie [UWV](#uwv-uitvoeringsinstituut-werknemersverzekeringen)). De tabel staat
-in de CBS-catalogus (`cbs_datasets*.json`) met titel, licentie, frequentie en laatste periode.
+payload van `/api/dashboard/regio`), sinds #1225 (besluit #1221), en sinds #1226 van de chat (`get_vacatures`, zie
+[Tools](tools.md#get_vacatures)). Tot dan was dat UWV Open Match, een momentopname van 16 mei 2023 die UWV niet meer
+bijwerkt (zie [UWV](#uwv-uitvoeringsinstituut-werknemersverzekeringen)). De tabel staat in de CBS-catalogus
+(`cbs_datasets*.json`) met titel, licentie, frequentie en laatste periode; `search_catalog` en `dataset_details` wijzen
+naar `get_vacatures`.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -261,6 +263,13 @@ in de CBS-catalogus (`cbs_datasets*.json`) met titel, licentie, frequentie en la
   "geen gegevens", nooit 0; een gemiddelde over een kwartaal zonder cijfer ook.
 - **Voorlopig in het bronblok:** de regel van 83599NED onder een dashboard noemt het kwartaal, het gemiddelde, de
   licentie en de kwartalen die CBS voorlopig noemt (`data/bronblok.py`).
+- **In de chat** (`get_vacatures`, #1226): dezelfde lader, voor één provincie, alle secties of één sectie, met het
+  totaal erbij. Elke waarde heeft haar periode en status (voorlopig, definitief of geen gegevens); de tabel staat in de
+  store, zodat bronregel ("laatste kwartaal 2026 3e kwartaal", met de voorlopige kwartalen), citaties, snippet,
+  herlaad en CSV-export meelopen. De tabel gaat tot provincie: een gemeente, woonplaats of arbeidsmarktregio krijgt de
+  provincie waarin ze ligt (uit `data/woonplaatsen.py` en `data/arbeidsmarktregio.py`), met die melding erbij; een
+  regio over meer provincies die waar de meeste van haar gemeenten liggen, en een plaats die even vaak in twee
+  provincies ligt de keuze aan de gebruiker.
 - **De koppeltabel** zet elke SBI-sectie (19 rijen, A t/m S) bij de onderwijssectoren die er vooral werken: per niveau
   (mbo: de hoofdgroep van DUO, hbo en wo: het onderdeel) één of meer sectoren, of "geen koppeling", met een korte reden.
   Ze is met de hand opgesteld, geen taalmodel. Zo staat C Industrie bij Techniek en procesindustrie (mbo) en Techniek
@@ -281,9 +290,42 @@ in de CBS-catalogus (`cbs_datasets*.json`) met titel, licentie, frequentie en la
 
 ---
 
+## CBS 85081NED — ontstane vacatures per beroep
+
+**Ontstane vacatures; beroepenindeling ROA-CBS 2014 (BRC 2014), SBI 2008**
+([85081NED](https://opendata.cbs.nl/#/CBS/nl/dataset/85081NED/table)) geeft de vacatures per beroep. In de chat via
+`get_ontstane_vacatures` (#1227, zie [Tools](tools.md#get_ontstane_vacatures)); de dashboards gebruiken haar niet. De
+tabel staat in de CBS-catalogus (`cbs_datasets*.json`, `cbs_tableinfo.json`) met titel, licentie, frequentie en de
+status per jaar; `search_catalog` en `dataset_details` wijzen naar `get_ontstane_vacatures`.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | CBS Open Data OData API, `https://opendata.cbs.nl/ODataApi/odata/85081NED` (`onderwijsbronnen.cbs.client`) |
+| Licentie | CC BY 4.0 |
+| Inhoud | Ontstane vacatures (eenheid uit de metadata: x 1 000) per beroepsklasse en beroepssegment van de BRC 2014 en per bedrijfstak (SBI 2008); alleen landelijk |
+| Frequentie | Per jaar, vanaf 2018 |
+| Voorlopig | CBS noemt per jaar in de Perioden-dimensie of het cijfer voorlopig is (nu: elk jaar 2018-2025) |
+| Lader | `data/vacatures_ontstaan.py`: één lading voor alle beroepen en jaren, alle economische activiteiten (A-U), 24 uur geldig (`actualiteit.TTL`) |
+
+- **Wanneer welke tabel:** 85081NED is landelijk, per beroep en per jaar: een stroom, alle vacatures die in het jaar
+  ontstonden (de som van vier kwartalen). 83599NED is per provincie, per bedrijfstak en per kwartaal: een voorraad, wat
+  op de laatste dag van het kwartaal openstond. De twee getallen zijn niet op te tellen of tegen elkaar af te zetten
+  alsof het dezelfde maat is.
+- **Wat de lader geeft:** per beroep (het totaal, een klasse met twee cijfers zoals "07 Technische beroepen", of een
+  segment met drie cijfers zoals "072 Vakspecialisten natuur en techniek") het aantal per jaar. De eenheid komt uit
+  DataProperties: "x 1 000" wordt een aantal (64,3 → 64.300); een andere eenheid is een fout, geen gok. CBS kort lange
+  beroepsnamen af met "..."; zo staan ze ook in het resultaat. Een lege cel is "geen gegevens" (null), nooit 0: CBS
+  publiceert een deel van de segmenten en de klasse 02 Creatieve en taalkundige beroepen niet.
+- **In de chat:** standaard alle segmenten, met `niveau="klasse"` de klassen; met `beroep` (code of naam) één klasse
+  met haar segmenten of één segment. Het totaal staat er altijd bij. Het resultaat is een dataset zoals 83599NED:
+  bronregel ("jaren 2018 t/m 2025", met de voorlopige jaren), citaties per beroep en jaar, snippet, herlaad en
+  CSV-export.
+
+---
+
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector. De dashboards gebruiken UWV sinds #1225 niet meer: hun vacatures komen uit [CBS 83599NED](#cbs-83599ned-openstaande-vacatures). Welke beroepenclusters bij een sector horen, is een indeling van deze app, gemaakt met een taalmodel (`data/sector_cluster_mapping.json`); UWV deelt vacatures niet in onderwijssectoren in. Welk model en welke prompt de huidige indeling maakten, is niet vastgelegd, en de indeling is nog niet gevalideerd: een steekproef van 30 clusters (`docs/sector-cluster-steekproef.csv`, `scripts/steekproef_sector_mapping.py`) wacht op handmatige beoordeling. Een cluster dat het model bij geen sector zette, staat in `_niet_toegewezen`; een test bewaakt dat elk cluster uit de snapshot een plaats heeft (#873). Het resultaat houdt de UWV-aantallen, die indeling (met versie en model) en het gewogen sectorgetal apart. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
+**UWV-vacaturedata** is in de chat een archief (#1226): `get_uwv_vacatures` geeft de vacatures per provincie of gemeente en beroepencluster op de laatste peildatum, 16-05-2023. Elk resultaat begint met het veld `archief` (de peildatum en de melding dat UWV deze reeks niet meer maakt, met de verwijzing naar `get_vacatures` en `get_ontstane_vacatures`); ook een melding zonder cijfers (een onbekende plaats of sector) begint ermee. Het model gebruikt de tool alleen bij een vraag naar mei 2023 of de oude momentopname. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector. De dashboards gebruiken UWV sinds #1225 niet meer: hun vacatures komen uit [CBS 83599NED](#cbs-83599ned-openstaande-vacatures). Welke beroepenclusters bij een sector horen, is een indeling van deze app, gemaakt met een taalmodel (`data/sector_cluster_mapping.json`); UWV deelt vacatures niet in onderwijssectoren in. Welk model en welke prompt de huidige indeling maakten, is niet vastgelegd, en de indeling is nog niet gevalideerd: een steekproef van 30 clusters (`docs/sector-cluster-steekproef.csv`, `scripts/steekproef_sector_mapping.py`) wacht op handmatige beoordeling. Een cluster dat het model bij geen sector zette, staat in `_niet_toegewezen`; een test bewaakt dat elk cluster uit de snapshot een plaats heeft (#873). Het resultaat houdt de UWV-aantallen, die indeling (met versie en model) en het gewogen sectorgetal apart. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
 
 Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel erachter (UWV: alle beroepenclusters van de plaats met het aantal vacatures; ROA: elk cijfer als rij met onderdeel, regio, opleiding en indicator) staat in de store onder een `data_key`, met de laadaanroep en de peildatum of versie. Daardoor lopen rapport en dashboard, het recept na een herstart, de bronnenlijst, de citaties, de snippet en de CSV-export mee; tot dan bestonden UWV en ROA voor het rapport niet en schreef het model dat er geen vacaturegegevens waren.
 
@@ -306,7 +348,7 @@ Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel 
     arbeidsmarktregio en beroepsgroep), en CBS, in tabel
     [83599NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table) (openstaande vacatures per provincie en
     bedrijfstak, SBI 2008). De dashboards laden die CBS-tabel sinds #1225
-    ([CBS 83599NED](#cbs-83599ned-openstaande-vacatures)); de chat (`get_uwv_vacatures`) nog niet.
+    ([CBS 83599NED](#cbs-83599ned-openstaande-vacatures)), de chat sinds #1226 met `get_vacatures`.
 
     Daarom noemen de chat en haar bronregels de ouderdom van de peildatum ("peildatum 16 mei 2023, ruim 3 jaar oud");
     boven de 12 maanden (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`) staat er een waarschuwing met deze
