@@ -14,7 +14,8 @@ De koppeling is voorbereid, niet live. Wat er is en wat nog moet:
 | Onderdeel | Stand |
 |---|---|
 | Catalogustools via MCP (`search_catalog`, `dataset_details`, `dataset_counts`) | Er, via stdio voor lokale clients en via streamable HTTP op `/mcp` ([MCP-server](mcp.md)) |
-| `bewijs` en `vervolg` in elk resultaat, brontekst ontsmet (#707) | Er ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)) |
+| `bewijs` en `vervolg` in elk resultaat, brontekst ontsmet (#707) | Er ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)); bij de datatools met `bewijs.kwaliteit` (#1248): de client krijgt of een aantal een ondergrens is door onderdrukte cellen, welke gevraagde jaren ontbreken, of de bron afgekapt was en welke codes niet gevonden zijn |
+| Gebruiksregels als MCP-prompt `bronregels` en resource `onderwijsdata://bronregels` (#1249) | Er ([Tools](mcp.md#tools)); een werkinstructie, geen controle |
 | Deep link naar de chat met een vraag in de invoer (#709) | Er ([Deep link naar de chat](api.md#deep-link-naar-de-chat)) |
 | Streamable-http-transport op `/mcp` in de app (#706), met API-sleutel (#939) en limieten (#940) | Er, alleen met sleutels in `MCP_API_KEYS`; nog op geen omgeving (#941); belastingsmeting #942 |
 | Datatools voor de kernvragen (#708): `aantallen_per_jaar` en `vergelijk_instellingen` | Er, via stdio en `/mcp` ([Cijfers](mcp.md#cijfers-aantallen-en-vergelijken)); aantallen per instelling of opleiding en jaar uit DUO, met verloop, en instellingen vergelijken |
@@ -46,12 +47,22 @@ en versie; het voorkomt geen verkeerde zin, geen eigen optelling en geen gegeven
 regel "Noem geen getal dat niet in een toolresultaat staat" staat in elke toolbeschrijving en in de instructies van de
 server, maar het model van EduGenAI kan hem negeren.
 
+`bewijs.kwaliteit` (#1248) geeft het model van EduGenAI in vaste sleutels wat de code over de getallen weet: of een aantal een
+ondergrens is door onderdrukte cellen (met de zin uit de domeinregel), welke gevraagde jaren ontbreken, of de bron
+afgekapt was en welke codes niet gevonden zijn. Het telt alleen de cellen achter de eigen reeks van de instelling: een
+lege reeks is geen ondergrens. De prompt en resource `bronregels` (#1249) zetten de regels voor het
+gebruik ervan op één plek: de ondergrens noemen, `bewijs.versie` noemen, niet gevonden is niet "bestaat niet", niet zelf
+rekenen, en de domeinregels van DUO (onderdrukte cel, DT = deeltijd, vestiging is niet woonplaats). Dat zijn gegevens
+en een werkinstructie, geen controle: of het model de prompt laadt, de ondergrens noemt en de regels volgt, ligt bij
+EduGenAI. Niets controleert achteraf of het dat deed.
+
 | | Volledige app | Via EduGenAI |
 |---|---|---|
 | Wie schrijft het antwoord | Ons model, met onze prompt | Het model van EduGenAI |
 | Getallen tegen de data gecontroleerd na het model | Ja; een antwoord met een niet-gedekt getal wordt ingetrokken | Nee |
 | Herkomst van een gegeven | Bronregel, citaties en manifest bij elk antwoord | `bewijs` in elk toolresultaat; of het model hem noemt, ligt bij EduGenAI |
 | Rekenen | Alleen in tools | In tools; het model kan daarnaast zelf rekenen |
+| Ondergrens bij onderdrukte cellen | Code zet hem onder het antwoord | In `bewijs.kwaliteit` en in `bronregels`; of het model hem noemt, ligt bij EduGenAI |
 | Grafieken, rapporten, exports | Ja | Nee; via de link naar de volledige app |
 
 ### Wat we claimen
@@ -68,6 +79,7 @@ Niet:
 - "De AI rekent nooit zelf" of "elk getal is gecontroleerd". Die claims horen bij de volledige app (README) en gelden
   voor deze route niet.
 - Dat een antwoord in EduGenAI juist of volledig is.
+- Dat het model van EduGenAI de regels uit `bronregels` of de `kwaliteit` in het `bewijs` volgt.
 
 ## Teksten voor EduGenAI (concept)
 

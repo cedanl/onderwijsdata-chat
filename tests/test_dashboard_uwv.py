@@ -1,4 +1,8 @@
-"""Dashboardlaag: geen stille terugval op alle clusters (#229), geen DUO -1 als getal (#228)."""
+"""Dashboardlaag: de vacatures van CBS 83599NED per sector via de koppeltabel (#1225), geen DUO -1 als getal (#228).
+
+Tot #1225 kwamen de vacatures uit UWV Open Match (beroepenclusters, een momentopname van mei 2023); de regels die
+bleven: geen stille terugval op alle vacatures (#229) en een gedeelde bedrijfstak telt naar rato (#455).
+"""
 
 import inspect
 import json
@@ -8,69 +12,138 @@ import pandas as pd
 import pytest
 
 import data.dashboard as dashboard
-from data import arbeidsmarkt
+from data import arbeidsmarkt, sbi_koppeling, vacatures_cbs
 
-_CLUSTERS = {"Zorg en welzijn": 900, "ICT": 300, "Techniek": 200}
-
-
-def _met_clusters(sectoren):
-    with (
-        patch.object(arbeidsmarkt, "uwv_stand", return_value=arbeidsmarkt.UwvStand(1400, "2023-05-16", _CLUSTERS)),
-        patch.object(
-            arbeidsmarkt,
-            "SECTOR_CLUSTER_MAP",
-            {"GEZONDHEIDSZORG": ["Zorg en welzijn"], "ONBEKEND": ["Bestaat niet"]},
-        ),
-    ):
-        return dashboard._uwv_clusters_voor_sectoren("Utrecht", sectoren)
+_KW = tuple(vacatures_cbs.Periode(f"2026KW0{i}", f"2026 {i}e kwartaal", True) for i in (1, 2, 3))
+_VIER = (vacatures_cbs.Periode("2025KW04", "2025 4e kwartaal", True), *_KW)
 
 
-def test_sector_met_clustermatch_geeft_alleen_die_clusters():
-    assert _met_clusters(("GEZONDHEIDSZORG",)) == {"Zorg en welzijn": 900}
+def _sectie(code: str, naam: str, laatste: int | None, gemiddelde: int | None) -> vacatures_cbs.Sectie:
+    return vacatures_cbs.Sectie(
+        code, naam, vacatures_cbs.Waarde(_KW[-1:], laatste), vacatures_cbs.Waarde(_VIER, gemiddelde)
+    )
 
 
-def test_sector_zonder_clustermatch_geeft_geen_clusters():
-    # Met alle clusters als terugval kreeg elke sector vacature-aandeel 0: "overaanbod".
-    assert _met_clusters(("ONBEKEND",)) == {}
-
-
-# --- #455: het dashboard telt een gedeeld cluster naar rato, net als de chat ---
-
-_GEDEELD = {"Chauffeurs": 2000, "Programmeurs": 500, "Accountants": 300}
-_DEELKAART = {"TECHNIEK": ["Chauffeurs", "Programmeurs"], "ECONOMIE": ["Chauffeurs", "Accountants"]}
+_STAND = vacatures_cbs.Provinciestand(
+    provincie="Utrecht",
+    laatste=_KW[-1],
+    gemiddeld_over=_VIER,
+    totaal=_sectie("A-U", "Alle economische activiteiten", 3000, 2800),
+    secties=(
+        _sectie("C", "Industrie", 1000, 1000),
+        _sectie("M", "Specialistische zakelijke diensten", 900, 900),
+        _sectie("K", "Financiële dienstverlening", 500, 300),
+        _sectie("S", "Overige dienstverlening", None, None),
+    ),
+)
+# C bij TECHNIEK; M bij TECHNIEK en ECONOMIE (elk de helft); K bij ECONOMIE; S bij geen hbo-sector.
+_RIJEN = (
+    sbi_koppeling.Rij("C", "Industrie", {"mbo": (), "hbo": ("TECHNIEK",), "wo": ()}, "r"),
+    sbi_koppeling.Rij("M", "Zakelijk", {"mbo": (), "hbo": ("TECHNIEK", "ECONOMIE"), "wo": ()}, "r"),
+    sbi_koppeling.Rij("K", "Financieel", {"mbo": (), "hbo": ("ECONOMIE",), "wo": ()}, "r"),
+    sbi_koppeling.Rij("S", "Overig", {"mbo": (), "hbo": (), "wo": ()}, "r"),
+)
+_DEELKAART = {"TECHNIEK": ["C", "M"], "ECONOMIE": ["M", "K"]}
 _GPS = {"TECHNIEK": 50, "ECONOMIE": 50}
 
 
 @pytest.fixture
-def gedeelde_clusters():
+def cbs_stand():
     with (
-        patch.object(arbeidsmarkt, "uwv_stand", return_value=arbeidsmarkt.UwvStand(2800, "2023-05-16", _GEDEELD)),
-        patch.dict(arbeidsmarkt.SECTOR_CLUSTER_MAP, _DEELKAART, clear=True),
-        patch.dict(arbeidsmarkt.SECTOR_INDELING, {"TECHNIEK": "hbo/wo", "ECONOMIE": "hbo/wo"}, clear=True),
+        patch.object(vacatures_cbs, "stand", return_value=_STAND),
+        patch.object(sbi_koppeling, "koppeltabel", return_value=_RIJEN),
     ):
         yield
 
 
-def test_vacatures_per_sector_telt_een_gedeeld_cluster_naar_rato(gedeelde_clusters):
-    per_sector = arbeidsmarkt.vacatures_per_sector("Utrecht", ("TECHNIEK", "ECONOMIE"))
-
-    # Chauffeurs (2000) horen bij beide: elk de helft. Ongewogen was het 2500 en 2300 van 2800.
-    assert per_sector == {"TECHNIEK": 1500, "ECONOMIE": 1300}
-    assert sum(per_sector.values()) <= 2800
-
-
-def test_vacatures_per_sector_zonder_uwv_rijen_is_leeg(gedeelde_clusters):
-    with patch.object(arbeidsmarkt, "uwv_stand", return_value=None):
-        assert arbeidsmarkt.vacatures_per_sector("Atlantis", ("TECHNIEK",)) == {}
+def _match(gevonden: dict) -> dict:
+    with (
+        patch.object(dashboard, "resolve_alias", side_effect=lambda naam: naam),
+        patch.object(dashboard, "_arbeidsmarktmatch_ho", return_value=gevonden),
+        patch.object(dashboard, "_roa_schoolverlaters", return_value={}),
+    ):
+        return dashboard.load_dashboard_arbeidsmarktmatch("Hogeschool Utrecht")
 
 
-def test_dashboard_vacatures_per_sector_zonder_uwv_is_leeg(gedeelde_clusters):
-    with patch.object(arbeidsmarkt, "uwv_stand", side_effect=RuntimeError("UWV onbereikbaar")):
-        assert dashboard._uwv_vacatures_per_sector("Utrecht", ("TECHNIEK",)) == {}
+_HO = {
+    "type": "ho",
+    "niveau": "hbo",
+    "provincie": "Utrecht",
+    "arbeidsmarktregio": "Midden-Utrecht",
+    "laatste_jaar": 2024,
+    "gediplomeerden_per_sector": {**_GPS, "SECTOROVERSTIJGEND": 40},
+}
+
+
+def test_arbeidsmarktmatch_telt_een_gedeelde_bedrijfstak_naar_rato(cbs_stand):
+    uit = _match(dict(_HO))
+
+    # TECHNIEK: C 1000 + de helft van M 450; ECONOMIE: de andere helft van M 450 + K 300. Samen de 2200 van C, M en K.
+    assert uit["vacatures_per_sector"] == {"TECHNIEK": 1450, "ECONOMIE": 750}
+    assert uit["sector_sbi_mapping"] == {"ECONOMIE": ["M", "K"], "SECTOROVERSTIJGEND": [], "TECHNIEK": ["C", "M"]}
+    # De bedrijfstakken achter de score, gemiddeld over vier kwartalen, aflopend; S hoort bij geen sector.
+    assert uit["vacatures_per_bedrijfstak"] == {
+        "C Industrie": 1000,
+        "M Specialistische zakelijke diensten": 900,
+        "K Financiële dienstverlening": 300,
+    }
+    assert "vacatures_per_cluster" not in uit and "sector_cluster_mapping" not in uit
+
+
+def test_een_sector_zonder_koppeling_krijgt_geen_score_maar_de_reden(cbs_stand):
+    uit = _match(dict(_HO))
+
+    assert uit["match_score"]["SECTOROVERSTIJGEND"] is None
+    assert uit["match_verhouding"]["SECTOROVERSTIJGEND"] is None
+    assert uit["match_weggelaten"] == {"SECTOROVERSTIJGEND": "geen vacaturegegevens per bedrijfstak voor deze sector"}
+    assert dashboard._MATCH_GEEN_KOPPELING == "geen vacaturegegevens per bedrijfstak voor deze sector"
+
+
+def test_de_score_rekent_met_het_gemiddelde_van_vier_kwartalen(cbs_stand):
+    uit = _match(dict(_HO))
+
+    # Diploma-aandelen 50/140 en 50/140; vacature-aandelen 1450/2200 en 750/2200 (het gemiddelde, niet het laatste
+    # kwartaal: K had 500 in het laatste kwartaal en 300 gemiddeld).
+    dipl = 50 / 140
+    assert uit["match_verhouding"] == {
+        "ECONOMIE": round((750 / 2200) / dipl, 2),
+        "SECTOROVERSTIJGEND": None,
+        "TECHNIEK": round((1450 / 2200) / dipl, 2),
+    }
+    assert uit["match_score"] == {"ECONOMIE": "evenwicht", "SECTOROVERSTIJGEND": None, "TECHNIEK": "schaarste"}
+
+
+def test_een_bedrijfstak_zonder_cijfer_is_geen_nul():
+    # C heeft bij CBS geen cijfer; ONDERWIJS hoort hier alleen bij C.
+    stand = vacatures_cbs.Provinciestand(
+        "Utrecht", _KW[-1], _VIER, _STAND.totaal, (_sectie("C", "Industrie", None, None), *_STAND.secties[1:])
+    )
+    rijen = (sbi_koppeling.Rij("C", "Industrie", {"mbo": (), "hbo": ("ONDERWIJS",), "wo": ()}, "r"), *_RIJEN[1:])
+    with (
+        patch.object(vacatures_cbs, "stand", return_value=stand),
+        patch.object(sbi_koppeling, "koppeltabel", return_value=rijen),
+    ):
+        uit = _match({**_HO, "gediplomeerden_per_sector": {"TECHNIEK": 50, "ECONOMIE": 50, "ONDERWIJS": 50}})
+
+    # Geen 0 en dus geen "overaanbod", maar een reden.
+    assert "ONDERWIJS" not in uit["vacatures_per_sector"]
+    assert uit["match_score"]["ONDERWIJS"] is None
+    assert uit["match_weggelaten"]["ONDERWIJS"] == dashboard._MATCH_GEEN_GEGEVENS
+
+
+def test_dashboard_zonder_cbs_heeft_geen_vacatures_en_meldt_het_gat():
+    with patch.object(vacatures_cbs, "stand", side_effect=ConnectionError("CBS onbereikbaar")):
+        uit = _match(dict(_HO))
+
+    assert uit["vacatures_per_sector"] == {}
+    assert set(uit["match_weggelaten"].values()) == {dashboard._MATCH_GEEN_VACATURES}
+    assert uit["niet_beschikbaar"] == [
+        {"onderdeel": "Vacatures (CBS)", "bron": "CBS", "reden": "de bron was niet bereikbaar"}
+    ]
 
 
 def test_match_scores_met_gewogen_vacatures():
-    # Met de ongewogen 2500 en 2300 van 2800 kregen beide sectoren "schaarste".
+    # Ongewogen (een gedeelde bedrijfstak bij elke sector helemaal) kregen beide sectoren "schaarste" (#455).
     scores = dashboard._match_scores(_GPS, {"TECHNIEK": 1500, "ECONOMIE": 1300}, _DEELKAART)
 
     assert scores == {"TECHNIEK": "evenwicht", "ECONOMIE": "evenwicht"}
@@ -83,8 +156,8 @@ def test_match_scores_schaarste_en_overaanbod():
     assert dashboard._MATCH_DREMPEL == 1.2
 
 
-def test_match_scores_sector_zonder_clusters_is_none():
-    scm = {"TECHNIEK": ["Programmeurs"], "ONDERWIJS": []}
+def test_match_scores_sector_zonder_koppeling_is_none():
+    scm = {"TECHNIEK": ["J"], "ONDERWIJS": []}
 
     scores = dashboard._match_scores({"TECHNIEK": 50, "ONDERWIJS": 50}, {"TECHNIEK": 500, "ONDERWIJS": 0}, scm)
 
@@ -99,7 +172,7 @@ def test_match_scores_zonder_vacatures_is_alles_none(vacatures):
 
 def test_match_verhouding_is_vacature_aandeel_gedeeld_door_diploma_aandeel():
     # #949: de lengte van de staaf. TECHNIEK 0,2 / 0,76 = 0,26 (overaanbod, onder 1 / 1,2); ECONOMIE 0,8 / 0,19 = 4,2
-    # (schaarste, boven 1,2); ONDERWIJS heeft geen clusters en dus geen verhouding, net als geen label.
+    # (schaarste, boven 1,2); ONDERWIJS heeft geen bedrijfstak en dus geen verhouding, net als geen label.
     gps = {"TECHNIEK": 320, "ECONOMIE": 80, "ONDERWIJS": 20}
     vacatures = {"TECHNIEK": 200, "ECONOMIE": 800}
     scm = {**_DEELKAART, "ONDERWIJS": []}
@@ -155,33 +228,11 @@ def test_elke_sector_zonder_label_heeft_een_reden():
 
     assert dashboard._match_weggelaten(gps, {"TECHNIEK": 5, "ECONOMIE": 5}, scm) == {
         "ECONOMIE": dashboard._MATCH_TE_WEINIG,
-        "ONDERWIJS": dashboard._MATCH_GEEN_CLUSTERS,
+        "ONDERWIJS": dashboard._MATCH_GEEN_KOPPELING,
     }
     assert dashboard._match_weggelaten(gps, {}, scm) == dict.fromkeys(gps, dashboard._MATCH_GEEN_VACATURES)
     scores = dashboard._match_scores(gps, {"TECHNIEK": 5, "ECONOMIE": 5}, scm)
     assert {s for s, label in scores.items() if label is None} == {"ECONOMIE", "ONDERWIJS"}
-
-
-def test_arbeidsmarktmatch_geeft_de_gewogen_telling_per_sector(gedeelde_clusters):
-    gevonden = {
-        "type": "ho",
-        "provincie": "Utrecht",
-        "arbeidsmarktregio": "Midden-Utrecht",
-        "laatste_jaar": 2024,
-        "gediplomeerden_per_sector": _GPS,
-    }
-    with (
-        patch.object(dashboard, "resolve_alias", side_effect=lambda naam: naam),
-        patch.object(dashboard, "_arbeidsmarktmatch_ho", return_value=gevonden),
-        patch.object(dashboard, "_roa_schoolverlaters", return_value={}),
-    ):
-        uit = dashboard.load_dashboard_arbeidsmarktmatch("Hogeschool Utrecht")
-
-    assert uit["vacatures_per_sector"] == {"TECHNIEK": 1500, "ECONOMIE": 1300}
-    assert uit["match_score"] == {"TECHNIEK": "evenwicht", "ECONOMIE": "evenwicht"}
-    # Additief: de ongewogen clusters en de mapping blijven in het antwoord.
-    assert uit["vacatures_per_cluster"] == _GEDEELD
-    assert uit["sector_cluster_mapping"] == _DEELKAART
 
 
 # --- #228: het dashboard telt DUO -1 niet als getal mee, net als de chat ---

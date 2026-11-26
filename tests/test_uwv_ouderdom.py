@@ -2,7 +2,8 @@
 
 De vacatures komen uit UWV Open Match, peildatum 16 mei 2023. De app noemde die datum wel, maar niet hoe oud ze is:
 naast diplomajaren tot 2025 leek de app achter te lopen. Nu geven de dashboards, de chattool en de bronregels de
-ouderdom in hele maanden mee, met `verouderd` boven `VACATURES_VEROUDERD_MAANDEN`. Elke test zet de klok vast
+ouderdom in hele maanden mee, met `verouderd` boven `VACATURES_VEROUDERD_MAANDEN`. Sinds #1225 lezen de dashboards hun
+vacatures uit CBS 83599NED; dezelfde grens geldt daar voor het laatste kwartaal. Elke test zet de klok vast
 (`actualiteit.nu`); geen test hangt van de echte datum af.
 """
 
@@ -15,7 +16,7 @@ import pytest
 
 import data.dashboard as dashboard
 from core import actualiteit
-from data import arbeidsmarkt, bronblok
+from data import arbeidsmarkt, bronblok, vacatures_cbs
 from tools import arbeidsmarkt as tools_arbeidsmarkt
 from tools import store
 from tools.arbeidsmarkt import get_uwv_vacatures
@@ -144,42 +145,42 @@ def test_de_bronregel_onder_het_antwoord_noemt_de_ouderdom(uwv):
     assert known is not None and known.peilmoment == "peildatum 16 mei 2023, ruim 3 jaar oud"
 
 
-# ── De dashboards: payload en bronblok ───────────────────────────────────────
+# ── De dashboards: sinds #1225 CBS 83599NED, met dezelfde grens ──────────────
 
 
-def test_het_vacatureaanbod_draagt_ouderdom_en_verouderd():
-    stand = arbeidsmarkt.UwvStand(1100, "2023-05-16", {"Zorg en welzijn": 900, "ICT": 200}, "Utrecht")
-    with patch.object(arbeidsmarkt, "uwv_stand", return_value=stand):
-        vac = dashboard._uwv_vacatures_provincie("Utrecht")
-
-    assert (vac["peildatum"], vac["peildatum_ouderdom_maanden"], vac["verouderd"]) == ("2023-05-16", 42, True)
-
-
-def test_de_matchduiding_draagt_ouderdom_en_verouderd():
-    stand = arbeidsmarkt.UwvStand(1100, "2023-05-16", {"ICT": 1100}, "Utrecht")
-    with patch.object(arbeidsmarkt, "uwv_stand", return_value=stand):
-        duiding = dashboard._match_duiding("Utrecht", [2025], vacatures_geladen=True, roa_geladen=False)
-
-    assert duiding["vacatures_peildatum"] == "2023-05-16"
-    assert (duiding["peildatum_ouderdom_maanden"], duiding["verouderd"]) == (42, True)
+def _stand(code: str, titel: str) -> vacatures_cbs.Provinciestand:
+    periode = vacatures_cbs.Periode(code, titel, True)
+    waarde = vacatures_cbs.Waarde((periode,), 1000)
+    totaal = vacatures_cbs.Sectie("A-U", "Alle economische activiteiten", waarde, waarde)
+    return vacatures_cbs.Provinciestand("Utrecht", periode, (periode,) * 4, totaal, ())
 
 
-def test_de_matchduiding_zonder_uwv_noemt_geen_ouderdom():
-    duiding = dashboard._match_duiding("Utrecht", [2025], vacatures_geladen=False, roa_geladen=False)
+@pytest.mark.parametrize(
+    ("code", "titel", "maanden", "verouderd"),
+    [("2026KW03", "2026 3e kwartaal", 1, False), ("2025KW03", "2025 3e kwartaal", 13, True)],
+)
+def test_het_vacatureaanbod_draagt_de_ouderdom_van_het_kwartaal(code, titel, maanden, verouderd):
+    # De stand van een kwartaal is die van zijn laatste dag; de grens is dezelfde als bij UWV.
+    with patch.object(vacatures_cbs, "stand", return_value=_stand(code, titel)):
+        vac = dashboard._vacatureaanbod("Utrecht")
+
+    assert vac["periode"] == titel
+    assert (vac["peildatum_ouderdom_maanden"], vac["verouderd"]) == (maanden, verouderd)
+    assert "peildatum" not in vac  # geen momentopname meer
+
+
+def test_de_matchduiding_draagt_de_ouderdom_van_het_laatste_kwartaal():
+    duiding = dashboard._match_duiding(_stand("2025KW03", "2025 3e kwartaal"), [2025], roa_geladen=False)
+
+    assert (duiding["peildatum_ouderdom_maanden"], duiding["verouderd"]) == (13, True)
+
+
+def test_de_matchduiding_zonder_cbs_noemt_geen_ouderdom():
+    duiding = dashboard._match_duiding(None, [2025], roa_geladen=False)
 
     assert (duiding["peildatum_ouderdom_maanden"], duiding["verouderd"]) == (None, False)
 
 
-def test_het_bronblok_noemt_bij_uwv_de_ouderdom():
-    [regel] = bronblok.blok(
-        [{"bron": "UWV", "dataset": "uwv-open-match-data", "peildatum": "2023-05-16", "opgehaald_op": _NU.isoformat()}]
-    )
-
-    assert regel["peildatum"] == "2023-05-16"
-    assert regel["peilmoment"] == "peildatum 16 mei 2023, ruim 3 jaar oud"
-    assert (regel["peildatum_ouderdom_maanden"], regel["verouderd"]) == (42, True)
-
-
-def test_de_periode_van_de_catalogus_voor_een_lege_uwv_sectie():
-    # Uit uwv_resources.json, zonder netwerk: de lege staat noemt geen vaste maand.
-    assert arbeidsmarkt.uwv_periode() == "2019-11-26 t/m 2023-05-16 (wekelijkse snapshots)"
+def test_het_bronblok_van_de_dashboards_kent_geen_uwv_meer():
+    assert "UWV" not in bronblok._VERSIE
+    assert "uwv_periode" not in vars(arbeidsmarkt)

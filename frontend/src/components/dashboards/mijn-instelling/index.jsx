@@ -19,7 +19,8 @@ import { useFinancienDashboardData, usePersoneelDashboardData } from '../shared/
 import { jaarLabel } from '../../../schooljaar'
 import { useBronAan } from '../../../bronnenAan'
 
-// Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; UWV en ROA staan op het arbeidsmarktdashboard.
+// Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen en -bronnen; de vacatures (CBS) en ROA staan op het
+// arbeidsmarktdashboard.
 // UNL is WOPI, van het personeel (#936).
 const REGIO_BRONNEN = ['DUO', 'UNL']
 import { RendementSection, DIPLOMA_COHORTEN } from './rendement-section'

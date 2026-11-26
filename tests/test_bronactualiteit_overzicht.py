@@ -383,6 +383,6 @@ def test_de_resource_via_het_protocol():
         return lijst, gelezen
 
     lijst, gelezen = anyio.run(draai)
-    assert [str(r.uri) for r in lijst.resources] == [mcp_server.BRONACTUALITEIT_URI]
+    assert mcp_server.BRONACTUALITEIT_URI in [str(r.uri) for r in lijst.resources]
     [inhoud] = gelezen.contents
     assert [b["bron"] for b in json.loads(inhoud.text)["bronnen"]] == BRONNEN

@@ -18,7 +18,7 @@ vi.mock('react-chartjs-2', async () => {
 })
 
 import { horizontalBarOpts, labelRegels, staafHoogte, LABEL_BREEDTE } from '../components/dashboards/shared/chart-opts'
-import { PrognoseSection, UwvSection } from '../components/dashboards/shared/charts-arbeidsmarkt'
+import { PrognoseSection, VacatureSection } from '../components/dashboards/shared/charts-arbeidsmarkt'
 import { RendementSection } from '../components/dashboards/mijn-instelling/rendement-section'
 import { DemografieKpis } from '../components/dashboards/shared/kpis'
 import { fmtProcent } from '../components/dashboards/shared/getal'
@@ -85,20 +85,19 @@ describe('ROA-prognose: de aantallen staan er (#951)', () => {
   })
 })
 
-describe('het UWV-blok gaat over de provincie (#951, F5)', () => {
-  const vac = { totaal: 25225, peildatum: '2023-05-16', clusters: { Programmeurs: 900 }, gefilterd_op: ['GEDRAG_EN_MAATSCHAPPIJ', 'ECONOMIE'] }
+describe('het vacatureblok gaat over de provincie (#951, F5; CBS sinds #1225)', () => {
+  const vac = { totaal: 34400, periode: '2026 3e kwartaal', voorlopig: true, bedrijfstakken: { 'Q Gezondheids- en welzijnszorg': 6600 }, geen_gegevens: [] }
 
-  it('heet "in de provincie" en noemt de sectoren bij hun naam', () => {
-    const tekst = render(createElement(UwvSection, { data: { vacatureaanbod: vac }, provincie: 'Utrecht', dark: false })).textContent
+  it('heet "in de provincie" en noemt de provincie', () => {
+    const tekst = render(createElement(VacatureSection, { data: { vacatureaanbod: vac }, provincie: 'Utrecht', dark: false })).textContent
 
     expect(tekst).toContain('Vacatureaanbod in de provincie')
     expect(tekst).not.toContain('in de regio')
-    expect(tekst).toContain('sectoren: Gedrag & Maatschappij, Economie')
-    expect(tekst).not.toMatch(/GEDRAG_EN_MAATSCHAPPIJ|gedrag_en_maatschappij/)
+    expect(tekst).toContain('Provincie Utrecht')
   })
 
   it('zonder vacatures ook "in de provincie"', () => {
-    const tekst = render(createElement(UwvSection, { data: {}, provincie: 'Utrecht', dark: false })).textContent
+    const tekst = render(createElement(VacatureSection, { data: {}, provincie: 'Utrecht', dark: false })).textContent
     expect(tekst).toContain('Vacatureaanbod in de provincie')
   })
 })

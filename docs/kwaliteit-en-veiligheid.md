@@ -196,6 +196,28 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 kritieke set en per vraag geslaagd of niet, staat openbaar op [Betrouwbaarheid per release](betrouwbaarheid.md)
 (`scripts/betrouwbaarheid.py`, #1246).
 
+### Metamorfe tests (#1263)
+
+IJkwaarden en gouden tests toetsen losse getallen. De metamorfe tests in `tests/metamorf/` toetsen de relaties tussen
+uitkomsten van de rekentools (`query_data`, `compute_kpi`, `get_maat`, `koppel_data`), zonder de juiste uitkomst te
+kennen: twee wegen naar hetzelfde getal moeten hetzelfde geven. Ze draaien in de gewone testjob op bevroren, verzonnen
+fixtures met de vorm van DUO en CBS, zonder netwerk.
+
+| Relatie | Wat de test eist |
+|---|---|
+| Delen en totaal | de som over sectoren of leerwegen (CBS: mannen + vrouwen) = het totaal van dezelfde selectie zonder uitsplitsing |
+| Sectoren en landelijk | mbo + hbo + wo = landelijk waar de bron additief is; bij een niet-additieve CBS-maat (hbo + wo > HO-totaal) juist geen gelijkheid, en de som wordt geweigerd |
+| Reeks en los jaar | jaar n uit een reeks = dezelfde vraag voor alleen jaar n |
+| Volgorde | een andere rijvolgorde of filterwaardevolgorde geeft hetzelfde resultaat |
+| Fusie | A + B vóór de fusie = de opvolger na omrekening, waar DUO omrekent (#728); DUO's verantwoording uit XBRL rekent niet om, en de vaste regel zegt dat |
+| Verschil | `compute_kpi` delta tussen jaar a en b = waarde b - waarde a uit `query_data` |
+| Onderdrukte cel | met een onderdrukte cel is de som een ondergrens: som ≤ totaal, nooit gelijk, met het ondergrenslabel |
+
+Of de relaties iets vangen, toetst `tests/metamorf/test_scherpte.py`: elke relatie draait tegen drie opzettelijk
+kapotte varianten (`-1` niet maskeren, een rij dubbel tellen, het jaar verschuiven) en per variant moet er minstens één
+falen. Breekt een relatie in de tool echt, dan wordt dat een apart issue en is de test tot dan `xfail` met dat
+issuenummer. Uitleg en de stand per mutatie: `tests/metamorf/README.md`.
+
 ### Scoring (per vraag, max 100 punten)
 
 | Criterium | Punten | Wat het meet |

@@ -22,12 +22,13 @@ rapporten, exports en arbeidsmarkt.
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from core import domeinregels
 from data import instellingen
 
-from . import catalog, maten, periode, store
+from . import catalog, duo, maten, periode, store
 from .kpi import compute_kpi
 
 TOOL_AANTALLEN = "aantallen_per_jaar"
@@ -42,6 +43,20 @@ _MATEN: dict[str, dict[str, str]] = {"hbo": _HO, "wo": _HO, "mbo": {STUDENTEN: m
 VORMEN = (maten.ALLE, "voltijd", "deeltijd", "duaal", "bol", "bbl")
 # Genoeg voor een vergelijking in één antwoord; elke instelling is één selectie en hooguit één RIO-vraag naar fusies.
 MAX_INSTELLINGEN = 8
+# De DUO-bestanden die deze tools laden: per opleiding het niveaubestand van dezelfde dataset (mcp_server.bronregels).
+DATASETS = tuple(dict.fromkeys(maten.MATEN[maat].dataset for per in _MATEN.values() for maat in per.values()))
+
+# De datakwaliteit van één reeks in `bewijs.kwaliteit` (#1248), vaste sleutels: een extern model schrijft het antwoord
+# zonder de getalcontrole van de chat en telt een onderdrukte cel anders als 0.
+KWALITEIT_SLEUTELS = (
+    "onderdrukte_cellen",
+    "ondergrens",
+    "ondergrens_regel",
+    "ontbrekende_schooljaren",
+    "afgekapt",
+    "weggelaten_rijen",
+    "niet_gevonden",
+)
 
 # Wat get_maat naast de rijen zegt over de telling: het gaat mee, zodat het model van de client het ook ziet.
 # De publicatieregels met hun status, melding en waargenomen profiel (#1092): zonder die drie stond de regel '1-4 als
@@ -155,6 +170,7 @@ class _Reeks:
     uit: dict[str, Any]
     verloop: dict[str, Any]
     fusies: tuple[str, ...] = ()
+    kwaliteit: dict[str, Any] = field(default_factory=dict)
 
     def naar_buiten(self) -> dict[str, Any]:
         """De reeks zoals de client hem ziet: schooljaar en aantal, zonder data_key en zonder kolomnamen van DUO."""
@@ -224,6 +240,41 @@ def _verloop(uit: dict[str, Any]) -> dict[str, Any]:
     return {**delta["periode"], "verschil": verschil, "procentuele_verandering": procent["value"]}
 
 
+def ondergrens_zin() -> str:
+    """De vaste zin bij een ondergrens: de betekenis uit de domeinregel [sentinel], niet een eigen tekst."""
+    return f"{domeinregels.laad().sentinel.betekenis}; een aantal waarin zo'n cel valt, is een ondergrens"
+
+
+def _kwaliteit(p: maten.Plan, uit: dict[str, Any]) -> dict[str, Any]:
+    """Wat get_maat over de reeks weet, in de vaste sleutels van KWALITEIT_SLEUTELS (#1248).
+
+    Binnen de aanroep: de data_key en zijn onderdrukte cellen staan alleen nu in de store. De cellen zijn die achter de
+    sommen van de reeks (query_data legt ze per groep vast), dus bij een vorm alleen die van haar kolommen. Niet
+    gevonden zijn de codes van de instelling (#1069) zonder één rij in de selectie.
+
+    Zonder rijen is er geen selectie: query_data geeft dan de key van het hele bestand terug, met de cellen en de
+    instellingen van alle andere rijen. Dan geen onderdrukte cel en geen gevonden code: een lege reeks is geen
+    ondergrens, en elke code van de instelling is niet gevonden.
+    """
+    key = str(uit["data_key"])
+    known = store.meta(key)
+    selectie = bool(uit.get("rijen"))
+    cellen = sum(duo.onderdrukt(key).values()) if selectie else 0
+    afgekapt = uit.get("volledig") is False or (known is not None and not known.volledig)
+    gevonden = (known.instellingen if known is not None else None) if selectie else ()
+    codes = maten.instellingscodes(p.instelling) if p.instelling else []
+    return {
+        "onderdrukte_cellen": cellen,
+        "ondergrens": cellen > 0,
+        "ondergrens_regel": ondergrens_zin() if cellen else None,
+        "ontbrekende_schooljaren": list(uit.get("ontbrekende_schooljaren") or []),
+        "afgekapt": afgekapt,
+        # Een afgekapte pagina heeft geen totaal (store.rijtelling): hoeveel rijen er wegvielen, is dan onbekend.
+        "weggelaten_rijen": None if afgekapt else 0,
+        "niet_gevonden": [code for code in codes if gevonden is not None and code not in gevonden],
+    }
+
+
 def _reeks(profiel: dict, telling: Any, opleiding: Any, vorm: Any, schooljaren: Any) -> _Reeks | str:
     """De reeks van één instelling, met hetzelfde plan en dezelfde uitvoering als get_maat."""
     maat, melding = _maat(profiel["sector"], telling)
@@ -249,7 +300,7 @@ def _reeks(profiel: dict, telling: Any, opleiding: Any, vorm: Any, schooljaren: 
     # code blijft de uitkomst zoals hij was.
     if len(codes := maten.instellingscodes(profiel)) > 1:
         gekozen["instellingscodes"] = codes
-    return _Reeks(gekozen, uit, _verloop(uit), known.fusies if known else ())
+    return _Reeks(gekozen, uit, _verloop(uit), known.fusies if known else (), _kwaliteit(p, uit))
 
 
 def _versie(keys: list[str]) -> str | None:
@@ -270,8 +321,9 @@ def _verwijzing(dataset: str) -> str | None:
     return documentatie.get("url") if isinstance(documentatie, dict) else None
 
 
-def _bewijs(reeksen: list[_Reeks], selectie: Any) -> dict[str, Any]:
-    """Het bewijs bij #707: bron, dataset, selectie en teldefinitie; de getallen zelf staan in de reeksen."""
+def _bewijs(reeksen: list[_Reeks], selectie: Any, kwaliteit: Any) -> dict[str, Any]:
+    """Het bewijs bij #707: bron, dataset, selectie en teldefinitie, met de kwaliteit (#1248); de getallen zelf staan in
+    de reeksen."""
     dataset = reeksen[0].uit["recept"]["dataset"]
     return {
         "bron": "DUO",
@@ -282,6 +334,7 @@ def _bewijs(reeksen: list[_Reeks], selectie: Any) -> dict[str, Any]:
         "peildatum": None,
         "versie": _versie([str(r.uit["data_key"]) for r in reeksen]),
         "verwijzing": _verwijzing(dataset),
+        "kwaliteit": kwaliteit,
     }
 
 
@@ -318,7 +371,7 @@ def aantallen_per_jaar(
     opl = reeks.uit.get("opleiding")
     waarover = _waarover(telling, reeks.uit["vorm"], opl["naam"] if opl else None)
     vraag = f"Hoeveel {waarover} had {profiel['naam']} per studiejaar?"
-    return Uitkomst(resultaat, _bewijs([reeks], reeks.recept()), vraag)
+    return Uitkomst(resultaat, _bewijs([reeks], reeks.recept(), reeks.kwaliteit), vraag)
 
 
 def _volgorde(reeksen: list[_Reeks]) -> dict[str, Any]:
@@ -432,7 +485,10 @@ def vergelijk_instellingen(
         **vast,
         "per_instelling": {code: {k: v for k, v in r.items() if k not in vast} for code, r in recepten.items()},
     }
-    return Uitkomst(resultaat, _bewijs(reeksen, selectie), vraag)
+    # Per instelling een eigen kwaliteit, met haar code voorop: de onderdrukte cellen van één instelling maken alleen
+    # haar reeks een ondergrens.
+    kwaliteit = [{"instellingscode": reeks.instelling["instellingscode"], **reeks.kwaliteit} for reeks in reeksen]
+    return Uitkomst(resultaat, _bewijs(reeksen, selectie, kwaliteit), vraag)
 
 
 _UITVOERING: dict[str, Callable[..., Uitkomst | str]] = {
