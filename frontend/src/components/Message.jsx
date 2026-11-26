@@ -10,7 +10,7 @@ import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
 import EigenGetal from './EigenGetal'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
-import { voorbehoudRegels } from '../voorbehoud'
+import { actualiteitRegels, voorbehoudRegels } from '../voorbehoud'
 import ControleRegel from './ControleRegel'
 import { zonderStaart, zoalsGetoond } from '../getalWacht'
 import { vervolgvragenTekst } from '../vervolgvragen'
@@ -140,6 +140,8 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
+            {/* Voorlopige cijfers en een verwachte editie die de bron zelf noemt (#1266): één regel elk, uit code. */}
+            {msg.done && actualiteitRegels(msg).map(regel => <p key={regel} className="message-actualiteit">{regel}</p>)}
             {/* Code, niet het model, zet dit label (#1242): het komt met message_end, net als de controle. */}
             {msg.done && <VasteMaat waarde={msg.vaste_maat} />}
             {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}

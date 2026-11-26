@@ -960,7 +960,7 @@ html.dark .message-counter--limit { color: #FCA5A5; }
   50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, .35); }
 }
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
-.message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
+.message-controle, .message-actualiteit { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
 /* "Wijkt af van je eigen cijfer?" (#1258): een tekstknop onder het antwoord, open een veld voor één getal. */
 .eigen-getal { margin-top: 8px; font-size: .82rem; }
 .eigen-getal-open { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
@@ -2035,6 +2035,38 @@ html.dark .suggested-btn:hover {
 .privacy-page { max-width: 720px; margin: 0 auto; padding: 48px 24px 96px; }
 .privacy-page--standalone { min-height: 100vh; background: var(--white); }
 .privacy-page-footer { margin-top: 32px; font-size: .92rem; }
+/* Actualiteit van de bronnen (#1266): per bron de kerngegevens als lijst, per dataset een tabel die zelf zijwaarts
+   scrolt (.tabel-scroll), zodat de pagina op 320 px niet breder wordt dan het scherm (WCAG 1.4.10). */
+.bronact-page { width: 100%; max-width: 960px; min-width: 0; margin: 0 auto; padding: 48px 24px 96px; overflow-wrap: break-word; }
+.bronact-page h1 { font-size: 1.75rem; margin-bottom: 8px; }
+.bronact-lead { color: var(--gray-700); line-height: 1.6; max-width: 70ch; margin-bottom: 8px; }
+.bronact-bron { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
+.bronact-bron h2 { font-size: 1.15rem; margin-bottom: 12px; }
+.bronact-bron-titel { display: block; font-size: .85rem; font-weight: 400; color: var(--muted-text); margin-top: 2px; }
+.bronact-melding { color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-bottom: 12px; font-size: .9rem; }
+.bronact-kern { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr)); gap: 12px 24px; }
+.bronact-kern dt { font-size: var(--font-label); color: var(--muted-text); }
+.bronact-kern dd { font-size: .92rem; color: var(--gray-900); line-height: 1.45; min-width: 0; }
+.bronact-status { display: inline-block; padding: 0 6px; border-radius: var(--radius-sm); border: 1px solid var(--gray-300); }
+.bronact-status--voorlopig { border-color: var(--amber-500); border-left-width: 3px; }
+.bronact-status--definitief { border-color: var(--teal-600); }
+.bronact-verwacht-bron, .bronact-id { color: var(--muted-text); font-size: .85em; }
+.bronact-id { display: block; font-weight: 400; }
+.bronact-verouderd { font-weight: 600; }
+.bronact-datasets { margin-top: 16px; min-width: 0; max-width: 100%; }
+.bronact-datasets summary { cursor: pointer; font-weight: 600; color: var(--accent-text); min-height: var(--tap-min-aa); }
+.bronact-datasets[open] summary { margin-bottom: 8px; }
+.bronact-tabel { border-collapse: collapse; width: 100%; min-width: 44rem; font-size: .85rem; }
+.bronact-tabel th, .bronact-tabel td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--gray-100); }
+.bronact-tabel thead th { font-size: var(--font-label); color: var(--muted-text); font-weight: 600; }
+.bronact-tabel tbody th { font-weight: 600; max-width: 18rem; }
+.bronact-tabel a { color: var(--accent-text); }
+.bronact-page time { white-space: nowrap; }
+.bronact-fout { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+.bronact-voet { margin-top: 40px; font-size: .92rem; }
+@media (max-width: 600px) {
+  .bronact-page { padding: 32px 16px 64px; }
+}
 /* The text itself, shared by the page and the popup. */
 .privacy-text { line-height: 1.6; overflow-wrap: break-word; }
 .privacy-text h1 { font-size: 1.75rem; margin-bottom: 8px; }
@@ -2224,7 +2256,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
   .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
-  .message-bubble .controle-regel, .message-bubble .data-export-uitleg, .csv-download-btn, .data-export-btn, .bewijs-btn, .vaste-maat,
+  .message-bubble .controle-regel, .message-actualiteit, .message-bubble .data-export-uitleg, .csv-download-btn, .data-export-btn, .bewijs-btn, .vaste-maat,
   .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,

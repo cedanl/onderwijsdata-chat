@@ -22,12 +22,20 @@ export function voorbehoudAlineas(content) {
   })
 }
 
+// De regels over de actualiteit van de data (#1266): "Let op: voorlopig cijfer" en een verwachte editie die de bron
+// zelf noemt, zoals de server ze in `actualiteit` zet (agent/bronvermelding.py). Alleen niet-lege tekst telt.
+export function actualiteitRegels(msg) {
+  const regels = msg?.actualiteit
+  return Array.isArray(regels) ? regels.filter(r => typeof r === 'string' && r.trim()) : []
+}
+
 // Alles wat een export van dit antwoord moet zeggen, als losse regels zonder opmaak.
 export function voorbehoudRegels(msg) {
   if (!msg || msg.isError) return []
   return [
     ...voorbehoudAlineas(msg.content),
     ...(Array.isArray(msg.controle) ? msg.controle : []).map(zin => `Let op: ${plat(String(zin))}`),
+    ...actualiteitRegels(msg).map(plat),
     controleRegelTekst(msg.controles),
   ].filter(Boolean)
 }

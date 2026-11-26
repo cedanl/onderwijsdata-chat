@@ -117,6 +117,7 @@ describe('axe-poort (#687)', () => {
     ['/chat', true],
     ['/rapporten', true],
     ['/privacy', true],
+    ['/bronnen', true],
   ])('%s (ingelogd: %s) heeft geen ernstige bevindingen', APP_TEST, async (pad, ingelogd) => {
     await render(pad, { ingelogd })
     expect(await ernstigeBevindingen()).toEqual([])

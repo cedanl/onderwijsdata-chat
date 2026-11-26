@@ -27,7 +27,14 @@ from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
 from .beurtbewijs import eerdere_antwoorden
 from .bronkeuze import met_bronregel
-from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, vervolgbronnen, zonder_eigen_bronnen
+from .bronvermelding import (
+    actualiteitsregels,
+    bronlinks_van,
+    bronnen_van,
+    buiten_bronnensectie,
+    vervolgbronnen,
+    zonder_eigen_bronnen,
+)
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .codeverzoek import codeblok, is_codeverzoek, met_code, onthoud
@@ -238,6 +245,15 @@ def _veilige_bronnen(steps: list[tuple[str, str]]) -> list[str]:
         return bronnen_van(steps)
     except Exception as exc:
         log_interne_fout(exc, "bronnen")
+        return []
+
+
+def _veilige_actualiteit(steps: list[tuple[str, str]]) -> list[str]:
+    """De regels over voorlopige cijfers en een verwachte editie (#1266) zijn een extra, zoals de links."""
+    try:
+        return actualiteitsregels(steps)
+    except Exception as exc:
+        log_interne_fout(exc, "actualiteit")
         return []
 
 
@@ -633,6 +649,7 @@ def _slotbericht(
     `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
     `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst.
     `controles` (wat de antwoordcontrole deed, #1260) alleen onder een data-antwoord: met bronnen, geen vast antwoord.
+    `actualiteit` (#1266) net zo: "Let op: voorlopig cijfer" en een verwachte editie die de bron zelf noemt.
     `vaste_maat` (#1242) alleen als elke datastap een get_maat was, uit de stappen en het recept; nooit onder een tekst
     uit code (#565) of een ingehouden antwoord: die rusten niet op de maat. Het leest `modelstappen` als die er zijn:
     de stappen van het model, zonder de stappen van code onder het antwoord (#1271). Een andere definitie of de DUO-kant
@@ -644,6 +661,7 @@ def _slotbericht(
         if controleverslag is not None and bronnen and not vast_zonder_bronnen
         else None
     )
+    actualiteit = _veilige_actualiteit(result.steps) if bronnen and not vast_zonder_bronnen else []
     return {
         "type": "message_end",
         "content": met_code(text_content, code),
@@ -653,6 +671,7 @@ def _slotbericht(
         **({"manifest": manifest} if manifest else {}),
         **({"citaties": cites} if cites else {}),
         **({"controles": controles} if controles is not None else {}),
+        **({"actualiteit": actualiteit} if actualiteit else {}),
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
         **({"partial": True} if result.wrapped_up else {}),
