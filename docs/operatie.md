@@ -1,7 +1,11 @@
+---
+icon: lucide/activity
+---
+
 # Operatie
 
 Hoe de app op SDP draait en wat je doet bij een storing. Dit is de bron voor de werkelijke deploy; de releasestappen
-staan in [Promoten naar playground](promoten.md), de tenant-aanvraag en de secrets in [Deployment](deployment.md).
+staan in [Promoten naar playground](promoten.md), de tenant-aanvraag en de secrets in [Uitrol naar SDP](deployment.md).
 Stand: release 2.5.0 (22-10-2026).
 
 ## Ladder

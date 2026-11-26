@@ -1,3 +1,7 @@
+---
+icon: lucide/settings
+---
+
 # Configuratie
 
 Alle instellingen worden beheerd via het `.env` bestand. Kopieer `.env.example` naar `.env` en pas de waarden aan.

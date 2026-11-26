@@ -1,3 +1,7 @@
+---
+icon: lucide/shield-check
+---
+
 # Kwaliteit & veiligheid
 
 De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare antwoorden te garanderen.
@@ -47,7 +51,7 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 
 ### Geavanceerd: alleen erbij, nooit minder bescherming
 
-De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Aan de slag](aan-de-slag.md#instelling-geavanceerd))
+De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Installatie voor ontwikkelaars](aan-de-slag.md#instelling-geavanceerd))
 geeft analisten de code en de data achter een antwoord, de modelkeuze en de plankaart vóór een vraag over meer
 bronnen (#1268). De plankaart zet geen controle uit en voegt geen controle toe: de antwoordcontrole na het antwoord is
 met en zonder kaart dezelfde. Ze laat alleen zien wat er geladen wordt, en "Klopt, ga door" laadt precies dat. De

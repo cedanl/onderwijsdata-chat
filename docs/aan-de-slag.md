@@ -1,4 +1,8 @@
-# Aan de slag
+---
+icon: lucide/rocket
+---
+
+# Installatie voor ontwikkelaars
 
 ## Vereisten
 

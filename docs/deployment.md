@@ -1,4 +1,8 @@
-# SDP Deployment Guide
+---
+icon: lucide/cloud-upload
+---
+
+# Uitrol naar SDP
 
 Complete deployment procedure voor onderwijsdata-chat op SDP tenant.
 

@@ -1,3 +1,7 @@
+---
+icon: lucide/lock
+---
+
 # Privacy-informatie
 
 Hoe openEDUdata+ met je gegevens omgaat. Dit beschrijft de werking van de demoversie; de formele

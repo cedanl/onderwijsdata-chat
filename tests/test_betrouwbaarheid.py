@@ -136,9 +136,21 @@ def test_de_pagina_staat_in_de_navigatie_onder_kwaliteit_en_veiligheid():
     nav = yaml.safe_load(
         re.sub(r"!!python/name:\S+", "''", (ROOT / "mkdocs.yml").read_text(encoding="utf-8")),
     )["nav"]
-    sectie = next(
-        item["Kwaliteit & veiligheid"] for item in nav if isinstance(item, dict) and "Kwaliteit & veiligheid" in item
-    )
+
+    def vind(items):
+        # De nav heeft twee lagen (Product & gebruik, Techniek & beheer): zoek de sectie op elk niveau.
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if "Kwaliteit & veiligheid" in item:
+                return item["Kwaliteit & veiligheid"]
+            for waarde in item.values():
+                if isinstance(waarde, list) and (gevonden := vind(waarde)):
+                    return gevonden
+        return None
+
+    sectie = vind(nav)
+    assert sectie, "sectie Kwaliteit & veiligheid ontbreekt in de nav"
     assert "kwaliteit-en-veiligheid.md" in sectie
     assert {"Betrouwbaarheid per release": "betrouwbaarheid.md"} in sectie
     assert "betrouwbaarheid.md" in (ROOT / "docs/kwaliteit-en-veiligheid.md").read_text(encoding="utf-8")

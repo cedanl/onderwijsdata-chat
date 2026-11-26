@@ -1,3 +1,7 @@
+---
+icon: lucide/scale
+---
+
 # Domeinregels
 
 Sommige kennis over DUO-data staat niet in de data of in de metadata die de chat meekrijgt: −1 is

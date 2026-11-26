@@ -1,3 +1,7 @@
+---
+icon: lucide/layout-dashboard
+---
+
 # Dashboards
 
 De app heeft op de pagina `/dashboards` vaste dashboards per onderwijsinstelling: drie (Mijn instelling, Arbeidsmarkt
@@ -42,7 +46,7 @@ geeft 410 met die uitleg; elk ander pad onder `/api/dashboard/` of `/api/dashboa
 erin, geen kale 404 (#954, `routes/instellingen.py`). `tests/test_openbare_oppervlakte.py` houdt de eindpunten in de
 API, in `docs/api.md`, in deze pagina en in de hooks van de frontend gelijk.
 
-### Waarop `instelling` zoekt
+## Waarop `instelling` zoekt
 
 De parameter is een van deze sleutels, exact en hoofdletterongevoelig (`resolve_alias` in `data/instellingen.py`):
 
@@ -59,7 +63,7 @@ gelijkenis vanaf 0,85); lijkt er geen op, dan is die lijst leeg en zegt `geen_su
 de instelling niet in het bestand staat, niet dat de naam fout is. Een bron die niet laadde, geeft 503, geen
 `gevonden: false`.
 
-### Bronvermeldingen: het bronblok
+## Bronvermeldingen: het bronblok
 
 Een gevonden instelling krijgt in elke payload `bronnen`: per gebruikte bron één regel (#904, `data/bronblok.py`).
 De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de frontend heeft geen vaste bronlijst.
@@ -105,7 +109,7 @@ De footer, de bronbadge en de ROA-teksten bij de grafieken tonen dit blok; de fr
 - `/api/dashboard/regio` dient Mijn instelling (de DUO-regels) en Arbeidsmarkt (CBS en ROA): elk dashboard neemt er zijn
   eigen deel uit, zoals bij `niet_beschikbaar`.
 
-### Vacatures: CBS 83599NED
+## Vacatures: CBS 83599NED
 
 Sinds #1225 (besluit #1221) komen de vacatures van de dashboards uit CBS-tabel 83599NED "Openstaande vacatures; SBI
 2008, regio" (zie [Databronnen](databronnen.md#cbs-83599ned-openstaande-vacatures)), niet meer uit UWV Open Match (een
@@ -135,7 +139,7 @@ De chat gebruikt dezelfde CBS-tabel met `get_vacatures` (#1226, [Tools](tools.md
 `get_uwv_vacatures` geeft UWV Open Match nog als archief, met de peildatum, de archiefmelding en de ouderdom van de
 UWV-peildatum (#1219, [Tools](tools.md#get_uwv_vacatures)).
 
-### Jaren en getalnotatie
+## Jaren en getalnotatie
 
 De reeksen hebben jaartallen als sleutel (`{2025: n}`); een gevonden instelling krijgt in elke payload `perioden` erbij:
 welk soort jaar elke reeks heeft (#904, `PERIODEN` in `data/dashboard.py`).
@@ -159,7 +163,7 @@ met `fmtProcent` altijd op één decimaal ("32,0%" naast "67,2%", #951). Een sec
 Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar hun DUO-kolom (`_mbo_per_leerweg`). Chart.js zelf staat op
 `nl-NL` voor de ticks zonder eigen callback.
 
-### Wat de getallen tellen
+## Wat de getallen tellen
 
 - **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit
   `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen (#899).
@@ -207,7 +211,7 @@ Landelijk heten zoals op Mijn instelling ("BOL voltijd", "Extraneus"), niet naar
   verwachte baanopeningen en instroom van schoolverlaters tot 2030. ROA geeft die twee als aantal, zonder typering; tot
   #951 las het dashboard alleen typeringen en stonden ze overal als "—".
 
-### Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
+## Diploma's na 3 jaar per eerstejaars (mbo) en geen rendement bij hbo en wo
 
 `/api/dashboard/rendement` heette een "rendement", maar DUO volgt geen studenten. Besluit 05-11 (#898): mbo houdt de
 tegel onder de naam van wat hij telt, hbo en wo krijgen geen tegel tot er een echte cohortbron is.
@@ -241,7 +245,7 @@ tegel onder de naam van wat hij telt, hbo en wo krijgen geen tegel tot er een ec
   draagt geen getal en staat niet in het bronblok (`bronnen` is leeg). Het rendement per sector en de ho-peerberekening
   zijn weg.
 
-### Financiën van het bestuur en personeel (Mijn instelling)
+## Financiën van het bestuur en personeel (Mijn instelling)
 
 Twee kaarten op Mijn instelling, elk met een eigen lading (`DeelLading`): een bron die uitvalt, staat in
 `niet_beschikbaar` en breekt de rest van het dashboard niet. Ze rekenen met de functies van de chat-tools, niet opnieuw,
@@ -269,7 +273,7 @@ niets in de store. De LLM komt er niet aan te pas.
   mbo-instelling laadt WOPI niet en krijgt geen kaart; een universiteit die niet in WOPI staat (de vier niet-leden van
   UNL, tUL), krijgt de vaste melding uit `wo_personeel`.
 
-### Onderdrukte en ontbrekende cellen
+## Onderdrukte en ontbrekende cellen
 
 DUO zet kleine aantallen op -1; de dashboards laden DUO via `_duo_load`, dat zo'n cel leeg maakt (`core/sentinels.py`).
 Een som telt een lege cel niet mee en is dan een ondergrens. Elke reeks meldt in `onderdrukt` per jaar (of per sector)
@@ -280,7 +284,7 @@ en "≥" in de tabel, en een trendbreuk (CBS-definitiebreuk of fusie) als gestip
 cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een lege cel meetelt, staat in
 `onderdrukt.eigen_positie` en heet in de UI indicatief; een sector zonder eigen waarde staat in `positie_weggelaten`.
 
-### Landelijk, groei en het regiogemiddelde
+## Landelijk, groei en het regiogemiddelde
 
 - **Landelijk** (`/api/dashboard/nationaal`) is de som van het DUO-bestand per instelling (`p01hoinges`,
   `mbo-studenten-per-instelling`). De chat geeft een landelijk aantal uit een vaste CBS-maat (`tools/maten.py`, #805:
@@ -324,7 +328,7 @@ cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een leg
   het veld `totaal_ingeschrevenen`, de som van de peers zonder de eigen instelling, onder "Regio totaal" en "6
   instellingen in regio" (Curio: 56.816, terwijl de concurrententabel 72.104 gaf, met Curio).
 
-### De vergelijkingsgroep van Mijn instelling
+## De vergelijkingsgroep van Mijn instelling
 
 De peers zijn de andere instellingen van hetzelfde type (#926): een hogeschool vergelijkt met hogescholen, een
 universiteit met universiteiten, een mbo-instelling met mbo-instellingen. Het type komt uit het register
@@ -383,7 +387,7 @@ reeksfunctie over die groep, en zegt de zin dat het niet de dashboardgroep is. `
 voor een hogeschool, een universiteit en een mbo-instelling op de bevroren bestanden vast dat chat en dashboard dezelfde
 peers en hetzelfde peergemiddelde geven.
 
-### Regio, provincie en afdrukken
+## Regio, provincie en afdrukken
 
 - **Kaart**: de punten staan op benaderde coördinaten van de plaats van de hoofdvestiging (`_CITY_COORDS` in
   `data/dashboard.py`, gespeld zoals de DUO-adressen: "HENGELO OV", "VELP GLD"). Elke plaats uit `adressen_ho` en
@@ -410,7 +414,7 @@ peers en hetzelfde peergemiddelde geven.
   instelling en de datum van afdrukken. Op het scherm staat die kop uit. Er is geen CSV-export: wie verder wil rekenen,
   gebruikt chat of rapport.
 
-### Opleidingen: Studiekeuzedatabase
+## Opleidingen: Studiekeuzedatabase
 
 Het dashboard Opleidingen (#957) toont per opleiding van een hogeschool of universiteit de cijfers uit de
 Studiekeuzedatabase van het Landelijk Centrum Studiekeuze (LCSK). Een opleiding is één CROHO-code op één vestiging; de
@@ -497,7 +501,7 @@ Een onbekende naam geeft `gevonden: false` met `beschikbare_instellingen`, zoals
 `tests/test_dashboard_opleidingen.py` (op de synthetische `onderwijsbronnen.skdb.proefbestand`, nooit echte data of een
 sleutel) en `frontend/src/__tests__/dashboardOpleidingen.test.js`, met een fixture die de backendtest gelijk houdt.
 
-### Een mbo-instelling met meer instellingscodes
+## Een mbo-instelling met meer instellingscodes
 
 `mbo-studenten-per-instelling` kent een instelling onder meer codes (Curio: 21CY en 25LX); de instroom- en
 diplomabestanden tellen per code. Elke mbo-telling per instelling loopt daarom over de naam die
@@ -521,7 +525,7 @@ volgorde, dan wordt de ping `duo-instroom-mbo` van `bron:ping` rood en noemt hij
    werk de verwachte jaren en getallen in `tests/test_dashboard_mbo_reeksen.py` en `tests/test_dashboard_cijfers.py`
    bij.
 
-### Laadtijd van de eerste lading (#1166)
+## Laadtijd van de eerste lading (#1166)
 
 Een dashboard-eindpunt laadt zijn bronnen bij de eerste aanvraag na een start: gemeten op 23-11-2026 (één proces, DUO
 live) duurt `regio` voor Hogeschool Utrecht 15,6 s koud en 0,7 s warm, ook voor een andere instelling; `financien` 12,5 s

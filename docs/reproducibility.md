@@ -1,3 +1,7 @@
+---
+icon: lucide/repeat
+---
+
 # Reproduceerbare analyses
 
 ## Waarom dit belangrijk is

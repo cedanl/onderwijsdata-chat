@@ -1,3 +1,7 @@
+---
+icon: lucide/landmark
+---
+
 # Architecture Decision Records (ADRs)
 
 This document captures major architectural decisions and their rationale. Each decision explains the context, options considered, and why we chose this path.

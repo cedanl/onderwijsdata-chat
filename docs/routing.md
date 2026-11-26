@@ -1,3 +1,7 @@
+---
+icon: lucide/route
+---
+
 # Routing: app-shell of JSON
 
 Met een gebouwde frontend (`frontend/dist`) serveert de server ook de React-app. Een pad dat geen eigen route heeft,
