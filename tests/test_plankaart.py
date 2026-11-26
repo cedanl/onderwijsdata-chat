@@ -273,7 +273,8 @@ def test_klopt_ga_door_laadt_precies_het_getoonde_plan(laders):
         if c["name"] in plankaart.LAADSTAPPEN
     ]
     assert uitgevoerd == getoond == _plan_keys()
-    assert _laadstappen(laders)[: len(getoond)] == getoond
+    # De laadstappen lopen samen in hun eigen thread: de volgorde van de aanroepen ligt niet vast, de set wel.
+    assert sorted(_laadstappen(laders)) == sorted(getoond)
     assert _soort(events, "plan") == []
     slot = _soort(events, "message_end")[-1]
     assert nepmodel.KOP in slot["content"] and "512.100" in slot["content"]
@@ -310,7 +311,7 @@ def test_een_laadaanroep_buiten_het_plan_wordt_in_code_geweigerd(laders, monkeyp
     _actie("plan_bevestigen", {"id": kaart["id"], "geavanceerd": True}, session)
 
     assert ("get_duo_data", buiten) not in laders
-    assert _laadstappen(laders) == _plan_keys()
+    assert sorted(_laadstappen(laders)) == sorted(_plan_keys())
     [geweigerd] = gezien  # de melding gaat terug naar het model, in plaats van een resultaat
     assert geweigerd["content"].startswith("Geweigerd: deze `get_duo_data`-aanroep staat niet in het plan")
 
