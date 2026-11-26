@@ -3,6 +3,7 @@
 // verschilde per run. Het aantal items volgt de tekst en de stappen; welke blokken er staan en
 // in welke volgorde, staat hier vast. Een blok zonder inhoud zegt "n.v.t." in plaats van te ontbreken.
 import { controleRegelTekst } from './controleRegel'
+import { actualiteitRegels } from './voorbehoud'
 import { hasExport } from './dataExport'
 import { splitsTelling } from './telling'
 
@@ -64,7 +65,7 @@ export function metBronnen(content, bronnen) {
 // Het Uitgangspunt, "Niet meegeteld" en "Bron en definitie" staan al in de tekst zelf (agent/run.py).
 export function meldingRegels(msg) {
   const regel = controleRegelTekst(msg.controles)
-  return [...(msg.controle || []).map(zin => `Let op: ${zin}`), ...(regel ? [regel] : [])]
+  return [...(msg.controle || []).map(zin => `Let op: ${zin}`), ...actualiteitRegels(msg), ...(regel ? [regel] : [])]
 }
 
 // Wat de kopieerknop meeneemt: het antwoord, de meldingen hierboven en dan de bronnen. Zonder die regels zegt de

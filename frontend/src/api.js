@@ -134,6 +134,11 @@ export async function fetchCatalogCounts() {
   return apiFetch('/api/catalog/counts')
 }
 
+// Per bron en dataset hoe actueel ze is (#1266): laatste periode, wijziging, status, frequentie, verwachte editie.
+export async function fetchBronActualiteit() {
+  return apiFetch('/api/bronactualiteit')
+}
+
 // Release, catalogus en de dataversie van UWV en ROA (editie en SIS-jaar van het geladen ROA-bestand, #1091).
 export async function fetchVersion() {
   return apiFetch('/api/version')
