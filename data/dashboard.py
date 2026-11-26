@@ -1924,11 +1924,12 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     return result
 
 
-# Wat de score wel en niet zegt, in woorden voor de uitleg onder de aansluiting (#1225).
+# Wat de score wel en niet zegt, in woorden voor de uitleg onder de aansluiting (#1225). Het woord "score" staat
+# niet op de dashboards (#1133): daar heet het het label per sector.
 _MATCH_UITLEG = (
     "De vacatures tellen per bedrijfstak van de werkgever (SBI), niet per beroep: een verpleegkundige in een fabriek "
-    "telt bij de industrie. Welke bedrijfstakken bij een sector horen, staat in een koppeltabel van deze app. De score "
-    "is daarom indicatief."
+    "telt bij de industrie. Welke bedrijfstakken bij een sector horen, staat in een koppeltabel van deze app. Het label "
+    "per sector is daarom indicatief."
 )
 
 
