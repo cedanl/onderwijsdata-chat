@@ -4,7 +4,7 @@ agent/loop.py: warning[invalid-argument-type] Argument to function `to_thread` i
 agent/selectie.py: warning[invalid-argument-type] Argument to `set.__init__` is incorrect: Expected `Iterable[int]`, found `tuple[int, ...] | None`
 agent/selectie.py: warning[invalid-argument-type] Argument to function `namen` is incorrect: Expected `str`, found `str | None`
 core/config.py: error[invalid-assignment] Object of type `dict[str, str | None]` is not assignable to `dict[str, str]`
-tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None) -> CoroutineType[Any, Any, None]`
+tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None, *, hervat: bool = False) -> CoroutineType[Any, Any, None]`
 tests/test_config_provider_keys.py: warning[invalid-argument-type] Argument to function `get_required_api_key_env_var` is incorrect: Expected `str`, found `None`
 tests/test_rio_onvolledig.py: warning[invalid-argument-type] Argument to function `loads` is incorrect: Expected `str | bytes | bytearray`, found `str | tuple[str, Figure]`
 tests/test_snippet.py: error[invalid-assignment] Object of type `(...) -> DataFrame` is not assignable to attribute `load` of type `def load(dataset_id: str, resource: int | str = 0, skiprows: int | None = None, **kwargs) -> Unknown`

@@ -10,7 +10,9 @@ Alleen voor `APP_ENV` local en development: `Config.validate()` weigert het mode
 Scenario's:
 - `default`: zoekt in de catalogus met de vraag als zoekterm, laadt een vaste maat (mbo-studenten landelijk, CBS) en
   antwoordt met wat de tools teruggaven. Het laden gaat naar CBS: zonder internet faalt die stap en antwoordt het
-  nepmodel met de catalogustreffer alleen.
+  nepmodel met de catalogustreffer alleen. Met "Geavanceerd" (de tool `plan_voorleggen`, #1268) en een koppelvraag
+  ("koppel", "naast elkaar") legt het na de zoekactie eerst een vast plan over twee bronnen voor (`PLAN`); na "Klopt, ga
+  door" laadt de app dat plan en antwoordt het nepmodel met wat de tools teruggaven.
 - `tekst`: antwoordt met een vaste tekst, zonder tools en zonder netwerk.
 - `verzonnen`: antwoordt eerst met een getal dat in geen data staat (`VERZONNEN`, over twee tekststukken verdeeld:
   "27." en "135"), zonder tools en zonder netwerk. De getalcontrole trekt dat antwoord in; in de correctieronde
@@ -44,6 +46,16 @@ __all__ = ["is_nepmodel", "keuze", "scenario", "stroom"]
 _ZOEK = "search_catalog"
 _MAAT = "get_maat"
 _QUERY = "query_data"
+_PLAN_TOOL = "plan_voorleggen"
+# Het vaste plan van scenario default bij een koppelvraag: een vaste maat (CBS) naast een DUO-bestand, op schooljaar.
+PLAN: dict[str, Any] = {
+    "stappen": [
+        {"tool": _MAAT, "argumenten": {"maat": "mbo_studenten_landelijk"}},
+        {"tool": "get_duo_data", "argumenten": {"dataset_id": "p01hoinges"}},
+    ],
+    "sleutel": ["schooljaar"],
+}
+_KOPPELVRAAG = re.compile(r"\bkoppel|naast elkaar", re.IGNORECASE)
 # De vaste maat van het scenario default: één kleine CBS-tabel, zonder instelling of sector.
 _VASTE_MAAT = {"maat": "mbo_studenten_landelijk"}
 # Zo lang is een tekststuk in de stroom: het antwoord komt in delen binnen, zoals bij een echt model.
@@ -191,6 +203,8 @@ def keuze(model: str, messages: list[dict], tools: list[dict] | None, tool_choic
     if scen == "default" and tool_choice != "none":
         if not deze_beurt and _ZOEK in namen:
             return {"tool": _ZOEK, "argumenten": {"query": vraag.strip()[:200] or "studenten"}}
+        if _PLAN_TOOL in namen and _PLAN_TOOL not in gedaan and _KOPPELVRAAG.search(vraag):
+            return {"tool": _PLAN_TOOL, "argumenten": PLAN}
         if _ZOEK in gedaan and _MAAT not in gedaan and _MAAT in namen:
             return {"tool": _MAAT, "argumenten": dict(_VASTE_MAAT)}
     return {"tekst": _antwoord(deze_beurt, scen)}

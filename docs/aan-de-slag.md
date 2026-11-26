@@ -120,7 +120,11 @@ analyse achter een antwoord zelf wil zien en bijsturen. Aan zet hij erbij (#1269
   van nu naast die van toen, alleen getallen en bronversie (#1240, zie
   [Reproduceerbare analyses](reproducibility.md#is-het-dezelfde-data-peildag-bestandsversie-en-hash));
 - de modelkiezer en "Opnieuw met <ander model>" na een fout. Uit gaat elke vraag met het standaardmodel (`MODEL`); de
-  server houdt zich daar zelf ook aan.
+  server houdt zich daar zelf ook aan;
+- de plankaart bij een vraag over meer bronnen die de app koppelt of naast elkaar zet (#1268): vóór er data geladen wordt,
+  zie je per bron de titel, dataset en versie, de selectie in woorden, de koppelsleutel en hoe lang het ongeveer duurt.
+  **Klopt, ga door** laadt precies dat plan; **Pas aan** zet je vraag met het plan in het invoerveld, zonder iets te
+  laden. Na herladen is een open plankaart verlopen: dan kan alleen nog **Pas aan**.
 
 Geavanceerd zet alleen iets erbij. De controles en waarschuwingen bij een antwoord, de herkomst van een getal in
 woorden, de bronnen en de CSV onder een grafiek staan er altijd, ook als hij uit staat (zie

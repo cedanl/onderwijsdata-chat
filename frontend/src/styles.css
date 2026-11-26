@@ -868,6 +868,32 @@ html.dark .login-melding { color: var(--accent-text); }
 /* Een eigen rij, ook als de knoppen naast elkaar staan (max-width 1024px): anders staat de kop naast de eerste knop. */
 .question-buttons-kop { width: 100%; font-size: .75rem; font-weight: 600; color: var(--muted-text); }
 
+/* De plankaart (#1268): vóór een vraag over meer bronnen eerst wat de app laadt. Een rand links markeert dat de beurt
+   hier wacht op de gebruiker; de bronnen staan genummerd in de volgorde waarin ze laden. */
+.plan-kaart {
+  border-left: 3px solid var(--blue-600); padding: 2px 0 2px 14px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.plan-kaart:focus { outline: none; }
+.plan-kaart:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.plan-kaart-kop { margin: 0 0 4px; font-size: 1rem; font-weight: 650; line-height: 1.35; }
+.plan-kaart-uitleg, .plan-kaart-sleutel { margin: 0 0 8px; font-size: .875rem; line-height: 1.5; }
+.plan-kaart-bronnen { margin: 0 0 8px; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; }
+.plan-bron-titel { display: block; font-weight: 600; font-size: .9rem; }
+.plan-bron-meta { display: block; font-size: var(--font-klein); color: var(--muted-text); }
+.plan-bron-selectie { margin: 4px 0 0; padding-left: 1.1em; font-size: .85rem; line-height: 1.45; }
+.plan-kaart-knoppen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.plan-knop {
+  min-height: var(--tap-min-aa); padding: 8px 16px; border-radius: var(--radius-sm); font: inherit; font-size: .875rem;
+  font-weight: 600; cursor: pointer;
+}
+.plan-knop-door { border: 1.5px solid var(--blue-700); background: var(--blue-700); color: var(--on-color); }
+.plan-knop-door:hover:not(:disabled) { background: var(--blue-800); border-color: var(--blue-800); }
+.plan-knop-door:disabled { opacity: .6; cursor: not-allowed; }
+.plan-knop-aanpassen { border: 1.5px solid var(--gray-300); background: none; color: var(--gray-800); }
+.plan-knop-aanpassen:hover { border-color: var(--blue-400); }
+.plan-knop:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.plan-kaart-status { margin: 8px 0 0; font-size: .82rem; color: var(--muted-text); }
+
 /* Een getal dat de controle nog toetst (#1254): een "…" even breed als het getal (width in ch, inline gezet), zodat
    de regel niet verspringt als het getal verschijnt. Gedempt en zonder animatie: het is wachten, geen melding. */
 .getal-wacht {
@@ -2038,6 +2064,8 @@ html.dark .suggested-btn:hover {
      buttons above, so the steps keep their spacing. The CSV chip sits on the chart and keeps its look: an
      invisible 44px area, as for the figures. */
   .confirm-cancel, .confirm-primary, .confirm-destructive { min-width: var(--tap-min); min-height: var(--tap-min); }
+  /* De knoppen van de plankaart (#1268). */
+  .plan-knop { min-width: var(--tap-min); min-height: var(--tap-min); }
   .reasoning-toggle, .history-search, .feedback-extra-btn { min-height: var(--tap-min); }
   /* Eén regel: met die regelhoogte blijft het open/dicht-pijltje van de summary staan. */
   .waarden-details summary { line-height: var(--tap-min); }

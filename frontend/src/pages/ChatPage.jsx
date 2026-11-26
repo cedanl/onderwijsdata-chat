@@ -45,6 +45,7 @@ import ReportProgress from '../components/ReportProgress'
 import OnderzoeksvraagDialoog from '../components/OnderzoeksvraagDialoog'
 import { onderzoeksvraagVoorstel } from '../onderzoeksvraagVoorstel'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
+import { planStatus } from '../planState'
 import { SEARCH_LIMIT, useConversationSearch } from '../hooks/useConversationSearch'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
@@ -78,7 +79,9 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, bronnen = {}, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  // Vóór useChat: zonder login gaat de stand van "Geavanceerd" mee in de vraag, voor de plankaart (#1268).
+  const geavanceerd = useGeavanceerd()
+  const { messages, openPlanId, sendPlanBevestiging, planAanpassen, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory, geavanceerd })
   // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
   const bewaak = useBewaak()
   const runSoort = reportBusy ? 'rapport' : busy ? 'antwoord' : null
@@ -98,7 +101,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   const [defaultModel, setDefaultModel] = useState('')
   // De modelkeuze hoort bij "Geavanceerd" (#1269): zonder die instelling gaat elke vraag met het standaardmodel, en
   // de server houdt zich daar zelf ook aan (routes/chat.py, `_model`). De eigen keuze blijft bewaard voor later.
-  const geavanceerd = useGeavanceerd()
   const actiefModel = geavanceerd ? selectedModel : defaultModel
   const [showSources, setShowSources] = useState(false)
   const bronnenLijst = useBronnenLijst()
@@ -723,6 +725,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
     weiger()
     return false
   }, [sendClarification, weiger])
+  // De plankaart (#1268): "Klopt, ga door" maakt een gestelde vraag af, zoals een verduidelijking; "Pas aan" zet de vraag
+  // met de plankeuzes in het invoerveld en verstuurt niets.
+  const verstuurPlan = useCallback((msg) => {
+    if (sendPlanBevestiging(msg.id, msg.plan)) return true
+    weiger()
+    return false
+  }, [sendPlanBevestiging, weiger])
+  const pasPlanAan = useCallback((msg) => prefillComposer(planAanpassen(msg.id, msg.plan)), [planAanpassen, prefillComposer])
   const reportState = canGenerateReport(messages, restoredMessages, historyDataKeys)
 
   // Op een telefoon staat de knop onder het laatste antwoord, in de berichten (#596); op desktop in de statusrij.
@@ -836,6 +846,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                 onEigenGetal={sendEigenGetal}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
+                planStatus={msg.plan ? planStatus(displayMessages, i, openPlanId) : null}
+                onPlanBevestig={msg.plan ? () => verstuurPlan(msg) : null}
+                onPlanAanpassen={msg.plan ? () => pasPlanAan(msg) : null}
                 settings={settings} modelLabel={modelLabels[laatsteId] ?? modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}

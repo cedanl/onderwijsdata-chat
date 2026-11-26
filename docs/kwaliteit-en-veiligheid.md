@@ -52,9 +52,11 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 ### Geavanceerd: alleen erbij, nooit minder bescherming
 
 De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Installatie voor ontwikkelaars](aan-de-slag.md#instelling-geavanceerd))
-geeft analisten de code en de data achter een antwoord en de modelkeuze. De gebruiker kiest haar zelf; ze wordt nooit
-afgeleid uit rol, instelling, functie of een SRAM-attribuut (`core/geavanceerd.py`), alleen een pilotlijst
-(`GEAVANCEERD_PILOT`) zet haar bij de eerste login van een account aan.
+geeft analisten de code en de data achter een antwoord, de modelkeuze en de plankaart vóór een vraag over meer
+bronnen (#1268). De plankaart zet geen controle uit en voegt geen controle toe: de antwoordcontrole na het antwoord is
+met en zonder kaart dezelfde. Ze laat alleen zien wat er geladen wordt, en "Klopt, ga door" laadt precies dat. De
+gebruiker kiest de instelling zelf; ze wordt nooit afgeleid uit rol, instelling, functie of een SRAM-attribuut
+(`core/geavanceerd.py`), alleen een pilotlijst (`GEAVANCEERD_PILOT`) zet haar bij de eerste login van een account aan.
 
 **Harde regel: een beschermende functie staat altijd aan.** Geavanceerd zet alleen iets erbij; het verbergt of
 verzwakt nooit een controle, waarschuwing of herkomst. `frontend/src/__tests__/beschermingInvariant.test.js` toont

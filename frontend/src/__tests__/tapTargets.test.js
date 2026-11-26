@@ -33,6 +33,8 @@ const NAMED = [
   '.clarification-reformulate',
   // The buttons of the export, delete and feedback dialogs (#612).
   '.confirm-cancel', '.confirm-primary', '.confirm-destructive',
+  // "Klopt, ga door" and "Pas aan" on the plan card (#1268).
+  '.plan-knop',
 ]
 
 // Targets as wide as their row or text, that were too low on phones (#612): the height is what they lack.
