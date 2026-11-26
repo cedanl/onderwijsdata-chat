@@ -1,15 +1,15 @@
 {
-  "catalogus_digest": "203929283b32",
+  "catalogus_digest": "66441a996b27",
   "catalogusversie": [
     {
       "pakket": "onderwijsbronnen",
       "versie": "0.11.2",
       "commit": null,
       "manifest": {
-        "catalogusrevisie": "561c8522c682472c",
+        "catalogusrevisie": "ed98731161f26d72",
         "consistent": true,
-        "aantal": 268,
-        "laatste_succesvolle_controle": "2026-10-21",
+        "aantal": 270,
+        "laatste_succesvolle_controle": "2026-11-26",
         "versheid": {
           "oudste_controle": "2026-10-21",
           "zonder_controle": 0,
@@ -22,7 +22,7 @@
     }
   ],
   "dataset_counts": {
-    "CBS": 130,
+    "CBS": 132,
     "DUO": 15,
     "RIO": 8
   },
@@ -92,6 +92,7 @@
     "83285NED",
     "83286NED",
     "83305NED",
+    "83599NED",
     "83815NED",
     "83828NED",
     "83829NED",
@@ -113,6 +114,7 @@
     "84319NED",
     "84534NED",
     "84553NED",
+    "85081NED",
     "85124NED",
     "85125NED",
     "85328NED",
@@ -186,7 +188,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-11-23",
+  "gemeten_op": "2026-11-26",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 22,
@@ -226,7 +228,7 @@
         1.0
       ],
       "recall_at_5_vraag": 0.7778,
-      "mrr_vraag": 0.6296,
+      "mrr_vraag": 0.5185,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -250,7 +252,7 @@
         0.8382
       ],
       "recall_at_5_vraag": 0.7059,
-      "mrr_vraag": 0.5133,
+      "mrr_vraag": 0.5104,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -274,7 +276,7 @@
         0.92
       ],
       "recall_at_5_vraag": 0.6,
-      "mrr_vraag": 0.4958,
+      "mrr_vraag": 0.4944,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -346,7 +348,7 @@
         0.8556
       ],
       "recall_at_5_vraag": 0.7407,
-      "mrr_vraag": 0.5718,
+      "mrr_vraag": 0.5709,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
@@ -370,7 +372,7 @@
         0.884
       ],
       "recall_at_5_vraag": 0.6786,
-      "mrr_vraag": 0.5783,
+      "mrr_vraag": 0.5421,
       "onbeantwoordbaar_geslaagd": [
         1,
         3
