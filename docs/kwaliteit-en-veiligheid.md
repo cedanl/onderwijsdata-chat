@@ -51,7 +51,7 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 
 ### Geavanceerd: alleen erbij, nooit minder bescherming
 
-De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Aan de slag](aan-de-slag.md#instelling-geavanceerd))
+De instelling **Geavanceerd** (#1269, standaard uit, in Instellingen; zie [Installatie voor ontwikkelaars](aan-de-slag.md#instelling-geavanceerd))
 geeft analisten de code en de data achter een antwoord en de modelkeuze. De gebruiker kiest haar zelf; ze wordt nooit
 afgeleid uit rol, instelling, functie of een SRAM-attribuut (`core/geavanceerd.py`), alleen een pilotlijst
 (`GEAVANCEERD_PILOT`) zet haar bij de eerste login van een account aan.

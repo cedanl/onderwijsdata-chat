@@ -127,8 +127,8 @@ zonder op het oude pad (`uit`).
 
 ## Jaarlijks
 
-Loop eens per jaar [Operatie](operatie.md), [Deployment](deployment.md), `manifests/README.md` en
-[Test Environment](test-environment.md) na tegen de manifests en het cluster (replica's, resources, ingress, ladder).
+Loop eens per jaar [Operatie](operatie.md), [Uitrol naar SDP](deployment.md), `manifests/README.md` en
+[Testomgeving](test-environment.md) na tegen de manifests en het cluster (replica's, resources, ingress, ladder).
 Ze liepen eerder een jaar achter (#679).
 
 Rond 1 september: lees de tabel met het wettelijk collegegeld (`tools/collegegeld.py`, #729) na tegen artikel 9 van

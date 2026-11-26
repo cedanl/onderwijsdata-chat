@@ -12,6 +12,19 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 
 ---
 
+## Waar begin je?
+
+| Je wilt | Ga naar |
+|---------|---------|
+| Weten waar de cijfers vandaan komen | [Databronnen](databronnen.md) en [Betrouwbaarheid per release](betrouwbaarheid.md) |
+| De vaste dashboards begrijpen | [Dashboards](dashboards.md) |
+| Zien welke tools de assistent gebruikt | [Tools](tools.md) |
+| Weten wat er met je vraag en je gegevens gebeurt | [Privacy](privacy.md) |
+| De app zelf draaien of koppelen | [Installatie voor ontwikkelaars](aan-de-slag.md), [API](api.md) en [MCP-server](mcp.md) |
+| De app beheren | [Configuratie](configuratie/index.md), [Operatie & runbook](operatie.md) en [Hosting](hosting.md) |
+
+De menubalk volgt dezelfde indeling: **Product & gebruik** en **Techniek & beheer**.
+
 ## Wat kan je ermee?
 
 - **Vragen in gewone taal** — "Hoeveel studenten zijn er ingeschreven in de WO in 2023?" of "Vergelijk mbo-diplomering tussen regio's"
@@ -40,7 +53,7 @@ uv sync
 make dev
 ```
 
-Zie [Aan de slag](aan-de-slag.md) voor gedetailleerde installatie-instructies en [Configuratie](configuratie/index.md) voor alle instellingen.
+Zie [Installatie voor ontwikkelaars](aan-de-slag.md) voor gedetailleerde installatie-instructies en [Configuratie](configuratie/index.md) voor alle instellingen.
 
 ---
 

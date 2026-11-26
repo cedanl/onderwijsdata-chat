@@ -230,7 +230,7 @@ python -c 'import secrets; print(secrets.token_urlsafe(32))'
 
 **Zetten.** `MCP_API_KEYS` staat in de secret `onderwijsdata-chat-secrets` van de omgeving; `manifests/test/values.yaml`
 leest hem `optional` (zonder sleutel geen `/mcp`). Sjabloon: `manifests/test/secret.yaml.example`; versleutelen met
-SOPS zoals in [Deployment → Secrets](deployment.md#3-secrets-configuration). De sleutel van een consument gaat via een
+SOPS zoals in [Uitrol naar SDP → Secrets](deployment.md#3-secrets-configuration). De sleutel van een consument gaat via een
 eigen, veilig kanaal naar de beheerder van die consument (bij een globale entry: Npuls/SURF, #711), nooit in een issue
 of chat.
 
