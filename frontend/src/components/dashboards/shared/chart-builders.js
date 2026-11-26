@@ -11,8 +11,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 // ─── Chart data builders ────────────────────────────────────────────────────
 
-// Diplomas vs. vacancies per sector. The backend counts a UWV cluster shared by several sectors
-// pro rata (#455), so the vacancy series is its per-sector count, not a sum over clusters.
+// Diplomas vs. vacancies per sector. The backend counts a CBS industry (SBI section) shared by several sectors
+// pro rata (#455, #1225), so the vacancy series is its per-sector count, not a sum over industries.
 // Aflopend op gediplomeerden en zonder sector met 0 of zonder waarde; die staan in `weggelaten`. Een sector zonder
 // vacaturetelling krijgt geen staaf, geen 0 (#902).
 export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSector) {
@@ -26,7 +26,7 @@ export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSecto
     labels: sectors.map(s => SECTOR_LABELS[s] || s),
     datasets: [
       { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s]), backgroundColor: CHART_COLORS[0], borderWidth: 0, borderRadius: 4 },
-      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: CHART_COLORS[2], borderWidth: 0, borderRadius: 4 },
+      { label: 'Vacatures (bedrijfstakken)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: CHART_COLORS[2], borderWidth: 0, borderRadius: 4 },
     ],
     weggelaten: alle.filter(s => !sectors.includes(s)).map(s => SECTOR_LABELS[s] || s),
   }

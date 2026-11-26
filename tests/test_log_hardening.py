@@ -402,18 +402,18 @@ def test_een_fout_bij_afsluiten_logt_type_en_kenmerk(caplog, monkeypatch):
 
 
 def test_een_dashboardonderdeel_dat_niet_laadt_logt_type_en_kenmerk(caplog, monkeypatch):
-    from data import arbeidsmarkt
     from data import dashboard as data_dashboard
+    from data import vacatures_cbs
 
     def faal(*_args):
         raise RuntimeError(f"https://bron.example/?q={MARKER}")
 
-    monkeypatch.setattr(arbeidsmarkt, "vacatures_per_sector", faal)
+    monkeypatch.setattr(vacatures_cbs, "stand", faal)
     caplog.set_level(logging.DEBUG, logger="data.dashboard")
-    assert data_dashboard._uwv_vacatures_per_sector("Utrecht", ("zorg",)) == {}
+    assert data_dashboard._vacatures_stand("Utrecht") is None
     assert not _lekt_op_warning(caplog)
     [warning] = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
-    assert re.fullmatch(rf"uwv: vacatures per sector voor Utrecht niet beschikbaar: RuntimeError {_KENMERK}", warning)
+    assert re.fullmatch(rf"cbs: vacatures voor Utrecht niet beschikbaar: RuntimeError {_KENMERK}", warning)
     [debug] = [r for r in caplog.records if r.levelno == logging.DEBUG]
     assert debug.exc_info is not None and MARKER in _volledig(debug)
 

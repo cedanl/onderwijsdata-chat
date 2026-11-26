@@ -146,10 +146,10 @@ describe('DashboardShell', () => {
 
 describe('NietGeladen', () => {
   it('names each part that did not load and why', async () => {
-    const onderdelen = [{ onderdeel: 'Vacatures (UWV)', bron: 'UWV', reden: 'de bron was niet bereikbaar' }]
+    const onderdelen = [{ onderdeel: 'Vacatures (CBS)', bron: 'CBS', reden: 'de bron was niet bereikbaar' }]
     await render(createElement(NietGeladen, { onderdelen, onOpnieuw: () => {} }))
 
-    expect(container.textContent).toContain('Vacatures (UWV): de bron was niet bereikbaar.')
+    expect(container.textContent).toContain('Vacatures (CBS): de bron was niet bereikbaar.')
     expect(knop('Opnieuw proberen')).toBeDefined()
   })
 
@@ -160,11 +160,11 @@ describe('NietGeladen', () => {
   })
 
   it('merges the gaps of two payloads once each, limited to the sources a dashboard shows', () => {
-    const uwv = { onderdeel: 'Vacatures (UWV)', bron: 'UWV', reden: 'x' }
+    const cbs = { onderdeel: 'Vacatures (CBS)', bron: 'CBS', reden: 'x' }
     const kaart = { onderdeel: 'Kaart', bron: 'DUO', reden: 'y' }
 
-    expect(gatenVan([{ niet_beschikbaar: [uwv] }, { niet_beschikbaar: [uwv, kaart] }])).toEqual([uwv, kaart])
-    expect(gatenVan([{ niet_beschikbaar: [uwv, kaart] }, null], ['UWV'])).toEqual([uwv])
+    expect(gatenVan([{ niet_beschikbaar: [cbs] }, { niet_beschikbaar: [cbs, kaart] }])).toEqual([cbs, kaart])
+    expect(gatenVan([{ niet_beschikbaar: [cbs, kaart] }, null], ['CBS'])).toEqual([cbs])
   })
 })
 
@@ -198,15 +198,15 @@ describe('arbeidsmarkt dashboard: the second load (regio)', () => {
     expect(container.textContent).toContain('Geen vacaturegegevens')
   })
 
-  it('names the UWV gap of the regio payload, not its DUO gaps', async () => {
+  it('names the CBS gap of the regio payload, not its DUO gaps', async () => {
     const gaten = [
-      { onderdeel: 'Vacatures (UWV)', bron: 'UWV', reden: 'de bron was niet bereikbaar' },
+      { onderdeel: 'Vacatures (CBS)', bron: 'CBS', reden: 'de bron was niet bereikbaar' },
       { onderdeel: 'Kaart', bron: 'DUO', reden: 'de data van de bron kon niet worden verwerkt' },
     ]
     routes(() => Promise.resolve(antwoord(200, { gevonden: true, niet_beschikbaar: gaten })))
     await render(createElement(InlineDashboardArbeidsmarkt, { instelling: 'Hogeschool Utrecht' }))
 
-    expect(container.textContent).toContain('Vacatures (UWV): de bron was niet bereikbaar.')
+    expect(container.textContent).toContain('Vacatures (CBS): de bron was niet bereikbaar.')
     expect(container.textContent).not.toContain('Kaart:')
   })
 })

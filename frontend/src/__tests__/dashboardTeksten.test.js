@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import dashboards from './fixtures/dashboards.json'
+import { MATCH_DUIDING } from './fixtures/matchDuiding'
 
 // De grafiekstub toont wat Chart.js zou tekenen als tekst: de naam van het canvas, de reeksen en de astitels.
 function astitels(opties) {
@@ -90,7 +91,6 @@ async function nationaal(payload = dashboards.nationaal) {
   await renderIn(createElement(InlineDashboardNationaal, { instelling: payload.instelling }))
 }
 
-const MATCH_DUIDING = { drempel: 1.2, vacatures_peildatum: '2023-05-16', diplomajaren: [2023, 2024, 2025], sectormapping: {} }
 
 async function arbeidsmarkt(regio = HBO) {
   payloads['/api/dashboard/arbeidsmarktmatch'] = { ...dashboards.arbeidsmarktmatch, match_duiding: MATCH_DUIDING }
@@ -180,7 +180,7 @@ describe('één woord voor de telling van personen (#1136)', () => {
 
 // #1137: één spelling per begrip.
 describe('één spelling per begrip (#1137)', () => {
-  it('de arbeidsmarkt schrijft "beroepencluster", niet "beroepscluster"', async () => {
+  it('de arbeidsmarkt schrijft geen "beroepscluster" (sinds #1225 staan er bedrijfstakken)', async () => {
     await arbeidsmarkt()
     expect(alles()).not.toMatch(/beroepscluster/i)
   })
