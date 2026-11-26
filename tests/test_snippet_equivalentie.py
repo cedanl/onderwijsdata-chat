@@ -72,11 +72,13 @@ from tools.schemas import (
     TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MAAT,
     TOOL_GET_MBO_INDICATOREN,
+    TOOL_GET_ONTSTANE_VACATURES,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
@@ -94,6 +96,10 @@ _EIGEN_TEST: dict[str, str] = {
     TOOL_GET_BESTUURSFINANCIEN: "tests/test_financien.py",
     # De Studiekeuzedatabase (#957): test_de_snippet_geeft_dezelfde_tabel_als_de_app.
     TOOL_GET_STUDIEKEUZE: "tests/test_studiekeuze.py",
+    # De CBS-vacatures (#1226, #1227) halen hun tabel met de CBS-client (dimensies, Perioden, DataProperties) en
+    # rekenen zelf: test_de_snippet_geeft_dezelfde_tabel_als_de_app en test_de_snippet_van_de_ontstane_vacatures_….
+    TOOL_GET_VACATURES: "tests/test_tools_vacatures.py",
+    TOOL_GET_ONTSTANE_VACATURES: "tests/test_tools_vacatures.py",
 }
 
 # Tools van de app zonder eigen laadstap in een snippet, met de reden. Een tool hier maakt geen snippet

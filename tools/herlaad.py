@@ -1,8 +1,8 @@
 """Een data-key terughalen na een herstart, uit zijn recept (#472).
 
 De store leeft in het geheugen. Per key bewaart de database daarom hoe hij ontstond: de
-laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_uwv_vacatures, get_roa_benchmark,
-get_bestuursfinancien, get_wo_personeel, get_studiekeuze), de vaste maat (get_maat) of de selectie (query_data) op
+laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_vacatures, get_ontstane_vacatures, get_uwv_vacatures,
+get_roa_benchmark, get_bestuursfinancien, get_wo_personeel, get_studiekeuze), de vaste maat (get_maat) of de selectie (query_data) op
 een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste keer: scopegrens,
 sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug. Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
 geëvalueerd. Een eigen berekening (run_analysis) wordt niet opnieuw uitgevoerd: van die
@@ -35,16 +35,19 @@ from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
+    TOOL_GET_ONTSTANE_VACATURES,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_KOPPEL_DATA,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
 from .studiekeuze import get_studiekeuze
+from .vacatures import get_ontstane_vacatures, get_vacatures
 from .wo_personeel import get_wo_personeel
 
 logger = logging.getLogger(__name__)
@@ -59,6 +62,9 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
     TOOL_GET_RIO_DATA: (laad_rio_data, "RIO"),
     # Een arbeidsmarktresultaat is een dataset met een laadaanroep (#577).
     TOOL_GET_UWV_VACATURES: (get_uwv_vacatures, "UWV"),
+    # De actuele vacatures van CBS (#1226, #1227): ook een vaste tabel met laadaanroep.
+    TOOL_GET_VACATURES: (get_vacatures, "CBS"),
+    TOOL_GET_ONTSTANE_VACATURES: (get_ontstane_vacatures, "CBS"),
     TOOL_GET_ROA_BENCHMARK: (get_roa_benchmark, "ROA"),
     # Een bron met een eigen resultaatvorm zet haar tabel met laadaanroep in de store (#956). Of die bron hier antwoord
     # geeft, beslist tools/beschikbaarheid.py bij het herladen: zonder vlag of licentie haalt ook een recept niets op.

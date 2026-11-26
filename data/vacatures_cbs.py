@@ -45,6 +45,7 @@ _PERIODEN = "Perioden"
 _MEETWAARDE = "OpenstaandeVacatures_1"
 _PER = 1000  # de eenheid van de meetwaarde: x 1000
 _PROVINCIES = "substringof('PV',RegioS)"  # de regiocodes van de provincies beginnen met PV, de landsdelen met LD
+FILTER = _PROVINCIES  # het $filter van de lading, ook voor de snippet (tools/snippet.py)
 _PROVINCIE_ACHTER = " (PV)"
 _TOTAAL = "A-U"  # alle economische activiteiten
 _STATUS_VOORLOPIG = "Voorlopig"
@@ -203,6 +204,17 @@ def _aantal(tabel: _Tabel, regio: str, sbi: str, perioden: tuple[Periode, ...]) 
 
 def provincies() -> list[str]:
     return sorted(_tabel().provincies.values())
+
+
+def provincie_bij_code(code: str) -> str | None:
+    """De provincie bij haar CBS-regiocode ("PV25" → "Gelderland"), zoals CBS haar spelt; None als onbekend."""
+    return _tabel().provincies.get(str(code).strip())
+
+
+def laatste_periode() -> Periode:
+    """Het jongste kwartaal waarin de tabel cijfers heeft, voor elke provincie hetzelfde."""
+    tabel = _tabel()
+    return tabel.perioden[tabel.laatste]
 
 
 def stand(provincie: str) -> Provinciestand | None:

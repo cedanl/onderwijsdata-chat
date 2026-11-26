@@ -59,11 +59,11 @@ Zie [reproducibility.md](docs/reproducibility.md) voor details.
 
 | Bron | Inhoud | Catalogus |
 |------|--------|-----------|
-| **CBS** | 130 datasets met onderwijsstatistieken over mbo, hbo en wo; negen daarvan gaan over het vo, alleen als vo-context voor vervolgonderwijs | [catalogus/cbs](https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/) |
+| **CBS** | 132 datasets met onderwijsstatistieken over mbo, hbo en wo; negen daarvan gaan over het vo, alleen als vo-context voor vervolgonderwijs, en twee over vacatures: 83599NED (openstaand, per provincie en bedrijfstak, per kwartaal; in de chat via `get_vacatures`, in de dashboards sinds #1225) en 85081NED (ontstaan, per beroep, landelijk, per jaar; via `get_ontstane_vacatures`) | [catalogus/cbs](https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/) |
 | **RIO** | Register van onderwijsinstellingen en opleidingen, met sectorfilter op mbo/hbo/wo (8 resources) | [catalogus/rio](https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/) |
 | **DUO** | 15 open datasets over mbo, hbo en wo: prognoses, diplomering, instroom, adressen; één daarvan (`voprognoses`) is alleen vo-context voor vervolgonderwijs | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | **ROA** | Arbeidsmarkt-prognoses per opleidingsniveau en -sector (AIS 2030, de nieuwste editie in de catalogus, met de schoolverlatersinformatie SIS); in de chat via `get_roa_benchmark` en in de dashboards | — |
-| **UWV** | Open match vacatures (momentopname mei 2023); in de chat via `get_uwv_vacatures`. De dashboards nemen hun vacatures sinds #1225 uit CBS-tabel 83599NED (per kwartaal, per provincie en bedrijfstak) | — |
+| **UWV** | Open match vacatures (momentopname mei 2023, UWV maakt de reeks niet meer); in de chat alleen als archief via `get_uwv_vacatures`, de actuele vacatures komen van CBS | — |
 
 ## Vereisten
 

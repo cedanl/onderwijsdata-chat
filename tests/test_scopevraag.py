@@ -14,7 +14,7 @@ import pytest
 from agent import scopevraag as module
 from agent.scopevraag import Kaart, maatvraag, plaatsvraag, scopevraag
 from tools import instelling, scopeprofiel
-from tools.schemas import TOOL_GET_UWV_VACATURES
+from tools.schemas import TOOL_GET_ONTSTANE_VACATURES, TOOL_GET_UWV_VACATURES, TOOL_GET_VACATURES
 
 _REGISTER = [
     {"naam": "Hogeschool Utrecht", "type": "hbo", "aliassen": ["HU"]},
@@ -357,6 +357,33 @@ def test_de_uwv_vraag_over_een_provincie_gaat_naar_het_model_met_de_uwv_tool():
         asyncio.run(run_module.run([{"role": "user", "content": _UWV_PROVINCIE}], session, emit))
     assert "clarification" not in [e["type"] for e in events]
     assert TOOL_GET_UWV_VACATURES in gezien["tools"]
+
+
+@pytest.mark.parametrize("vraag", ["Hoeveel vacatures zijn er in Gelderland?", "Hoeveel vacatures zijn er in Arnhem?"])
+def test_een_vacaturevraag_gaat_naar_het_model_met_de_actuele_vacaturetools(vraag):
+    """#1226: geen kaart vóór het model, en get_vacatures (CBS, actueel) staat naast het UWV-archief in de toolset."""
+    run_module = importlib.import_module("agent.run")
+    gezien: dict = {}
+    events: list[dict] = []
+
+    async def model(messages, **kwargs):
+        gezien["tools"] = [t["function"]["name"] for t in kwargs["tools"]]
+        raise AssertionError("het model is aangeroepen")
+
+    async def emit(event):
+        events.append(event)
+
+    session = {"chat_settings": {}, "clarify_rondes": 0}
+    with (
+        patch.object(run_module, "tool_loop", model),
+        patch.object(run_module, "build_system", lambda *a, **k: []),
+        pytest.raises(AssertionError, match="het model is aangeroepen"),
+    ):
+        asyncio.run(run_module.run([{"role": "user", "content": vraag}], session, emit))
+    assert "clarification" not in [e["type"] for e in events]
+    assert {TOOL_GET_VACATURES, TOOL_GET_ONTSTANE_VACATURES, TOOL_GET_UWV_VACATURES} <= set(gezien["tools"])
+    # De actuele tool staat vóór het archief: het model leest de toolset van boven naar beneden.
+    assert gezien["tools"].index(TOOL_GET_VACATURES) < gezien["tools"].index(TOOL_GET_UWV_VACATURES)
 
 
 def test_na_drie_beantwoorde_kaarten_vraagt_code_niets_meer():

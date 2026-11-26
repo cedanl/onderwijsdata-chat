@@ -4,39 +4,39 @@
     "naam": "catalogus/bouw_artefact.py",
     "package_versie": "0.11.2"
   },
-  "catalogusrevisie": "75cc4ef2565e7c04",
+  "catalogusrevisie": "ed98731161f26d72",
   "bestanden": {
     "cbs_datasets.json": {
-      "sha256": "e4963a94b565ce38332940e09c98bd5d182f818e144b4fd8a01e1af30d029c36",
-      "records": 269
+      "sha256": "5b8a880317c957a2d49a64229d179eb6157797a1d2fd6c172947468016a7231e",
+      "records": 270
     },
     "cbs_datasets_ai.json": {
-      "sha256": "ce46b5210274e1692110fb06f17b26a6442abe7cc5a15137098d6350e3df2b6c",
-      "records": 269
+      "sha256": "9a94ca873e75d9d9dcba7de2d7144bc8c54b0dcefc8faadeccc5e60f07478e67",
+      "records": 270
     },
     "cbs_datasets_enriched.json": {
-      "sha256": "26bd11320b316d9772e06f0d7a05556a7d6fe01f89be6f7e75921106d76afd5e",
-      "records": 269
+      "sha256": "854a0c90fe3f1fb3850a64dfbb5132d0dc8cd6d50b3ef18e3e1dac4d7cea037b",
+      "records": 270
     },
     "cbs_tableinfo.json": {
-      "sha256": "783ed583bf9d809f2c7c85699d58f57342e6dfd167e1b0d68ecd6037248870dd",
-      "records": 269
+      "sha256": "79f8743aaff6ad4bfecf35d11caa42522c605c38d312a022fd14fc5f68738428",
+      "records": 270
     }
   },
   "aantallen": {
-    "breed": 269,
+    "breed": 270,
     "per_scopeprofiel": {
       "mbo": 68,
       "hbo": 36,
       "wo": 42,
-      "review": 132
+      "review": 133
     }
   },
   "datadekking": {
     "gearchiveerd": 161,
-    "actueel": 108,
-    "met_tableinfo": 269,
-    "met_periodecodes": 242
+    "actueel": 109,
+    "met_tableinfo": 270,
+    "met_periodecodes": 243
   },
   "bronwijziging": {
     "laatste_update_max": "2026-11-12",

@@ -20,7 +20,7 @@ import json
 
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
-from data import arbeidsmarkt, arbeidsmarktregio, roa_koppeling
+from data import arbeidsmarkt, arbeidsmarktregio, roa_koppeling, vacatures_cbs, vacatures_ontstaan
 
 from . import (
     cbs,
@@ -34,6 +34,7 @@ from . import (
     regiolocaties,
     store,
     studiekeuze,
+    vacatures,
     wo_personeel,
 )
 from .bron_ids import cbs_tabel_id
@@ -63,10 +64,12 @@ from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
+    TOOL_GET_ONTSTANE_VACATURES,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_VACATURES,
     TOOL_GET_WO_PERSONEEL,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
@@ -215,6 +218,136 @@ def _uwv_laadregels(args: dict) -> list[str]:
     if gemeente:
         regels.append(f'df.insert(1, "GEMEENTE", {_lit(gemeente)})')
     return regels
+
+
+def _vacatures_laadregels(args: dict) -> list[str]:
+    """Dezelfde tabel als get_vacatures in de store zet (#1226): CBS 83599NED via de client van onderwijsbronnen, met
+    dezelfde stappen als data/vacatures_cbs.py: het laatste kwartaal met cijfers en het gemiddelde van de laatste vier,
+    van duizendtallen naar een aantal; een lege cel blijft leeg (geen gegevens), nooit 0."""
+    sectie = args.get("sectie")
+    keuze = f"code == {_lit(sectie)}" if sectie else "len(code) == 1"
+    n = vacatures_cbs.GEMIDDELD_OVER
+    return [
+        "import pandas as pd",
+        "from onderwijsbronnen.cbs import client",
+        "",
+        f"# CBS {vacatures_cbs.DATASET} {_lit(vacatures_cbs.TITEL)} ({vacatures_cbs.LICENTIE}), {vacatures_cbs.STATLINE_URL}",
+        f"dataset = {_lit(vacatures_cbs.DATASET)}",
+        f'regio = next(k for k, t in client.dimension(dataset, "RegioS").items() if t == {_lit(args["provincie"] + " (PV)")})',
+        'titels = client.dimension(dataset, "BedrijfstakkenBranchesSBI2008")',
+        "perioden = [",
+        '    (str(r["Key"]).strip(), str(r["Title"]).strip(), str(r.get("Status") or "").strip() == "Voorlopig")',
+        '    for r in client.get(dataset, "Perioden")',
+        "]",
+        "cellen = [",
+        "    r",
+        f'    for r in client.data(dataset, **{{"$filter": {_lit(vacatures_cbs.FILTER)}}})',
+        '    if r.get("OpenstaandeVacatures_1") is not None',
+        "]",
+        "# Het laatste kwartaal met cijfers (voor elke provincie hetzelfde) en de kwartalen van het gemiddelde.",
+        'met_cijfers = {r["Perioden"] for r in cellen}',
+        "laatste = max(i for i, p in enumerate(perioden) if p[0] in met_cijfers)",
+        f"venster = perioden[max(laatste - {n - 1}, 0) : laatste + 1]",
+        f"venster = venster if len(venster) == {n} else []",
+        'waarde = {(r["BedrijfstakkenBranchesSBI2008"], r["Perioden"]): float(r["OpenstaandeVacatures_1"]) for r in cellen if r["RegioS"] == regio}',
+        "",
+        "",
+        "def aantal(sbi, kwartalen):",
+        "    # In duizendtallen; een kwartaal zonder cijfer maakt het gemiddelde 'geen gegevens'.",
+        "    getallen = [waarde.get((sbi, p[0])) for p in kwartalen]",
+        "    if not getallen or any(g is None for g in getallen):",
+        "        return None",
+        "    return round(sum(getallen) / len(getallen) * 1000)",
+        "",
+        "",
+        "def periode(kwartalen):",
+        "    if not kwartalen:",
+        '        return ""',
+        '    return kwartalen[0][1] if len(kwartalen) == 1 else f"{kwartalen[0][1]} t/m {kwartalen[-1][1]}"',
+        "",
+        "",
+        'codes = {k: t.split(" ", 1)[0] for k, t in titels.items()}',
+        f'gekozen = [k for k, code in codes.items() if code == "A-U"] + [k for k, code in codes.items() if code != "A-U" and {keuze}]',
+        "rijen = [",
+        "    {",
+        f'        "PROVINCIE": {_lit(args["provincie"])},',
+        '        "SECTIE": titels[sbi],',
+        '        "MAAT": maat,',
+        '        "Perioden": periode(kwartalen),',
+        '        "Periodestatus": ("Voorlopig" if any(p[2] for p in kwartalen) else "Definitief") if kwartalen else None,',
+        '        "VACATURES": aantal(sbi, kwartalen),',
+        "    }",
+        "    for sbi in gekozen",
+        f"    for maat, kwartalen in (({_lit(vacatures.LAATSTE_KWARTAAL)}, [perioden[laatste]]), ({_lit(vacatures.GEMIDDELDE)}, venster))",
+        "]",
+        "df = pd.DataFrame(rijen)",
+        'df["VACATURES"] = df["VACATURES"].astype("Int64")',
+    ]
+
+
+def _ontstane_vacatures_laadregels(args: dict) -> list[str]:
+    """Dezelfde tabel als get_ontstane_vacatures in de store zet (#1227): CBS 85081NED via de client van
+    onderwijsbronnen, met de eenheid uit de metadata, alle economische activiteiten en de beroepen die de app koos."""
+    niveau, beroep = args.get("niveau", vacatures_ontstaan.SEGMENT), args.get("beroep")
+    if beroep is None:
+        keuze = f"niveau(t) == {_lit(niveau)}"
+    elif len(beroep) == 2 and niveau == vacatures_ontstaan.SEGMENT:
+        keuze = f'code(t) == {_lit(beroep)} or (niveau(t) == "segment" and code(t)[:2] == {_lit(beroep)})'
+    else:
+        keuze = f"code(t) == {_lit(beroep)}"
+    return [
+        "import re",
+        "",
+        "import pandas as pd",
+        "from onderwijsbronnen.cbs import client",
+        "",
+        f"# CBS {vacatures_ontstaan.DATASET} {_lit(vacatures_ontstaan.TITEL)} ({vacatures_ontstaan.LICENTIE}), "
+        f"{vacatures_ontstaan.STATLINE_URL}",
+        f"dataset = {_lit(vacatures_ontstaan.DATASET)}",
+        "# De eenheid uit de metadata van de tabel: x 1 000 is een aantal in duizendtallen.",
+        "eenheid = next(",
+        f'    str(p.get("Unit") or "").strip() for p in client.properties(dataset) if str(p.get("Key") or "").strip() == {_lit(vacatures_ontstaan.MEETWAARDE)}',
+        ")",
+        f'factor = {vacatures_ontstaan.EENHEDEN!r}[re.sub(r"\\s+", "", eenheid).lower()]',
+        "jaren = [",
+        '    (str(r["Key"]).strip(), str(r["Title"]).strip(), "voorlopig" in str(r.get("Status") or "").lower())',
+        '    for r in client.get(dataset, "Perioden")',
+        "]",
+        "waarde = {",
+        f'    (r["Beroepenindeling"], r["Perioden"]): float(r[{_lit(vacatures_ontstaan.MEETWAARDE)}])',
+        f'    for r in client.data(dataset, **{{"$filter": {_lit(vacatures_ontstaan.FILTER)}}})',
+        f"    if r.get({_lit(vacatures_ontstaan.MEETWAARDE)}) is not None and r.get({_lit(vacatures_ontstaan.SBI)}) == {_lit(vacatures_ontstaan.SBI_TOTAAL)}",
+        "}",
+        'titels = client.dimension(dataset, "Beroepenindeling")',
+        "",
+        "",
+        "def code(titel):",
+        "    # BRC 2014: twee cijfers is een beroepsklasse, drie een beroepssegment; zonder code het totaal.",
+        '    gevonden = re.match(r"^(\\d{2,3})\\s+(.+)$", titel)',
+        '    return gevonden[1] if gevonden else ""',
+        "",
+        "",
+        "def niveau(titel):",
+        '    return "totaal" if not code(titel) else "klasse" if len(code(titel)) == 2 else "segment"',
+        "",
+        "",
+        'klassen = {code(t): t for t in titels.values() if niveau(t) == "klasse"}',
+        f'gekozen = [k for k, t in titels.items() if niveau(t) == "totaal" or {keuze}]',
+        "rijen = [",
+        "    {",
+        '        "BEROEP": titels[k],',
+        '        "NIVEAU": niveau(titels[k]),',
+        '        "KLASSE": klassen.get(code(titels[k])[:2]) if niveau(titels[k]) == "segment" else None,',
+        '        "Perioden": jaar,',
+        '        "Periodestatus": "Voorlopig" if voorlopig else "Definitief",',
+        '        "ONTSTANE_VACATURES": None if (cel := waarde.get((k, sleutel))) is None else round(cel * factor),',
+        "    }",
+        "    for k in gekozen",
+        "    for sleutel, jaar, voorlopig in jaren",
+        "]",
+        "df = pd.DataFrame(rijen)",
+        'df["ONTSTANE_VACATURES"] = df["ONTSTANE_VACATURES"].astype("Int64")',
+    ]
 
 
 def _roa_ho_regels(onderdeel: str) -> list[str]:
@@ -388,6 +521,8 @@ _LAADREGELS = {
     "get_cbs_data": _cbs_laadregels,
     "get_rio_data": _rio_laadregels,
     "get_uwv_vacatures": _uwv_laadregels,
+    TOOL_GET_VACATURES: _vacatures_laadregels,
+    TOOL_GET_ONTSTANE_VACATURES: _ontstane_vacatures_laadregels,
     "get_roa_benchmark": _roa_laadregels,
     TOOL_GET_WO_PERSONEEL: _wopi_laadregels,
     TOOL_GET_BESTUURSFINANCIEN: _financien_laadregels,
@@ -1035,6 +1170,8 @@ def _alleen_met_tabel(args: dict, recept_van: Receptbron | None = None) -> None:
 # Een tool zonder generator maakt geen snippet: `generate` stopt hier, vóór `_LAADREGELS`.
 _GENERATORS = {
     TOOL_GET_UWV_VACATURES: _alleen_met_tabel,
+    TOOL_GET_VACATURES: _alleen_met_tabel,
+    TOOL_GET_ONTSTANE_VACATURES: _alleen_met_tabel,
     TOOL_GET_ROA_BENCHMARK: _alleen_met_tabel,
     TOOL_GET_WO_PERSONEEL: _alleen_met_tabel,
     TOOL_GET_STUDIEKEUZE: _alleen_met_tabel,

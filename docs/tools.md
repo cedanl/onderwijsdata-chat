@@ -125,8 +125,9 @@ Past geen maat, of weigert `get_maat` (bijvoorbeeld een onbekende instelling), d
    koppelt `koppel_data` daarna die keys.
 4. `create_plot` op de `data_key` van het resultaat; één y-as, `color_by` voor groepen.
 
-Arbeidsmarkt-context (`get_uwv_vacatures`, `get_roa_benchmark`) komt als tekst bij een onderwijsantwoord, niet als
-eigen grafiek, en gaat nooit over één instelling.
+Arbeidsmarkt-context (`get_vacatures`, `get_ontstane_vacatures`, `get_roa_benchmark`; `get_uwv_vacatures` alleen als
+archief van mei 2023) komt als tekst bij een onderwijsantwoord, niet als eigen grafiek, en gaat nooit over één
+instelling.
 
 ---
 
@@ -315,6 +316,9 @@ tool, zoals `get_uwv_vacatures`), `alleen_documentatie` (de bron heeft alleen ee
 chat-opvraagbaar zijn zo drie verschillende dingen; `_niet_opvraagbaar` in `tools/catalog.py` is de enige plek die
 beslist, de package meldt alleen wat ze kan lezen. De interne bronfilter `source` betekent wat hij zegt: `cbs`,
 `rio` (alleen RIO), `duo` (alleen DUO), `riodata` (RIO, DUO, ROA en UWV: wat tot #910 het pakket `riodata` was) of `both`.
+Een CBS-tabel met een eigen tool (de vacatures 83599NED en 85081NED, #1226, #1227) blijft `opvraagbaar` (get_cbs_data
+laadt de ruwe tabel), maar haar treffer en `dataset_details` noemen `via_tool` (`get_vacatures`,
+`get_ontstane_vacatures`) met een `melding` waarom die tool de juiste is.
 
 De tien vo-bronnen in `VO_CONTEXT` (`tools/scopeprofiel.py`, epic #554, #877) zitten achter een zoekpoort in code
 (`_zoekbaar` in `tools/catalog.py`, #557): ze komen alleen in de resultaten als `ho_markers.vo_context_poort` waar is.
@@ -769,11 +773,68 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
 
 ---
 
+## get_vacatures
+
+De actuele openstaande vacatures per provincie en bedrijfstak uit CBS 83599NED (#1226, besluit #1221,
+`tools/vacatures.py`; de lader `data/vacatures_cbs.py` is die van de dashboards). De eerste keus bij elke vacaturevraag.
+Een stand: wat op de laatste dag van het kwartaal openstond, bij de bedrijfstak van de werkgever. Niet per gemeente of
+arbeidsmarktregio, niet per beroep (daarvoor [get_ontstane_vacatures](#get_ontstane_vacatures)), niet per instelling
+en zonder opleidingsniveau.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `provincie` | string | Provincienaam, bijv. `"Gelderland"`; ook `"Friesland"` voor Fryslân |
+| `sectie` | string | Optioneel: één SBI-sectie als letter of naam, bijv. `"Q"` of `"Gezondheids- en welzijnszorg"`. Zonder sectie: alle secties A t/m S |
+| `gemeente` | string | Optioneel: een gemeente of woonplaats; de tool geeft de provincie waarin die ligt |
+| `regio` | string | Optioneel: een arbeidsmarktregio, bijv. `"Rijk van Nijmegen"`; de tool geeft de provincie |
+
+- **Resultaat:** `laatste_kwartaal` en `gemiddelde` (van de laatste 4 kwartalen) van de gekozen sectie of het totaal,
+  elk met `periode` ("2026 3e kwartaal", "2025 4e kwartaal t/m 2026 3e kwartaal"), `vacatures` (een aantal; CBS
+  publiceert duizendtallen), `voorlopig` en `status` (`voorlopig`, `definitief` of `geen gegevens`). `bron` noemt CBS,
+  de titel, de link naar de tabel in StatLine en de licentie (CC BY 4.0).
+- **`rijen` en `data_key`:** het totaal plus de gekozen sectie of alle secties, per sectie het laatste kwartaal en het
+  gemiddelde (`PROVINCIE`, `SECTIE`, `MAAT`, `Perioden`, `Periodestatus`, `VACATURES`); dezelfde tabel staat in de
+  store, voor `query_data`, `create_plot`, de citaties, de snippet, herlaad en de CSV-export.
+- **Geen gegevens:** een lege cel is `null`, nooit 0; een gemiddelde over een kwartaal zonder cijfer ook.
+- **Alleen provincie** (criterium van #1226): met `gemeente` of `regio`, of een plaatsnaam als `provincie`
+  (`"Arnhem"`), geeft de tool de provincie waarin die ligt en zegt in `plaatsniveau` dat de actuele bron tot provincie
+  gaat. De ligging komt uit de CBS-indelingen van de app (`data/woonplaatsen.py`, `data/arbeidsmarktregio.py`): een
+  regio over meer provincies krijgt die met de meeste van haar gemeenten (de andere staan erbij), een plaats die even
+  vaak in twee provincies ligt (Velp) de vraag welke. Een onbekende plaats geeft een melding met de 12 provincies.
+- **Bronregel:** "CBS · Openstaande vacatures; SBI 2008, regio, laatste kwartaal 2026 3e kwartaal (83599NED), cijfers
+  … voorlopig, opgehaald op …".
+
+---
+
+## get_ontstane_vacatures
+
+De ontstane vacatures per jaar en beroep uit CBS 85081NED (#1227, `tools/vacatures.py`, lader
+`data/vacatures_ontstaan.py`), landelijk. Een stroom: alle vacatures die in het jaar ontstonden, niet wat er openstaat.
+Voor een vraag per beroep; voor een provincie of bedrijfstak [get_vacatures](#get_vacatures).
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `beroep` | string | Optioneel: een beroepsklasse of -segment van de BRC 2014 als code of naam, bijv. `"08"`, `"ICT beroepen"` of `"011"` |
+| `niveau` | string | Optioneel, zonder `beroep`: `"segment"` (standaard) of `"klasse"`; met een klasse als `beroep` geeft `"klasse"` alleen die klasse |
+
+- **Resultaat:** `jaren` (elk jaar met `status`: voorlopig of definitief) en `reeksen`: het totaal, dan het gekozen
+  beroep (een klasse met haar segmenten) of alle beroepen op het niveau, elk met `per_jaar` (een aantal, `null` is geen
+  gegevens). `telling` noemt de eenheid zoals de metadata van de tabel haar geeft ("x 1 000"); `landelijk` zegt dat er
+  geen regio is. `bron` zoals bij `get_vacatures`.
+- **`data_key`:** de tabel per beroep en jaar (`BEROEP`, `NIVEAU`, `KLASSE`, `Perioden`, `Periodestatus`,
+  `ONTSTANE_VACATURES`); citaties per beroep en jaar, snippet, herlaad en CSV-export lopen mee.
+- Een onbekend of dubbelzinnig beroep (een naamdeel dat bij meer beroepen past) geeft een melding met de klassen.
+
+---
+
 ## get_uwv_vacatures
 
-Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een
-onderwijsvraag (#441, `tools/arbeidsmarkt.py`). Een momentopname: de peildatum komt uit de data, niet uit tekst. Geen
-reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij vacatures niet vast (#449).
+Archief (#1226): vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster op de laatste peildatum,
+16-05-2023 (#441, `tools/arbeidsmarkt.py`). UWV maakt deze reeks niet meer; de actuele vacatures geven
+[get_vacatures](#get_vacatures) en [get_ontstane_vacatures](#get_ontstane_vacatures). De tooltoelichting en de
+systeemprompt sturen het model eerst daarheen; deze tool alleen bij een vraag naar mei 2023 of de oude momentopname. De
+peildatum komt uit de data, niet uit tekst. Geen reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij
+vacatures niet vast (#449).
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
@@ -781,13 +842,17 @@ reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij vacature
 | `gemeente` | string | Optioneel: een gemeente in die provincie, bijv. `"Amersfoort"` |
 | `sector` | string | Optioneel: een onderwijssector uit `SECTOR_CLUSTER_MAP` (`data/arbeidsmarkt.py`); de beroepenclusters van die sector tellen mee |
 
+- **Archiefmelding:** elk resultaat begint met `archief`: `peildatum` ("16-05-2023") en `melding` (UWV maakt deze reeks
+  niet meer, met de verwijzing naar `get_vacatures` en `get_ontstane_vacatures`), uit code (`data/arbeidsmarkt.py`,
+  `uwv_archief`). Een melding zonder cijfers (onbekende provincie, gemeente of sector) begint met dezelfde zin:
+  "Archief (UWV Open Match, peildatum 16-05-2023): …".
 - **Resultaat:** `peildatum`, `totaal_vacatures` en de 15 grootste beroepenclusters (`clusters_getoond` zegt het als
   er meer zijn).
 - **Ouderdom** (#1219): `peildatum_ouderdom_maanden` (hele maanden van de peildatum tot nu) en `verouderd` (meer dan
   12 maanden, `VACATURES_VEROUDERD_MAANDEN`). Bij `verouderd` ook `ouderdom_toelichting`: hoe oud de peildatum is in
-  woorden ("ruim 3 jaar"), dat UWV de dataset niet meer bijwerkt en dat de actuele kwartaalcijfers bij UWV
-  (Vacaturemarkt) en CBS (83599NED) staan, niet in deze app. De systeemprompt laat het model die ouderdom dan noemen;
-  de bronregel onder het antwoord noemt haar altijd ("peildatum 16 mei 2023, ruim 3 jaar oud").
+  woorden ("ruim 3 jaar"), dat UWV de dataset niet meer bijwerkt en dat de actuele kwartaalcijfers bij CBS (83599NED,
+  `get_vacatures`) en UWV (Vacaturemarkt) staan. De systeemprompt laat het model die ouderdom dan noemen; de bronregel
+  onder het antwoord noemt haar altijd ("peildatum 16 mei 2023, ruim 3 jaar oud").
 - **Met `sector`** staan drie lagen apart (#460): `uwv_broncijfer` (de ongewogen aantallen van UWV),
   `lokale_classificatie` (welke clusters bij de sector horen: een indeling van deze app, gemaakt met een taalmodel) en
   `gewogen_aandeel` (het sectorgetal; een cluster dat de sector met andere deelt, telt naar rato mee).

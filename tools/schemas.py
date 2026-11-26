@@ -32,6 +32,8 @@ TOOL_CREATE_CHOROPLETH_MAP = "create_choropleth_map"
 TOOL_RUN_ANALYSIS = "run_analysis"
 TOOL_COMPUTE_KPI = "compute_kpi"
 TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
+TOOL_GET_VACATURES = "get_vacatures"
+TOOL_GET_ONTSTANE_VACATURES = "get_ontstane_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
 TOOL_GET_INSPECTIEOORDEEL_VO = "get_inspectieoordeel_vo"
@@ -898,12 +900,99 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": TOOL_GET_VACATURES,
+            "description": (
+                "Actuele openstaande vacatures per provincie en bedrijfstak (CBS 83599NED, per kwartaal): het "
+                "laatste kwartaal en het gemiddelde van de laatste 4 kwartalen, elk met periode en voorlopig of "
+                "definitief, voor alle bedrijfstakken (SBI-secties A t/m S) of één sectie. Een stand (wat op de "
+                "laatste dag van het kwartaal openstond), geen stroom. De eerste keus bij elke vacaturevraag. Alleen "
+                "per provincie: niet per gemeente of arbeidsmarktregio (noem je die, dan geeft de tool de provincie "
+                "en zegt dat), niet per beroep (daarvoor get_ontstane_vacatures), niet per instelling of "
+                "opleidingsniveau. Het resultaat heeft een data_key: de tabel (PROVINCIE, SECTIE, MAAT, Perioden, "
+                "Periodestatus, VACATURES) voor query_data en create_plot."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provincie": {
+                        "type": "string",
+                        "description": "Provincienaam, bijv. 'Gelderland', 'Noord-Holland', 'Fryslân'",
+                    },
+                    "sectie": {
+                        "type": "string",
+                        "description": (
+                            "Optioneel: één SBI-sectie, als letter of naam, bijv. 'Q' (Gezondheids- en "
+                            "welzijnszorg), 'P' (Onderwijs), 'C' (Industrie), 'F' (Bouwnijverheid). Zonder sectie: "
+                            "alle secties en het totaal."
+                        ),
+                    },
+                    "gemeente": {
+                        "type": "string",
+                        "description": (
+                            "Optioneel, alleen als de vraag een gemeente of plaats noemt: de tool geeft dan de "
+                            "provincie waarin die ligt, want CBS heeft deze vacatures niet per gemeente"
+                        ),
+                    },
+                    "regio": {
+                        "type": "string",
+                        "description": (
+                            "Optioneel, alleen als de vraag een arbeidsmarktregio noemt (bijv. 'Rijk van Nijmegen'): "
+                            "de tool geeft dan de provincie, want CBS heeft deze vacatures niet per regio"
+                        ),
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_ONTSTANE_VACATURES,
+            "description": (
+                "Ontstane vacatures per jaar (2018 t/m het laatste jaar, elk jaar met voorlopig of definitief) per "
+                "beroep (BRC 2014: beroepsklasse of beroepssegment), landelijk (CBS 85081NED). Een stroom: hoeveel "
+                "vacatures er in het jaar ontstonden, niet hoeveel er openstaan. Voor een vraag naar vacatures per "
+                "beroep of beroepsgroep; voor een provincie of bedrijfstak get_vacatures. Niet per regio, instelling "
+                "of opleidingsniveau. Het resultaat heeft een data_key: de tabel (BEROEP, NIVEAU, KLASSE, Perioden, "
+                "Periodestatus, ONTSTANE_VACATURES) voor query_data en create_plot."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "beroep": {
+                        "type": "string",
+                        "description": (
+                            "Optioneel: een beroepsklasse of -segment als code of naam, bijv. '08' of 'ICT beroepen', "
+                            "'10' (Zorg en welzijn beroepen), '011' (Docenten). Een klasse geeft ook haar segmenten. "
+                            "Zonder beroep: alle beroepen op het gekozen niveau."
+                        ),
+                    },
+                    "niveau": {
+                        "type": "string",
+                        "enum": ["segment", "klasse"],
+                        "description": (
+                            "Optioneel, zonder beroep: 'segment' (standaard, de fijnste indeling) of 'klasse' (de "
+                            "beroepsklassen)"
+                        ),
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": TOOL_GET_UWV_VACATURES,
             "description": (
-                "UWV-vacatures per provincie of gemeente en beroepencluster, optioneel voor één onderwijssector. "
-                "Een momentopname (peildatum in het resultaat), geen reeks, niet per instelling en zonder "
-                "opleidingsniveau. Arbeidsmarkt-context bij een onderwijsvraag. Het resultaat heeft een data_key: "
-                "de tabel met alle beroepenclusters (BEROEPENCLUSTER, VACATURES) voor query_data en create_plot."
+                "Archief: UWV-vacatures per provincie of gemeente en beroepencluster op één peildatum in mei 2023 "
+                "(UWV Open Match; UWV maakt deze reeks niet meer), optioneel voor één onderwijssector. Gebruik eerst "
+                "get_vacatures (actueel, per provincie) of get_ontstane_vacatures (per beroep); deze tool alleen bij "
+                "een vraag naar mei 2023, de oude momentopname of UWV-beroepenclusters. Elk resultaat begint met "
+                "`archief` (peildatum en melding): noem die in het antwoord. Geen reeks, niet per instelling en "
+                "zonder opleidingsniveau. Het resultaat heeft een data_key: de tabel met alle beroepenclusters "
+                "(BEROEPENCLUSTER, VACATURES) voor query_data en create_plot."
             ),
             "parameters": {
                 "type": "object",

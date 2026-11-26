@@ -33,10 +33,12 @@ from .schemas import (
     TOOL_GET_BESTUURSFINANCIEN,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_ONTSTANE_VACATURES,
     TOOL_GET_RIO_DATA,
     TOOL_GET_ROA_BENCHMARK,
     TOOL_GET_STUDIEKEUZE,
     TOOL_GET_UWV_VACATURES,
+    TOOL_GET_VACATURES,
     TOOL_GET_WO_PERSONEEL,
 )
 
@@ -93,6 +95,10 @@ _EIGEN_TOOL = {
     "financien": TOOL_GET_BESTUURSFINANCIEN,  # DUO's verantwoording uit XBRL, geen CKAN-dataset (#935)
     "wopi": TOOL_GET_WO_PERSONEEL,  # WOPI van UNL (#936)
     "studiekeuzedatabase": TOOL_GET_STUDIEKEUZE,  # Studiekeuzedatabase van LCSK (#957)
+    # De actuele vacatures (#1226, #1227): CBS-tabellen die get_cbs_data ook laadt, maar hun tool kiest de cijfers
+    # (laatste kwartaal en gemiddelde, de jaren per beroep) en zegt wat voorlopig is.
+    "83599NED": TOOL_GET_VACATURES,
+    "85081NED": TOOL_GET_ONTSTANE_VACATURES,
 }
 # De datatool per chatbron, voor een dataset zonder eigen tool.
 _DATATOOL = {"CBS": TOOL_GET_CBS_DATA, "DUO": TOOL_GET_DUO_DATA, "RIO": TOOL_GET_RIO_DATA}
@@ -155,6 +161,18 @@ def ophaaltool(dataset_id: str) -> str | None:
     None als de catalogus de dataset niet kent of er geen tool voor heeft."""
     kaal = bron_id(dataset_id)
     return eigen_tool(kaal) or _DATATOOL.get(leverancier(kaal) or "")
+
+
+def _cbs_eigen_tool(entry: dict) -> dict:
+    """Een CBS-tabel met een eigen tool (de vacatures, #1226, #1227): de treffer en het detailrecord wijzen haar aan.
+    get_cbs_data laadt de ruwe tabel ook; de tool kiest de cijfers en zegt wat voorlopig is. Leeg bij een andere tabel."""
+    if not (tool := _EIGEN_TOOL.get(str(entry.get("_cbs_id") or ""))):
+        return {}
+    return {
+        "via_tool": tool,
+        "melding": f"Gebruik {tool} voor deze tabel: die kiest de cijfers en zegt wat voorlopig is; get_cbs_data geeft "
+        "alleen de ruwe tabel.",
+    }
 
 
 def _eigen_tool_hier(entry: dict) -> bool | None:
@@ -832,7 +850,18 @@ def _verzamel(
 
     if source in ("cbs", "both"):
         treffers += [
-            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry, **_context(entry), **_archief(entry)})
+            (
+                s,
+                entry,
+                {
+                    "bron": "CBS",
+                    "status": STATUS_OPVRAAGBAAR,
+                    **entry,
+                    **_cbs_eigen_tool(entry),
+                    **_context(entry),
+                    **_archief(entry),
+                },
+            )
             for entry in _cbs()
             if _zoekbaar(entry, vervolgvraag) and (s := _score(entry, words))
         ]
@@ -1222,6 +1251,9 @@ _DETAILS_EXTRA = frozenset(
         "kolomprofiel",
         "methodiek",
         "niet_geschikt_voor",
+        # Een CBS-tabel met een eigen tool (de vacatures, #1226, #1227): welke tool en waarom (`_cbs_eigen_tool`).
+        "via_tool",
+        "melding",
     }
 )
 
@@ -1616,7 +1648,9 @@ def dataset_details(dataset_id: str) -> str:
         if entry.get("_cbs_id") == cbs_id:
             logger.info("dataset_details id=%s bron=CBS", cbs_id)
             # Populatie, periodecodes, afronding en dubbeltelling vóór het model kiest, optelt of verklaart (#383, #370).
-            return _build_details({"bron": "CBS", **entry, **cbs_meta.metadata(cbs_id)}, cbs_id)
+            return _build_details(
+                {"bron": "CBS", **entry, **cbs_meta.metadata(cbs_id), **_cbs_eigen_tool(entry)}, cbs_id
+            )
 
     for entry in _rio_duo():
         # Ook ROA en UWV (#356): die hebben een eigen ID-veld en vielen hier eerder door naar 'buiten het profiel'.
