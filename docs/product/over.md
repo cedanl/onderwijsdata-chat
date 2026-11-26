@@ -30,3 +30,5 @@ De assistent is bedoeld voor iedereen die vragen heeft over het Nederlandse onde
 ## Wie zit erachter
 
 Het project is van CEDA (Centrum Educatieve Data Analyse), onderdeel van [Npuls](https://npuls.nl/). De deelnemende instelling is de verwerkingsverantwoordelijke ([Privacy](../privacy.md)).
+
+--8<-- "docs/.versie.md"

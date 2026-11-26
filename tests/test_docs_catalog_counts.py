@@ -17,6 +17,10 @@ QUOTED_COUNTS = [
     ("docs/index.md", "DUO", r"\| \*\*DUO\*\* \| (\d+) "),
     ("docs/databronnen.md", "CBS", r"\*\*(\d+) datasets\*\* met statistische"),
     ("docs/databronnen.md", "DUO", r"\*\*(\d+) open datasets\*\* gepubliceerd door DUO"),
+    ("docs/index.md", "RIO", r"\| \*\*RIO\*\* \|[^|]*\((\d+) resources\)"),
+    ("docs/product/databronnen.md", "CBS", r"\*\*CBS\*\* \| (\d+) datasets"),
+    ("docs/product/databronnen.md", "DUO", r"\*\*DUO\*\* \| (\d+) open datasets"),
+    ("docs/product/databronnen.md", "RIO", r"\*\*RIO\*\* \|[^|]*\((\d+) resources\)"),
     # Het model leest deze telling: drift hier is een fout in het antwoord, niet alleen in de docs (#204).
     ("prompts/system.md", "CBS", r"\*\*CBS\*\* \((\d+) datasets"),
     ("prompts/system.md", "DUO", r"\*\*DUO\*\* \((\d+) datasets"),

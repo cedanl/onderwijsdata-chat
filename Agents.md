@@ -91,7 +91,7 @@ URL; production doet niet mee, #674):
 **Een release in vijf stappen** (elke stap is een eigen beslissing; een tag deployt niets; volgorde en details in
 `docs/promoten.md`):
 
-0. **Voorbereiden** in de laatste MR naar `main`: `version` in `pyproject.toml` en `CITATION.cff`, de changelog met
+0. **Voorbereiden** in de laatste MR naar `main`: `version` in `pyproject.toml` en `CITATION.cff`, de versieregel van de docs met `uv run python scripts/docs_versie.py`, de changelog met
    `scripts/changelog.py X.Y.Z`, `bron:ping`, `scripts/ijkwaarden.py`, `audit:python` en `audit:npm` groen of bewust
    geaccepteerd, en een recente `eval:bronwaarheid`-run met de uitslag in de MR (`docs/promoten.md`, stap 0).
 1. **Test bekijken.** Merge naar `main`, wacht tot de pipeline van die commit groen is en kijk op test. Ontwikkel hier vrij; playground beweegt niet mee.
