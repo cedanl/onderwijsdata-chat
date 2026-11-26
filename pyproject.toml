@@ -48,7 +48,7 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.15.16",
     # Gepind op één patchversie: een nieuwe ty meldt vaak nieuwe diagnostics; optillen in een eigen MR met triage (#1206).
-    "ty>=0.0.110,<0.0.111",
+    "ty>=0.0.111,<0.0.112",
     # tests/test_notebook_export.py draait de notebookexport van de gespreksexport (#1247) in een echte kernel en
     # valideert hem tegen het nbformat-schema. Alleen voor de tests: het productie-image installeert zonder dev.
     "nbclient>=0.10",
