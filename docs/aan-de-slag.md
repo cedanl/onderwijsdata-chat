@@ -2,7 +2,7 @@
 icon: lucide/rocket
 ---
 
-# Aan de slag
+# Installatie voor ontwikkelaars
 
 ## Vereisten
 

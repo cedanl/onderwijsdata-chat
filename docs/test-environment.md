@@ -2,7 +2,7 @@
 icon: lucide/flask-conical
 ---
 
-# Test Environment Deployment
+# Testomgeving: uitrol
 
 Test environment (`test.sdp.surf.nl`) is GitOps-managed via Flux and runs on every `main` push.
 

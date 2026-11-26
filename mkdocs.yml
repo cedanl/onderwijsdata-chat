@@ -38,38 +38,43 @@ extra_css:
   - stylesheets/extra.css
 
 extra_javascript:
-  - https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js
+  # Mermaid 11.4.1, lokaal meegeleverd (geen CDN); versie en sha256 staan bovenaan het bestand.
+  - javascripts/mermaid.min.js
 
 nav:
   - Home: index.md
-  - Aan de slag: aan-de-slag.md
-  - Configuratie:
-    - configuratie/index.md
-    - Providers & modellen: configuratie/providers.md
-  - Databronnen: databronnen.md
-  - Domeinregels: domeinregels.md
-  - Tools: tools.md
-  - Dashboards: dashboards.md
-  - API: api.md
-  - Routing: routing.md
-  - MCP-server: mcp.md
-  - EduGenAI-koppeling: edugenai.md
-  - Kwaliteit & veiligheid:
-    - kwaliteit-en-veiligheid.md
-    - Betrouwbaarheid per release: betrouwbaarheid.md
-  - Privacy: privacy.md
-  - AI-verordening: ai-act.md
-  - Architectuur & ontwerp:
-    - Anti-hallucinatie: anti-hallucination-architecture.md
-    - Architecture Decisions: architecture-decisions.md
-    - Reproduceerbare analyses: reproducibility.md
-  - Operatie:
-    - Operatie & runbook: operatie.md
-    - Incidenten en datalekken: incidenten.md
-    - Deployment: deployment.md
-    - Promoten naar playground: promoten.md
-    - Test Environment: test-environment.md
-  - Hosting: hosting.md
+  - Product & gebruik:
+    - Databronnen: databronnen.md
+    - Tools: tools.md
+    - Dashboards: dashboards.md
+    - Kwaliteit & veiligheid:
+      - kwaliteit-en-veiligheid.md
+      - Betrouwbaarheid per release: betrouwbaarheid.md
+    - Privacy: privacy.md
+    - Catalogus CBS (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/
+    - Catalogus RIO (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/
+  - Techniek & beheer:
+    - Installatie voor ontwikkelaars: aan-de-slag.md
+    - Configuratie:
+      - configuratie/index.md
+      - Providers & modellen: configuratie/providers.md
+    - Domeinregels: domeinregels.md
+    - API: api.md
+    - Routing: routing.md
+    - MCP-server: mcp.md
+    - EduGenAI-koppeling: edugenai.md
+    - AI-verordening: ai-act.md
+    - Architectuur & ontwerp:
+      - Anti-hallucinatie: anti-hallucination-architecture.md
+      - Architecture Decisions: architecture-decisions.md
+      - Reproduceerbare analyses: reproducibility.md
+    - Operatie:
+      - Operatie & runbook: operatie.md
+      - Incidenten en datalekken: incidenten.md
+      - Uitrol naar SDP: deployment.md
+      - Promoten naar playground: promoten.md
+      - Testomgeving: test-environment.md
+    - Hosting: hosting.md
 extra:
   generator: false
 
