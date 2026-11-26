@@ -1,3 +1,7 @@
+---
+icon: lucide/brain
+---
+
 # Anti-hallucinatie architectuur
 
 ## Het probleem

@@ -1,3 +1,7 @@
+---
+icon: lucide/gavel
+---
+
 # EU AI-verordening: classificatie per beoogd gebruik
 
 **Status: voorstel van het projectteam (#1025), nog niet bekrachtigd.** Deze notitie legt vast hoe het team

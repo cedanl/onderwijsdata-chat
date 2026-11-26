@@ -1,3 +1,7 @@
+---
+icon: lucide/plug
+---
+
 # API Referentie
 
 De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor communicatie met het frontend.

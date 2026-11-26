@@ -1,3 +1,7 @@
+---
+icon: lucide/graduation-cap
+---
+
 # EduGenAI-koppeling
 
 EduGenAI is het AI-platform van SURF en Npuls voor het onderwijs, gebouwd op LibreChat (de naam kan nog veranderen). Het plan

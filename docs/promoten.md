@@ -1,3 +1,7 @@
+---
+icon: lucide/arrow-up-right
+---
+
 # Promoten naar playground
 
 De ladder heeft twee sporten: **test** en **playground**. `development` volgt net als test elke main-build (open

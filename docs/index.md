@@ -1,3 +1,7 @@
+---
+icon: lucide/house
+---
+
 # Onderwijsdata Chat
 
 **Stel vragen over open Nederlandse onderwijsdata via een AI-assistent.**

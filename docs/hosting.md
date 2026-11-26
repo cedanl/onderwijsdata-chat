@@ -1,3 +1,7 @@
+---
+icon: lucide/hard-drive
+---
+
 # Professioneel hosten
 
 Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokale standaardinstelling (SQLite, wachtwoordlogin) is bedoeld voor ontwikkeling en demo's.
