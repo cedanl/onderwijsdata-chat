@@ -110,7 +110,7 @@ describe('PlanKaart', () => {
 
   it('heeft geen axe-bevindingen, open en verlopen', async () => {
     for (const status of ['open', 'verlopen']) {
-      const kaart = await render({ status, onBevestig: vi.fn(), onAanpassen: vi.fn() })
+      await render({ status, onBevestig: vi.fn(), onAanpassen: vi.fn() })
       const { violations } = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })
       expect(violations.map(v => v.id), status).toEqual([])
       await act(async () => root.unmount())
