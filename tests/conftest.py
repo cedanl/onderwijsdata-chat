@@ -203,6 +203,19 @@ def cbs_vacatures(monkeypatch):
 
 
 @pytest.fixture
+def cbs_ontstane_vacatures(monkeypatch, cbs_vacatures):
+    """CBS 85081NED, de ontstane vacatures per beroep van de chat (#1227), uit het opgenomen OData-antwoord: alle
+    economische activiteiten, elke beroepsklasse en elk beroepssegment, 2018-2025 (tests/cbs_85081ned.py). Na
+    `cbs_vacatures`, zodat beide tabellen zonder netwerk antwoorden. Geeft de params van elke TypedDataSet-aanroep."""
+    from data import vacatures_ontstaan
+    from tests import cbs_85081ned
+
+    tabel = vacatures_ontstaan._tabel
+    yield cbs_85081ned.zet_klaar(monkeypatch)
+    tabel.cache_clear()
+
+
+@pytest.fixture
 def arbeidsmarkt_fixtures(monkeypatch, cbs_vacatures):
     """UWV, ROA en de CBS-vacatures (83599NED, fixture `cbs_vacatures`) zonder netwerk (#915), voor de vormtests van
     dashboards en chat.
