@@ -63,6 +63,9 @@ changelog-item wat er anders is.
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron dat de chat hier kan opvragen (`catalogus_aantallen` in `tools/catalog.py`): met een datatool (CBS, DUO, RIO), plus de bronnen met een eigen tool die hier antwoord geeft (zoals UWV, ROA, UNL of LCSK). Welke bronnen erin staan, verschilt dus per omgeving |
 | `GET` | `/api/openapi.json` | Het OpenAPI-schema. Alleen lokaal, op development en op test; met `APP_ENV` `playground`, `production`, `staging-otc` of `production-otc` bestaat het niet (`SECURITY.md`, S23). Swagger UI (`/api/docs`) en ReDoc (`/redoc`) zijn er nergens: ze laadden hun scripts van `cdn.jsdelivr.net`, die de CSP blokkeert (#1161). Open het schema in een eigen viewer |
 
+Welke paden de app-shell (`index.html`) geven en welke altijd JSON: [Routing](routing.md). Een onbekend pad onder `/api`,
+of een gereserveerd pad als `/docs`, `/openapi.json` of `/status`, geeft 404 `{"detail": "Niet gevonden"}`.
+
 ---
 
 ## Authenticatie

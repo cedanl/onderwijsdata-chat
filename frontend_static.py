@@ -9,9 +9,11 @@ Het manifest, de service worker en de iconen (frontend/public, #669, #670) maken
 hebben geen hash in hun naam: manifest en worker zijn altijd vers (een browser vergelijkt de worker bij elke
 start byte voor byte), de iconen blijven een week staan.
 
-Onbekende paden onder /api krijgen een JSON-404 in plaats van index.html (#482):
-een client die een API-pad verkeerd spelt, hoort een fout te zien en geen HTML met 200. Dat geldt voor elke
-methode: een POST op een onbekend pad is een 404, geen 405 (#1156).
+De gereserveerde paden (GERESERVEERDE_PADEN: /api, /docs, /openapi.json, /status, /session, /user en /mcp, elk met
+alles eronder) krijgen een JSON-404 in plaats van index.html (#482, #1239): een client die een API-pad verkeerd spelt of
+een pad zoekt dat op een API lijkt, hoort een fout te zien en geen HTML met 200. Dat geldt voor elke methode: een POST op
+een onbekend pad is een 404, geen 405 (#1156). Een echte route op zo'n pad (het schema, /mcp uit server.py) staat ervoor
+en wint. Overzicht in docs/routing.md.
 
 HEAD op een pad van de app-shell antwoordt als GET, zonder body (#654). Een pad dat een
 andere route kent (/health, /api/config) houdt bij een andere methode zijn 405, zoals voorheen.
@@ -34,6 +36,9 @@ _ROOT_BESTANDEN = {
     "manifest.webmanifest": "application/manifest+json",
     "sw.js": "text/javascript",
 }
+# Paden die nooit de app-shell geven, met alles eronder: zonder echte route een JSON-404 (#482, #1239). De frontend heeft
+# geen client-route met een van deze namen; docs/routing.md noemt ze.
+GERESERVEERDE_PADEN = ("/api", "/docs", "/openapi.json", "/status", "/session", "/user", "/mcp")
 
 
 class _StatischMetCache(StaticFiles):
@@ -96,13 +101,14 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     for naam, media_type in _ROOT_BESTANDEN.items():
         root_bestand(naam, media_type)
 
-    async def onbekende_api_route() -> JSONResponse:
+    async def gereserveerd_pad() -> JSONResponse:
         return JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)
 
-    for pad in ("/api", "/api/{rest:path}"):
-        app.router.add_api_route(
-            pad, onbekende_api_route, methods=["GET"], include_in_schema=False, route_class_override=_CatchAllRoute
-        )
+    for basis in GERESERVEERDE_PADEN:
+        for pad in (basis, basis + "/{rest:path}"):
+            app.router.add_api_route(
+                pad, gereserveerd_pad, methods=["GET"], include_in_schema=False, route_class_override=_CatchAllRoute
+            )
 
     async def serve_spa(full_path: str) -> Response:
         return Response(
