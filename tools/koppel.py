@@ -38,6 +38,14 @@ ONZEKER = "onzeker"
 PER_GRAAD = "niet_gekoppeld_per_graad"
 GEEN_GRAAD = "onbekend"
 _GRADEN = ("bachelor", "master", "associate degree")
+# "Alle opleidingen" van een instelling (#1274): ook de rijen `beide` per graad, per graad met het aantal met een
+# NSE-score en het aantal onzeker, en de rijen `alleen DUO` met een vaste reden. De delen tellen op tot de telling.
+GEKOPPELD_PER_GRAAD = "gekoppeld_per_graad"
+ALLEEN_DUO = "alleen_duo"
+REDEN_ALLEEN_DUO = "alleen in DUO: de Studiekeuzedatabase heeft geen opleiding met deze brin en croho"
+# Zoveel opleidingen `alleen DUO` noemt het resultaat hooguit; het aantal rijen staat er altijd volledig in. Een
+# DUO-tabel van alle instellingen naast de SKDB van één instelling geeft er duizenden.
+MAX_ALLEEN_DUO = 50
 # Zoveel rijen mag een koppeling hooguit geven. De koppeling draait in het serverproces, niet in de sandbox van
 # run_analysis (1 GiB, 10 s): veel-op-veel op een grove sleutel (alleen schooljaar of brin) is een kruisproduct per
 # waarde en groeit kwadratisch (2 x 1500 rijen op één waarde: 2,25 miljoen rijen, 1 GB). Daarom eerst tellen, dan
@@ -663,11 +671,30 @@ def _graadsoort(waarde: object) -> str:
     return skdbbron.overzicht.GRADEN.get(tekst, tekst).lower()
 
 
-def _per_graad(reeks: pd.Series) -> dict[str, int]:
-    """Het aantal rijen per graadsoort: eerst bachelor, master, associate degree, dan de rest op naam."""
-    tel = reeks.map(_graadsoort).value_counts()
+def _per_graad(graad: pd.Series, met_score: pd.Series | None, onzeker: pd.Series) -> dict[str, dict[str, int]]:
+    """Per graadsoort het aantal rijen en, als de SKDB-kant NSE-cijfers heeft, het aantal met een NSE-cijfer en het
+    aantal onzeker (#1274): eerst bachelor, master, associate degree, dan de rest op naam. Dezelfde index overal."""
+    tabel = pd.DataFrame({"graad": graad.map(_graadsoort), "onzeker": onzeker})
+    velden = {"rijen": ("graad", "size")}
+    if met_score is not None:
+        tabel["met_score"] = met_score
+        velden |= {"met_score": ("met_score", "sum"), "onzeker": ("onzeker", "sum")}
+    tel = tabel.groupby("graad", sort=False).agg(**velden)
     volgorde = [*(g for g in _GRADEN if g in tel.index), *sorted(g for g in tel.index if g not in _GRADEN)]
-    return {g: int(tel[g]) for g in volgorde}
+    return {g: {k: int(tel.at[g, k]) for k in velden} for g in volgorde}
+
+
+def _alleen_duo(df: pd.DataFrame, status: str, sleutels: list[str]) -> dict:
+    """De rijen `alleen DUO` (#1274): hun aantal, en per opleiding (de sleutels, hooguit MAX_ALLEEN_DUO) de vaste
+    reden. Een DUO-rij die vaker voorkomt (meer jaren) staat er één keer in; `rijen` telt ze allemaal."""
+    rijen = df.loc[df[KOPPELSTATUS] == status, sleutels]
+    uniek = rijen.drop_duplicates()
+    getoond = uniek.head(MAX_ALLEEN_DUO).astype(object)
+    opleidingen = getoond.where(getoond.notna(), None).to_dict(orient="records")
+    uit: dict = {"rijen": len(rijen), "opleidingen": [{**o, "reden": REDEN_ALLEEN_DUO} for o in opleidingen]}
+    if len(uniek) > len(getoond):
+        uit["niet_getoond"] = len(uniek) - len(getoond)
+    return uit
 
 
 def _onzekerheid(df: pd.DataFrame, van_skdb: pd.Series, nse: dict[str, str]) -> list[bool | None]:
@@ -686,8 +713,10 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
     De kolom `onzeker` (na `koppelstatus` en een `koppelreden`) volgt dezelfde regel als get_studiekeuze
     (`studiekeuze.is_onzeker`, MIN_RESPONDENTEN): true of false bij een SKDB-rij, leeg bij een rij alleen uit DUO. Alleen
     als de SKDB-kant een NSE-cijfer heeft en geen tabel een eigen kolom `onzeker` (_met_onzeker).
-    `niet_gekoppeld_per_graad` telt de rijen `alleen SKDB` per `graad`; de delen tellen op tot hun `telling`. Andere
-    koppelingen blijven zoals ze waren.
+    `niet_gekoppeld_per_graad` telt de rijen `alleen SKDB` per `graad`, `gekoppeld_per_graad` de rijen `beide` (#1274),
+    elk per graad met `rijen`, `met_score` (een NSE-cijfer) en `onzeker` (dezelfde regel, ook als de tabel een eigen
+    kolom onzeker heeft); `alleen_duo` noemt de rijen `alleen DUO` met een vaste reden. De delen tellen op tot hun
+    `telling`. Ook bij alleen croho voor één BRIN (#1273) dezelfde vorm. Andere koppelingen blijven zoals ze waren.
     """
     paar = _skdb_duo(links, rechts, sleutels, een_instelling=True)
     if paar is None:
@@ -699,10 +728,15 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
     statussen = (BEIDE, skdb.alleen)
     van_skdb = df[KOPPELSTATUS].isin(statussen)
     nse = {k: naam[k] for k in ("nse_respondenten", *studiekeuze.NSE_CIJFERS) if k in naam}
+    vlag = _onzekerheid(df, van_skdb, nse)
+    # Per rij: een NSE-cijfer (oordeel of thema) en de vlag; telt ook als de SKDB-tabel een eigen kolom onzeker heeft.
+    cijfers = [nse[k] for k in studiekeuze.NSE_CIJFERS if k in nse]
+    met_score = df[cijfers].notna().any(axis=1) if cijfers else None
+    onzeker = pd.Series([v is True for v in vlag], index=df.index)
     if _met_onzeker(links, rechts, sleutels):
         na = [k for k in (KOPPELSTATUS, opvolger.KOPPELREDEN) if k in df.columns][-1]
         df = df.copy()
-        df.insert(list(df.columns).index(na) + 1, ONZEKER, _onzekerheid(df, van_skdb, nse))
+        df.insert(list(df.columns).index(na) + 1, ONZEKER, vlag)
         zin = (
             f"Een rij met {ONZEKER}: true heeft minder dan {studiekeuze.MIN_RESPONDENTEN} NSE-respondenten of geen "
             "bekend aantal: noem het NSE-oordeel en de thema's van die rij onzeker. De code zette de vlag; neem haar "
@@ -711,15 +745,49 @@ def _skdb_signalen(links: _Kant, rechts: _Kant, sleutels: list[str], uitkomst: _
         toelichting = {s: zin for s in statussen if (df[KOPPELSTATUS] == s).any()}
     alleen = df[KOPPELSTATUS] == skdb.alleen
     if "graad" in naam and alleen.any():
-        extra[PER_GRAAD] = _per_graad(df.loc[alleen, naam["graad"]])
+        extra[PER_GRAAD] = _per_graad(df.loc[alleen, naam["graad"]], _deel(met_score, alleen), onzeker[alleen])
+        velden = ", met per graad rijen, met_score (een NSE-cijfer) en onzeker" if cijfers else ""
         zin = (
-            f"{PER_GRAAD} telt deze rijen per graad (bachelor, master, associate degree; zonder graad: {GEEN_GRAAD}), "
-            "in code: noem die aantallen zoals ze er staan en tel de rijen niet zelf."
+            f"{PER_GRAAD} telt deze rijen per graad (bachelor, master, associate degree; zonder graad: {GEEN_GRAAD})"
+            f"{velden}, in code: noem die aantallen zoals ze er staan en tel de rijen niet zelf."
         )
         toelichting[skdb.alleen] = f"{toelichting.get(skdb.alleen, '')} {zin}".strip()
+    beide = df[KOPPELSTATUS] == BEIDE
+    if "graad" in naam and beide.any():
+        extra[GEKOPPELD_PER_GRAAD] = _per_graad(df.loc[beide, naam["graad"]], _deel(met_score, beide), onzeker[beide])
+        toelichting[BEIDE] = f"{toelichting.get(BEIDE, '')} {_alle(bool(cijfers))}".strip()
+    if (df[KOPPELSTATUS] == duo.alleen).any():
+        extra[ALLEEN_DUO] = _alleen_duo(df, duo.alleen, sleutels)
+        zin = f"{ALLEEN_DUO} noemt deze rijen met hun reden en hun aantal, in code: neem ze over en tel niet zelf."
+        toelichting[duo.alleen] = zin
     if toelichting:
         extra["toelichting"] = toelichting
     return replace(uitkomst, df=df), extra
+
+
+def _deel(reeks: pd.Series | None, masker: pd.Series) -> pd.Series | None:
+    return None if reeks is None else reeks[masker]
+
+
+def _alle(met_nse: bool) -> str:
+    """De regel voor een vraag naar "alle opleidingen" van een instelling (#1274; besluit van de eigenaar: een tabel
+    per graad, geen ongevraagde vernauwing). Kort: de tekst stuurt het model. Zonder NSE-cijfers geen zin over score
+    of onzeker."""
+    if not met_nse:
+        return (
+            "Vraagt de gebruiker naar alle opleidingen, toon dan één tabel per graad uit "
+            f"{GEKOPPELD_PER_GRAAD}; daarna de rijen zonder match uit {PER_GRAAD} en {ALLEEN_DUO}, elk met hun reden. "
+            "Vernauw de graad niet zonder dat de gebruiker erom vroeg (doe je een aanname, noem die dan vóór het "
+            "getal). De aantallen per graad staan in die velden: neem ze over, tel niet zelf."
+        )
+    return (
+        "Vraagt de gebruiker naar alle opleidingen, toon dan één tabel per graad: de rijen beide per graad uit "
+        f"{GEKOPPELD_PER_GRAAD} (bachelor, associate degree, master) en een graad zonder DUO-rij maar met NSE-score "
+        f"(met_score in {PER_GRAAD}, zoals master); daarna de rijen zonder match uit {PER_GRAAD} en {ALLEEN_DUO}, "
+        "elk met hun reden. Een rij met onzeker: true staat erin met dat label: laat ze niet weg; vernauw de graad "
+        "niet zonder dat de gebruiker erom vroeg (doe je een aanname, noem die dan vóór het getal). De aantallen per "
+        "graad (rijen, met_score, onzeker) staan in die velden: neem ze over, tel niet zelf."
+    )
 
 
 def _samengevoegd(*extras: dict) -> dict:
@@ -839,8 +907,9 @@ def _tekst(
         uit["toelichting"][status] = f"{uit['toelichting'].get(status, '')} {aanvulling}".strip()
     if opvolgers := extra.get("opvolgers"):
         uit["opvolgers"] = opvolgers
-    if per_graad := extra.get(PER_GRAAD):
-        uit[PER_GRAAD] = per_graad
+    for veld in (GEKOPPELD_PER_GRAAD, PER_GRAAD, ALLEEN_DUO):
+        if waarde := extra.get(veld):
+            uit[veld] = waarde
     if uitkomst.zonder_sleutel:
         uit["zonder_sleutel"] = uitkomst.zonder_sleutel
     waarschuwingen: list[str] = [w for w in (uit.pop("waarschuwing", None),) if isinstance(w, str)]

@@ -1102,6 +1102,20 @@ dezelfde (#1273). Twee tabellen die al tot één instelling zijn begrensd, krijg
 van beide, en de opvolgers uit RIO (`koppelreden`) blijven bij `brin` en `croho`. Andere koppelingen krijgen geen van
 beide.
 
+**Alle opleidingen: per graad, met score, en alleen DUO met reden (#1274).** Dezelfde koppeling telt ook de rijen
+`beide` per graad in `gekoppeld_per_graad`. Elke graad in `gekoppeld_per_graad` en `niet_gekoppeld_per_graad` is een
+object met `rijen`, `met_score` (rijen met een NSE-cijfer: `nse_oordeel` of een thema) en `onzeker` (dezelfde regel als
+de kolom `onzeker`, ook als de SKDB-tabel een eigen kolom met die naam heeft), bijv. bij HU `"master": {"rijen": 29,
+"met_score": 27, "onzeker": 0}`; zonder NSE-cijfer in de SKDB-tabel alleen `rijen`. Een rij met `onzeker: true` telt
+gewoon mee. De rijen `alleen DUO` staan in `alleen_duo`: `rijen` (het aantal) en `opleidingen` (per `brin` en `croho`
+één keer, met een vaste `reden`: "alleen in DUO: de Studiekeuzedatabase heeft geen opleiding met deze brin en croho"),
+hooguit 50 opleidingen, de rest geteld in `niet_getoond`. Samen tellen `gekoppeld_per_graad`,
+`niet_gekoppeld_per_graad` en `alleen_duo` op tot alle rijen van de koppeling. De `toelichting` van `beide` (en de
+tooltekst) zegt bij een vraag naar alle opleidingen één tabel per graad te tonen (een graad zonder DUO-rij met score,
+zoals master, ook), daarna de rijen zonder match met hun reden, onzekere rijen met label en niet weggelaten, en de
+graad niet te vernauwen zonder dat de gebruiker erom vroeg. Koppelen op alleen `croho` krijgt deze velden nog niet
+(#1273). De velden zijn alleen in het toolresultaat; de koppeling krijgt geen nieuwe kolommen.
+
 De key is afgeleid van de eerste tabel en rust op beide (`gelezen`): de herkomst en de CSV-kop noemen beide bronnen,
 bij de Studiekeuzedatabase met de verplichte zin van LCSK (#977, #985), en de CSV-knop staat eronder zoals bij
 `run_analysis`. `query_data`, `run_analysis` en `create_plot` werken op de key als op elke afgeleide key. Na een

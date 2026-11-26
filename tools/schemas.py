@@ -326,10 +326,13 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "STUDIEJAAR_LABEL), dan kiest de tool de bronkolom. Bij SKDB naast DUO op brin en croho noemt "
                 "opvolgers (kolom koppelreden) een SKDB-rij die volgens RIO pas na de DUO-peildatum begint: noem haar "
                 "nieuw, met haar voorgangers en hun eigen aantal, en tel die niet op. Daar, en op alleen croho als beide "
-                "tabellen uit één BRIN komen, zet de code ook per SKDB-rij onzeker (te weinig NSE-respondenten of "
-                "geen bekend aantal, zie toelichting: noem dat oordeel onzeker) en "
-                "telt ze de SKDB-rijen zonder DUO-rij per graad in niet_gekoppeld_per_graad: neem de vlag en die aantallen "
-                "over, tel niet zelf. Schrijf geen eigen merge in "
+                "tabellen uit één BRIN komen, zet de code ook per SKDB-rij "
+                "onzeker (te weinig NSE-respondenten of geen bekend aantal, zie toelichting: noem dat oordeel onzeker) en "
+                "telt ze de SKDB-rijen zonder DUO-rij per graad in niet_gekoppeld_per_graad en de gekoppelde in "
+                "gekoppeld_per_graad (per graad rijen, met_score, onzeker), met de DUO-rijen zonder SKDB-rij en hun "
+                "reden in alleen_duo: neem de vlag en die aantallen over, tel niet zelf. Bij 'alle opleidingen': één "
+                "tabel per graad, dan de rijen zonder match met reden, onzekere rijen met label (niet weglaten); "
+                "vernauw de graad niet ongevraagd. Schrijf geen eigen merge in "
                 "run_analysis en filter vóór de koppeling niet op een lege waarde."
             ),
             "parameters": {
