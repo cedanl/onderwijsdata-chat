@@ -20,6 +20,10 @@ jobs:
         with:
           enable-cache: true
 
+      # De versieregel van de docs komt uit pyproject.toml (audit G2); de test houdt het bestand in de repo gelijk.
+      - name: Versieregel
+        run: uv run python scripts/docs_versie.py
+
       # Zensical staat vastgepind in de docs-groep van pyproject.toml (pre-1.0: bewust verhogen).
       - name: Build docs
         run: uv run --group docs zensical build --strict --clean

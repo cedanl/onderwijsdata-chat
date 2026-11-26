@@ -61,3 +61,6 @@ Zie [Installatie voor ontwikkelaars](aan-de-slag.md) voor gedetailleerde install
 ---
 
 Dit project is onderdeel van de [CEDA](https://github.com/cedanl) organisatie.
+
+--8<-- "docs/.versie.md"
+[Een fout gevonden? Open een issue.](https://github.com/cedanl/onderwijsdata-chat/issues)
