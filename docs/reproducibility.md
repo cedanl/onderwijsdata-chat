@@ -41,8 +41,8 @@ je van boven naar beneden:
 ```
 
 Mislukte stappen en foutmeldingen gaan alleen mee met "Mislukte stappen en foutmeldingen"; een ingetrokken antwoord
-staat alleen als citaat in de markdowncel, nooit als code. Een los `.py`-bestand levert de app niet: in Markdown kopieer
-je de code van de stap die je wilt herhalen, in het notebook draai je de cellen. Draaien geeft niet altijd hetzelfde
+staat alleen als citaat in de markdowncel, nooit als code. In Markdown kopieer je de code van de stap die je wilt
+herhalen, in het notebook draai je de cellen. Draaien geeft niet altijd hetzelfde
 getal: een bron kan sinds de export nieuwe of herziene cijfers hebben; de regel Dataversie onder Herkomst zegt waarmee
 de app rekende. `tests/test_notebook_export.py` draait een geëxporteerd notebook in een kernel tegen een bevroren kopie
 van het DUO-bestand.
