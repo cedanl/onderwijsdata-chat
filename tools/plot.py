@@ -3,13 +3,15 @@ import logging
 import math
 import re
 import urllib.request
+import zlib
 from collections import Counter
 from dataclasses import dataclass
 
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import cbs_afronding, cbs_meta, duo, fouten, kaartlocaties, periode, store
+from . import cbs_afronding, cbs_meta, duo, fouten, grafiekregels, kaartlocaties, periode, store, trendbreuken
+from . import ondergrens as ondergrens_mod
 from .exportnoten import herkomstregels
 from .getal import nl_getal
 from .indeling import indeling_in_woorden, indelingsregel, titel_met_indeling
@@ -17,9 +19,15 @@ from .kolomlabel import kolomlabel, leesbaar, waardelabels
 
 logger = logging.getLogger(__name__)
 
-# Okabe-Ito colorblind-friendly palette
-_PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
-_HIGHLIGHT_GREY = "#B0B0B0"
+# Het palet van de reeksen (#1264): elke kleur haalt 3:1 contrast (WCAG 2.2 AA, 1.4.11) op het lichte (#FFFFFF, het
+# rapport #F9FAFB) en het donkere thema (#1E293B, het rapport #111827); test_grafiekregels.py meet het. De eerste is
+# het Npuls-blauw en de accentkleur: één reeks, of de eigen instelling die `highlight` uitlicht. De andere gaan per
+# reeks naar haar code (BRIN, bron, sector), niet naar haar plek in de volgorde (`reekskleuren`). Okabe-Ito was de
+# basis; geel, oranje, lichtblauw en zwart haalden het contrast niet.
+_PALETTE = ["#3D68EC", "#D55E00", "#009E73", "#A855F7", "#B8860B", "#1F8FA6", "#D14B8F"]
+_ACCENT = _PALETTE[0]
+_REEKSPALET = _PALETTE[1:]
+_HIGHLIGHT_GREY = "#808080"
 
 # Boven dit aantal punten overlappen waardelabels elkaar (#22).
 _MAX_LABELED_POINTS = 20
@@ -229,14 +237,16 @@ def _value_labels(y_vals: list, enabled: bool) -> list[str] | None:
 
 
 def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str, dict]:
-    """Group data rows by the *color_by* column; een lege groep heet "onbekend", niet "nan" (#1016)."""
+    """Group data rows by the *color_by* column; een lege groep heet "onbekend", niet "nan" (#1016). "rijen" houdt de
+    rijen zelf, voor de ondergrens per punt (#1261)."""
     groups: dict[str, dict] = {}
     for row in data:
         groep = row.get(color_by)
         key = "onbekend" if _is_lege_naam(groep) else str(groep)
-        groups.setdefault(key, {"x": [], "y": []})
+        groups.setdefault(key, {"x": [], "y": [], "rijen": []})
         groups[key]["x"].append(row.get(x))
         groups[key]["y"].append(row.get(y))
+        groups[key]["rijen"].append(row)
     return groups
 
 
@@ -339,11 +349,29 @@ def kopruimte(reeksen: list[dict]) -> float | None:
     return hoog + _LABEL_KOPRUIMTE * ((hoog - laag) or abs(hoog) or 1)
 
 
+def reekskleuren(codes: list[str]) -> dict[str, str]:
+    """Per reeks (haar code: BRIN, bron, sector) een vaste kleur uit het palet (#1264).
+
+    De kleur hangt van de code af, niet van de plek in de volgorde: dezelfde instelling is in elk antwoord dezelfde
+    kleur, ook als de reeksen anders staan. Twee codes met dezelfde voorkeur krijgen er verschillende: in de volgorde
+    van de codes zelf (gesorteerd), zodat ook dat niet van de reeksvolgorde afhangt. Meer reeksen dan kleuren: het palet
+    begint opnieuw. De accentkleur blijft voor de eigen instelling (`highlight`) en een grafiek met één reeks."""
+    kleuren: dict[str, str] = {}
+    bezet: set[int] = set()
+    for code in sorted(dict.fromkeys(codes)):
+        plek = zlib.crc32(code.encode()) % len(_REEKSPALET)
+        if len(bezet) < len(_REEKSPALET):
+            while plek in bezet:
+                plek = (plek + 1) % len(_REEKSPALET)
+        bezet.add(plek)
+        kleuren[code] = _REEKSPALET[plek]
+    return kleuren
+
+
 def _accentkleuren(ruw: list, labels: list, highlight: str) -> list[str]:
     """Per staaf: de accentkleur voor de uitgelichte categorie (code of woord), grijs voor de rest."""
     return [
-        _PALETTE[0] if highlight in (str(r), str(label)) else _HIGHLIGHT_GREY
-        for r, label in zip(ruw, labels, strict=True)
+        _ACCENT if highlight in (str(r), str(label)) else _HIGHLIGHT_GREY for r, label in zip(ruw, labels, strict=True)
     ]
 
 
@@ -357,14 +385,25 @@ def _add_trace(
     text: list[str] | None = None,
     liggend: bool = False,
     kort: dict[str, str] | None = None,
+    onder: list[bool] | None = None,
 ) -> None:
     """Add a single trace to the figure based on *chart_type*. `kort` zet de volledige naam van een staaf om in
-    de afgekapte op de as (#895); de volledige naam staat dan in de hover."""
-    common = {"name": name} if name else {}
+    de afgekapte op de as (#895); de volledige naam staat dan in de hover. `onder` zegt per punt of een onderdrukte cel
+    erin valt (#1261): dat punt krijgt een open marker of arcering, "≥" in zijn label en "ten minste" in de hover."""
+    common: dict = {"name": name} if name else {}
+    onder = onder if onder and any(onder) else None
+    if onder and chart_type in ("bar", "line"):
+        common |= _hover_volledig(x_vals, y_vals, name, kort or {}, onder)
+        if text:
+            text = [f"≥ {t}" if t and o else t for t, o in zip(text, onder, strict=True)]
     if chart_type == "bar":
         if kort:
-            common |= _hover_volledig(x_vals, y_vals, name, kort)
+            common.setdefault("hovertext", _hover_volledig(x_vals, y_vals, name, kort)["hovertext"])
+            common["hoverinfo"] = "text"
             x_vals = [kort.get(v, v) if isinstance(v, str) else v for v in x_vals]
+        if onder:
+            # Arcering, geen andere kleur: de vorm zegt het, ook zonder kleur te zien (WCAG 1.4.1).
+            common["marker_pattern"] = {"shape": ["/" if o else "" for o in onder], "solidity": 0.45}
         # Liggend staat het getal in de staaf als het past, anders erachter: buiten de staaf viel
         # het getal van de langste staaf op een smal scherm van de figuur af.
         assen = (
@@ -392,7 +431,7 @@ def _add_trace(
                 textposition="top center",
                 cliponaxis=False if text else None,
                 line={"color": color, "width": 2},
-                marker={"size": 5},
+                marker=_lijnmarkers(onder, color),
                 **common,
             )
         )
@@ -404,12 +443,33 @@ def _add_trace(
         fig.add_trace(go.Pie(labels=x_vals, values=y_vals, marker={"colors": _PALETTE}, hole=0.3))
 
 
-def _hover_volledig(x_vals: list, y_vals: list, reeks: str | None, kort: dict[str, str]) -> dict:
-    """De hover van een staaf met een afgekapte naam: de volledige naam en de waarde, per staaf."""
+def _lijnmarkers(onder: list[bool] | None, kleur: str | list[str]) -> dict:
+    """Een gewoon punt is een dichte stip; een punt met een onderdrukte cel een open, grotere cirkel (#1261)."""
+    if not onder:
+        return {"size": 5}
+    return {
+        "size": [9 if o else 5 for o in onder],
+        "symbol": ["circle-open" if o else "circle" for o in onder],
+        "line": {"width": 2, "color": kleur},
+    }
+
+
+def _hoverwaarde(v, ondergrens: bool) -> str:
+    if _is_missing(v):
+        return ""
+    if ondergrens:
+        return f": {ondergrens_mod.TEN_MINSTE} {nl_getal(v)} {ondergrens_mod.ONDERDRUKT}"
+    return f": {nl_getal(v)}"
+
+
+def _hover_volledig(
+    x_vals: list, y_vals: list, reeks: str | None, kort: dict[str, str], onder: list[bool] | None = None
+) -> dict:
+    """De hover per punt: de volledige naam (ook bij een afgekapte, #895) en de waarde, bij een onderdrukte cel als
+    "ten minste 1.234 (onderdrukte cellen)" (#1261)."""
     voor = f"{reeks} – " if reeks else ""
-    regels = [
-        f"{voor}{naam}" + ("" if _is_missing(v) else f": {nl_getal(v)}") for naam, v in zip(x_vals, y_vals, strict=True)
-    ]
+    onder = onder or [False] * len(x_vals)
+    regels = [f"{voor}{naam}{_hoverwaarde(v, o)}" for naam, v, o in zip(x_vals, y_vals, onder, strict=True)]
     return {"hovertext": regels, "hoverinfo": "text"}
 
 
@@ -499,6 +559,8 @@ def create_plot(
         return GEEN_ASSEN, None
     if err := _validate_axes(data, x, y):
         return err, None
+    # Per rij of een onderdrukte cel erin valt (export, #1257) en per punt of de waarde in y er een is (#1261).
+    data, onder_van = _met_ondergrens(data, data_key, y)
     getekend_type = resolve_chart_type(data, chart_type, x, color_by, is_share)
     # Een rij zonder categorienaam stond als "nan" op de as (#1016).
     rijen = _met_naam(data, getekend_type, x)
@@ -536,14 +598,16 @@ def create_plot(
     liggend = _liggend(chart_type, x, x_vals)
     kort = _korte_namen(x_vals) if chart_type == "bar" else {}
 
+    def onder(rows: list[dict]) -> list[bool] | None:
+        return [onder_van.get(id(row), False) for row in rows] if onder_van else None
+
     if groepkolom:
         groups = _group_by_color(getekend, x, y, groepkolom)
         groep_labels = waardelabels(groepkolom, dataset)
-        for i, (name, vals) in enumerate(groups.items()):
-            if highlight:
-                color = _PALETTE[0] if name == highlight else _HIGHLIGHT_GREY
-            else:
-                color = _PALETTE[i % len(_PALETTE)]
+        # Een vaste kleur per code van de reeks, niet per plek in de volgorde (#1264).
+        kleuren = reekskleuren(list(groups))
+        for name, vals in groups.items():
+            color = (_ACCENT if name == highlight else _HIGHLIGHT_GREY) if highlight else kleuren[name]
             _add_trace(
                 fig,
                 chart_type,
@@ -554,6 +618,7 @@ def create_plot(
                 text=_value_labels(vals["y"], show_labels),
                 liggend=liggend,
                 kort=kort,
+                onder=onder(vals["rijen"]),
             )
 
         if chart_type == "bar":
@@ -564,9 +629,17 @@ def create_plot(
     else:
         y_vals = [row.get(y) for row in getekend]
         uitlichten = highlight and chart_type == "bar"
-        kleur = _accentkleuren(x_ruw, x_vals, highlight) if uitlichten else _PALETTE[0]
+        kleur = _accentkleuren(x_ruw, x_vals, highlight) if uitlichten else _ACCENT
         _add_trace(
-            fig, chart_type, x_vals, y_vals, kleur, text=_value_labels(y_vals, show_labels), liggend=liggend, kort=kort
+            fig,
+            chart_type,
+            x_vals,
+            y_vals,
+            kleur,
+            text=_value_labels(y_vals, show_labels),
+            liggend=liggend,
+            kort=kort,
+            onder=onder(getekend),
         )
 
     layout = {
@@ -611,6 +684,12 @@ def create_plot(
                     waarde_as["autorangeoptions"] = {"include": [kop]}
 
     fig.update_layout(**layout)
+    breuken, breuknoten = (
+        _trendbreuken(fig, data_key, x_ruw, x_vals) if chart_type in ("line", "bar") and not liggend else ([], [])
+    )
+    # Eerlijke grafiekregels voor elke figuur (#1264); create_plot volgt ze al, dit is de waarborg.
+    regelnoten = grafiekregels.controleer(fig)
+    figuurnoten = [*_ondergrens_noten(data_key, onder_van), *breuknoten, *regelnoten]
     fig.update_layout(
         meta={
             "data": data,
@@ -618,12 +697,21 @@ def create_plot(
             "y": y,
             "chart_type": chart_type,
             "color_by": color_by,
-            "herkomst": [*herkomstregels(data_key), *([indelingsregel(indeling)] if indeling else [])]
+            "herkomst": [
+                *herkomstregels(data_key),
+                *([indelingsregel(indeling)] if indeling else []),
+                *([ondergrens_mod.KOLOMREGEL] if any(ondergrens_mod.KOLOM in row for row in data) else []),
+                *breuknoten,
+            ]
             if data_key
             else [],
             **_dataset_meta(data_key),
             **_noot_meta(data_key),
+            **_bronregel_meta(data_key),
             **({"indeling": indeling} if indeling else {}),
+            **({"ondergrens_rijen": [i for i, row in enumerate(data) if onder_van.get(id(row))]} if onder_van else {}),
+            **({"trendbreuken": breuken} if breuken else {}),
+            **({"figuurnoten": figuurnoten} if figuurnoten else {}),
         }
     )
 
@@ -857,6 +945,69 @@ def _sankey_uitkomst(
     return uitkomst
 
 
+def _met_ondergrens(data: list[dict], data_key: str | None, y: str) -> tuple[list[dict], dict[int, bool]]:
+    """(de rijen, met `ondergrens` ja/nee als de bron per rij onderdrukte cellen kent; per rij (id) of de waarde in
+    `y` een ondergrens is). Zonder cellen per rij de rijen zoals ze waren en een lege vlag (#1257, #1261)."""
+    rijvlag = ondergrens_mod.rijvlaggen(data_key)
+    if rijvlag is None or len(rijvlag) != len(data) or any(ondergrens_mod.KOLOM in row for row in data):
+        return data, {}
+    puntvlag = ondergrens_mod.celvlaggen(data_key, y) or [False] * len(data)
+    rijen = [
+        {**row, ondergrens_mod.KOLOM: ondergrens_mod.JA if vlag else ondergrens_mod.NEE}
+        for row, vlag in zip(data, rijvlag, strict=True)
+    ]
+    return rijen, {id(row): vlag for row, vlag in zip(rijen, puntvlag, strict=True) if vlag}
+
+
+def _ondergrens_noten(data_key: str | None, onder_van: dict[int, bool]) -> list[str]:
+    """De noot als de bron onderdrukte cellen heeft die niet per punt bekend zijn (een eigen berekening, #1261)."""
+    return [f"{ondergrens_mod.NIET_PER_PUNT}."] if not onder_van and ondergrens_mod.alleen_totaal(data_key) else []
+
+
+def _trendbreuken(fig: go.Figure, data_key: str | None, x_ruw: list, x_vals: list) -> tuple[list[dict], list[str]]:
+    """Een gestippelde lijn met label per trendbreuk binnen de getekende jaren (#1262), en de noot per breuk.
+
+    (meta per breuk, noten). Alleen op een tijdas: elke x is een jaar of schooljaar. Een breuk buiten de reeks krijgt
+    geen lijn en geen noot; een breuk zonder jaar alleen de noot."""
+    breuken = trendbreuken.van_key(data_key)
+    if not breuken:
+        return [], []
+    jaren = [trendbreuken.jaar_van(r) for r in x_ruw]
+    posities: dict[int, object] = {}
+    if jaren and all(j is not None for j in jaren):
+        for jaar, waarde in zip(jaren, x_vals, strict=True):
+            if jaar is not None:
+                posities.setdefault(jaar, waarde)
+    meta, noten = [], []
+    for breuk in breuken:
+        if breuk.jaar is None:
+            meta.append(breuk.als_meta())
+            noten.append(breuk.noot())
+            continue
+        if not posities or not trendbreuken.in_bereik(breuk, list(posities)):
+            continue
+        plek = trendbreuken.plek(breuk, posities)
+        fig.add_shape(**trendbreuken.lijn(plek))
+        fig.add_annotation(**trendbreuken.label(plek, breuk.label))
+        meta.append({**breuk.als_meta(), "x": plek})
+        noten.append(breuk.noot())
+    return meta, noten
+
+
+def _bronregel_meta(data_key: str | None) -> dict:
+    """De korte bronregel die afdruk en rapport ín de figuur zetten (#1257): de bron, en "ten minste" als een
+    onderdrukte cel in de tabel valt. Op het scherm staat hij niet in de figuur (#651); daar staat de herkomst eronder."""
+    if not data_key:
+        return {}
+    bron = next((r for r in herkomstregels(data_key) if r.startswith("bron: ")), None)
+    if bron is None:
+        return {}
+    regel = f"Bron: {bron.removeprefix('bron: ')}"
+    if duo.onderdrukt(data_key):
+        regel += f"; {ondergrens_mod.TEN_MINSTE}: onderdrukte cellen maken een getal een ondergrens"
+    return {"bronregel": regel}
+
+
 def _dataset_meta(data_key: str | None) -> dict:
     """Het dataset-id voor de CSV-naam van de grafiek, <titel>_<dataset-id>.csv (#533); leeg zonder bron."""
     known = store.meta(data_key) if data_key else None
@@ -985,6 +1136,21 @@ def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:
         fig.update_layout(legend=_LEGENDA_ONDER)
     fig.update_layout(separators=_NL_SEPARATORS)
     return fig
+
+
+def eigen_figuurregels(fig: go.Figure, bronnen: tuple[str, ...] | list[str]) -> list[str]:
+    """De grafiekregels van create_plot op een eigen figuur (run_analysis), na `leesbare_titels` (#1264), en de noten
+    die daarbij horen in layout.meta.figuurnoten: wat gecorrigeerd is, en dat de ondergrens niet per punt bekend is als
+    de gelezen data onderdrukte cellen heeft (#1261). Een eigen figuur heeft geen cellen per punt.
+
+    Geeft de noten over wat de regels veranderden, voor het toolresultaat. Raises grafiekregels.TweeAssen bij een
+    tweede y-as op hetzelfde plotvlak."""
+    regelnoten = grafiekregels.controleer(fig)
+    noten = [*([f"{ondergrens_mod.NIET_PER_PUNT}."] if any(duo.onderdrukt(k) for k in bronnen) else []), *regelnoten]
+    if noten:
+        meta = dict(fig.layout.meta) if isinstance(fig.layout.meta, dict) else {}
+        fig.update_layout(meta={**meta, "figuurnoten": [*meta.get("figuurnoten", []), *noten]})
+    return regelnoten
 
 
 def _heatmap_rows(fig: go.Figure, trace) -> list[dict]:

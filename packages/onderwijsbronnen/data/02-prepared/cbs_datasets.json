@@ -50380,5 +50380,53 @@
       "SJ"
     ],
     "_geo_niveau": []
+  },
+  {
+    "leverancier": "CBS",
+    "bron": "Openstaande vacatures; SBI 2008, regio",
+    "periode": "2011 eerste kwartaal - 2026 derde kwartaal",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Openstaande vacatures; SBI 2008, regio Uitgesplitst naar: Bedrijfstakken/Branches (SBI 2008), Regio's. Meetwaarden: Openstaande vacatures.",
+    "frequentie": "Perkwartaal",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "Arbeidsmarkt",
+    "documentatie": {
+      "tekst": "CBS Open Data 83599NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/83599NED"
+    },
+    "licentie": "CC BY 4.0",
+    "repositories": [],
+    "publieke_producten": [],
+    "_cbs_id": "83599NED",
+    "_thema": "Arbeidsmarkt",
+    "_archief": false,
+    "_laatste_update": "2026-10-30",
+    "_dimensies": [
+      "Bedrijfstakken/Branches (SBI 2008)",
+      "Regio's",
+      "Perioden"
+    ],
+    "_meetwaarden": [
+      "OpenstaandeVacatures_1"
+    ],
+    "_meetwaarden_details": {
+      "OpenstaandeVacatures_1": {
+        "title": "Openstaande vacatures",
+        "unit": "x 1000",
+        "description": "Vacatures waar nog geen personeel voor is gevonden.\r\n\r\nVacature\r\nOnder een vacature wordt verstaan een arbeidsplaats waarvoor, binnen of buiten een onderneming of instelling, \r\npersoneel wordt gezocht dat onmiddellijk of zo spoedig mogelijk geplaatst kan worden. \r\nTot de vacatures worden ook gerekend: \r\n- Vacatures waarvoor zich reeds sollicitanten hebben gemeld. Ook wanneer al gesprekken worden gevoerd met deze sollicitanten.\r\n- Vacatures waarvoor de sollicitatieprocedure zoveel tijd zal kosten dat de feitelijke indiensttreding niet op korte termijn valt te verwachten.\r\n- Vacatures waarvoor uitzendkrachten of ander tijdelijk personeel wordt gezocht.\r\n- Open plaatsen voor leerlingen en personen in opleiding, mits het daarbij gaat om een arbeidsovereenkomst (dus geen onbetaalde stageplaatsen).",
+        "datatype": "Double",
+        "decimals": 1
+      }
+    },
+    "_geo_niveau": [
+      "landelijk",
+      "provincie",
+      "landsdeel"
+    ],
+    "_perioden_formaat": [
+      "KW"
+    ]
   }
 ]

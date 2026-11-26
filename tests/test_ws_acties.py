@@ -39,6 +39,7 @@ def test_elke_actie_van_de_frontend_heeft_een_handler():
         "clarification_choice",
         "generate_report",
         "report_checklist",
+        "eigen_getal",  # een eigen getal naast het hoofdgetal (#1258)
     }
 
 

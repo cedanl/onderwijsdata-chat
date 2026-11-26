@@ -2,6 +2,7 @@
 // citaties, 3 of 4 CSV-knoppen en wel of geen Telling-blok: wat er onder het antwoord stond,
 // verschilde per run. Het aantal items volgt de tekst en de stappen; welke blokken er staan en
 // in welke volgorde, staat hier vast. Een blok zonder inhoud zegt "n.v.t." in plaats van te ontbreken.
+import { controleRegelTekst } from './controleRegel'
 import { hasExport } from './dataExport'
 import { splitsTelling } from './telling'
 
@@ -59,9 +60,17 @@ export function metBronnen(content, bronnen) {
   return lijst && content ? `${content}\n\n${lijst}` : content
 }
 
-// Wat de kopieerknop meeneemt: het antwoord, elke controlemelding als "Let op: …" (zoals onder het antwoord) en dan
-// de bronnen. Zonder die regels zegt de kopie niet dat de controle iets uit het antwoord haalde (#1108).
+// Wat onder de tekst van een antwoord hoort, voor kopie en gespreksexport (#1257): elke controlemelding als
+// "Let op: …" (zoals onder het antwoord, #1108) en de regel "Wat is gecontroleerd" met wat níét getoetst is (#1260).
+// Het Uitgangspunt, "Niet meegeteld" en "Bron en definitie" staan al in de tekst zelf (agent/run.py).
+export function meldingRegels(msg) {
+  const regel = controleRegelTekst(msg.controles)
+  return [...(msg.controle || []).map(zin => `Let op: ${zin}`), ...(regel ? [regel] : [])]
+}
+
+// Wat de kopieerknop meeneemt: het antwoord, de meldingen hierboven en dan de bronnen. Zonder die regels zegt de
+// kopie niet dat de controle iets uit het antwoord haalde (#1108), of wat ze niet toetste (#1260).
 export function kopieerTekst(msg) {
-  const meldingen = (msg.controle || []).map(zin => `Let op: ${zin}`)
+  const meldingen = meldingRegels(msg)
   return metBronnen(meldingen.length ? [msg.content, ...meldingen].join('\n\n') : msg.content, msg.bronnen)
 }

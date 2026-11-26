@@ -82794,5 +82794,135 @@
       "inputhash": "2ca273494835fda6",
       "bronrevisie": "adf865d06b8ceb09"
     }
+  },
+  {
+    "leverancier": "CBS",
+    "bron": "Openstaande vacatures; SBI 2008, regio",
+    "periode": "2011 eerste kwartaal - 2026 derde kwartaal",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Openstaande vacatures per kwartaal naar bedrijfstak (SBI 2008-secties) en regio (landsdeel, provincie). Geschikt om het vacatureaanbod in de provincie van een instelling te volgen; een vacature telt bij de bedrijfstak van de werkgever, niet bij het beroep of het opleidingsniveau.",
+    "frequentie": "Perkwartaal",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "Arbeidsmarkt",
+    "documentatie": {
+      "tekst": "CBS Open Data 83599NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/83599NED"
+    },
+    "licentie": "CC BY 4.0",
+    "repositories": [],
+    "publieke_producten": [],
+    "_cbs_id": "83599NED",
+    "_thema": "Arbeidsmarkt",
+    "tags": [
+      "vacatures",
+      "arbeidsmarkt",
+      "bedrijfstak",
+      "sbi",
+      "kwartaal",
+      "provincie"
+    ],
+    "voorbeeldvragen": [
+      "Hoeveel openstaande vacatures had Utrecht in het laatste kwartaal?",
+      "In welke bedrijfstakken staan in Gelderland de meeste vacatures open?",
+      "Hoe ontwikkelt het aantal vacatures in de zorg zich per kwartaal?"
+    ],
+    "_archief": false,
+    "_laatste_update": "2026-10-30",
+    "samenvatting": "Openstaande vacatures per kwartaal naar bedrijfstak (SBI 2008-secties) en regio (landsdeel, provincie). Geschikt om het vacatureaanbod in de provincie van een instelling te volgen; een vacature telt bij de bedrijfstak van de werkgever, niet bij het beroep of het opleidingsniveau.",
+    "_dimensies": [
+      "Bedrijfstakken/Branches (SBI 2008)",
+      "Regio's",
+      "Perioden"
+    ],
+    "_meetwaarden": [
+      "OpenstaandeVacatures_1"
+    ],
+    "_meetwaarden_details": {
+      "OpenstaandeVacatures_1": {
+        "title": "Openstaande vacatures",
+        "unit": "x 1000",
+        "description": "Vacatures waar nog geen personeel voor is gevonden.\r\n\r\nVacature\r\nOnder een vacature wordt verstaan een arbeidsplaats waarvoor, binnen of buiten een onderneming of instelling, \r\npersoneel wordt gezocht dat onmiddellijk of zo spoedig mogelijk geplaatst kan worden. \r\nTot de vacatures worden ook gerekend: \r\n- Vacatures waarvoor zich reeds sollicitanten hebben gemeld. Ook wanneer al gesprekken worden gevoerd met deze sollicitanten.\r\n- Vacatures waarvoor de sollicitatieprocedure zoveel tijd zal kosten dat de feitelijke indiensttreding niet op korte termijn valt te verwachten.\r\n- Vacatures waarvoor uitzendkrachten of ander tijdelijk personeel wordt gezocht.\r\n- Open plaatsen voor leerlingen en personen in opleiding, mits het daarbij gaat om een arbeidsovereenkomst (dus geen onbetaalde stageplaatsen).",
+        "datatype": "Double",
+        "decimals": 1
+      }
+    },
+    "_geo_niveau": [
+      "landelijk",
+      "provincie",
+      "landsdeel"
+    ],
+    "_perioden_formaat": [
+      "KW"
+    ],
+    "_kolommen": {
+      "Bedrijfstakken/Branches (SBI 2008)": [
+        "A-U Alle economische activiteiten",
+        "A Landbouw, bosbouw en visserij",
+        "B-F Nijverheid en energie",
+        "B Delfstoffenwinning",
+        "C Industrie",
+        "D Energievoorziening",
+        "E Waterbedrijven en afvalbeheer",
+        "F Bouwnijverheid",
+        "G-N Commerciële dienstverlening",
+        "G Handel",
+        "H Vervoer en opslag",
+        "I Horeca",
+        "J Informatie en communicatie",
+        "K Financiële dienstverlening",
+        "L Verhuur en handel van onroerend goed",
+        "M-N Zakelijke dienstverlening",
+        "M Specialistische zakelijke diensten",
+        "N Verhuur en overige zakelijke diensten",
+        "O-U Niet-commerciële dienstverlening",
+        "O Openbaar bestuur en overheidsdiensten",
+        "P Onderwijs",
+        "Q Gezondheids- en welzijnszorg",
+        "R Cultuur, sport en recreatie",
+        "S Overige dienstverlening"
+      ],
+      "Regio's": [
+        "Nederland",
+        "Noord-Nederland (LD)",
+        "Oost-Nederland (LD)",
+        "West-Nederland (LD)",
+        "Zuid-Nederland (LD)",
+        "Groningen (PV)",
+        "Fryslân (PV)",
+        "Drenthe (PV)",
+        "Overijssel (PV)",
+        "Flevoland (PV)",
+        "Gelderland (PV)",
+        "Utrecht (PV)",
+        "Noord-Holland (PV)",
+        "Zuid-Holland (PV)",
+        "Zeeland (PV)",
+        "Noord-Brabant (PV)",
+        "Limburg (PV)"
+      ],
+      "OpenstaandeVacatures_1": "Openstaande vacatures (x 1000)"
+    },
+    "_kolomtypes": {
+      "Bedrijfstakken/Branches (SBI 2008)": "dimensie",
+      "Regio's": "geo-dimensie",
+      "Perioden": "tijd-dimensie",
+      "OpenstaandeVacatures_1": "meetwaarde (x 1000)"
+    },
+    "_dimensie_sleutels": {
+      "Bedrijfstakken/Branches (SBI 2008)": "BedrijfstakkenBranchesSBI2008",
+      "Regio's": "RegioS",
+      "Perioden": "Perioden"
+    },
+    "_periode_waarden": [
+      "2011 1e kwartaal",
+      "2026 3e kwartaal"
+    ],
+    "_verrijking": {
+      "versie": 2,
+      "inputhash": "fde43fa8c137532d",
+      "bronrevisie": "d27a53575ea2cfdf"
+    }
   }
 ]

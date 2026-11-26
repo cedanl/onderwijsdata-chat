@@ -1,6 +1,6 @@
 import { figureHeightOfJson } from './figureLayout'
 import { zonderDubbeleTitel } from './figureKop'
-import { scheidNootJson } from './figuurNoot'
+import { figuurNotenJson, metBronregelJson, scheidNootJson } from './figuurNoot'
 import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
@@ -187,14 +187,16 @@ function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Mat
 // in waar de lezer wilde scrollen. Zonder dragmode roept Plotly bij een aanraking geen preventDefault aan.
 const TOP_ZONDER_TITEL = 16
 
-function plotlyHtml(figureJson, id, { titelWeg = false } = {}) {
+// `extraBoven`: de ruimte voor de bronregel boven het plotvlak (figuurNoot.js, metBronregel, #1257). Op een telefoon gaat
+// het label van een trendbreuk uit de figuur (#1262): de noot eronder zegt het ook, en het label botste met de lijn.
+function plotlyHtml(figureJson, id, { titelWeg = false, extraBoven = 0 } = {}) {
   const eigen = figureHeightOfJson(figureJson, 0)
   const div = eigen ? `<div id="${id}" class="plot" style="height:${eigen}px">` : `<div id="${id}" class="plot plot-auto">`
-  const boven = titelWeg ? TOP_ZONDER_TITEL : 48
+  const boven = (titelWeg ? TOP_ZONDER_TITEL : 48) + extraBoven
   return `<div class="card">${div}</div></div>
     <script>(function(){${DARK_FIGURE_JS}
 ${NARROW_FIGURE_JS}
-var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
+var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data);if(Array.isArray(_l.annotations))_l.annotations=_l.annotations.filter(function(a){return !a||a.name!=='trendbreuk'})}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
 }
 
 // Afdrukken als PDF (#622): de browser drukt af, het rapport zorgt dat het op A4 past. Licht thema (de
@@ -321,13 +323,17 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
 
   const visualisaties = (s.visualisaties || []).map((v, i) => {
     const kop = v.titel || `Visualisatie ${i + 1}`
-    // De afrondingsnoot als tekstregel onder de grafiek, vóór de bronregel (#651).
+    // De afrondingsnoot als tekstregel onder de grafiek, vóór de bronregel (#651); daarna de noten van de figuur zelf:
+    // trendbreuk, grafiekregel, ondergrens (#1261, #1262, #1264).
     const { figureJson, noot } = scheidNootJson(v.figure_json)
     const figuur = zonderDubbeleTitel(figureJson, kop)
+    // De bron ín de figuur, voor afdruk en Word (#1257): de PNG voor Word komt uit deze figuur (rapportGrafieken.js).
+    const metBron = metBronregelJson(figuur.figureJson)
+    const noten = [noot, ...figuurNotenJson(figureJson)].filter(Boolean)
     return `<div class="vis">
        <h3 class="vis-title">${escapeHtml(kop)}</h3>
-       ${plotlyHtml(figuur.figureJson, `rp${i}`, figuur)}
-       ${noot ? `<p class="vis-noot">${escapeHtml(noot)}</p>` : ''}
+       ${plotlyHtml(metBron.figureJson, `rp${i}`, { titelWeg: figuur.titelWeg, extraBoven: metBron.extraBoven })}
+       ${noten.map(n => `<p class="vis-noot">${escapeHtml(n)}</p>`).join('')}
        ${bronregelHtml(v.bron)}
        ${v.toelichting ? `<p class="vis-note">${escapeHtml(v.toelichting)}</p>` : ''}
      </div>`

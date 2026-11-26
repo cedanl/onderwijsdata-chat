@@ -14,6 +14,7 @@ _ROA_SIS = roa_sis(_ROA_BESTAND.themas) or "SIS"
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_GET_MAAT = "get_maat"
+TOOL_VERGELIJKINGSGROEP = "vergelijkingsgroep"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_DATASET_PROFIEL = "dataset_profiel"
@@ -40,6 +41,11 @@ TOOL_GET_COLLEGEGELD = "get_collegegeld"
 TOOL_GET_WO_PERSONEEL = "get_wo_personeel"
 TOOL_GET_BESTUURSFINANCIEN = "get_bestuursfinancien"
 TOOL_GET_STUDIEKEUZE = "get_studiekeuze"
+
+# Een eigen vergelijkingsgroep komt van het model (#1267): hoogstens zoveel namen of codes, elk hoogstens zo lang. Het
+# schema vraagt het; tools/vergelijkingsgroep.py kapt zelf af, want het model kan het schema negeren.
+MAX_EIGEN_GROEP = 25
+MAX_NAAM_TEKENS = 120
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -111,6 +117,37 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["maat"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_VERGELIJKINGSGROEP,
+            "description": (
+                "De vergelijkingsgroep van een instelling, dezelfde als op het dashboard Mijn instelling: instellingen "
+                "van hetzelfde type, van ten minste 10% van de eigen omvang, in de smalste regio met ten minste drie "
+                "(arbeidsmarktregio, provincie, landelijk), met het peergemiddelde van de ingeschrevenen per jaar. "
+                "Gebruik dit als de gebruiker vergelijkt met 'vergelijkbare instellingen', 'peers', 'de "
+                "vergelijkingsgroep' of 'instellingen zoals wij': kies de peers nooit zelf. Wil de gebruiker een eigen "
+                "groep, geef die dan in eigen_groep; het antwoord zegt dan dat het niet de dashboardgroep is. De app zet "
+                "de zin over de groep zelf onder het antwoord."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de instelling (hbo, wo of mbo), bijvoorbeeld de profielinstelling.",
+                    },
+                    "eigen_groep": {
+                        "type": "array",
+                        "maxItems": MAX_EIGEN_GROEP,
+                        "items": {"type": "string", "maxLength": MAX_NAAM_TEKENS},
+                        "description": "Alleen als de gebruiker zelf instellingen noemt: hun namen of codes.",
+                    },
+                },
+                "required": ["instelling"],
             },
         },
     },
@@ -786,7 +823,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "Gebruik voor berekeningen die niet met query_data group_by/aggregate kunnen "
                 "(percentuele groei, ratio's, custom transformaties). "
                 "Wijs het resultaat toe aan 'result' (dict, list of DataFrame). "
-                "Optioneel: wijs een Plotly figuur toe aan 'figure'."
+                "Optioneel: wijs een Plotly figuur toe aan 'figure'. Geen tweede y-as (yaxis2, overlaying): die figuur "
+                "wordt geweigerd; maak dan twee figuren of subplots onder elkaar. Staven beginnen bij 0."
             ),
             "parameters": {
                 "type": "object",

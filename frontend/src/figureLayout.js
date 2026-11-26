@@ -59,6 +59,15 @@ function darkTitle(title) {
 // Tot deze breedte (px) is het scherm er een om aan te raken: geen sleepzoom, de tik toont de waarde (#614).
 export const TOUCH_WIDTH = 600
 export const HOVER_DISTANCE = 40
+// Tot deze breedte (px) past het label van een trendbreuk niet naast zijn lijn (#1262): het gaat uit de figuur, de
+// noot onder de grafiek noemt de breuk met haar bron.
+export const BREUKLABEL_WIDTH = 480
+const TRENDBREUK = 'trendbreuk'
+
+function zonderBreuklabels(annotations, width) {
+  if (!Array.isArray(annotations) || !(width > 0 && width <= BREUKLABEL_WIDTH)) return undefined
+  return annotations.filter(a => a?.name !== TRENDBREUK)
+}
 
 export function chatFigureLayout(figure, dark, width) {
   const isMap = isMapFigure(figure)
@@ -89,6 +98,7 @@ export function chatFigureLayout(figure, dark, width) {
       font: { color: colours.font },
     },
     ...(legendRepeatsAxis(figure.data) && { showlegend: false }),
+    ...(zonderBreuklabels(figure.layout?.annotations, width) && { annotations: zonderBreuklabels(figure.layout.annotations, width) }),
     // Op een telefoon is een tik de enige weg naar een waarde (#614): geen zoom-sleep die de tik opeet, het
     // dichtstbijzijnde punt binnen 40 px (tikdoel), en een tooltip in de kleuren van het thema.
     hovermode: 'closest',

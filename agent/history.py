@@ -1,5 +1,6 @@
 from core.config import MAX_HISTORY
 
+from .onder_antwoord import zonder_regels
 from .telling import zonder_telling
 from .uitgangspunt import zonder_uitgangspunt
 
@@ -29,7 +30,8 @@ def trim(history: list[dict]) -> tuple[list[dict], bool]:
 
 
 def zonder_vaste_blokken(bericht: dict) -> dict:
-    """Een assistentbericht zonder de Uitgangspunt-regel en het Telling-blok, voor de historie naar het model (#1083).
+    """Een assistentbericht zonder de Uitgangspunt-regel, het Telling-blok en de regels onder het antwoord uit code
+    (andere definities, kruiscontrole, vergelijkingsgroep; #1271), voor de historie naar het model (#1083).
 
     De app zet ze zelf bij elk antwoord, uit de toolstappen van die beurt. Zag het model ze in de historie, dan
     schreef het ze in een vervolgantwoord over, naast de regels die de app er weer bij zette: twee keer Uitgangspunt
@@ -38,7 +40,7 @@ def zonder_vaste_blokken(bericht: dict) -> dict:
     tekst = bericht.get("content")
     if bericht.get("role") != "assistant" or not isinstance(tekst, str):
         return bericht
-    kaal = zonder_telling(zonder_uitgangspunt(tekst))
+    kaal = zonder_regels(zonder_telling(zonder_uitgangspunt(tekst)))
     # Een bericht dat alleen uit zo'n blok bestond, blijft: een lege beurt geeft providers een 400.
     return bericht if kaal == tekst or not kaal.strip() else {**bericht, "content": kaal}
 

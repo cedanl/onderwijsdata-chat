@@ -3,7 +3,7 @@
 // also say where each number came from. Failed steps and error messages are out by
 // default: an audit file is about the answer, not about the retries on the way.
 import { conversationTitle } from './conversationTitle'
-import { metBronnen } from './answerBlocks'
+import { meldingRegels, metBronnen } from './answerBlocks'
 import { manifestRegels } from './manifestRegels'
 import { VASTE_MAAT_UITLEG, vasteMaat, vasteMaatLabel, vastgelegdTekst } from './vasteMaat'
 
@@ -34,7 +34,8 @@ function answerBlocks(msg, options) {
   }
   // The sources come from the server, no longer from the model's text (#416).
   if (msg.content) blocks.push('### Antwoord', metBronnen(msg.content, msg.bronnen))
-  for (const zin of msg.controle || []) blocks.push(`> Let op: ${zin}`)
+  // Dezelfde regels als de kopieerknop (#1257): "Let op" en "Wat is gecontroleerd" (#1260).
+  for (const regel of meldingRegels(msg)) blocks.push(`> ${regel}`)
   // Only get_maat behind the answer (#1242): the label as under the answer, with what its disclosure says.
   const vm = vasteMaat(msg.vaste_maat)
   if (vm) {

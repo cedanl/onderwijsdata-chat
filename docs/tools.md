@@ -197,6 +197,23 @@ gemaakt, en `tests/test_vaste_maat_label.py` toetst de vorm. Nu: de vijf maten v
 `docs/anti-hallucination-architecture.md`). Een nieuw recept krijgt het issue en de datum waarop het erbij kwam; een
 recept dat inhoudelijk verandert (ander bestand, andere codes of teldefinitie), het issue en de datum van die wijziging.
 
+**Andere definities onder het antwoord** (#1256, `tools/andere_definities.py`, `agent/controlestappen.py`). Per maat
+ligt in code een korte lijst andere definities vast (personen ↔ inschrijvingen, alle vormen ↔ alleen voltijd, met ↔
+zonder extranei), elk met een uitleg van één regel en een recept: de get_maat-argumenten die anders zijn. Na het
+antwoord roept code `get_maat` zelf aan met elk recept, op dezelfde afbakening en voor het schooljaar van het
+hoofdgetal; die stappen staan in de redeneerkaart als "Andere definitie berekend". Onder het antwoord komt één regel
+"**Andere definities:** in 2024/25 telt dit antwoord 475.460; zonder extranei 465.820 (-2,0%)." Wijkt geen alternatief
+meer dan 1% af, dan de vaste zin "andere definities geven hetzelfde beeld", zonder getallen. Met en zonder extranei zijn
+de interne vormen `met_extranei` en `zonder_extranei`: alleen code kiest ze (`maten.codestap`), het schema noemt ze
+niet en het model krijgt een melding, want de standaard van de tabel en het gesprek beslissen de telling (#653).
+
+**Kruiscontrole met de andere bron** (#1259, `data/bronparen.toml`, `tools/bronparen.py`). Staat de maat met haar
+niveau in de koppeltabel (nu alleen `mbo_studenten_landelijk`, landelijk), dan haalt code ook de DUO-kant op (stap
+"Kruiscontrole met de andere bron") en zet de regel "**Ter controle:** …" onder het antwoord: het DUO-getal, het verschil
+met het CBS-getal (absoluut en in %) en de bekende redenen uit de tabel. Geen toolargument kiest een paar; zie
+`docs/domeinregels.md`, "Bronparen". De stappen van code onder het antwoord tellen niet mee voor het label "Vaste
+maat" (#1242): dat leest alleen de stappen van het model, want de route van het hoofdgetal blijft dezelfde.
+
 **Geslacht per opleiding** (#742, `tools/geslacht_opleiding.py`). DUO heeft geslacht niet per opleiding: het
 geslachtsbestand telt per instelling, vestigingsgemeente, onderdeel, subonderdeel en type ho, het niveaubestand in
 dezelfde cellen per opleiding. Met `opleiding_naar_geslacht` legt de code ze naast elkaar. In een jaar is de verdeling
@@ -205,6 +222,28 @@ zijn; dan krijgt dat jaar rijen per geslacht (aantal en `AANDEEL_PROCENT`). Een 
 `niet_af_te_leiden` met de reden, zonder getal. Zonder enig exact jaar geeft de tool een vaste melding in plaats van een
 `data_key`. De opleiding wordt bij de instelling gezocht op code, dan op de hele naam, dan op een deel ervan; passen er
 meer, dan noemt de melding ze met hun code. Het resultaat noemt de gekozen `opleiding` en een vaste `afleiding`.
+
+---
+
+## vergelijkingsgroep
+
+De vergelijkingsgroep van het dashboard Mijn instelling, ook in de chat (#1267, `tools/vergelijkingsgroep.py`). De
+tool vraagt dezelfde functie als het dashboard (`data.dashboard.vergelijkingsgroep`: `_build_regio_context` en
+`_ho_regio_benchmark`/`_mbo_regio_benchmark`), dus dezelfde peers, regio-trede, terugval en hetzelfde peergemiddelde.
+Het model roept haar aan bij "vergelijkbare instellingen", "peers" of "de vergelijkingsgroep"; het kiest de peers niet
+zelf.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string | Officiële naam of alias, meestal de profielinstelling |
+| `eigen_groep` | array | Alleen als de gebruiker zelf instellingen noemt: namen of codes, hoogstens 25 van hoogstens 120 tekens (`MAX_EIGEN_GROEP`, `MAX_NAAM_TEKENS` in `tools/schemas.py`; de code kapt zelf af en zet het aantal weggelaten namen in `ingekort` en in de zin). Onbekende namen en instellingen van een ander onderwijstype tellen niet mee en staan in `onbekend` en `ander_type` |
+
+Het resultaat: `peers` (naam, code, omvang en waarom elke peer erin zit), `regio_trede`, `regio`, `terugval`, de `regel`
+in woorden, `rijen` per schooljaar (de eigen ingeschrevenen, het peergemiddelde en het aantal peers met cijfers) en
+`zin`, de vaste zin over de groep. De app zet die zin zelf onder het antwoord: "**Vergelijkingsgroep:** Vergeleken met de
+dashboardgroep van Mijn instelling: 3 hogescholen landelijk, …". Hebben in het laatste jaar minder dan drie peers
+cijfers, dan geen gemiddelde, zoals het dashboard (#1007), en de zin zegt dat. Een eigen groep heet in de zin "niet de
+dashboardgroep van Mijn instelling".
 
 ---
 
@@ -1006,6 +1045,16 @@ Voert pandas/numpy-code uit op eerder opgehaalde data, in een apart, afgeschermd
 | `code` | string | Python-code (pandas, numpy, plotly express beschikbaar) |
 | `data_key` | string | Optionele data_key — het bijbehorende DataFrame is beschikbaar als `df` |
 
+**Grafiekregels voor een eigen figuur (#1264).** Een figuur in `figure` krijgt dezelfde regels als `create_plot`, na de
+leesbare titels (`tools/grafiekregels.py`): een staafgrafiek met een waardeas zonder nul (`yaxis.range=[100, 200]`)
+wordt naar een range met nul gezet; een lijn met een as die niet bij 0 begint, krijgt "(as begint niet bij 0)" in de
+astitel; `barmode="overlay"` met dekkende staven wordt `group`. Een tweede y-as op hetzelfde plotvlak (`yaxis2`,
+`overlaying`) weigert de tool: dan komt er geen figuur, en het toolresultaat zegt onder `grafiek` "Maak twee grafieken
+naast elkaar: twee figuren, of één figuur met subplots onder elkaar". Subplots onder of naast elkaar mogen. Wat de
+regels veranderden, staat onder `grafiek` in het toolresultaat en als noot onder de figuur (`layout.meta.figuurnoten`).
+Een eigen figuur weet niet per punt welke waarde een onderdrukte cel bevat: rust ze op data met onderdrukte cellen, dan
+zegt de noot "ondergrens niet per punt bekend" (#1261).
+
 Een AST-controle weigert vooraf onder meer imports, namen met `__` en `exec`, `eval` en `open`, en een `merge`, `join`
 of `concat` die tabellen van twee of meer keys samenvoegt (`df` plus `store_get`, of twee keer `store_get`, ook via
 tussenliggende namen; #1014). Die melding noemt de keys, `relatie` en `koppel_data`. Het is een patroonwacht: `map`,
@@ -1033,6 +1082,37 @@ Maakt een interactieve Plotly-grafiek.
 knopen zijn de unieke herkomsten en bestemmingen, elk van groot naar klein; een rij met aantal 0 of leeg tekent geen
 stroom, en het toolbericht zegt hoeveel rijen dat waren. Boven 40 knopen komt er geen figuur, maar een melding om te
 filteren of te groeperen. De hover toont het aantal, en bij een herkomst met meer stromen het aandeel van die stroom.
+
+**Eerlijke grafiekregels (#1264).** Elke figuur gaat na het tekenen door `tools/grafiekregels.py`: staven hebben nul op
+de waardeas, er is geen tweede y-as op één plotvlak, een lijn met een as die niet bij 0 begint draagt dat in de
+astitel, en staven staan alleen over elkaar (`overlay`) als ze doorschijnend zijn. Een eigen figuur uit `run_analysis`
+krijgt dezelfde controle (zie daar).
+
+**Vaste kleuren (#1264).** Met `color_by` krijgt elke reeks een kleur op basis van haar code (BRIN, bron, sector), niet
+van haar plek in de volgorde (`reekskleuren` in `tools/plot.py`): dezelfde instelling heeft in elk antwoord dezelfde
+kleur, ook als de reeksen anders staan. Twee codes met dezelfde voorkeur krijgen verschillende kleuren, in de volgorde
+van de codes zelf. De accentkleur (Npuls-blauw `#3D68EC`) blijft voor een grafiek met één reeks en voor de eigen
+instelling die `highlight` uitlicht; de andere reeksen zijn dan grijs (`#808080`). Het palet is `#D55E00`, `#009E73`,
+`#A855F7`, `#B8860B`, `#1F8FA6` en `#D14B8F`: elke kleur haalt 3:1 contrast (WCAG 2.2 AA, 1.4.11) op het lichte
+(`#FFFFFF`, `#F9FAFB`) en het donkere thema (`#1E293B`, `#111827`); `tests/test_grafiekregels.py` meet het.
+
+**Ondergrens per punt (#1261).** Kent de bron van de `data_key` per rij haar onderdrukte cellen (DUO -1, CBS '.'; ook
+een groepstotaal van `query_data`), dan krijgt elk punt waarvan de waarde in `y` zo'n cel bevat een open, grotere
+marker (lijn) of arcering (staaf), "≥" voor zijn waardelabel en in de hover "ten minste 1.234 (onderdrukte cellen)".
+Vorm en tekst, niet alleen kleur. De exportrijen in `layout.meta.data` krijgen de kolom `ondergrens` (`ja`/`nee`, per
+rij: valt er een onderdrukte cel in), `layout.meta.ondergrens_rijen` noemt de rijen van de punten, en de tabel onder de
+grafiek toont zo'n waarde als "≥ 1.234". In afdruk en rapport staat de bronregel met "ten minste" ín de figuur
+(`layout.meta.bronregel`, #1257); op het scherm in de chat niet (#651).
+
+**Trendbreuken (#1262).** Op een tijdas krijgt elke breuk binnen de getekende jaren een gestippelde verticale lijn met
+een label (`tools/trendbreuken.py`): een CBS-definitiebreuk uit de tabeltoelichting (`cbs_meta.metadata`,
+methodiek.definitiebreuken; het jaar uit de passage, "vanaf 2016/'17") en een fusie binnen een DUO-reeks uit de vaste
+fusieregel van de selectie (`KeyMeta.fusies`, #728), met de voorganger in het label en de lijn bij het eerste jaar dat
+DUO na de fusie telde. Een breuk telt als ze na het eerste en uiterlijk op het laatste getekende jaar valt; een breuk
+daarbuiten krijgt geen lijn. Elke lijn staat met bron en letterlijke passage in `layout.meta.trendbreuken`, als noot
+onder de figuur en als `#`-regel boven de CSV. Een passage zonder jaar gaat alleen in de noot, een passage over
+voorlopige of definitieve cijfers is geen breuk. Op een smal scherm (tot 480 px in de chat, tot 640 px in het rapport)
+gaat het label uit de figuur; de noot eronder blijft.
 
 **Indeling in de titel (#1232).** Staan op de categorie-as de groepen van een indeling, dan noemt de titel die
 indeling en de bron, uit de metadata van de `data_key` en niet uit het model: "per sector (DUO)" bij de DUO-kolommen

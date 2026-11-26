@@ -20,7 +20,7 @@ from agent.report_checks import report_problems
 from agent.stream import StreamResult
 from tools import dispatch, store
 from tools.kolomlabel import kolomlabel
-from tools.plot import _MAX_SANKEYKNOPEN, GEEN_ASSEN, TE_VEEL_KNOPEN, create_plot
+from tools.plot import _HIGHLIGHT_GREY, _MAX_SANKEYKNOPEN, GEEN_ASSEN, TE_VEEL_KNOPEN, create_plot
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_RUN_ANALYSIS, TOOL_SCHEMAS
 
 run_module = importlib.import_module("agent.run")
@@ -190,7 +190,7 @@ def test_kleur_per_groep_kleurt_de_stromen_en_noemt_de_kleuren():
     link = fig.data[0].link
 
     assert len(set(link.color)) == 2
-    assert set(fig.data[0].node.color) == {"#B0B0B0"}
+    assert set(fig.data[0].node.color) == {_HIGHLIGHT_GREY}
     assert "Stromen gekleurd naar" in uitkomst and "Bachelor blauw" in uitkomst
     assert any("Associate degree" in tekst for tekst in link.customdata)
 

@@ -126,7 +126,8 @@ describe('DataExport', () => {
     const [knop] = render({ tools: [stap('duo:x:0:ab')], download })
     expect(knop.textContent).toBe('Download data als CSV')
     await act(async () => knop.click())
-    expect(download).toHaveBeenCalledWith('duo:x:0:ab')
+    // De tweede parameter: de voorbehoudregels van het antwoord, hier geen (#1257).
+    expect(download).toHaveBeenCalledWith('duo:x:0:ab', [])
   })
 
   it('nummert de tabellen als het antwoord er meer gebruikte', () => {
@@ -175,6 +176,31 @@ describe('DataExport', () => {
     const [knop] = render({ tools: [stap('a')], download })
     await act(async () => knop.click())
     expect(container.querySelectorAll('[role="alert"] button')).toHaveLength(0)
+  })
+
+  // #1257: de uitleg in de app noemt de #-regels en de kolom ondergrens, net als docs/reproducibility.md.
+  const uitleg = () => container.querySelector('details.data-export-uitleg')
+
+  it('legt bij een CSV uit wat erin staat: de #-regels, de kolom ondergrens en hoe pandas hem leest', () => {
+    render({ tools: [stap('duo:x:0:ab')] })
+    expect(uitleg().querySelector('summary').textContent).toBe('Wat staat er in de CSV?')
+    const tekst = uitleg().querySelector('p').textContent
+    expect(tekst).toContain('regels die met # beginnen')
+    expect(tekst).toContain('Uitgangspunt')
+    expect(tekst).toContain('kolom ondergrens')
+    expect(tekst).toContain("comment='#'")
+  })
+
+  it('legt het ook uit bij de CSV met geciteerde getallen', () => {
+    render({ tools: [], citaties: [citatie] })
+    expect(uitleg()).not.toBeNull()
+  })
+
+  // Alleen het bewijsbestand: er is geen CSV om uit te leggen.
+  it('toont de uitleg niet als het antwoord alleen het bewijsbestand heeft', () => {
+    const knoppen = render({ tools: [], bewijsVan: { role: 'assistant', done: true, content: 'x', bronnen: ['RIO'] } })
+    expect(knoppen.map(k => k.textContent)).toEqual(['Bewijs (JSON)'])
+    expect(uitleg()).toBeNull()
   })
 })
 

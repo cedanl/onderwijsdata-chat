@@ -356,5 +356,6 @@ def test_run_zet_de_regel_onder_het_antwoord_en_niet_onder_een_beurt_zonder_maat
         messages += [{"role": "assistant", "content": eerste}, {"role": "user", "content": "Welke bron is dat?"}]
         tweede = asyncio.run(run_module.run(messages, session={}, emit=emit))
 
-    assert eerste.count(KOP) == 1 and eerste.rstrip().endswith("verschillen de cijfers van beide bronnen.")
+    # Onder de bronregel alleen nog de regel over de andere definities, ook uit code (#1256).
+    assert eerste.count(KOP) == 1 and "verschillen de cijfers van beide bronnen.\n\n**Andere definities:**" in eerste
     assert KOP not in tweede

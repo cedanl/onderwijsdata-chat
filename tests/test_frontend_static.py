@@ -141,8 +141,9 @@ def _app_met_eigen_routes(tmp_path) -> FastAPI:
     """Een app met de SPA en een paar echte routes ervoor, zoals server.create_app ze opbouwt."""
     (tmp_path / "assets").mkdir()
     (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
-    # Het schema onder /api, zoals in server.create_app: /openapi.json is dan een pad van de app-shell.
-    app = FastAPI(openapi_url="/api/openapi.json")
+    # Het schema onder /api en geen Swagger UI of ReDoc, zoals in server.create_app: /openapi.json en /docs hebben dan
+    # geen eigen route.
+    app = FastAPI(openapi_url="/api/openapi.json", docs_url=None, redoc_url=None)
 
     @app.get("/api/ping")
     async def ping() -> dict:
@@ -160,7 +161,7 @@ def _app_met_eigen_routes(tmp_path) -> FastAPI:
     return app
 
 
-@pytest.mark.parametrize("pad", ["/openapi.json", "/login", "/", "/chat/123", "/apidocs"])
+@pytest.mark.parametrize("pad", ["/login", "/", "/chat/123", "/apidocs", "/dashboards/landelijk"])
 def test_head_op_een_spa_pad_antwoordt_als_get(tmp_path, pad):
     """GET gaf de app-shell, HEAD een JSON-405: de HEAD-respons loog over de inhoud."""
     client = TestClient(_app_met_eigen_routes(tmp_path))
@@ -253,3 +254,96 @@ def test_de_echte_app_houdt_de_405_van_een_bestaand_pad_met_een_gebouwde_fronten
     assert client.post("/health").status_code == 405
     assert client.delete("/api/config").status_code == 405
     assert client.post("/api/bestaat-niet").status_code == 404
+
+
+# ── Gereserveerde paden (#1239) ──────────────────────────────────────────────
+
+_GERESERVEERD = ["/docs", "/openapi.json", "/status", "/session", "/user", "/docs/", "/user/123"]
+
+
+@pytest.mark.parametrize("pad", _GERESERVEERD)
+def test_gereserveerd_pad_is_json_404_en_niet_de_spa(tmp_path, pad):
+    """#1239: /docs, /status en de rest gaven index.html met 200, zodat een client dacht dat er een API stond."""
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).get(pad)
+
+    assert resp.status_code == 404
+    assert resp.headers["content-type"].startswith("application/json")
+    assert resp.json() == {"detail": NIET_GEVONDEN}
+    assert "EDUdata" not in resp.text
+
+
+@pytest.mark.parametrize("pad", _GERESERVEERD)
+def test_head_op_een_gereserveerd_pad_is_een_404_zonder_body(tmp_path, pad):
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).head(pad)
+
+    assert resp.status_code == 404
+    assert "allow" not in resp.headers
+    assert resp.content == b""
+
+
+@pytest.mark.parametrize("methode", _SCHRIJVEND)
+@pytest.mark.parametrize("pad", ["/status", "/session"])
+def test_een_schrijvende_methode_op_een_gereserveerd_pad_is_een_404(tmp_path, pad, methode):
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).request(methode, pad)
+
+    assert resp.status_code == 404
+    assert "allow" not in resp.headers
+    assert resp.json() == {"detail": NIET_GEVONDEN}
+
+
+@pytest.mark.parametrize("pad", ["/chat", "/dashboards/landelijk", "/statusbalk", "/users", "/documenten"])
+def test_een_spa_pad_naast_een_gereserveerd_pad_blijft_de_spa(tmp_path, pad):
+    # Alleen het segment is gereserveerd, niet elk pad dat met die letters begint.
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).get(pad)
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    assert "EDUdata" in resp.text
+
+
+def test_een_echte_route_op_een_gereserveerd_pad_wint(tmp_path):
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    # FastAPI's eigen schema op /openapi.json en een eigen route op /status, beide vóór de catch-alls.
+    app = FastAPI()
+
+    @app.get("/status")
+    async def status() -> dict:
+        return {"status": "eigen"}
+
+    mount_frontend(app, tmp_path)
+    client = TestClient(app)
+
+    assert client.get("/status").json() == {"status": "eigen"}
+    assert client.head("/status").status_code == 405
+    schema = client.get("/openapi.json")
+    assert schema.status_code == 200
+    assert "/status" in schema.json()["paths"]
+    assert client.get("/session").json() == {"detail": NIET_GEVONDEN}
+
+
+def test_zonder_schema_is_openapi_json_de_json_404(tmp_path):
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
+    mount_frontend(app, tmp_path)
+    client = TestClient(app)
+
+    for pad in ("/openapi.json", "/docs"):
+        resp = client.get(pad)
+        assert resp.status_code == 404, pad
+        assert resp.json() == {"detail": NIET_GEVONDEN}
+
+
+@pytest.mark.parametrize("pad", ["/docs", "/openapi.json", "/status", "/session", "/user"])
+def test_de_echte_app_geeft_op_een_gereserveerd_pad_de_json_404(tmp_path, pad):
+    import server
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    client = TestClient(server.create_app(api_docs=False, frontend_dist=tmp_path))
+
+    resp = client.get(pad)
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": NIET_GEVONDEN}
+    assert client.get("/chat").status_code == 200

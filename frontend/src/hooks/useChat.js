@@ -10,6 +10,7 @@ import { reportBlockReason } from '../reportBlockReason'
 import { markeerWeggegaan } from '../weggegaan'
 import { regelUit } from '../getalWacht'
 import { vasteMaat } from '../vasteMaat'
+import { hoofdgetalUit } from '../eigenGetal'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // a few minutes (#417); the server ends a report itself after GENEREER_TIMEOUT_S (8 min, #759), which
@@ -35,7 +36,9 @@ export function buildHistory(messages, maxHistory) {
       (m.content || afgebroken(m)) &&
       !m.isError &&
       !m.figures &&
-      !m.starterQuestions
+      !m.starterQuestions &&
+      // De uitkomst bij een eigen getal (#1258) komt uit code en noemt een getal van de gebruiker: niet naar het model.
+      !m.verschilverklaring
     )
     .map(m => ({ role: m.role, content: m.content || '', ...(afgebroken(m) && { afgebroken: true }) }))
   return trimHistory(history, maxHistory)
@@ -359,6 +362,8 @@ export function useChat({ maxHistory } = {}) {
             ...(ev.vast === true && { vast: true }),
             // What the server's check on this answer still found wrong (#185, #187).
             ...(ev.controle?.length && { controle: ev.controle }),
+            // What the check did, for the line "Wat is gecontroleerd" (#1260): counts from code, never from the model.
+            ...(ev.controles && typeof ev.controles === 'object' && !Array.isArray(ev.controles) && { controles: ev.controles }),
             // Sentences in which the model revised itself go to the reasoning card, not the answer (#412).
             ...(ev.tussentekst?.length && { tussentekst: [...(m.tussentekst || []), ...ev.tussentekst] }),
             // The numbers that passed the check, each with the step it came from (#365).
@@ -373,6 +378,8 @@ export function useChat({ maxHistory } = {}) {
             ...(vasteMaat(ev.vaste_maat) && { vaste_maat: vasteMaat(ev.vaste_maat) }),
             // Questions to ask next; a click puts one in the input box (#364).
             ...(vragen.length && { vervolgvragen: vragen }),
+            // Precisely one main number: the answer offers "Wijkt af van je eigen cijfer?" (#1258).
+            ...(hoofdgetalUit(ev) && { hoofdgetal: hoofdgetalUit(ev) }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }
@@ -389,6 +396,19 @@ export function useChat({ maxHistory } = {}) {
           ...(ev.vast === true && { vast: true }),
         }])
         finishStream()
+      },
+      // The explanation of a user's own number (#1258): a message from code, with its step for the export.
+      verschilverklaring(ev) {
+        if (typeof ev.content !== 'string' || !ev.content) return
+        const stap = ev.stap && typeof ev.stap.name === 'string'
+          ? [{ name: ev.stap.name, label: ev.stap.label || ev.stap.name, done: true }]
+          : []
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: ev.content, done: true, vast: true, verschilverklaring: true, tools: stap,
+        }])
+      },
+      eigen_getal_fout(ev) {
+        if (typeof ev.melding === 'string' && ev.melding) addToast(ev.melding, 'warning')
       },
       starter_questions(ev) {
         setThinking(false)
@@ -627,6 +647,14 @@ export function useChat({ maxHistory } = {}) {
     return true
   }, [canSend])
 
+  // Een eigen getal naast het hoofdgetal van een antwoord (#1258): geen run en geen model, dus ook niet bezig.
+  // Zegt of het wegging; de server antwoordt met verschilverklaring of eigen_getal_fout.
+  const sendEigenGetal = useCallback((id, getal) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current) return false
+    wsRef.current.send(JSON.stringify({ action: 'eigen_getal', id, getal }))
+    return true
+  }, [])
+
   const sendSettings = useCallback((settings) => {
     if (settings.model) modelRef.current = settings.model
     settingsRef.current = settings
@@ -794,5 +822,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

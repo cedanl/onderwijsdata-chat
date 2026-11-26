@@ -70,14 +70,14 @@ describe('regioNoot', () => {
 
   it('bij de vacatures: die gaan over deze provincie', () => {
     expect(regioNoot({ arbeidsmarktregio: 'Midden-Utrecht', herkomst: 'adres', vacatures: true }))
-      .toContain('tellen niet mee; vacatures (UWV) gaan over deze provincie.')
+      .toContain('tellen niet mee; vacatures (CBS) gaan over deze provincie.')
   })
 
   it('zonder adres: de provincie komt uit de inschrijvingen, en dat staat erbij', () => {
     const tekst = regioNoot({ herkomst: 'inschrijvingen', vacatures: true })
     expect(tekst).toContain('geen adres met een provincie')
     expect(tekst).toContain('het vaakst bij de instelling staat')
-    expect(tekst).toContain('vacatures (UWV) gaan over deze provincie')
+    expect(tekst).toContain('vacatures (CBS) gaan over deze provincie')
   })
 
   it('zonder regio en zonder provincie: geen noot', () => {
@@ -107,7 +107,7 @@ describe('de dashboards', () => {
     const el = await renderAsync(createElement(InlineDashboardMijnInstelling, { instelling: dashboards.regio.instelling }))
     expect(badges(el)).toContain('Provincie Utrecht*')
     expect(noot(el)).toContain('Regio en provincie volgen het adres van de hoofdvestiging bij DUO')
-    expect(noot(el)).not.toContain('UWV')
+    expect(noot(el)).not.toMatch(/UWV|CBS/)
     expect(el.querySelector('.db-afdrukknop')).toBeTruthy()
   })
 
@@ -115,7 +115,7 @@ describe('de dashboards', () => {
     payloads['/api/dashboard/arbeidsmarktmatch'] = dashboards.arbeidsmarktmatch
     payloads['/api/dashboard/regio'] = dashboards.regio
     const el = await renderAsync(createElement(InlineDashboardArbeidsmarkt, { instelling: dashboards.regio.instelling }))
-    expect(noot(el)).toContain('vacatures (UWV) gaan over deze provincie')
+    expect(noot(el)).toContain('vacatures (CBS) gaan over deze provincie')
   })
 
   it('Landelijk heeft ook de afdrukknop', async () => {

@@ -20,9 +20,11 @@ Geslacht per opleiding (#742) is dezelfde maat met `opleiding_naar_geslacht`: de
 geslachtsbestand naast elkaar en geeft de verdeling alleen waar die exact is (`geslacht_opleiding`).
 """
 
+import contextlib
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, ClassVar
 
@@ -40,9 +42,20 @@ logger = logging.getLogger(__name__)
 
 ALLE = "alle"
 AANTAL = "AANTAL"
+# Vormen voor de regel "Andere definities" (#1256): de telling met en zonder extranei (examendeelnemers) op een
+# vast recept. Alleen code kiest ze (`codestap`); het model kiest alle, en de standaard van de tabel beslist (#653).
+ZONDER_EXTRANEI = "zonder_extranei"
+MET_EXTRANEI = "met_extranei"
+INTERNE_VORMEN = (ZONDER_EXTRANEI, MET_EXTRANEI)
+_EXTRANEI_LABELS = {ZONDER_EXTRANEI: "Totaal mbo (excl. extranei)", MET_EXTRANEI: "Totaal mbo (incl. extranei)"}
 VORMEN_HO = {"voltijd": "VT", "deeltijd": "DT", "duaal": "DU"}
 VORMEN_HO_CBS = {"voltijd": "A028666", "deeltijd": "A028667", "duaal": "A028668", ALLE: "T001228"}
-LEERWEGEN_MBO = {"bol": ("BOLVT", "BOLDT"), "bbl": ("BBL",), ALLE: ("BBL", "BOLDT", "BOLVT", "EX")}
+LEERWEGEN_MBO = {
+    "bol": ("BOLVT", "BOLDT"),
+    "bbl": ("BBL",),
+    ALLE: ("BBL", "BOLDT", "BOLVT", "EX"),
+    ZONDER_EXTRANEI: ("BBL", "BOLDT", "BOLVT"),  # EX zijn de examendeelnemers (extranei)
+}
 SECTORCODES_CBS = {"hbo": "A025294", "wo": "A025297"}
 _HO = ("hbo", "wo")
 # Het bestand per sector, aan de woorden in zijn titel: het opleidingsvorm-bestand is leidend (het
@@ -148,6 +161,7 @@ class CbsSomRecept:
     alternatieve_bron: AlternatieveBron
     sectoren: tuple[str, ...] = ("mbo",)
     vormen: Mapping[str, str] = field(default_factory=lambda: {ALLE: ALLE})
+    vormdimensie: str | None = None  # de dimensie waarop een andere vorm dan alle een code pint
     vastgelegd_in: str = field(kw_only=True)  # de vastlegging (#1242), zie DuoRecept
     vastgelegd_op: str = field(kw_only=True)
     bron: ClassVar[str] = "cbs"
@@ -168,6 +182,8 @@ DOORSTROOM_VMBO_MBO = "doorstroom_vmbo_mbo"
 # sectorkamer, met onderdrukte cellen) en CBS 85354NED (475.460). Beide klopten, met een andere definitie. De code
 # kiest CBS; DUO komt als alternatief in de regel onder het antwoord, zoals bij vmbo → mbo (#667).
 _LEERWEGEN_MBO_CBS = {ALLE: "A025290", "bol": "A041868", "bbl": "A025293"}  # alle: de standaard van de tabel (#653)
+# De twee totalen in Leerweg (cbs_standaard), als vorm voor de regel "Andere definities" (#1256).
+_EXTRANEI_CBS = {ZONDER_EXTRANEI: "A041867", MET_EXTRANEI: "A025290"}
 _DUO_MBO_STUDENTEN = AlternatieveBron(
     naam="DUO 'Mbo-studenten per instelling'",
     dataset="mbo-studenten-per-instelling",
@@ -257,7 +273,7 @@ MATEN: dict[str, Recept] = {
         sectordimensie=None,
         sectorcodes={},
         vormdimensie="Leerweg",
-        vormen=_LEERWEGEN_MBO_CBS,
+        vormen={**_LEERWEGEN_MBO_CBS, **_EXTRANEI_CBS},
         vast={"Geslacht": "T001038", "Niveau": "T001336", "Herkomstland": "T001040", "GeboortelandOuders": "T001638"},
         alternatieve_bron=_DUO_MBO_STUDENTEN,
         vastgelegd_in="#805",
@@ -280,6 +296,8 @@ MATEN: dict[str, Recept] = {
             "Persoonskenmerken": "T001638",
         },
         _DUO_INSTROOM_MBO,
+        vormen={ALLE: ALLE, **_EXTRANEI_CBS},
+        vormdimensie="Leerweg",
         vastgelegd_in="#667",
         vastgelegd_op="2026-10-22",
     ),
@@ -289,9 +307,28 @@ _PER_INSTELLING = {DEELNEMERS_HO_LANDELIJK: PERSONEN_HO, MBO_STUDENTEN_LANDELIJK
 
 
 def vormen(recept: Recept) -> tuple[str, ...]:
-    """De vormen die het model bij deze maat mag kiezen; `alle` staat vooraan."""
+    """De vormen die het model bij deze maat mag kiezen; `alle` staat vooraan. Zonder de interne vormen."""
+    return tuple(v for v in _alle_vormen(recept) if v not in INTERNE_VORMEN)
+
+
+def _alle_vormen(recept: Recept) -> tuple[str, ...]:
+    """Alle vormen van het recept, ook die alleen code kiest (`codestap`)."""
     namen = recept.leerwegen if isinstance(recept, DuoBreedRecept) else recept.vormen
     return (ALLE, *(v for v in namen if v != ALLE))
+
+
+# Rekent code hier een vaste maat voor de regel onder het antwoord (#1256), of herlaadt ze er een (`herlaad`)?
+_codestap: ContextVar[bool] = ContextVar("maten_codestap", default=False)
+
+
+@contextlib.contextmanager
+def codestap() -> Generator[None, None, None]:
+    """Binnen dit blok mag een recept de interne vormen (met of zonder extranei): de code koos ze, niet het model."""
+    token = _codestap.set(True)
+    try:
+        yield
+    finally:
+        _codestap.reset(token)
 
 
 @dataclass(frozen=True)
@@ -382,7 +419,14 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None, opleid
         namen = ", ".join(naam for naam, r in MATEN.items() if isinstance(r, DuoRecept))
         return f"Geslacht per opleiding kan alleen bij {namen}, met een instelling."
     vorm = str(vorm or ALLE).strip().lower()
-    if vorm not in vormen(recept):
+    if vorm in INTERNE_VORMEN and vorm in _alle_vormen(recept) and not _codestap.get():
+        # De telling met of zonder extranei kiest de standaard van de tabel en het gesprek (#653); de app rekent de
+        # andere zelf uit, onder het antwoord (#1256). Het model koos per run anders: geen gok.
+        return (
+            f"Vorm {vorm!r} kiest de app zelf, voor de regel onder het antwoord. Gebruik vorm alle: zonder extranei "
+            "telt de maat alleen als de gebruiker daarom vraagt."
+        )
+    if vorm not in _alle_vormen(recept):
         return f"Vorm {vorm!r} past niet bij {recept.naam}; kies uit {', '.join(vormen(recept))}."
     jaren = _jaren(schooljaren)
     if isinstance(jaren, str):
@@ -481,6 +525,8 @@ def selectie(p: Plan) -> dict:
     r = p.recept
     if isinstance(r, CbsSomRecept):
         dimensies = {**r.vast, r.somdimensie: list(r.somcodes)}
+        if p.vorm != ALLE and r.vormdimensie:
+            dimensies[r.vormdimensie] = r.vormen[p.vorm]
     else:
         assert isinstance(r, CbsRecept)
         dimensies = {r.sectordimensie: r.sectorcodes[p.sector]} if r.sectordimensie else {}
@@ -610,7 +656,9 @@ def _duo(p: Plan) -> dict | str:
     if not isinstance(gekozen, dict) or "data_key" not in gekozen:
         return _melding(gekozen)
     key, rijen = gekozen["data_key"], gekozen["rijen"]
-    if isinstance(r, DuoBreedRecept):
+    # Een lege selectie geeft de key van het hele bestand terug (query_data): daarover geen totaal, anders werden de
+    # rijen van elke andere instelling de reeks (#1248).
+    if isinstance(r, DuoBreedRecept) and rijen:
         key, rijen = _met_totaal(key, p)
     uit = {"data_key": key, "rijen": rijen, "bestand": geladen.get("resource_titel"), "recept": _recept(p)}
     # De publicatieregel met wat de data ervan zegt (#1092): zonder status las een client de regel '1-4 als 4' ook waar
@@ -651,10 +699,21 @@ def _met_som(querykey: str, p: Plan) -> str | None:
     return key
 
 
+@contextlib.contextmanager
+def _extranei_gesprek(vorm: str) -> Generator[None, None, None]:
+    """Een interne vorm pint zelf een totaal in Leerweg: get_cbs_data vervangt hem dan niet door de standaard (#653)."""
+    if vorm not in INTERNE_VORMEN:
+        yield
+        return
+    with cbs_standaard.gesprek(["zonder extranei"] if vorm == ZONDER_EXTRANEI else []):
+        yield
+
+
 def _cbs(p: Plan) -> dict | str:
     r = p.recept
     assert isinstance(r, CbsRecepten)
-    geladen = _json(get_cbs_data(r.dataset, selectie=selectie(p)))
+    with _extranei_gesprek(p.vorm):
+        geladen = _json(get_cbs_data(r.dataset, selectie=selectie(p)))
     if not isinstance(geladen, dict) or "data_key" not in geladen:
         return _melding(geladen)
     key: str = geladen["data_key"]
@@ -722,8 +781,12 @@ def _teldefinitie(p: Plan) -> str:
     if isinstance(r, CbsRecepten) and p.vorm == ALLE and (standaard := cbs_standaard.keuze(r.dataset)):
         dimensie, _, label = standaard
         return f"{r.teldefinitie}; {dimensie}: {label}"
+    if isinstance(r, CbsRecepten) and p.vorm in INTERNE_VORMEN:
+        return f"{r.teldefinitie}; Leerweg: {_EXTRANEI_LABELS[p.vorm]}"
     if isinstance(r, CbsRecept) and p.vorm != ALLE:
         return f"{r.teldefinitie}; {r.vormdimensie}: {p.vorm}"
+    if isinstance(r, DuoBreedRecept) and p.vorm == ZONDER_EXTRANEI:
+        return f"{r.teldefinitie}; zonder examendeelnemers (extranei)"
     return r.teldefinitie
 
 

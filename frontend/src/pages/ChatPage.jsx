@@ -78,7 +78,7 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, bronnen = {}, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  const { messages, withBufferedText, busy, stopping, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, bijwerken, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSlow, reportSpec, reportChecklist, send, sendClarification, sendEigenGetal, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
   // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
   const bewaak = useBewaak()
   const runSoort = reportBusy ? 'rapport' : busy ? 'antwoord' : null
@@ -833,6 +833,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                 vraag={msg.role === 'assistant' ? questionBefore(displayMessages, i)?.content ?? null : null}
                 onClarification={verstuurKeuze} onSend={verstuur} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
+                onEigenGetal={sendEigenGetal}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
                 settings={settings} modelLabel={modelLabels[laatsteId] ?? modelLabels[msg.id]}

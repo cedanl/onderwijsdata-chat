@@ -5,6 +5,7 @@ import { CITATIE_CSV_BESTAND, citatiesToCsv } from '../citatieCsv'
 import { exportKeys } from '../dataExport'
 import { saveFile } from '../saveFile'
 import { useGeavanceerd } from '../geavanceerd'
+import { metVoorbehoud } from '../voorbehoud'
 
 // A CSV download per table the answer was built on (#269); none for a free-text answer.
 // A failed download says why and offers to ask the question again (CH-44): the table is
@@ -25,15 +26,22 @@ function saveBewijs(json, naam) {
   saveFile(new Blob([json], { type: 'application/json;charset=utf-8' }), naam)
 }
 
+// Wat een CSV van een antwoord bevat, in de app zelf (#1257); docs/reproducibility.md zegt hetzelfde.
+export const CSV_UITLEG = 'Boven de tabel staan regels die met # beginnen: het Uitgangspunt, wat niet is meegeteld, Bron en '
+  + 'definitie, de Let op-regels en wat is gecontroleerd, en daarna de bron, de selectie en de onderdrukte cellen. Een '
+  + 'tabel met onderdrukte cellen heeft de kolom ondergrens: ja als er in die rij een onderdrukte cel valt, het getal is '
+  + "dan ten minste zo groot. In pandas: read_csv(bestand, sep=';', comment='#')."
+
+// `voorbehoud`: de regels die met elke export van dit antwoord meegaan (voorbehoud.js, #1257).
 export default function DataExport({
   tools, citaties = null, settled, onHerhaal = null, busy = false, download = downloadDataCsv, save = saveCitaties,
-  bewijsVan = null, vraag = null, saveJson = saveBewijs,
+  voorbehoud = [], bewijsVan = null, vraag = null, saveJson = saveBewijs,
 }) {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const geavanceerd = useGeavanceerd()
   const keys = geavanceerd ? exportKeys(tools) : []
-  const citatieCsv = !geavanceerd || keys.length ? null : citatiesToCsv(citaties)
+  const citatieCsv = !geavanceerd || keys.length ? null : metVoorbehoud(citatiesToCsv(citaties), voorbehoud)
   const metBewijs = heeftBewijs(bewijsVan)
   if (!settled || (!keys.length && !citatieCsv && !metBewijs)) return null
 
@@ -41,7 +49,7 @@ export default function DataExport({
     setError(null)
     setNotice(null)
     try {
-      setNotice((await download(key)) || null)
+      setNotice((await download(key, voorbehoud)) || null)
     } catch (e) {
       setError(e.message)
     }
@@ -63,6 +71,13 @@ export default function DataExport({
         <button type="button" className="bewijs-btn" onClick={() => saveJson(bewijsJson(bewijsVan), bewijsBestandsnaam(vraag))}>
           Bewijs (JSON)
         </button>
+      )}
+      {/* Alleen bij een CSV: een antwoord met alleen het bewijsbestand heeft geen CSV om uit te leggen. */}
+      {(keys.length > 0 || citatieCsv) && (
+        <details className="data-export-uitleg">
+          <summary>Wat staat er in de CSV?</summary>
+          <p>{CSV_UITLEG}</p>
+        </details>
       )}
       {notice && (
         <div className="data-export-error" role="status">

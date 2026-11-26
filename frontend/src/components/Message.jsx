@@ -8,7 +8,10 @@ import { hasExport } from '../dataExport'
 import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
+import EigenGetal from './EigenGetal'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
+import { voorbehoudRegels } from '../voorbehoud'
+import ControleRegel from './ControleRegel'
 import { zonderStaart, zoalsGetoond } from '../getalWacht'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken, wachtVan } from './MessageContent'
@@ -72,7 +75,8 @@ function kopieVan(msg) {
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
 // vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
-export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// onEigenGetal: (id, getal) => verstuurd?; onder een antwoord met één hoofdgetal de knop "Wijkt af van je eigen cijfer?" (#1258).
+export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   const geavanceerd = useGeavanceerd()
   if (msg.role === 'user') {
@@ -111,9 +115,12 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
   const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
   const blocks = answerBlocks(msg, { settled, geavanceerd })
+  // Wat met elke export van dit antwoord meegaat (#1257): Uitgangspunt, "Niet meegeteld", "Bron en definitie", "Let op"
+  // en de regel "Wat is gecontroleerd".
+  const voorbehoud = voorbehoudRegels(msg)
   const dataExport = (
     <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy}
-      bewijsVan={msg} vraag={vraag} />
+      voorbehoud={voorbehoud} bewijsVan={msg} vraag={vraag} />
   )
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
 
@@ -139,17 +146,20 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
             {msg.done && <VasteMaat waarde={msg.vaste_maat} />}
             {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
             {figuren.map((fig, i) => (
-              <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
+              <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} voorbehoud={voorbehoud} />
             ))}
             {blocks
               ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
               : dataExport}
+            {/* Onder elk data-antwoord, ingeklapt (#1260): wat de controle deed, en altijd wat ze niet toetste. */}
+            {blocks && <ControleRegel controles={msg.controles} />}
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren}
               vraag={typeof msg.content === 'string' ? msg.content : null} />
             <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
             )}
+            {settled && msg.done && <EigenGetal hoofdgetal={msg.hoofdgetal} onVerstuur={onEigenGetal} busy={busy} />}
             {msg.stopped && !msg.timeout && !msg.weggegaan && <div className="message-stopped">Genereren gestopt</div>}
             {/* De gebruiker ging zelf weg tijdens het antwoord (#772): geen "Verbinding verbroken". Wie terugkomt, kan de
                 vraag met één klik opnieuw stellen, zoals na een afgebroken antwoord. */}

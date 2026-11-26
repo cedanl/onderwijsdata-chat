@@ -2,7 +2,7 @@
 
 De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste bron wordt automatisch gekozen op basis van je vraag.
 
-**ROA** en **UWV** geeft de assistent als arbeidsmarkt-context bij een onderwijsvraag, met een eigen tool: landelijk of per provincie, niet per instelling. Ze voeden ook de [dashboards](dashboards.md).
+**ROA** en **UWV** geeft de assistent als arbeidsmarkt-context bij een onderwijsvraag, met een eigen tool: landelijk of per provincie, niet per instelling. ROA voedt ook de [dashboards](dashboards.md); hun vacatures komen sinds #1225 uit [CBS 83599NED](#cbs-83599ned-openstaande-vacatures), niet meer van UWV.
 
 ---
 
@@ -237,9 +237,53 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 
 ---
 
+## CBS 83599NED — openstaande vacatures
+
+**Openstaande vacatures; SBI 2008, regio** ([83599NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table)) is
+de vacaturebron van de [dashboards](dashboards.md#vacatures-cbs-83599ned) Arbeidsmarkt en Mijn instelling (de
+payload van `/api/dashboard/regio`), sinds #1225 (besluit #1221). Tot dan was dat UWV Open Match, een momentopname van
+16 mei 2023 die UWV niet meer bijwerkt (zie [UWV](#uwv-uitvoeringsinstituut-werknemersverzekeringen)). De tabel staat
+in de CBS-catalogus (`cbs_datasets*.json`) met titel, licentie, frequentie en laatste periode.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | CBS Open Data OData API, `https://opendata.cbs.nl/ODataApi/odata/83599NED` (`onderwijsbronnen.cbs.client`) |
+| Licentie | CC BY 4.0 |
+| Inhoud | Openstaande vacatures (x 1000) per SBI-sectie (A t/m S en totalen) en regio (Nederland, landsdelen, 12 provincies) |
+| Frequentie | Per kwartaal, vanaf het 1e kwartaal van 2011; nieuwe cijfers ongeveer een maand na het kwartaal |
+| Voorlopig | CBS noemt per kwartaal in de Perioden-dimensie of het cijfer voorlopig is (nu: elk kwartaal vanaf 2022) |
+| Lader | `data/vacatures_cbs.py`: één lading voor de 12 provincies en alle kwartalen, 24 uur geldig (`actualiteit.TTL`) |
+| Koppeltabel | `data/sbi_onderwijssector.csv` met `data/onderwijssector_geen_sbi.csv`, gelezen door `data/sbi_koppeling.py` |
+
+- **Wat de lader geeft:** per provincie en SBI-sectie het laatste kwartaal met cijfers en het gemiddelde van de laatste
+  vier kwartalen, elk met de perioden en of CBS ze voorlopig noemt. CBS geeft duizendtallen met één decimaal; de app
+  toont aantallen (34,4 → 34.400), dus een sectie onder de 50 vacatures staat er als 0. Een lege of ontbrekende cel is
+  "geen gegevens", nooit 0; een gemiddelde over een kwartaal zonder cijfer ook.
+- **Voorlopig in het bronblok:** de regel van 83599NED onder een dashboard noemt het kwartaal, het gemiddelde, de
+  licentie en de kwartalen die CBS voorlopig noemt (`data/bronblok.py`).
+- **De koppeltabel** zet elke SBI-sectie (19 rijen, A t/m S) bij de onderwijssectoren die er vooral werken: per niveau
+  (mbo: de hoofdgroep van DUO, hbo en wo: het onderdeel) één of meer sectoren, of "geen koppeling", met een korte reden.
+  Ze is met de hand opgesteld, geen taalmodel. Zo staat C Industrie bij Techniek en procesindustrie (mbo) en Techniek
+  (hbo en wo), Q Gezondheids- en welzijnszorg bij Zorg en welzijn (mbo) en Gezondheidszorg en Gedrag en maatschappij
+  (hbo en wo), en hebben N (uitzendbureaus, schoonmaak, beveiliging) en S (kappers, verenigingen) voor hbo en wo geen
+  koppeling. Entree (mbo) en sectoroverstijgend (hbo en wo) horen bewust bij geen enkele sectie. Een sectie bij meer
+  sectoren telt voor elk van hen naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan hun secties.
+  Een test bewaakt dat elke sectie van 83599NED precies één rij heeft en dat elke sector van de dashboards gekoppeld is
+  of bewust niet.
+
+!!! note "Bedrijfstak, geen beroep"
+    Een vacature telt bij de bedrijfstak van de werkgever, niet bij het beroep: een verpleegkundige in de industrie
+    telt bij C Industrie, een programmeur bij een bank bij K Financiële dienstverlening. De koppeltabel zegt dus welke
+    bedrijfstakken vooral de gediplomeerden van een sector aannemen, niet hoeveel vacatures er voor hun beroep zijn, en
+    CBS legt bij vacatures geen opleidingsniveau vast. De aansluiting per sector op het dashboard is daarom een
+    indicatie; dat staat er ook bij. Een sector zonder koppeling krijgt geen label, maar "geen vacaturegegevens per
+    bedrijfstak voor deze sector".
+
+---
+
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector; ook ingezet in het arbeidsmarktdashboard. Welke beroepenclusters bij een sector horen, is een indeling van deze app, gemaakt met een taalmodel (`data/sector_cluster_mapping.json`); UWV deelt vacatures niet in onderwijssectoren in. Welk model en welke prompt de huidige indeling maakten, is niet vastgelegd, en de indeling is nog niet gevalideerd: een steekproef van 30 clusters (`docs/sector-cluster-steekproef.csv`, `scripts/steekproef_sector_mapping.py`) wacht op handmatige beoordeling. Een cluster dat het model bij geen sector zette, staat in `_niet_toegewezen`; een test bewaakt dat elk cluster uit de snapshot een plaats heeft (#873). Het resultaat houdt de UWV-aantallen, die indeling (met versie en model) en het gewogen sectorgetal apart. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. Het arbeidsmarktdashboard telt zo'n cluster op dezelfde manier, in de match score en in de grafiek. UWV legt bij vacatures geen opleidingsniveau vast.
+**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector. De dashboards gebruiken UWV sinds #1225 niet meer: hun vacatures komen uit [CBS 83599NED](#cbs-83599ned-openstaande-vacatures). Welke beroepenclusters bij een sector horen, is een indeling van deze app, gemaakt met een taalmodel (`data/sector_cluster_mapping.json`); UWV deelt vacatures niet in onderwijssectoren in. Welk model en welke prompt de huidige indeling maakten, is niet vastgelegd, en de indeling is nog niet gevalideerd: een steekproef van 30 clusters (`docs/sector-cluster-steekproef.csv`, `scripts/steekproef_sector_mapping.py`) wacht op handmatige beoordeling. Een cluster dat het model bij geen sector zette, staat in `_niet_toegewezen`; een test bewaakt dat elk cluster uit de snapshot een plaats heeft (#873). Het resultaat houdt de UWV-aantallen, die indeling (met versie en model) en het gewogen sectorgetal apart. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
 
 Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel erachter (UWV: alle beroepenclusters van de plaats met het aantal vacatures; ROA: elk cijfer als rij met onderdeel, regio, opleiding en indicator) staat in de store onder een `data_key`, met de laadaanroep en de peildatum of versie. Daardoor lopen rapport en dashboard, het recept na een herstart, de bronnenlijst, de citaties, de snippet en de CSV-export mee; tot dan bestonden UWV en ROA voor het rapport niet en schreef het model dat er geen vacaturegegevens waren.
 
@@ -261,11 +305,12 @@ Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel 
     [Spanningsindicator](https://www.uwv.nl/nl/arbeidsmarktinformatie/dashboards/dashboard-spanningsindicator) (per
     arbeidsmarktregio en beroepsgroep), en CBS, in tabel
     [83599NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table) (openstaande vacatures per provincie en
-    bedrijfstak, SBI 2008). De app laadt die (nog) niet.
+    bedrijfstak, SBI 2008). De dashboards laden die CBS-tabel sinds #1225
+    ([CBS 83599NED](#cbs-83599ned-openstaande-vacatures)); de chat (`get_uwv_vacatures`) nog niet.
 
-    Daarom noemen de dashboards, de chat en de bronregels de ouderdom van de peildatum ("peildatum 16 mei 2023, ruim 3
-    jaar oud"); boven de 12 maanden (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`) staat er een waarschuwing
-    met deze verwijzingen (#1219).
+    Daarom noemen de chat en haar bronregels de ouderdom van de peildatum ("peildatum 16 mei 2023, ruim 3 jaar oud");
+    boven de 12 maanden (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`) staat er een waarschuwing met deze
+    verwijzingen (#1219).
 
 ---
 
@@ -716,6 +761,13 @@ Een regel heeft bewust geen link:
 - **Het antwoord is van vóór deze wijziging.** Een eerder bewaard gesprek toont zijn bronnen als tekst; de links worden niet achteraf toegevoegd.
 
 Kopiëren en de gespreksexport geven de bronnen als tekst, zoals voorheen.
+
+**Een tweede bron bij een vaste maat (#1259).** Staat de maat van een antwoord in de gecureerde koppeltabel
+`data/bronparen.toml`, dan haalt code ook de andere bron op hetzelfde niveau en staat die bron ook in de Bronnen. Nu is
+dat één paar: mbo-studenten landelijk, CBS 85354NED tegenover DUO "Mbo-studenten per instelling" opgeteld over alle
+instellingen. De regel "**Ter controle:**" onder het antwoord noemt het getal van de tweede bron, het verschil en de
+bekende redenen uit de tabel. Welke bronnen een paar zijn, hoe een paar erbij komt en wat de kruiscontrole niet zegt:
+[Domeinregels, "Bronparen"](domeinregels.md#bronparen).
 
 ---
 

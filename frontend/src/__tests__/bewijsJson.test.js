@@ -11,6 +11,7 @@ import { useChat } from '../hooks/useChat'
 import { conversationMessages } from '../conversationStore'
 import { BEWIJS_SCHEMA, BEWIJS_SLEUTELS, bewijs, bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
 import { metGeavanceerd } from './helpers/geavanceerd'
+import { NIET_GECONTROLEERD, controleRegelTekst } from '../controleRegel'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -38,7 +39,8 @@ describe('bewijs (#1244)', () => {
     const b = bewijs(ANTWOORD)
     expect(Object.keys(b)).toEqual(BEWIJS_SLEUTELS)
     expect(BEWIJS_SLEUTELS).toEqual([
-      'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'toolstappen', 'vaste_maat', 'antwoord',
+      'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'controles', 'toolstappen', 'vaste_maat',
+      'antwoord',
     ])
     expect(b.schema).toBe(BEWIJS_SCHEMA)
     expect(BEWIJS_SCHEMA).toBe('onderwijsdata-chat/bewijs/1')
@@ -66,8 +68,38 @@ describe('bewijs (#1244)', () => {
     const b = bewijs({ role: 'assistant', done: true, content: 'Tekst.', bronnen: ['CBS 85354NED'], controle: ['let op'] })
     expect(b).toEqual({
       schema: BEWIJS_SCHEMA, manifest: null, bronnen: ['CBS 85354NED'], bronlinks: null, citaties: null,
-      controle: ['let op'], toolstappen: null, vaste_maat: null, antwoord: 'Tekst.',
+      controle: ['let op'], controles: null, toolstappen: null, vaste_maat: null, antwoord: 'Tekst.',
     })
+  })
+
+  // #1260-5: de regel "Wat is gecontroleerd" staat ook in het bewijs, naast de meldingen onder `controle`.
+  const CONTROLES = {
+    per_controle: { ongedekte_getallen: { gedraaid: true, uitkomst: 'ok' }, verkeerd_gebonden: { gedraaid: false, uitkomst: 'niet gecontroleerd' } },
+    getallen: 3, gebonden: 2, jaar_en_instelling: false, niet_gedraaid: 1, ingetrokken: 1, gecorrigeerd: 0,
+  }
+
+  it('draagt onder `controles` de regel "Wat is gecontroleerd" met de vaste zin en de tellingen uit code', () => {
+    const b = bewijs({ ...ANTWOORD, controle: ['2025 staat niet in de data.'], controles: CONTROLES })
+    expect(b.controles).toEqual({ regel: controleRegelTekst(CONTROLES), ...CONTROLES })
+    expect(b.controles.regel).toContain(NIET_GECONTROLEERD)
+    expect(b.controles.regel).toContain('3 getallen tegen de opgehaalde data gelegd')
+    expect(b.controles.regel).toContain('één correctie')
+    // De meldingen van de controle blijven onder hun eigen sleutel.
+    expect(b.controle).toEqual(['2025 staat niet in de data.'])
+  })
+
+  it('neemt uit `controles` alleen de bekende sleutels en tellingen over', () => {
+    const vreemd = { ...CONTROLES, getallen: -4, gebonden: '7', antwoord: 'tekst', per_controle: { x: { gedraaid: 'ja', uitkomst: 5 }, y: 'ok' } }
+    const { controles } = bewijs({ ...ANTWOORD, controles: vreemd })
+    expect(Object.keys(controles)).toEqual([
+      'regel', 'per_controle', 'getallen', 'gebonden', 'jaar_en_instelling', 'niet_gedraaid', 'ingetrokken', 'gecorrigeerd',
+    ])
+    expect(controles).toMatchObject({ getallen: 0, gebonden: 0, per_controle: {} })
+  })
+
+  it('zet `controles` op null zonder (geldig) veld: een bericht van vóór #1260', () => {
+    expect(bewijs(ANTWOORD).controles).toBeNull()
+    expect(bewijs({ ...ANTWOORD, controles: ['geen object'] }).controles).toBeNull()
   })
 
   it('geeft een stap van vóór #1244 zonder argumenten null als argumenten', () => {
@@ -191,5 +223,68 @@ describe('hetzelfde bewijs na heropenen (#1244)', () => {
     const heropend = conversationMessages({ messages: JSON.stringify([{ role: 'user', content: 'Hoeveel?' }, live]) })
     expect(bewijsJson(heropend[1])).toBe(bewijsJson(live))
     expect(bewijs(heropend[1]).toolstappen).toEqual([{ name: 'get_maat', arguments: ARGS, snippet: 'df = maat()' }])
+  })
+})
+
+// #1256 en #1259 naast #1244: de regels onder het antwoord komen uit stappen van code na de modelronde. Die stappen
+// sturen dezelfde events als een modelstap (tool_start met input, tool_end), de regels staan in de tekst van
+// message_end en hun getallen in de citaties (tests/test_kruiscontrole.py toetst die events aan de serverkant).
+describe('de regels onder het antwoord in het bewijs (#1256, #1259)', () => {
+  let root
+
+  afterEach(() => act(() => root.unmount()))
+
+  const MAAT = { maat: 'mbo_studenten_landelijk', schooljaren: ['2024/25'] }
+  const ALTERNATIEF = { ...MAAT, vorm: 'zonder_extranei' }
+  const PAAR = { bronpaar: 'mbo-studenten-landelijk', schooljaar: '2024/25' }
+  const DEFINITIES = '**Andere definities:** in 2024/25 telt dit antwoord 475.460; zonder extranei 465.820 (-2,0%).'
+  const KRUIS = "**Ter controle:** DUO 'Mbo-studenten per instelling' telt in 2024/25 476.079 (alle instellingen): 619 meer dan CBS 85354NED (475.460), +0,1%."
+  const TEKST = `In 2024/25 waren er 475.460 mbo-studenten.\n\n${DEFINITIES}\n\n${KRUIS}`
+  const CITATIES = [
+    { getal: '475.460', stap: 1, bron: 'CBS 85354NED', vastgesteld: true },
+    { getal: '465.820', stap: 2, bron: 'CBS 85354NED', vastgesteld: true },
+    { getal: '476.079', stap: 3, bron: "DUO 'Mbo-studenten per instelling'", vastgesteld: true },
+  ]
+  const VM = { maat: 'mbo_studenten_landelijk', teldefinitie: 'mbo-studenten landelijk; Leerweg: Totaal mbo (incl. extranei)', vastgelegd_in: '#805', vastgelegd_op: '2026-10-29' }
+
+  it('zet de regels in het antwoord, de stappen van code met hun argumenten en hun getallen in de citaties', async () => {
+    globalThis.WebSocket = FakeWebSocket
+    let chat
+    function Harness() {
+      chat = useChat()
+      return null
+    }
+    root = createRoot(document.createElement('div'))
+    await act(async () => { root.render(createElement(Harness)) })
+    await act(async () => {
+      const ws = FakeWebSocket.last
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'get_maat', label: 'Vaste maat opgehaald', input: MAAT })
+      ws.emit({ type: 'tool_end', name: 'get_maat', output: '{}', snippet: 'df = maat()' })
+      ws.emit({ type: 'tool_start', name: 'get_maat', label: 'Andere definitie berekend: zonder extranei', input: ALTERNATIEF })
+      ws.emit({ type: 'tool_end', name: 'get_maat', output: '{}', snippet: 'df = maat(vorm="zonder_extranei")' })
+      ws.emit({ type: 'tool_start', name: 'kruiscontrole', label: 'Kruiscontrole met de andere bron', input: PAAR })
+      ws.emit({ type: 'tool_end', name: 'kruiscontrole', output: '{}', data_key: 'duo:mbo:som' })
+      ws.emit({
+        type: 'message_end', content: TEKST, bronnen: ['CBS 85354NED', "DUO 'Mbo-studenten per instelling'"],
+        citaties: CITATIES, manifest: MANIFEST, vaste_maat: VM,
+      })
+    })
+    const live = chat.messages.find(m => m.role === 'assistant')
+    const b = bewijs(live)
+    expect(Object.keys(b)).toEqual(BEWIJS_SLEUTELS)
+    expect(b.antwoord).toContain(DEFINITIES)
+    expect(b.antwoord).toContain(KRUIS)
+    expect(b.toolstappen).toEqual([
+      { name: 'get_maat', arguments: MAAT, snippet: 'df = maat()' },
+      { name: 'get_maat', arguments: ALTERNATIEF, snippet: 'df = maat(vorm="zonder_extranei")' },
+      { name: 'kruiscontrole', arguments: PAAR, snippet: null },
+    ])
+    // Hier wijst elke citatie naar haar stap in het bestand: de stappen van code komen na die van het model.
+    expect(b.citaties.map(c => b.toolstappen[c.stap - 1].name)).toEqual(['get_maat', 'get_maat', 'kruiscontrole'])
+    expect(b.vaste_maat).toEqual(VM)
+
+    const heropend = conversationMessages({ messages: JSON.stringify([{ role: 'user', content: 'Hoeveel?' }, live]) })
+    expect(bewijsJson(heropend[1])).toBe(bewijsJson(live))
   })
 })

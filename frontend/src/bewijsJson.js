@@ -2,19 +2,22 @@
 // hier, uit het bericht zelf: geen API-route en geen modelaanroep. Een heropend gesprek geeft daardoor hetzelfde
 // bestand, want elk veld staat in het bewaarde bericht (de toolargumenten sinds #1244, zie useChat.js).
 //
-// Wel: het manifest (model, versies, dataversie), de bronnen met hun links, de citaties, de controlemeldingen, per
-// geslaagde stap de tool, haar argumenten en de code die haar herhaalt, het label "Vaste maat" en het antwoord.
+// Wel: het manifest (model, versies, dataversie), de bronnen met hun links, de citaties, de controlemeldingen, wat de
+// controle deed (de regel "Wat is gecontroleerd" met haar tellingen, #1260), per geslaagde stap de tool, haar
+// argumenten en de code die haar herhaalt, het label "Vaste maat" en het antwoord.
 // Niet: de ruwe uitvoer van een tool, de vraag als eigen veld (een zoekterm in de argumenten kan haar wel bevatten),
 // de gebruikersnaam. Een sleutel die niet van toepassing is, is null.
 import { bronnenTekst } from './answerBlocks'
 import { bestandsdeel } from './bestandsnaam'
 import { zijnBronlinks } from './bronLink'
+import { controlesVoorBewijs } from './controleRegel'
 import { conversationTitle } from './conversationTitle'
 import { vasteMaat } from './vasteMaat'
 
 export const BEWIJS_SCHEMA = 'onderwijsdata-chat/bewijs/1'
 export const BEWIJS_SLEUTELS = [
-  'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'toolstappen', 'vaste_maat', 'antwoord',
+  'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'controles', 'toolstappen', 'vaste_maat',
+  'antwoord',
 ]
 
 const isObject = waarde => typeof waarde === 'object' && waarde !== null && !Array.isArray(waarde)
@@ -50,6 +53,8 @@ export function bewijs(msg) {
     bronlinks: zijnBronlinks(msg.bronlinks) && Object.keys(msg.bronlinks).length ? msg.bronlinks : null,
     citaties: lijstOfNull(Array.isArray(msg.citaties) ? msg.citaties.filter(isObject) : []),
     controle: lijstOfNull(Array.isArray(msg.controle) ? msg.controle.filter(z => typeof z === 'string') : []),
+    // Naast de meldingen hierboven: wat de controle deed en wat ze niet toetste (#1260).
+    controles: controlesVoorBewijs(msg.controles),
     toolstappen: toolstappen(msg.tools),
     vaste_maat: vasteMaat(msg.vaste_maat),
     antwoord: tekstOfNull(msg.content),
