@@ -25,6 +25,7 @@ from . import (
     dekking,
     duo,
     fouten,
+    grafiekregels,
     plot,
     relaties,
     sandbox,
@@ -328,4 +329,22 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     figuur, zonder_naam = plot.zonder_lege_categorieen(run.figure)
     text = _tekst(run, _bewaar(run, controle), controle, zonder_naam)
     known = store.meta(run.bronnen[0]) if run.bronnen else None
-    return text, plot.leesbare_titels(plot.with_export_rows(figuur), known)
+    figuur = plot.leesbare_titels(plot.with_export_rows(figuur), known)
+    # Dezelfde grafiekregels als create_plot (#1264): een tweede y-as gaat niet naar de chat; de uitkomst wel.
+    try:
+        noten = plot.eigen_figuurregels(figuur, run.bronnen)
+    except grafiekregels.TweeAssen as weigering:
+        return _met_grafiekmelding(text, str(weigering))
+    return (_met_grafiekmelding(text, " ".join(noten)) if noten else text), figuur
+
+
+def _met_grafiekmelding(text: str, melding: str) -> str:
+    """Het toolresultaat met wat de grafiekregels aan de figuur deden of waarom er geen figuur is, onder "grafiek"."""
+    try:
+        text_obj = json.loads(text)
+    except ValueError:
+        return f"{text}\n{melding}"
+    if not isinstance(text_obj, dict):
+        return f"{text}\n{melding}"
+    text_obj["grafiek"] = " ".join(m for m in (text_obj.get("grafiek"), melding) if m)
+    return json.dumps(text_obj, ensure_ascii=False, default=str)

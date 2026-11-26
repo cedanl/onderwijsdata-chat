@@ -1,5 +1,6 @@
 import { getToken, endSessionIfCurrent } from './auth'
 import { saveFile } from './saveFile'
+import { metVoorbehoud } from './voorbehoud'
 
 function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -34,13 +35,22 @@ async function apiFetch(path, options = {}) {
 
 // The table behind an answer as a file (#269). A plain link cannot carry the token,
 // so the CSV is fetched and handed to the browser as a blob. Returns the server's notice
-// when the data was fetched again after a restart (#472), else null.
-export async function downloadDataCsv(key) {
+// when the data was fetched again after a restart (#472), else null. `voorbehoud` (voorbehoud.js, #1257): het
+// Uitgangspunt, "Niet meegeteld", "Bron en definitie" en de controleregels van het antwoord, als '#'-regels boven die
+// van de server; de server kent het antwoord niet, alleen de tabel.
+export async function downloadDataCsv(key, voorbehoud = []) {
   const token = getToken()
   const res = await fetch(`/api/data/csv?${new URLSearchParams({ key })}`, { headers: authHeaders(token) })
   await throwIfFailed(res, token)
   const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'data.csv'
-  saveFile(await res.blob(), filename)
+  const blob = await res.blob()
+  if (!voorbehoud.length) {
+    saveFile(blob, filename)
+  } else {
+    // Met BOM, zoals de server hem stuurt: anders leest Excel é als Ã©.
+    const tekst = (await blob.text()).replace(/^\uFEFF/, '')
+    saveFile(new Blob(['\uFEFF' + metVoorbehoud(tekst, voorbehoud)], { type: 'text/csv;charset=utf-8' }), filename)
+  }
   return res.headers.get('X-Data-Herladen')
 }
 

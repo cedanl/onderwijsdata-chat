@@ -823,7 +823,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "Gebruik voor berekeningen die niet met query_data group_by/aggregate kunnen "
                 "(percentuele groei, ratio's, custom transformaties). "
                 "Wijs het resultaat toe aan 'result' (dict, list of DataFrame). "
-                "Optioneel: wijs een Plotly figuur toe aan 'figure'."
+                "Optioneel: wijs een Plotly figuur toe aan 'figure'. Geen tweede y-as (yaxis2, overlaying): die figuur "
+                "wordt geweigerd; maak dan twee figuren of subplots onder elkaar. Staven beginnen bij 0."
             ),
             "parameters": {
                 "type": "object",

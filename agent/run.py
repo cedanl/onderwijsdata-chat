@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from functools import partial
 
 import plotly.io as pio
@@ -31,6 +31,7 @@ from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, ve
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .codeverzoek import codeblok, is_codeverzoek, met_code, onthoud
+from .controleoverzicht import overzicht
 from .controles import antwoordcontrole, correctie, geschreven_taal, maak_getalcontrole
 from .datasetcontext import herstel_data_voor_beurt
 from .genoemde_bronnen import genoemde_bronnen
@@ -599,6 +600,19 @@ def _vast(text_content: str) -> dict:
     return {"vast": True} if text_content in _UIT_CODE else {}
 
 
+@dataclass
+class Controleverslag:
+    """Wat de antwoordcontrole in deze beurt deed, voor het veld `controles` (#1260): de uitkomst per controle van de
+    laatste controle, hoe vaak het antwoord daarna is ingetrokken en herschreven, en of de app er zinnen uit haalde."""
+
+    per_controle: dict[str, str] = field(default_factory=dict)
+    ingetrokken: int = 0
+    gecorrigeerd: int = 0
+
+    def overzicht(self, antwoord: str, citaties: list[dict]) -> dict:
+        return overzicht(self.per_controle, antwoord, citaties, self.ingetrokken, self.gecorrigeerd)
+
+
 def _slotbericht(
     text_content: str,
     result: LoopResult,
@@ -609,6 +623,7 @@ def _slotbericht(
     manifest: dict | None = None,
     vervolgvragen: list[str] | None = None,
     code: str = "",
+    controleverslag: Controleverslag | None = None,
     hoofdgetal: dict | None = None,
     modelstappen: list[tuple[str, str]] | None = None,
 ) -> dict:
@@ -617,11 +632,18 @@ def _slotbericht(
     `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416).
     `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord.
     `code` (het codeblok bij een codeverzoek) komt onder de tekst, na de citaties: die gaan alleen over de tekst.
+    `controles` (wat de antwoordcontrole deed, #1260) alleen onder een data-antwoord: met bronnen, geen vast antwoord.
     `vaste_maat` (#1242) alleen als elke datastap een get_maat was, uit de stappen en het recept; nooit onder een tekst
     uit code (#565) of een ingehouden antwoord: die rusten niet op de maat. Het leest `modelstappen` als die er zijn:
     de stappen van het model, zonder de stappen van code onder het antwoord (#1271). Een andere definitie of de DUO-kant
     van een bronpaar verandert de route van het hoofdgetal niet; `result.steps` draagt ze wel, voor de citaties."""
     vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
+    cites = _veilige_citaties(text_content, result.steps)
+    controles = (
+        controleverslag.overzicht(result.text, cites)
+        if controleverslag is not None and bronnen and not vast_zonder_bronnen
+        else None
+    )
     return {
         "type": "message_end",
         "content": met_code(text_content, code),
@@ -629,7 +651,8 @@ def _slotbericht(
         "bronnen": [] if vast_zonder_bronnen else bronnen,
         **({"bronlinks": bronlinks} if bronlinks and not vast_zonder_bronnen else {}),
         **({"manifest": manifest} if manifest else {}),
-        **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
+        **({"citaties": cites} if cites else {}),
+        **({"controles": controles} if controles is not None else {}),
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
         **({"partial": True} if result.wrapped_up else {}),
@@ -753,6 +776,8 @@ async def run(
     # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597). En
     # alle vragen van het gesprek: een uitsluiting als "zonder extranei" geldt ook voor een vervolgvraag (#653).
     getalcontrole = maak_getalcontrole(earlier, said_by_user)
+    # Wat de controle deed, voor de regel "Wat is gecontroleerd" onder het antwoord (#1260).
+    verslag = Controleverslag()
     # Dezelfde lijst als die van de sessie: een tool die midden in de beurt een key aanmaakt, telt voor de controle mee.
     check = antwoordcontrole(
         last_user_msg,
@@ -762,7 +787,13 @@ async def run(
         session.setdefault("data_keys", []),
         getalcontrole,
         verklaring,
+        verslag.per_controle,
     )
+
+    async def ingetrokken(problems: list[str]) -> None:
+        verslag.ingetrokken += 1
+        await _intrekken(emit, problems)
+
     with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
@@ -785,7 +816,7 @@ async def run(
                         max_result_chars=_MAX_TOOL_RESULT_CHARS,
                         check=check,
                         correction=correctie,
-                        on_correction=partial(_intrekken, emit),
+                        on_correction=ingetrokken,
                         wrap_up=AFRONDEN,
                         recept_van=recepten.van_session(session),
                     )
@@ -807,7 +838,10 @@ async def run(
         return einde
 
     # Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619).
-    result = zonder_ongedekte_zinnen(result, check, getalcontrole)
+    geschrapt = zonder_ongedekte_zinnen(result, check, getalcontrole)
+    if geschrapt.text != result.text:
+        verslag.gecorrigeerd += 1
+    result = geschrapt
     # Wat het model onderweg herzag, gaat naar de redeneerkaart; het antwoord zelf herziet niets (#412).
     antwoord, herzien = zonder_zelfcorrectie(result.text)
     if herzien:
@@ -861,6 +895,7 @@ async def run(
             manifest=mani,
             vervolgvragen=gekozen,
             code=code,
+            controleverslag=verslag,
             hoofdgetal=hoofdgetal,
             modelstappen=result.steps,
         )

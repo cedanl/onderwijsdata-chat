@@ -10,6 +10,7 @@ import { Message } from '../pages/ChatPage'
 import { useChat } from '../hooks/useChat'
 import { conversationMessages } from '../conversationStore'
 import { BEWIJS_SCHEMA, BEWIJS_SLEUTELS, bewijs, bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
+import { NIET_GECONTROLEERD, controleRegelTekst } from '../controleRegel'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -37,7 +38,8 @@ describe('bewijs (#1244)', () => {
     const b = bewijs(ANTWOORD)
     expect(Object.keys(b)).toEqual(BEWIJS_SLEUTELS)
     expect(BEWIJS_SLEUTELS).toEqual([
-      'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'toolstappen', 'vaste_maat', 'antwoord',
+      'schema', 'manifest', 'bronnen', 'bronlinks', 'citaties', 'controle', 'controles', 'toolstappen', 'vaste_maat',
+      'antwoord',
     ])
     expect(b.schema).toBe(BEWIJS_SCHEMA)
     expect(BEWIJS_SCHEMA).toBe('onderwijsdata-chat/bewijs/1')
@@ -65,8 +67,38 @@ describe('bewijs (#1244)', () => {
     const b = bewijs({ role: 'assistant', done: true, content: 'Tekst.', bronnen: ['CBS 85354NED'], controle: ['let op'] })
     expect(b).toEqual({
       schema: BEWIJS_SCHEMA, manifest: null, bronnen: ['CBS 85354NED'], bronlinks: null, citaties: null,
-      controle: ['let op'], toolstappen: null, vaste_maat: null, antwoord: 'Tekst.',
+      controle: ['let op'], controles: null, toolstappen: null, vaste_maat: null, antwoord: 'Tekst.',
     })
+  })
+
+  // #1260-5: de regel "Wat is gecontroleerd" staat ook in het bewijs, naast de meldingen onder `controle`.
+  const CONTROLES = {
+    per_controle: { ongedekte_getallen: { gedraaid: true, uitkomst: 'ok' }, verkeerd_gebonden: { gedraaid: false, uitkomst: 'niet gecontroleerd' } },
+    getallen: 3, gebonden: 2, jaar_en_instelling: false, niet_gedraaid: 1, ingetrokken: 1, gecorrigeerd: 0,
+  }
+
+  it('draagt onder `controles` de regel "Wat is gecontroleerd" met de vaste zin en de tellingen uit code', () => {
+    const b = bewijs({ ...ANTWOORD, controle: ['2025 staat niet in de data.'], controles: CONTROLES })
+    expect(b.controles).toEqual({ regel: controleRegelTekst(CONTROLES), ...CONTROLES })
+    expect(b.controles.regel).toContain(NIET_GECONTROLEERD)
+    expect(b.controles.regel).toContain('3 getallen tegen de opgehaalde data gelegd')
+    expect(b.controles.regel).toContain('één correctie')
+    // De meldingen van de controle blijven onder hun eigen sleutel.
+    expect(b.controle).toEqual(['2025 staat niet in de data.'])
+  })
+
+  it('neemt uit `controles` alleen de bekende sleutels en tellingen over', () => {
+    const vreemd = { ...CONTROLES, getallen: -4, gebonden: '7', antwoord: 'tekst', per_controle: { x: { gedraaid: 'ja', uitkomst: 5 }, y: 'ok' } }
+    const { controles } = bewijs({ ...ANTWOORD, controles: vreemd })
+    expect(Object.keys(controles)).toEqual([
+      'regel', 'per_controle', 'getallen', 'gebonden', 'jaar_en_instelling', 'niet_gedraaid', 'ingetrokken', 'gecorrigeerd',
+    ])
+    expect(controles).toMatchObject({ getallen: 0, gebonden: 0, per_controle: {} })
+  })
+
+  it('zet `controles` op null zonder (geldig) veld: een bericht van vóór #1260', () => {
+    expect(bewijs(ANTWOORD).controles).toBeNull()
+    expect(bewijs({ ...ANTWOORD, controles: ['geen object'] }).controles).toBeNull()
   })
 
   it('geeft een stap van vóór #1244 zonder argumenten null als argumenten', () => {

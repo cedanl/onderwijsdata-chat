@@ -7,6 +7,7 @@
 
 import { plotlyArray } from './plotlyArrays'
 import { bestandsdeel } from './bestandsnaam'
+import { metVoorbehoud } from './voorbehoud'
 
 function axisTitle(axis) {
   const title = axis?.title
@@ -134,8 +135,9 @@ function withProvenance(csv, figure) {
   return [...lines.map(line => `# ${line}`), csv].join('\n')
 }
 
-export function figureToCsv(figure) {
-  return withProvenance(hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure), figure)
+// `voorbehoud`: de regels van het antwoord bij deze grafiek (voorbehoud.js, #1257), boven de herkomst van de figuur.
+export function figureToCsv(figure, voorbehoud = []) {
+  return metVoorbehoud(withProvenance(hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure), figure), voorbehoud)
 }
 
 // Bestandsnaam van de CSV bij een grafiek (#496 F11, #533): `<titel>_<dataset-id>.csv`, de titel van de grafiek
