@@ -138,6 +138,22 @@ describe('PrivacyPage', () => {
     expect(rij).toMatch(/eerder als de gebruiker al zijn gegevens verwijdert, en in de export/)
   })
 
+  // #1269: the choice for "Geavanceerd" is stored per account: the app and the docs name it among what the server
+  // keeps, what is exported and what is deleted; the CSV download needs the setting.
+  it('names the choice for Geavanceerd in what the server keeps, the export and the delete, in the app and the docs', async () => {
+    await render(createElement(PrivacyPage))
+    const appBullets = sectionElements('Wat je zelf kunt doen').flatMap(el => [...el.querySelectorAll('li')]).map(li => oneLine(li.textContent))
+    const docsBullets = docsSection('Wat je zelf kunt doen').split(/^- /m).map(oneLine)
+    for (const bullets of [appBullets, docsBullets]) {
+      expect(bullets.find(b => b.includes('Exporteer al mijn gegevens'))).toMatch(/Geavanceerd/)
+      const [weg] = bullets.find(b => b.includes('Verwijder al mijn gegevens')).split('Wat blijft')
+      expect(weg).toMatch(/Geavanceerd/)
+      expect(bullets.find(b => b.includes('als CSV'))).toMatch(/Geavanceerd/)
+    }
+    expect(sectionText('Wat de server bewaart')).toMatch(/Geavanceerd/)
+    expect(oneLine(docsSection('Wat de server bewaart'))).toContain('| `geavanceerd` | geen termijn')
+  })
+
   // #1112, #1117: the counters of the budget and the limits are named: what they hold, under what key, how long.
   it('names the counters of the budget and the limits, in the app and the docs', async () => {
     await render(createElement(PrivacyPage))
