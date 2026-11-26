@@ -145,6 +145,21 @@ Een snippet laadt de bron opnieuw, dus de data kan intussen zijn veranderd. Twee
 - **Een koppeling noemt elke bron** (#977). Las een eigen berekening meer tabellen (`df` en `store_get`), dan is de kop van haar CSV, en van elke grafiek of selectie die eruit voortkomt, de unie van hun herkomst: elke bronregel één keer, met de stappen die erop volgden en daarna de berekening, en per brontabel de inhoudshash of md5 met de dataset erbij. Een koppeling van de Studiekeuzedatabase met DUO draagt zo altijd de verplichte zin, versie en link van LCSK, in welke volgorde het script de tabellen ook las. Eén functie maakt die regels voor tabel, grafiek en kaart (`tools/exportnoten.py`, #809). De berekening is zo oud als haar oudste bron en onvolledig als één bron dat is.
 - **De Studiekeuzedatabase: versie, exportdatum, laaddatum en sha256** (#981). LCSK levert één ZIP met de export van vandaag. De app legt per lading de versie en exportdatum (uit de bestandsnaam), de laaddatum en de sha256 van het ZIP-bestand vast. De bronregel noemt versie, exportdatum en laaddatum, onder het antwoord ook de eerste twaalf tekens van de sha256; het manifest (`bronhash`), de logregel `GEPUBLICEERD` en de CSV-kop noemen de volle sha256, na te rekenen met `sha256sum` op hetzelfde bestand. De snippet leest de export van vandaag, noemt in zijn kop de lading van de app en print een waarschuwing als de hash anders is. Een export van een eerdere dag haalt hij niet op: LCSK biedt die niet aan, en de data mag niet in de repo (leveringsvoorwaarden). Of de snippet een bestand mag lezen dat de gebruiker zelf bewaarde, is een open besluit.
 - **De herkomst staat vast bij het afleiden** (#985). Een selectie, vaste maat of eigen berekening legt in haar meta de keten vast waar ze op rust: per ouder, brontabel en tussenstap de meta zoals die toen was (dataset, versie of peilmoment met de LCSK-zin en link, afronding, md5) en per brontabel de inhoudshash (`tools/store.py`, `KeyMeta.keten`). Gooit de store een bron weg terwijl de afgeleide key blijft (boven `STORE_MAX_MB`, #13), dan noemt haar CSV-kop die bron toch, met dezelfde regels. Laadt de app de bron later opnieuw met een nieuwere stand, dan blijft de kop van de afgeleide key de stand noemen waaruit ze berekend is. Na een herstart zet het recept (#472) een selectie opnieuw op haar herladen ouder, en die legt de keten dan opnieuw vast.
+- **"Herhaal deze analyse" zet de stand van nu naast die van toen** (#1240). Met de instelling "Geavanceerd" staat onder
+  een data-antwoord met een CBS-tabel de knop **Herhaal deze analyse**. Die haalt de CBS-tabellen achter dat antwoord
+  opnieuw op, uit het recept van de gebruiker en langs dezelfde laadtool, scopegrens en meldingen als het herladen na een
+  herstart, maar buiten de store: het antwoord en ieder ander die op die data rust, houden de data van toen. Per tabel
+  vergelijkt de app alleen getallen en bronversie: de numerieke cellen per rij (herkend aan haar dimensies, met het
+  eerste verschil en het aantal), de dag waarop CBS de tabel bijwerkte (`bijgewerkt_op`, uit `TableInfos.Modified`) en
+  de inhoudshash hierboven. Gelijke versie en gelijke hash is "ongewijzigd"; anders zegt de regel bijvoorbeeld "Bron
+  bijgewerkt op 15-06-2026; cijfer verschilt: 367.960 → 369.120 (…); versie van 14-04-2026 → 15-06-2026". De modeltekst
+  wordt nooit vergeleken en er wordt geen model aangeroepen; de herhaling staat als tak onder het antwoord, vervangt
+  niets en wordt niet bewaard. "Toen" is de tabel die de app nog in het geheugen heeft, als die niet later is opgehaald
+  dan het antwoord af was; na een herstart, de bovengrens of de termijn van een dag (#864) is die stand weg en toont de
+  regel alleen de stand van nu. Een eigen berekening (`run_analysis`) en een koppeling gaan niet opnieuw (geen script,
+  #472); de tabel waar ze op rekenden wel. Dit is een prototype voor CBS: DUO (bestandsversie en md5) en RIO
+  (`datumGeldigOp`) volgen in een eigen issue. Het eindpunt (`POST /api/conversations/{id}/antwoorden/{hash}/herhaal`)
+  staat in de [API-referentie](api.md#persistentie).
 
 ## De kop van een CSV: '#'-regels en de kolom ondergrens
 
