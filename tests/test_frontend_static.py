@@ -141,8 +141,9 @@ def _app_met_eigen_routes(tmp_path) -> FastAPI:
     """Een app met de SPA en een paar echte routes ervoor, zoals server.create_app ze opbouwt."""
     (tmp_path / "assets").mkdir()
     (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
-    # Het schema onder /api, zoals in server.create_app: /openapi.json is dan een pad van de app-shell.
-    app = FastAPI(openapi_url="/api/openapi.json")
+    # Het schema onder /api en geen Swagger UI of ReDoc, zoals in server.create_app: /openapi.json en /docs hebben dan
+    # geen eigen route.
+    app = FastAPI(openapi_url="/api/openapi.json", docs_url=None, redoc_url=None)
 
     @app.get("/api/ping")
     async def ping() -> dict:
