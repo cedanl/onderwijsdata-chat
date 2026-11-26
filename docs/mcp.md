@@ -76,6 +76,16 @@ uitkomst gelijk aan het toolpad van de chat voor dezelfde vraag (`get_maat` of `
 `compute_kpi`, via `tools.dispatch` en met een lege store ertussen), zonder taalmodel. `tests/test_mcp_http.py` doet
 hetzelfde eind tot eind met de client van de SDK over `/mcp`.
 
+## Resource: actualiteit van de bronnen
+
+Naast de tools biedt de server één resource (#1266): `onderwijscatalogus://bronactualiteit` (`application/json`). Een
+client vindt hem met `resources/list` en leest hem met `resources/read`. De inhoud is dezelfde als
+[`GET /api/bronactualiteit`](api.md#infrastructuur): per bron (CBS, DUO, RIO, UWV, ROA, SKDB) en dataset de laatste
+periode of editie, de laatste wijziging, de status, de frequentie en een verwachte volgende editie, die er alleen staat
+als de bron haar zelf noemt, met die bron erbij. Een onbekend veld is `"onbekend"`. Waar elk veld vandaan komt:
+[Databronnen → Actualiteit van de bronnen](databronnen.md#actualiteit-van-de-bronnen). De tekst is ontsmet zoals elk
+toolresultaat (hieronder); een onbekende URI is een fout. De instructies van de server noemen de resource.
+
 ## Bewijs en vervolg
 
 In de chat controleert de app na het model elk getal tegen de opgehaalde data (`agent/grounding.py`, ADR-001). Bij een

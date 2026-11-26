@@ -726,6 +726,43 @@ bekende redenen uit de tabel. Welke bronnen een paar zijn, hoe een paar erbij ko
 
 ---
 
+## Actualiteit van de bronnen
+
+De pagina **Actualiteit van de bronnen** (`/bronnen`, link onderaan de startpagina; #1266) toont per bron en per
+dataset hoe actueel de data is: de laatste periode of editie, de laatste wijziging, de status (voorlopig of
+definitief), de frequentie en een verwachte volgende editie. Dezelfde inhoud geeft
+[`GET /api/bronactualiteit`](api.md#infrastructuur) en de MCP-resource
+[`onderwijscatalogus://bronactualiteit`](mcp.md#resource-actualiteit-van-de-bronnen). Code:
+`core/bronactualiteit_overzicht.py`.
+
+Drie regels gelden voor elke bron:
+
+- **Uit de catalogus, niet live.** Alles komt uit de metadata die de app al heeft: de catalogus van `onderwijsbronnen`
+  (het broncontract, en bij CBS de vastgelegde TableInfos). Voor de pagina gaat geen verzoek naar een bron, dus een
+  trage bron houdt haar niet op. Of een bron nu antwoordt, komt uit de [bronstatus](operatie.md#bronstatus-in-de-app-1057):
+  een bron die niet antwoordt staat er als "niet bereikbaar", met de laatst bekende stand uit de catalogus.
+- **Een verwachte editie alleen uit de bron.** De app rekent geen volgende datum uit de frequentie. Noemt de bron zelf
+  niets, dan is de verwachte editie "onbekend" en staat er "frequentie: …, laatste update …".
+- **Een datum zoals de bron hem geeft.** Datums staan er letterlijk (`2026-04-14`), niet omgerekend. Een veld dat de
+  bron niet levert, is "onbekend".
+
+| Bron | Welke datasets | Laatste periode of editie | Laatste wijziging | Status | Verwachte volgende editie |
+|------|----------------|---------------------------|-------------------|--------|---------------------------|
+| CBS | de tabellen die de chat kan laden, zonder de gearchiveerde | de laatste periode in de TableInfos (`perioden.codes`) | `TableInfos.Modified` uit de catalogus (`_laatste_update`) | de status van die laatste periode (Voorlopig, Nader voorlopig, Definitief) | de zin van CBS onder "Wanneer komen er nieuwe cijfers?" in de TableInfos van die tabel, letterlijk, met de tabel als bron; zonder zo'n zin "onbekend" |
+| DUO | de datasets die de chat kan laden | de periode uit de catalogus | `metadata_modified` van het CKAN-pakket toen de catalogus het vastlegde | voorlopig of definitief uit de gecontroleerde beschrijving (`_tijd`), anders "onbekend" | onbekend: DUO noemt geen datum |
+| RIO | de registers die de chat kan laden | "actueel": een live register | onbekend (geen wijzigingsdatum per register) | onbekend (een register kent geen voorlopige cijfers) | onbekend |
+| UWV | Open Match | de laatste peildatum (`2023-05-16`), met de leeftijd van de stand in dezelfde woorden als op de dashboards (`ouderdom_tekst`, #1219) | onbekend (bevroren reeks) | onbekend | onbekend |
+| ROA | AIS tot 2030 en tot 2028 | de nieuwste editie in de catalogus | de DataverseNL-release van die editie | onbekend (ROA markeert niets als voorlopig) | onbekend |
+| SKDB | de Studiekeuzedatabase | onbekend (de exportdatum staat pas in een lading) | onbekend | definitief | onbekend |
+
+**Onder een antwoord.** Las een data-antwoord voorlopige CBS-cijfers, dan staat er één regel onder: "Let op: voorlopig
+cijfer: 2025/26 in 85423NED. CBS kan het nog herzien." Noemt CBS in de TableInfos van een gelezen tabel een dag voor de
+volgende cijfers die binnen 30 dagen valt, dan staat er ook "Nieuwe editie verwacht op <dag> (bron: CBS,
+tabelinformatie <tabel> …)". Een kwartaal of maand is geen dag: dan geen regel. Beide regels gaan mee in de kopie, de
+gespreksexport en de CSV-kop (`message_end`, veld `actualiteit`; `agent/bronvermelding.py`).
+
+---
+
 ## Catalogus doorzoeken
 
 De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`; UWV- en ROA-treffers (AIS 2030) noemen de tool waarmee ze op te vragen zijn; oudere ROA-edities zijn gemarkeerd als niet via de chat op te vragen. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
