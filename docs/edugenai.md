@@ -49,7 +49,8 @@ server, maar het model van EduGenAI kan hem negeren.
 
 `bewijs.kwaliteit` (#1248) geeft het model van EduGenAI in vaste sleutels wat de code over de getallen weet: of een aantal een
 ondergrens is door onderdrukte cellen (met de zin uit de domeinregel), welke gevraagde jaren ontbreken, of de bron
-afgekapt was en welke codes niet gevonden zijn. De prompt en resource `bronregels` (#1249) zetten de regels voor het
+afgekapt was en welke codes niet gevonden zijn. Het telt alleen de cellen achter de eigen reeks van de instelling: een
+lege reeks is geen ondergrens. De prompt en resource `bronregels` (#1249) zetten de regels voor het
 gebruik ervan op één plek: de ondergrens noemen, `bewijs.versie` noemen, niet gevonden is niet "bestaat niet", niet zelf
 rekenen, en de domeinregels van DUO (onderdrukte cel, DT = deeltijd, vestiging is niet woonplaats). Dat zijn gegevens
 en een werkinstructie, geen controle: of het model de prompt laadt, de ondergrens noemt en de regels volgt, ligt bij

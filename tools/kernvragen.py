@@ -251,12 +251,17 @@ def _kwaliteit(p: maten.Plan, uit: dict[str, Any]) -> dict[str, Any]:
     Binnen de aanroep: de data_key en zijn onderdrukte cellen staan alleen nu in de store. De cellen zijn die achter de
     sommen van de reeks (query_data legt ze per groep vast), dus bij een vorm alleen die van haar kolommen. Niet
     gevonden zijn de codes van de instelling (#1069) zonder één rij in de selectie.
+
+    Zonder rijen is er geen selectie: query_data geeft dan de key van het hele bestand terug, met de cellen en de
+    instellingen van alle andere rijen. Dan geen onderdrukte cel en geen gevonden code: een lege reeks is geen
+    ondergrens, en elke code van de instelling is niet gevonden.
     """
     key = str(uit["data_key"])
     known = store.meta(key)
-    cellen = sum(duo.onderdrukt(key).values())
+    selectie = bool(uit.get("rijen"))
+    cellen = sum(duo.onderdrukt(key).values()) if selectie else 0
     afgekapt = uit.get("volledig") is False or (known is not None and not known.volledig)
-    gevonden = known.instellingen if known is not None else None
+    gevonden = (known.instellingen if known is not None else None) if selectie else ()
     codes = maten.instellingscodes(p.instelling) if p.instelling else []
     return {
         "onderdrukte_cellen": cellen,

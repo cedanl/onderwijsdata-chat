@@ -452,6 +452,75 @@ def test_een_vergelijking_heeft_de_kwaliteit_per_instelling():
     assert [per_naam[n]["ondergrens"] for n in ("Albeda", ROC)] == [False, False]
 
 
+# Een instelling zonder één rij in de selectie: query_data geeft dan de key van het hele bestand terug. De onderdrukte
+# cellen en de instellingen van die key horen bij andere rijen, dus niet in haar kwaliteit.
+_LEGE_KWALITEIT = {
+    "onderdrukte_cellen": 0,
+    "ondergrens": False,
+    "ondergrens_regel": None,
+    "afgekapt": False,
+    "weggelaten_rijen": 0,
+}
+
+
+def test_een_instelling_zonder_rijen_krijgt_geen_onderdrukte_cellen_van_het_hele_bestand():
+    """De UvA heeft in de bevroren p01hoinges geen rij voltijd in 2020 of 2024; de -1 in dat bestand is van de UU
+    (alle vormen). Geen ondergrens voor de UvA, wel beide jaren ontbrekend en haar code niet gevonden."""
+    assert _kwaliteit("aantallen_per_jaar", {"instelling": UU})["onderdrukte_cellen"] == 1, "het bestand heeft een -1"
+
+    uit = _mcp(
+        "vergelijk_instellingen",
+        {"instellingen": [UU, "Universiteit van Amsterdam"], "vorm": "voltijd", "schooljaren": ["2020", "2024"]},
+    )
+
+    uva = uit["instellingen"][1]
+    assert uva["instelling"]["instellingscode"] == "21PK" and uva["reeks"] == []
+    assert uit["bewijs"]["kwaliteit"][1] == {
+        "instellingscode": "21PK",
+        **_LEGE_KWALITEIT,
+        "ontbrekende_schooljaren": ["2020/21", "2024/25"],
+        "niet_gevonden": ["21PK"],
+    }
+    assert uit["bewijs"]["kwaliteit"][0]["ondergrens"] is False, "de UU voltijd 2024 heeft geen -1"
+
+
+def test_een_opleiding_zonder_rij_in_het_gevraagde_jaar_is_geen_ondergrens_en_niet_gevonden():
+    """B Rechtsgeleerdheid staat bij de UvA alleen in 2023 (het niveaubestand hierboven); de -1 is van de UU. In 2021
+    is de selectie leeg: geen ondergrens, en 21PK is niet gevonden, ook al staat de code elders in het bestand."""
+    uit = _mcp(
+        "aantallen_per_jaar",
+        {"instelling": "Universiteit van Amsterdam", "opleiding": "50400", "schooljaren": ["2021"]},
+    )
+
+    assert uit["reeks"] == []
+    assert uit["bewijs"]["kwaliteit"] == {
+        **_LEGE_KWALITEIT,
+        "ontbrekende_schooljaren": ["2021/22"],
+        "niet_gevonden": ["21PK"],
+    }
+
+
+def test_een_mbo_instelling_zonder_rijen_krijgt_een_lege_reeks_en_geen_cellen_van_anderen(monkeypatch):
+    """Een mbo-instelling die het bestand niet kent (hier ROC Mondriaan onder een code zonder rij): get_maat gaf de
+    rijen van het hele bestand als haar reeks, met de -1'en van Grafisch Lyceum als haar ondergrens."""
+    from data import instellingen
+
+    eerder = instellingen.instellingsprofiel
+
+    def profiel(naam):
+        gevonden = eerder(naam)
+        if gevonden and gevonden["instellingscode"] == "27GZ":
+            return {**gevonden, "instellingscode": "99ZZ", "instellingscodes": ["99ZZ"]}
+        return gevonden
+
+    monkeypatch.setattr(instellingen, "instellingsprofiel", profiel)
+
+    uit = _mcp("aantallen_per_jaar", {"instelling": ROC})
+
+    assert uit["reeks"] == []
+    assert uit["bewijs"]["kwaliteit"] == {**_LEGE_KWALITEIT, "ontbrekende_schooljaren": [], "niet_gevonden": ["99ZZ"]}
+
+
 def test_begrens_houdt_de_kwaliteit_bij_afkappen():
     """#940, #1248: een te groot resultaat wordt één JSON-object onder de grens, met het hele `bewijs`."""
     zeven = ["Albeda", "Deltion College", "Grafisch Lyceum R'dam", "ROC Graafschap College", "ROC Midden Nederland"]
