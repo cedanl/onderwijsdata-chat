@@ -8,7 +8,7 @@ from typing import TypeGuard
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from agent import beurtbewijs, rapportselectie, recepten, verschilverklaring
+from agent import beurtbewijs, plankaart, rapportselectie, recepten, verschilverklaring
 from agent import run as agent_run
 from agent.history import afgebroken_beurt, trim, zonder_vaste_blokken
 from agent.onder_antwoord import is_verschilverklaring
@@ -149,9 +149,12 @@ def _op_modeltekst(raw: list, bewijs: dict[str, dict]) -> dict[str, dict]:
     return uit
 
 
-async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
+async def _process_message(content: str, session: dict, emit, model: str | None, *, hervat: bool = False) -> None:
+    """Eén beurt op `content`. `hervat`: de beurt gaat door op een vraag die al in het gesprek staat (een bevestigd plan,
+    #1268), dus zonder nieuw gebruikersbericht; `content` is dan die vraag, voor de beurt in `turns`."""
     messages: list = session["messages"]
-    messages.append({"role": "user", "content": content})
+    if not hervat:
+        messages.append({"role": "user", "content": content})
     # Waarop 'wij' in deze beurt slaat; wisselt het profiel later, dan hoort het model dat (#543).
     instelling = (session.get("chat_settings") or {}).get("instelling") or ""
 
@@ -163,6 +166,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     try:
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
+        session.pop(plankaart.BEVESTIGD, None)
         # Zonder Geavanceerd kiest de gebruiker geen model (#1269), dus stelt de melding dat ook niet voor.
         ander_model = bool(session.get("modelkeuze")) and ander_model_te_kiezen(session.get("username"))
         await emit(error_event(e, ander_model=ander_model))
@@ -171,6 +175,8 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         messages.append(afgebroken_beurt())
         return
 
+    # Een bevestigd plan geldt voor de beurt die het uitvoert, niet voor een volgende kaart of vraag (#1268).
+    session.pop(plankaart.BEVESTIGD, None)
     clarified = session.pop("_clarified", False)
     aborted = stop_event.is_set()
     if aborted:
@@ -449,6 +455,19 @@ async def _ververs_modelkeuze(session: dict) -> None:
     session["modelkeuze"] = await asyncio.to_thread(geavanceerd.lees, username)
 
 
+async def _ververs_plankaart(session: dict, msg: dict) -> None:
+    """Krijgt deze vraag de plankaart (#1268)? Alleen met "Geavanceerd": met login uit de database, bij elk verzoek
+    opnieuw (core/geavanceerd.py, zoals `_ververs_modelkeuze`); zonder login (gast) alleen een boolean `geavanceerd` uit
+    dit websocketbericht, want de browser houdt die keuze. Nooit uit `settings` (core/profiel.py laat de sleutel weg).
+
+    De gastwaarde komt van de client: ze zet alleen een extra kaart aan, nooit iets dat beschermt."""
+    username = session.get("username")
+    if not AUTH_ENABLED or not username or username == FALLBACK_USER:
+        session[plankaart.AAN] = msg.get("geavanceerd") is True
+        return
+    session[plankaart.AAN] = await asyncio.to_thread(geavanceerd.lees, username)
+
+
 def _model(session: dict) -> str:
     """Het model van deze beurt uit de instellingen van de client, begrensd tot het aanbod (#755).
 
@@ -504,6 +523,10 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
     if not content or await _weiger_te_lang(content, emit):
         return current_task
     await _ververs_modelkeuze(session)
+    await _ververs_plankaart(session, msg)
+    # Een nieuwe vraag: een plan dat nog openstond, is voorbij (#1268).
+    session.pop(plankaart.OPEN, None)
+    session.pop(plankaart.BEVESTIGD, None)
     model = _model(session)
     session["current_model"] = model
     session["clarify_rondes"] = 0
@@ -532,10 +555,73 @@ async def _handle_clarification(
     if not await _binnen_limiet(session, emit):
         return current_task
     model = session.get("current_model")
+    await _ververs_plankaart(session, msg)
+    session.pop(plankaart.OPEN, None)
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
     # Afbakening voor de controle na het antwoord, niet alleen tekst in het gesprek (#246).
     session.setdefault("clarify_keuzes", []).append(choice)
     return asyncio.create_task(_in_een_runplaats(lambda: _process_message(choice, session, emit, model), emit))
+
+
+# Een plan dat de server niet (meer) open heeft: na herladen, een nieuwe verbinding of een nieuwe vraag (#1268).
+PLAN_VERLOPEN = 'Dit plan is niet meer open. Kies "Pas aan" of stel je vraag opnieuw.'
+PLAN_ZONDER_GEAVANCEERD = "Het plan hoort bij Geavanceerd, en dat staat nu uit. Stel je vraag opnieuw."
+
+
+def _open_plan(msg: dict, session: dict) -> dict | None:
+    """Het plan dat op de kaart met dit `id` wacht, of None."""
+    plan = session.get(plankaart.OPEN)
+    return plan if plan and isinstance(msg.get("id"), str) and msg["id"] == plan["id"] else None
+
+
+def _zet_planresultaat(session: dict, plan: dict, tekst: str) -> None:
+    """Het toolresultaat van `plan_voorleggen` in het gesprek: wat de gebruiker met het plan deed, voor het model."""
+    for m in session.get("messages") or []:
+        if m.get("role") == "tool" and m.get("tool_call_id") == plan["tool_call_id"]:
+            m["content"] = tekst
+
+
+async def _handle_plan_bevestigen(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    """ "Klopt, ga door" op de plankaart (#1268): de beurt gaat door met precies het getoonde plan.
+
+    Geen nieuwe vraag en geen verduidelijking: `clarify_rondes` en de keuzes blijven zoals ze waren. Code laadt de stappen
+    van het plan en weigert in die beurt elke andere laadaanroep (agent/plankaart.py)."""
+    if _task_busy(current_task):
+        await _reject_busy(emit)
+        return current_task
+    plan = _open_plan(msg, session)
+    if plan is None:
+        await emit({"type": "error", "message": PLAN_VERLOPEN, "modelafhankelijk": False})
+        return current_task
+    await _ververs_plankaart(session, msg)
+    if not session.get(plankaart.AAN):
+        session.pop(plankaart.OPEN, None)
+        await emit({"type": "error", "message": PLAN_ZONDER_GEAVANCEERD, "modelafhankelijk": False})
+        return current_task
+    if not await _binnen_limiet(session, emit):
+        return current_task
+    session.pop(plankaart.OPEN, None)
+    session[plankaart.BEVESTIGD] = plan
+    _zet_planresultaat(session, plan, plankaart.bevestigd_melding(plan["stappen"]))
+    logger.info("PLANKAART bevestigd  bronnen=%d", len(plan["stappen"]))
+    model = session.get("current_model")
+    return asyncio.create_task(
+        _in_een_runplaats(lambda: _process_message(plan["vraag"], session, emit, model, hervat=True), emit)
+    )
+
+
+async def _handle_plan_aanpassen(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    """ "Pas aan" op de plankaart (#1268): het plan vervalt, er loopt niets. De frontend zet de vraag en de plankeuzes in
+    het invoerveld; het model hoort bij de volgende vraag dat er niets geladen is."""
+    if plan := _open_plan(msg, session):
+        session.pop(plankaart.OPEN, None)
+        _zet_planresultaat(session, plan, plankaart.AANGEPAST_MELDING)
+        logger.info("PLANKAART aanpassen  bronnen=%d", len(plan["stappen"]))
+    return current_task
 
 
 async def _handle_generate_report(
@@ -626,6 +712,8 @@ ACTIES: dict[str, Handler] = {
     "history": _handle_history,
     "message": _handle_message,
     "clarification_choice": _handle_clarification,
+    "plan_bevestigen": _handle_plan_bevestigen,
+    "plan_aanpassen": _handle_plan_aanpassen,
     "generate_report": _handle_generate_report,
     "report_checklist": _handle_report_checklist,
     "eigen_getal": _handle_eigen_getal,
@@ -655,7 +743,7 @@ def _frame(raw: str) -> dict | None:
 
 
 # Acties die een run starten (model of tools): daarvoor geldt het token opnieuw, niet alleen bij het verbinden (#786).
-RUN_ACTIES = frozenset({"message", "clarification_choice", "generate_report"})
+RUN_ACTIES = frozenset({"message", "clarification_choice", "plan_bevestigen", "generate_report"})
 
 
 async def _token_geldt_nog(msg: dict, token: str | None) -> bool:

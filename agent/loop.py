@@ -113,6 +113,8 @@ def _figure_identity(figure: Any) -> str:
 ToolHook = Callable[[ToolCall, str, Any], Awaitable[None]]
 Check = Callable[[str, list[str]], list[str]]
 HaltCheck = Callable[[ToolCall], str | None]
+# Waarom een aanroep in deze ronde niet mag lopen (de melding voor het model), of None; met alle aanroepen van de ronde.
+Weigering = Callable[[ToolCall, list[ToolCall]], str | None]
 
 
 @dataclass
@@ -258,6 +260,8 @@ class _Loop:
     halt_check: HaltCheck | None = None
     # Het recept per key, zodat een afgeleide snippet de stappen van zijn ouder herhaalt (#624).
     recept_van: Receptbron | None = None
+    # Een aanroep die dit weigert, loopt niet; het model krijgt de melding (de plankaart, #1268).
+    weiger: Weigering | None = None
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
@@ -372,6 +376,26 @@ class _Loop:
                 return
         await self._wrap_up()
 
+    async def vooraf(self, calls: list[ToolCall]) -> None:
+        """Aanroepen die code doet vóór de eerste modelronde, als één ronde in het gesprek: een bevestigd plan (#1268).
+
+        Dezelfde uitvoering, events, cache en stappen als een modelronde; het telt niet mee voor het stappenbudget."""
+        if not calls:
+            return
+        self.messages.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.arguments}}
+                    for c in calls
+                ],
+            }
+        )
+        self.result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
+        if not await self._run_tools(calls):
+            self.result.aborted = "tools"
+
     async def _herkansing_zonder_tools(self) -> None:
         """De herkansing na een op budget: één ronde zonder tools, op wat al is opgehaald (#1090).
 
@@ -424,6 +448,9 @@ class _Loop:
         for c in calls:
             if c.name in self.locked:
                 blocked[c.id] = fouten.op_slot(c.name, self.locked[c.name])
+                continue
+            if self.weiger and (melding := self.weiger(c, calls)):
+                blocked[c.id] = melding
                 continue
             self.counts[c.name] = self.counts.get(c.name, 0) + 1
             limit = self.tool_limits.get(c.name)
@@ -509,6 +536,8 @@ async def tool_loop(
     wrap_up: str | None = None,
     halt_check: HaltCheck | None = None,
     recept_van: Receptbron | None = None,
+    vooraf: list[ToolCall] | None = None,
+    weiger: Weigering | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
 
@@ -527,6 +556,9 @@ async def tool_loop(
     A ``halt_on`` tool ends the turn instead of an answer (a clarification); it runs no handler. A call with
     malformed arguments, or one that ``halt_check(call)`` rejects with a message, does not end the turn: the model
     gets the error back like any other tool and goes on (#1067).
+
+    ``vooraf`` are calls code makes before the first model round, as one round of their own (a confirmed plan, #1268);
+    a call that ``weiger(call, round)`` refuses does not run, and the model gets the refusal as its result.
     """
     run = _Loop(
         messages=messages,
@@ -545,10 +577,13 @@ async def tool_loop(
         wrap_up=wrap_up,
         halt_check=halt_check,
         recept_van=recept_van,
+        weiger=weiger,
     )
     result = run.result
     try:
-        await run.rounds()
+        await run.vooraf(vooraf or [])
+        if not result.aborted:
+            await run.rounds()
         if check and _answered(result):
             problems = check(result.text, result.tool_results)
             # Alleen wat het model kan herstellen geeft een herkansing; een niet-gecontroleerd

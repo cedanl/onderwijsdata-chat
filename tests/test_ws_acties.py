@@ -37,6 +37,8 @@ def test_elke_actie_van_de_frontend_heeft_een_handler():
         "history",
         "message",
         "clarification_choice",
+        "plan_bevestigen",  # "Klopt, ga door" op de plankaart (#1268)
+        "plan_aanpassen",  # "Pas aan" op de plankaart (#1268)
         "generate_report",
         "report_checklist",
         "eigen_getal",  # een eigen getal naast het hoofdgetal (#1258)

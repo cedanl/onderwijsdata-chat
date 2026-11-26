@@ -22,7 +22,7 @@ from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.verklaring_markers import vraagt_verklaring
 
-from . import controlestappen, figuurstappen, manifest, recepten, verschilverklaring, vervolgvragen
+from . import controlestappen, figuurstappen, manifest, plankaart, recepten, verschilverklaring, vervolgvragen
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import taalinstructie
 from .beurtbewijs import eerdere_antwoorden
@@ -213,6 +213,37 @@ async def _handle_clarify_scope(
     return text_content
 
 
+async def _handle_plan(
+    call: ToolCall,
+    turn_history: list[dict],
+    messages: list[dict],
+    session: dict,
+    emit: Emit,
+    steps: list[tuple[str, str]],
+) -> str:
+    """Beëindig de beurt met de plankaart (#1268): het plan wacht in de sessie op "Klopt, ga door" of "Pas aan".
+
+    De kaart komt uit code (agent/plankaart.py); wat het model vóór de aanroep schreef, komt niet in beeld en niet op de
+    kaart. Net als bij een verduidelijking gaat de uitwisseling het gesprek in (de assistentbeurt met de kaart als tekst,
+    het toolresultaat "voorgelegd"), en bewaart de chatroute de beurt niet als antwoord (`_clarified`)."""
+    # Op de kaart de vraag met haar gekozen opties ("Pas aan" zet die terug); in de beurt de vraag van deze beurt.
+    plan = plankaart.maak(call, _vraag_met_keuzes(messages, session), steps)
+    plan["vraag"] = _laatste_vraag(messages)
+    tekst = plankaart.tekst(plan["kaart"])
+    for m in turn_history:
+        if m.get("role") == "assistant" and any(tc.get("id") == call.id for tc in m.get("tool_calls") or []):
+            m["content"] = tekst
+        if m.get("role") == "tool" and m.get("tool_call_id") == call.id:
+            m["content"] = plankaart.OPEN_MELDING
+    messages.extend(turn_history)
+    session["_clarified"] = True
+    session[plankaart.OPEN] = plan
+    logger.info("PLANKAART voorgelegd  bronnen=%d  sleutel=%s", len(plan["stappen"]), bool(plan["kaart"]["sleutel"]))
+    await emit({"type": "message_cancel"})
+    await emit({"type": "plan", "tekst": tekst, **plan["kaart"]})
+    return ""
+
+
 def _optie_in_je_vorm(optie):
     if isinstance(optie, str):
         return je_vorm(optie)
@@ -342,10 +373,18 @@ async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: di
 
 def tools_for(session: dict) -> list[dict]:
     """De toolset van deze beurt. Na `_MAX_CLARIFY_RONDES` (drie) scopevragen voor één vraag is clarify_scope er niet
-    meer (#75, #932): daarna gaat het model door met aannames, in code en niet alleen in de prompt."""
-    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
-        return SCHEMAS
-    return [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
+    meer (#75, #932): daarna gaat het model door met aannames, in code en niet alleen in de prompt.
+
+    Met "Geavanceerd" komt `plan_voorleggen` erbij (#1268), behalve in de beurt die een bevestigd plan uitvoert; de
+    plankaart telt niet als verduidelijking. Zonder Geavanceerd is de toolset dezelfde lijst als vóór #1268."""
+    tools = (
+        SCHEMAS
+        if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES
+        else [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
+    )
+    if session.get(plankaart.AAN) and not session.get(plankaart.BEVESTIGD):
+        return [*tools, plankaart.SCHEMA]
+    return tools
 
 
 def _tekst(content) -> str:
@@ -418,6 +457,15 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     tekst = met_niet_meegeteld(tekst, [result for _, result in steps])
     tekst = met_uitgangspunt(tekst, _vraag_met_keuzes(messages, session), steps)
     return f"{zin}\n\n{tekst}" if zin else tekst
+
+
+_KOPPELTOOLS = frozenset({"relatie", "koppel_data"})
+
+
+def _log_plan_overgeslagen(result: LoopResult) -> None:
+    """Met Geavanceerd een koppeling zonder plankaart (#1268): het model sloeg het plan over. Mag, maar wordt geteld."""
+    if any(c.get("name") in _KOPPELTOOLS for c in result.tool_calls):
+        logger.info("PLANKAART overgeslagen  koppeling zonder plan")
 
 
 def _berichtstart() -> dict:
@@ -531,6 +579,8 @@ async def _vroeg_einde(
         return result.text
     if result.halted_on:
         session["_last_turn_tool_calls"] = result.tool_calls
+        if result.halted_on.name == plankaart.TOOL_PLAN:
+            return await _handle_plan(result.halted_on, nieuw, messages, session, emit, result.steps)
         return await _handle_clarify_scope(result.halted_on, result.text, nieuw, messages, session, emit)
     if result.exhausted:
         text_content = zonder_antwoord(result.steps)
@@ -752,8 +802,10 @@ async def run(
     logger.info("RUN START  model=%s  %s", chosen_model, tekst_kenmerk(last_user_msg, "vraag_"))
     logger.debug("RUN VRAAG  %r", last_user_msg[:200])
 
+    # Een bevestigd plan (#1268) hervat de vraag die al door de vaste antwoorden en de kaarten uit code kwam.
+    plan = session.get(plankaart.BEVESTIGD)
     # Wat code zelf beantwoordt (-1, een vo-school, een po/so/vo-vraag), krijgt geen kaart en geen model.
-    if vast := await _vast_vooraf(last_user_msg, messages, session):
+    if not plan and (vast := await _vast_vooraf(last_user_msg, messages, session)):
         await emit(_berichtstart())
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
@@ -761,7 +813,7 @@ async def run(
     # Een open slot (plaats of instelling, maat, fase, afbakening) krijgt een vaste kaart uit code, vóór het model (#348).
     # Het register en de catalogus laden over het netwerk: niet op de event loop. Een codeverzoek vraagt naar een stap die
     # er al is, niet naar nieuwe data: "Geef de code" kreeg een maatkaart (#969).
-    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES and not is_codeverzoek(last_user_msg):
+    if not plan and session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES and not is_codeverzoek(last_user_msg):
         # De vraag samen met de gekozen opties: een eerdere kaart kan een ander slot nog open laten (#348).
         kaart = await asyncio.to_thread(
             scopevraag, _vraag_met_keuzes(messages, session), settings, session.get("clarify_slots", [])
@@ -813,11 +865,31 @@ async def run(
         verslag.ingetrokken += 1
         await _intrekken(emit, problems)
 
+    # De plankaart (#1268): of er in deze run al geladen is, welke halt-tools er zijn en welke laadaanroep niet mag.
+    stand = plankaart.Stand()
+    met_plan = bool(session.get(plankaart.AAN) or plan)
+
+    async def na_stap(call: ToolCall, uitkomst: str, figure) -> None:
+        if call.name in plankaart.LAADSTAPPEN:
+            stand.geladen = True
+        await _bewaar_stap(session, emit, call, uitkomst, figure)
+
+    def halt_afgekeurd(call: ToolCall) -> str | None:
+        if call.name == plankaart.TOOL_PLAN:
+            return plankaart.afgekeurd(call, session, stand)
+        return verduidelijking_afgekeurd(call)
+
+    def weiger(call: ToolCall, ronde: list[ToolCall]) -> str | None:
+        return plankaart.weigering(call, ronde, session, stand)
+
     with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
                 async with harde_grens(box.afbreken_s):
                     await _herstel_vooraf(session, emit, stop)
+                    if plan:
+                        # De laadstappen van het plan lopen vóór de eerste modelronde: hun stappen staan in dit antwoord.
+                        await emit(_berichtstart())
                     result = await tool_loop(
                         history,
                         model=chosen_model,
@@ -827,10 +899,10 @@ async def run(
                         system=system,
                         stream_text=True,
                         on_llm_start=lambda: emit(_berichtstart()),
-                        on_tool_result=partial(_bewaar_stap, session, emit),
+                        on_tool_result=na_stap if met_plan else partial(_bewaar_stap, session, emit),
                         tool_limits=_TOOL_LIMITS,
-                        halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
-                        halt_check=verduidelijking_afgekeurd,
+                        halt_on=frozenset({TOOL_CLARIFY_SCOPE, *([plankaart.TOOL_PLAN] if met_plan else [])}),
+                        halt_check=halt_afgekeurd if met_plan else verduidelijking_afgekeurd,
                         max_iterations=MAX_TOOL_ITERATIONS,
                         max_result_chars=_MAX_TOOL_RESULT_CHARS,
                         check=check,
@@ -838,6 +910,8 @@ async def run(
                         on_correction=ingetrokken,
                         wrap_up=AFRONDEN,
                         recept_van=recepten.van_session(session),
+                        vooraf=plankaart.aanroepen(plan) if plan else None,
+                        weiger=weiger if met_plan else None,
                     )
             except TimeoutError:
                 # Vastgelopen aanroep die het stopsignaal niet zag.
@@ -851,6 +925,8 @@ async def run(
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
 
     gestopt = box.einde()
+    if session.get(plankaart.AAN) and not plan and not result.halted_on:
+        _log_plan_overgeslagen(result)
     if (
         einde := await _vroeg_einde(result, history[initial_history_len:], messages, session, emit, gestopt)
     ) is not None:

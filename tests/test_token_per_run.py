@@ -1,7 +1,7 @@
 """Een open chatverbinding volgt het intrekken en verlopen van het token (#786, besluit A).
 
 De server toetste het token alleen bij de handshake; de hartslag (#489) hield de verbinding daarna onbeperkt open.
-Nu toetst hij vóór elke run (vraag, verduidelijking, rapport) het token van de handshake
+Nu toetst hij vóór elke run (vraag, verduidelijking, bevestigd plan, rapport) het token van de handshake
 opnieuw met `verify_token` en sluit hij bij een ongeldig token met 4001, zonder run. En "verwijder al mijn gegevens"
 trekt alle tokens van het account in, niet alleen het meegestuurde.
 """
@@ -31,6 +31,7 @@ class Klok:
 @pytest.fixture
 def runs(tmp_path, monkeypatch):
     """Elke gestarte run, zonder model: per soort een nep die zich meldt en een event stuurt."""
+    from agent import plankaart
     from persistence import db
     from routes import chat
 
@@ -48,6 +49,15 @@ def runs(tmp_path, monkeypatch):
 
     monkeypatch.setattr(chat, "_process_message", nep("vraag"))
     monkeypatch.setattr(chat, "_generate_report", nep("rapport"))
+
+    # "Klopt, ga door" (#1268) start alleen een run op een plan dat open staat met Geavanceerd aan.
+    async def geavanceerd_aan(session, msg):
+        session[plankaart.AAN] = True
+
+    monkeypatch.setattr(
+        chat, "_open_plan", lambda msg, session: {"id": "plan", "vraag": "Hoeveel?", "stappen": [], "tool_call_id": "t"}
+    )
+    monkeypatch.setattr(chat, "_ververs_plankaart", geavanceerd_aan)
     monkeypatch.setattr(chat, "_berichtlimiter", RateLimiter(max_attempts=100, window_seconds=600))
     return gestart
 
@@ -103,6 +113,7 @@ def _sluitcode(ws) -> int:
 FRAMES = {
     "message": {"action": "message", "content": "Hoeveel studenten?"},
     "clarification_choice": {"action": "clarification_choice", "choice": "hbo"},
+    "plan_bevestigen": {"action": "plan_bevestigen", "id": "plan"},
     "generate_report": {"action": "generate_report"},
 }
 
