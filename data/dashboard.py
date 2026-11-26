@@ -1121,15 +1121,17 @@ def _geslacht(df: pd.DataFrame) -> dict[str, int]:
     return {g: int(per.get(g, 0)) for g in dict.fromkeys(["VROUW", "MAN", *map(str, per.index)])}
 
 
-def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame, hu_geslacht: pd.DataFrame) -> dict:
-    """De reeksen van één ho-instelling op het regiodashboard (#899, #902); geslacht uit het geslacht-bestand (#1238)."""
+def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame) -> dict:
+    """De reeksen van één ho-instelling op het regiodashboard (#899, #902), ook voor de vergelijkingsgroep (#1267).
+
+    Zonder geslacht: dat staat alleen in het geslacht-bestand, niet in de rijen van de bestandskeuze (#1238); het
+    regiodashboard voegt het zelf toe."""
     result: dict = {}
     result["ingeschrevenen"], leeg = _reeks(hu_inges, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     _met_onderdrukt(result, "ingeschrevenen", leeg)
     laatste_jaar = max(result["ingeschrevenen"], default=int(hu_inges["STUDIEJAAR"].max()))
     result["laatste_jaar"] = laatste_jaar
     laatste = hu_inges[hu_inges["STUDIEJAAR"] == laatste_jaar]
-    result["geslacht"] = _geslacht(hu_geslacht[hu_geslacht["STUDIEJAAR"] == laatste_jaar])
     sectoren = _som(laatste, "ONDERDEEL", "AANTAL_INGESCHREVENEN").dropna().sort_values(ascending=False)
     result["sectoren"] = {str(k): int(v) for k, v in sectoren.items()}
     _met_onderdrukt(result, "sectoren", _alleen_leeg(_leeg(laatste, "ONDERDEEL", "AANTAL_INGESCHREVENEN")))
@@ -1196,13 +1198,14 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     hu_ej = df_ej[df_ej[inst_col].str.lower() == instelling.lower()]
     hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
     hu_geslacht = df_geslacht[df_geslacht[inst_col].str.lower() == instelling.lower()]
-    result.update(_ho_kern(hu_inges, hu_ej, hu_dipl, hu_geslacht))
+    result.update(_ho_kern(hu_inges, hu_ej, hu_dipl))
     result["bestandskeuze"] = _ho_bestandskeuze(
         {"ingeschrevenen": hu_inges, "eerstejaars": hu_ej, "gediplomeerden": hu_dipl}
     )
     laatste_geslacht = hu_geslacht[hu_geslacht["STUDIEJAAR"] == result["laatste_jaar"]]
 
     # De verdeling naar geslacht staat alleen in het geslacht-bestand; het totaal komt uit de bestandskeuze (#1238).
+    result["geslacht"] = _geslacht(laatste_geslacht)
     result["geslacht_trend"] = {int(jaar): _geslacht(grp) for jaar, grp in hu_geslacht.groupby("STUDIEJAAR")}
     result["geslacht_per_sector"] = {
         str(onderdeel): _geslacht(grp) for onderdeel, grp in laatste_geslacht.groupby("ONDERDEEL")
