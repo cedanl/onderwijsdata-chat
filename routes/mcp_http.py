@@ -14,7 +14,8 @@ MCP_API_KEYS bestaat /mcp niet: 404, ook voor GET (anders gaf de SPA index.html)
 Een client met /mcp/ (met slash) als URL komt bij hetzelfde eindpunt, zonder redirect (#1215): een POST door een
 307/308 breekt veel MCP-clients. De route op beide paden staat in server.create_app.
 
-Elk verzoek draagt `Authorization: Bearer <sleutel>` met een sleutel uit MCP_API_KEYS (#939), anders 401. Meerdere
+Elk verzoek draagt `Authorization: Bearer <sleutel>` met een sleutel uit MCP_API_KEYS (#939), anders 401; de controle
+staat vóór de transport, dus ook prompts en resources (`bronregels`, #1249) zijn zonder sleutel dicht. Meerdere
 sleutels tegelijk: roteren zonder onderbreking, en een eigen sleutel per consument. Het log noemt nooit de sleutel,
 alleen een sleutel-ID (`tekst_kenmerk`, met LOG_HASH_SECRET een HMAC), zodat te zien is wie een aanroep deed.
 

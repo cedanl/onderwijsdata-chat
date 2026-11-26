@@ -27,7 +27,28 @@ JSON-envelope met `status`, `kandidaten`, `melding` en `vervolgstap` (zie [Tools
 schema of een fout in de tool komt terug als MCP-fout (`isError`), met de parameternaam en zonder de waarde.
 
 Elke toolbeschrijving eindigt op de regel "Noem geen getal dat niet in een toolresultaat staat."; de instructies
-van de server noemen hem ook, met `bewijs` en `vervolg`.
+van de server noemen hem ook, met `bewijs` en `vervolg`, en verwijzen naar de prompt `bronregels`.
+
+**Prompt en resource `bronregels`** (#1249). De gebruiksregels voor deze resultaten, als MCP-prompt `bronregels` en
+met dezelfde tekst als resource `onderwijsdata://bronregels` (Markdown), voor een client die geen prompts toont:
+
+| Deel | Inhoud | Waar het vandaan komt |
+|---|---|---|
+| Gebruik | Noem geen getal dat niet in een resultaat staat; reken niet zelf; noem bron, dataset en `bewijs.versie`; bij `kwaliteit.ondergrens` is een aantal een ondergrens; niet gevonden (`no_match`, `ontbrekende_schooljaren`, `niet_gevonden`) is niet "bestaat niet"; een afgekapt resultaat is niet volledig | `REGEL_GETALLEN` en `bronregels_tekst()` in `mcp_server.py` |
+| Domeinregels | Onderdrukte cel (-1) = ondergrens; OPLEIDINGSVORM VT = voltijd, DT = deeltijd, DU = duaal; de plaats in p01-p04 is de vestiging, niet de woonplaats; elk met zijn id | `data/domeinregels.toml`, via `core.domeinregels.laad()` |
+
+Een kolomcorrectie of herkomstregel voor een bestand dat de datatools laden, komt vanzelf in de tekst. Een regel voor
+een ander bestand staat met de reden in `BRONREGELS_UITGEZONDERD` (nu de kolommen van p04hogdipl en van instromende
+mbo-studenten: `dataset_details` geeft die definities al bij de kolom); anders faalt `tests/test_mcp_server.py`. De
+prompt is een werkinstructie: een client kan hem negeren ([EduGenAI-koppeling](edugenai.md#een-andere-betrouwbaarheidsklasse)).
+Over `/mcp` gelden voor `prompts/*` en `resources/*` dezelfde sleutel en limieten als voor de tools.
+
+**Clientconfiguratie.** Er is niets extra's in te stellen: dezelfde configuratie als voor de tools
+([stdio](#clientconfiguratie-stdio), [SURF AI Chat](#surf-ai-chat)). Een client die MCP-prompts ondersteunt, toont
+`bronregels` in zijn promptmenu (in VS Code: `/mcp.onderwijscatalogus.bronregels` in de chat); een client die alleen
+resources kent, voegt `onderwijsdata://bronregels` als context toe. Een client die geen van beide toont, krijgt via de
+instructies van de server (in SURF AI Chat met `serverInstructions: true`) in elk geval de verwijzing naar
+`bronregels`. Welke prompts en resources SURF AI Chat zelf toont, is nog niet nagegaan (#705).
 
 **Niet beschikbaar** zijn de datatools van de chat zelf (`get_cbs_data`, `get_duo_data`, `get_rio_data`,
 `query_data`, `compute_kpi`, `get_maat`, …): die geven een `data_key` voor een volgende aanroep. In hun plaats doen de
@@ -61,7 +82,8 @@ eventueel `opleiding` (code, naam), `reeks` (`schooljaar`, `aantal`; `null` als 
 `publicatieregels`, `ontbrekende_schooljaren`) en `fusies`. Bij de publicatieregels staat wat het geladen bestand
 ervan zegt, zoals in `get_duo_data`: `publicatieregel_status` (`volgt`, `conflict` of `niet_vast_te_stellen`),
 `publicatieregel_melding` en `publicatieregel_waargenomen` (#1092). Bij een vergelijking staat een noot die elke instelling
-heeft één keer bovenaan.
+heeft één keer bovenaan. Of een reeks een ondergrens is, of er jaren ontbreken en of de bron afgekapt was, staat
+daarnaast in vaste sleutels in `bewijs.kwaliteit` ([Bewijs en vervolg](#bewijs-en-vervolg)).
 
 **Grenzen.** Fail-closed zoals de chat: alleen mbo-, hbo- en wo-instellingen uit het register; een vo-school, een
 onbekende naam, eerstejaars of inschrijvingen bij mbo, een opleiding bij mbo, een vorm bij een opleiding en mbo naast
@@ -95,6 +117,7 @@ niet van toepassing is.
 | `peildatum` | De datum van de bron | De laatste update van een CBS-tabel volgens de catalogus; `null` bij DUO en RIO | `null`, zoals bij DUO in de catalogus; de datum van het bestand staat in `versie` |
 | `versie` | Wat het resultaat leverde | `catalogus <hash>`, dezelfde hash als `catalogus` in de envelope van `search_catalog` | Het DUO-bestand en de dag waarop DUO het verving (`bestand 4, versie van 08-04-2026`), met de md5 als riodata hem geeft |
 | `verwijzing` | Waar je het nagaat | De documentatie-URL van de dataset (StatLine-OData, DUO-open-data) | De pagina van de dataset bij DUO |
+| `kwaliteit` | Wat een client over de getallen moet weten (#1248) | `null`: geen getallen uit een bestand | Een object met vaste sleutels: `onderdrukte_cellen` (aantal onderdrukte cellen achter de sommen van de reeks; `0` bij een lege reeks), `ondergrens` (`true` bij minstens één), `ondergrens_regel` (de zin uit de domeinregel `[sentinel]`, anders `null`), `ontbrekende_schooljaren` (gevraagde jaren zonder rij), `afgekapt` (de bron leverde één pagina, niet het hele bestand) met `weggelaten_rijen` (`0`, of `null` als dat aantal onbekend is), `niet_gevonden` (codes van de instelling zonder rij in de selectie; bij een lege reeks al haar codes). Bij `vergelijk_instellingen` een lijst met één object per instelling, met `instellingscode` voorop |
 
 **`vervolg`**: `{"tekst": "…", "url": "…/chat#vraag=…"}`. De link opent de volledige app met een vraag in de invoer van
 een nieuw gesprek ([deep link](api.md#deep-link-naar-de-chat)): bij `search_catalog` de zoekopdracht, bij
@@ -111,8 +134,10 @@ fout (`isError`) blijft eigen tekst, zonder `bewijs`.
 
 ## Stabiliteit
 
-De MCP-server is een stabiele interface: toolnamen, parameters, de envelope van `search_catalog` en de sleutels van
-`bewijs` en `vervolg` veranderen niet zonder dat de wijziging als breaking change is aangekondigd. Een nieuwe tool of een nieuwe optionele parameter is dat niet.
+De MCP-server is een stabiele interface: toolnamen, parameters, de envelope van `search_catalog`, de sleutels van
+`bewijs` (ook die in `kwaliteit`) en `vervolg`, en de naam van de prompt en de resource `bronregels` veranderen niet
+zonder dat de wijziging als breaking change is aangekondigd. Een nieuwe tool, prompt, resource, sleutel of optionele
+parameter is dat niet; de tekst van `bronregels` volgt de domeinregels.
 Wat stabiel is en wat niet, staat in [API-referentie → Wat is stabiel](api.md#wat-is-stabiel).
 
 ## Starten
@@ -283,10 +308,11 @@ gebruiken hetzelfde formaat; vul het pad naar deze repository in:
   dat uit `tools/kernvragen.py`. De beschrijving krijgt de regel over getallen erachter.
 - `voer_uit()` toetst de argumenten vooraf tegen het schema (verplicht, onbekend) en roept bij een catalogustool
   `tools.dispatch` aan: dezelfde code als een toolaanroep uit het model; bij een datatool `kernvragen.voer_uit`.
-  `_envelop()` en `_data_envelop()` zetten er `bewijs` en `vervolg` bij en ontsmetten de tekst.
+  `_envelop()` en `_data_envelop()` zetten er `bewijs` en `vervolg` bij en ontsmetten de tekst. `kwaliteit` rekent
+  `tools/kernvragen.py` binnen de aanroep uit, zolang de selectie in de store staat.
 - Een nieuwe catalogustool in de chat is in de MCP-server beschikbaar zodra hij in `CATALOGUS_TOOLS` staat.
   `tests/test_mcp_server.py` bewaakt dat de definities het chatschema volgen en toetst het protocol zelf
-  (initialize, `tools/list`, `tools/call`) over een in-memory verbinding.
+  (initialize, `tools/list`, `tools/call`, `prompts/*`, `resources/*`) over een in-memory verbinding.
 - `routes/mcp_http.py` zet dezelfde server achter `/mcp`: de sessiemanager van de SDK in stateless modus met
   JSON-antwoorden. Die heeft een taakgroep nodig die zo lang leeft als de app, dus `server.create_app` start hem in de
   lifespan van de app; een gemounte Starlette-app krijgt geen eigen lifespan. `tests/test_mcp_http.py` toetst het
