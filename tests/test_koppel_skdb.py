@@ -238,13 +238,12 @@ def _hu_alle() -> pd.DataFrame:
     """De vorm van HU in #1274: 69 opleidingen met een DUO-rij (54 bachelor, 15 associate degree), 31 zonder (29 master,
     waarvan 27 met een NSE-score, 1 bachelor, 1 associate degree) en één DUO-rij zonder SKDB-rij (CROHO 80065): 101
     rijen. 80166 heeft 28 respondenten. De aantallen zijn verzonnen."""
-    gekoppeld = [("80166", "Bachelor", 28, 3.9)]
+    gekoppeld: list[tuple[str, str, int | None, float | None]] = [("80166", "Bachelor", 28, 3.9)]
     gekoppeld += [(f"3{i:04d}", "Bachelor", 40 + i, 3.5) for i in range(50)]
     gekoppeld += [(f"3{i:04d}", "Bachelor", None, None) for i in range(50, 53)]  # drie bachelors zonder NSE-cijfer
     gekoppeld += [(f"8{i:04d}", "Associate degree", 10 if i < 3 else 35, 3.6) for i in range(1, 16)]
-    zonder = [(f"6{i:04d}", "Master", 50, 3.8) for i in range(27)] + [
-        (f"6{i:04d}", "Master", None, None) for i in (27, 28)
-    ]
+    zonder: list[tuple[str, str, int | None, float | None]] = [(f"6{i:04d}", "Master", 50, 3.8) for i in range(27)]
+    zonder += [(f"6{i:04d}", "Master", None, None) for i in (27, 28)]
     zonder += [("31000", "Bachelor", None, None), ("80999", "Associate degree", 12, 3.1)]
     skdb = pd.DataFrame(
         [
