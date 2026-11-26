@@ -44,15 +44,25 @@ extra_javascript:
 nav:
   - Home: index.md
   - Product & gebruik:
-    - Databronnen: databronnen.md
-    - Tools: tools.md
-    - Dashboards: dashboards.md
-    - Kwaliteit & veiligheid:
-      - kwaliteit-en-veiligheid.md
-      - Betrouwbaarheid per release: betrouwbaarheid.md
-    - Privacy: privacy.md
-    - Catalogus CBS (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/
-    - Catalogus RIO (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/
+    - Over Onderwijsdata Chat: product/over.md
+    - Aan de slag als gebruiker: product/aan-de-slag.md
+    - Wat kun je ermee: product/mogelijkheden.md
+    - Voorbeeldvragen: product/voorbeelden.md
+    - Databronnen begrijpen: product/databronnen.md
+    - Een antwoord lezen en controleren: product/betrouwbaarheid.md
+    - Privacy in gewone taal: product/privacy.md
+    - Veelgestelde vragen: product/faq.md
+    - Problemen oplossen: product/problemen-oplossen.md
+    - Naslag voor gebruikers:
+      - Databronnen (volledig): databronnen.md
+      - Tools: tools.md
+      - Dashboards: dashboards.md
+      - Kwaliteit & veiligheid:
+        - kwaliteit-en-veiligheid.md
+        - Betrouwbaarheid per release: betrouwbaarheid.md
+      - Privacy (volledige tekst): privacy.md
+      - Catalogus CBS (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/
+      - Catalogus RIO (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/
   - Techniek & beheer:
     - Installatie voor ontwikkelaars: aan-de-slag.md
     - Configuratie:

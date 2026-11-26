@@ -3,6 +3,7 @@ import difflib
 import json
 import logging
 import re
+from collections.abc import Callable
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
@@ -465,7 +466,7 @@ def _splits(rows: list, standaard) -> tuple[list, list]:
     return [r for r in rows if code(r) == standaard.code], [r for r in rows if code(r) == standaard.smaller]
 
 
-def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta) -> dict:
+def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta, bewaar=store.put) -> dict:
     """Bewaar de smallere telling onder een eigen data_key en geef de verwijzing voor het toolresultaat (#658).
 
     Het model noemt hem alleen als de gebruiker erom vraagt; staat hij onder een eigen key, dan is elk getal
@@ -474,7 +475,7 @@ def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     digest = canoniek.cbs_digest(alternatief.filters_smaller)
     key = f"cbs:{dataset_id}:{digest}" if digest else f"cbs:{dataset_id}"
-    store.put(
+    bewaar(
         key,
         df,
         dataclasses.replace(
@@ -510,10 +511,18 @@ def get_cbs_data(
 
 
 def laad_cbs_data(
-    dataset_id: str, filters: dict | None = None, selectie: dict | None = None, *, vo_context: bool = False
+    dataset_id: str,
+    filters: dict | None = None,
+    selectie: dict | None = None,
+    *,
+    vo_context: bool = False,
+    bewaar: Callable[[str, pd.DataFrame, store.KeyMeta], None] | None = None,
 ) -> str:
     """get_cbs_data met de poort als argument: zo herlaadt een recept (#472) de lading zoals ze was, ook in een
-    latere beurt met een andere vraag."""
+    latere beurt met een andere vraag.
+
+    `bewaar` vangt de geladen tabel op in plaats van de store (#1240): "herhaal deze analyse" haalt de nieuwste stand
+    langs dezelfde route en controles, terwijl de store de data van het eerdere antwoord houdt."""
     dataset_id = cbs_tabel_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370, #912)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
@@ -589,9 +598,12 @@ def laad_cbs_data(
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
         register_dimensions(dataset_id, dims)
         register_units(dataset_id, {col: d["unit"] for col, d in col_defs.items() if d.get("unit")})
-    store.put(key, df, store_meta)
-    if not vo:  # een key van vóór #342 is nooit een lading met vo-rijen
-        store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
+    if bewaar is not None:
+        bewaar(key, df, store_meta)
+    else:
+        store.put(key, df, store_meta)
+        if not vo:  # een key van vóór #342 is nooit een lading met vo-rijen
+            store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
     schema = [
         {
             "kolom": col,
@@ -634,7 +646,7 @@ def laad_cbs_data(
 
     if alternatief and rows_alternatief:
         result["alternatieve_telling"] = _bewaar_alternatief(
-            dataset_id, rows_alternatief, alternatief, standaard, col_defs, store_meta
+            dataset_id, rows_alternatief, alternatief, standaard, col_defs, store_meta, bewaar or store.put
         )
 
     if eenheid:

@@ -998,6 +998,29 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 .eigen-getal-knop:disabled { opacity: .6; cursor: default; }
 .eigen-getal-fout { color: var(--gray-900); border-left: 3px solid var(--red-500); padding-left: 8px; }
 .eigen-getal-uitleg { margin: 0; color: var(--muted-text); font-size: var(--font-klein); line-height: 1.45; }
+/* "Herhaal deze analyse" (#1240): een tak onder het antwoord, geen vervanging. De lijn links in Npuls Groen draagt
+   de stand van nu; per tabel een rustige streep (grijs: niets veranderd of alleen nu, groen: de bron is bijgewerkt).
+   Geen rood of oranje: een nieuwere stand bij de bron is geen waarschuwing over het antwoord (besluit #1236). */
+.herhaal-analyse { margin-top: 8px; font-size: .82rem; }
+.herhaal-reden { margin-left: 8px; color: var(--muted-text); font-size: var(--font-klein); }
+.herhaal-wacht:empty { display: none; }
+.herhaal-wacht { margin-top: 4px; color: var(--gray-600); }
+.herhaal-melding { margin: 6px 0 0; color: var(--gray-900); border-left: 3px solid var(--gray-400); padding-left: 8px; }
+.herhaal-uitkomst { margin-top: 6px; padding: 8px 0 2px 12px; border-left: 3px solid var(--npuls-groen); color: var(--gray-700); }
+.message-bubble .herhaal-uitkomst p { margin: 0; }
+.herhaal-kop { font-weight: 600; color: var(--gray-900); }
+.herhaal-tabellen { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.herhaal-tabel { padding-left: 8px; border-left: 2px solid var(--gray-300); }
+.herhaal-tabel[data-status="bijgewerkt"] { border-left-color: var(--npuls-groen); }
+.herhaal-tabel[data-status="niet_te_vergelijken"] { border-left-style: dashed; }
+.herhaal-status { font-weight: 600; color: var(--gray-900); }
+.message-bubble .herhaal-zin { margin-top: 2px; line-height: 1.45; overflow-wrap: anywhere; }
+.herhaal-stand { margin: 4px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; font-size: var(--font-klein); color: var(--gray-600); }
+.herhaal-stand div { display: contents; }
+.herhaal-stand dt { font-weight: 600; }
+.herhaal-stand dd { margin: 0; overflow-wrap: anywhere; }
+.message-bubble .herhaal-overgeslagen { margin-top: 6px; font-size: var(--font-klein); color: var(--gray-600); }
+.message-bubble .herhaal-noot { margin-top: 8px; font-size: var(--font-klein); color: var(--muted-text); line-height: 1.45; }
 /* Het label "Vaste maat" (#1242): herkomst, geen waarschuwing en geen keurmerk. Zelfde plek en maat als de
    controlemelding, met een neutrale grijze streep; de teldefinitie en de vastlegging staan in de uitklap. */
 .vaste-maat { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--gray-300); padding: 2px 0 2px 8px; margin-top: 6px; }
@@ -2314,6 +2337,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
   .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
   .message-bubble .controle-regel, .message-actualiteit, .message-bubble .data-export-uitleg, .csv-download-btn, .data-export-btn, .bewijs-btn, .vaste-maat,
+  .herhaal-analyse, .herhaal-reden, .herhaal-stand, .message-bubble .herhaal-overgeslagen, .message-bubble .herhaal-noot,
   .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,

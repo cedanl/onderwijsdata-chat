@@ -84,12 +84,13 @@ lijst `BESCHERMEND` van beide tests en in de tabel hieronder.
 | Technische key onder "Technische details" bij een getal | Achter Geavanceerd | `CitedNumber.jsx` |
 | "Download data als CSV", "Download cijfers als CSV" en "Vraag opnieuw stellen" na een mislukte download | Achter Geavanceerd | `DataExport.jsx` |
 | Keuze "Code per stap" in de gespreksexport; uit: een export zonder code | Achter Geavanceerd | `ConversationExport.jsx` |
+| "Herhaal deze analyse" onder een antwoord met een CBS-tabel (#1240): de stand van nu naast die van toen, als tak; het antwoord en zijn controles blijven | Achter Geavanceerd | `HerhaalAnalyse.jsx`, `routes/herhaal.py` |
 | Modelkiezer (invoerkader en zijbalk op een telefoon) en "Opnieuw met <ander model>"; uit: het standaardmodel, ook op de server | Achter Geavanceerd | `ChatInputFooter.jsx`, `ChatPage.jsx`, `routes/chat.py` (`_model`) |
 | Modelaanbod als grens: alleen een model uit `AVAILABLE_MODELS`/`USER_MODELS` (#755) | Geen UI-functie | `core/config.py` (`toegestaan_model`) |
 | Scopegrens: po/so/vo-vragen falen gesloten | Geen UI-functie | `tools/scopeprofiel.py` |
 | Tokenbudget, limieten en de analyse-sandbox | Geen UI-functie | `core/tokenbudget.py`, `core/rate_limit.py`, `tools/sandbox.py` |
 | `REPRODUCEER`- en `GEPUBLICEERD`-regels in het log | Geen UI-functie | `agent/`, `tools/` |
-| Geplande functies van #1237, #1240, #1247, #1256, #1258, #1260 en #1268 | Indeling bij de bouw, in dat issue; een beschermende functie komt bij "Altijd aan" | — |
+| Geplande functies van #1237, #1247, #1256, #1258, #1260 en #1268 | Indeling bij de bouw, in dat issue; een beschermende functie komt bij "Altijd aan" | — |
 
 Zonder login is er geen eigen account: de browser houdt de keuze dan zelf, en de server begrenst het model alleen tot
 het aanbod, zoals voorheen. Met login leest de server de instelling bij elke vraag en elk rapport uit de database,

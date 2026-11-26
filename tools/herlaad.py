@@ -17,6 +17,7 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
+from typing import TYPE_CHECKING
 
 from core.logging_util import foutkenmerk
 
@@ -49,6 +50,9 @@ from .schemas import (
 from .studiekeuze import get_studiekeuze
 from .vacatures import get_ontstane_vacatures, get_vacatures
 from .wo_personeel import get_wo_personeel
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +100,25 @@ class Herlaadresultaat:
     melding: str = ""  # waarom niet: de stap of de bron, met de catalogustitel; de key staat alleen in de log
     bronfout: bool = False  # de bron faalde, niet het recept
     herladen: bool = False  # de data komt van een nieuwe ophaalslag bij de bron, niet van het eerste antwoord
+
+
+# De laders die hun tabel aan de aanroeper geven in plaats van aan de store (`apart`, #1240): voor "herhaal deze
+# analyse", nu alleen CBS. DUO en RIO sluiten hier later aan.
+_APART: dict[str, Callable[..., str]] = {TOOL_GET_CBS_DATA: laad_cbs_data}
+
+
+@dataclass(frozen=True)
+class Apart:
+    """Een laadrecept opnieuw uitgevoerd, buiten de store: de tabel zoals de bron haar nu levert, met haar meta."""
+
+    key: str
+    data: "pd.DataFrame"
+    meta: store.KeyMeta
+
+
+def apart_herhaalbaar(tool: object) -> bool:
+    """Kan `apart` deze laadstap opnieuw uitvoeren?"""
+    return isinstance(tool, str) and tool in _APART
 
 
 def recept(key: str, call: dict) -> dict | None:
@@ -209,6 +232,11 @@ def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int, usern
     return _niet(key, "stap zonder herlaadrecept", _onherhaalbaar(key, recept))
 
 
+def onherhaalbaar(key: str, recept: dict) -> str:
+    """Wat de gebruiker leest bij een stap die niet opnieuw wordt uitgevoerd, zonder key (#1063, #1240)."""
+    return _onherhaalbaar(key, recept)
+
+
 def _onherhaalbaar(key: str, recept: dict) -> str:
     """De stap en de dataset waarop ze rekende (`afgeleid_van`, anders de key zelf); nooit de key (#1063)."""
     stap = recept.get("stap")
@@ -247,6 +275,41 @@ def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
         return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
     markeer(username, key)
     return _terug(key, username)
+
+
+def apart(key: str, laad: object) -> Apart | Herlaadresultaat:
+    """Voer het laadrecept van `key` opnieuw uit zonder de store te raken (#1240).
+
+    Dezelfde tool, scopegrens en meldingen als `herlaad`, maar de nieuwe tabel komt terug in plaats van in de store:
+    daar blijft de data van het eerdere antwoord staan, voor iedereen die erop rust. Mislukt het, dan een
+    Herlaadresultaat met de melding voor de gebruiker, zonder key (#1063).
+    """
+    tool, args = laad if isinstance(laad, list | tuple) and len(laad) == 2 else (None, None)
+    if not isinstance(tool, str) or tool not in _APART or not isinstance(args, dict):
+        return _niet(key, "geen herhaalbare laadstap", f"Het recept voor {_de_data_van(key)} is niet te herhalen.")
+    bron = _LADERS[tool][1]
+    if not beschikbaarheid.tool(tool):
+        melding = f"{bron} geeft in deze omgeving geen cijfers, dus {_de_data(args)} komt niet terug."
+        return Herlaadresultaat(key, gelukt=False, bronfout=True, melding=melding)
+    opgevangen: dict[str, tuple[pd.DataFrame, store.KeyMeta]] = {}
+
+    def opvang(k: str, df: "pd.DataFrame", meta: store.KeyMeta) -> None:
+        opgevangen[k] = (df, meta)
+
+    try:
+        uitkomst = _APART[tool](**args, bewaar=opvang)
+    except Exception as e:  # een recept met argumenten die de tool niet (meer) kent
+        logger.warning("herhalen %s via %s mislukt: %s", key, tool, foutkenmerk(e))
+        logger.debug("herhalen %s via %s mislukt: %r", key, tool, e)
+        uitkomst = ""
+    # Een recept van vóór de canonieke digest (#342) heeft een oude key; de lader geeft de tabel onder de nieuwe.
+    gevangen = opgevangen.get(key) or (next(iter(opgevangen.values())) if len(opgevangen) == 1 else None)
+    if gevangen is None:
+        if is_scopeweigering(uitkomst):
+            return _niet(key, "buiten catalogus of scope", _scopemelding(uitkomst))
+        reden = _reden(uitkomst) or "geen data."
+        return _niet(key, "bron gaf niets", f"{bron} gaf {_de_data(args)} niet opnieuw: {reden}", bronfout=True)
+    return Apart(key, *gevangen)
 
 
 def _scopemelding(weigering: str) -> str:

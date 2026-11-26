@@ -839,7 +839,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
             )}
             {rijen.map(({ msg, index: i, figures, laatsteId }) => (
               <Message
-                key={msg.id} msg={msg} figures={figures} verbinding={connected}
+                key={msg.id} msg={msg} figures={figures} verbinding={connected} gesprekId={conversationId}
                 vraag={msg.role === 'assistant' ? questionBefore(displayMessages, i)?.content ?? null : null}
                 onClarification={verstuurKeuze} onSend={verstuur} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
