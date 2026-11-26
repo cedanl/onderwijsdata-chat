@@ -8,6 +8,7 @@ peildatum of versie in haar KeyMeta, en loopt alles mee dat op een data_key werk
 """
 
 import json
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pandas as pd
@@ -20,6 +21,7 @@ from agent.datasetcontext import _reload_call_from_key, build_dataset_context, b
 from agent.figuurbron import figuurbron
 from agent.meetwaarden import meetwaarden
 from agent.session_data import record_data_key
+from core import actualiteit
 from data import arbeidsmarkt
 from tools import herlaad, snippet, store
 from tools.arbeidsmarkt import ROA_ID, UWV_ID, get_roa_benchmark, get_uwv_vacatures
@@ -69,8 +71,13 @@ _TITELS = {UWV_ID: "UWV Open Match", ROA_ID: "AIS tot 2030"}
 _UWV_CALL = {"name": "get_uwv_vacatures", "arguments": {"provincie": "utrecht", "sector": "GEZONDHEIDSZORG"}}
 
 
+# De bronregel van UWV noemt de ouderdom van de peildatum (#1219): een vaste klok, niet de echte datum.
+_PEILMOMENT_UWV = "peildatum 16 mei 2023, ruim 3 jaar oud"
+
+
 @pytest.fixture
-def bronnen():
+def bronnen(monkeypatch):
+    monkeypatch.setattr(actualiteit, "nu", lambda: datetime(2026, 11, 25, tzinfo=UTC))
     with (
         patch.object(arbeidsmarkt, "_uwv", return_value=_UWV),
         patch.object(arbeidsmarkt, "_roa", return_value=_ROA),
@@ -98,7 +105,7 @@ def test_uwv_resultaat_is_een_tabel_in_de_store_met_een_data_key(bronnen):
     assert known is not None
     assert (known.bron, known.dataset, known.volledig) == ("uwv", UWV_ID, True)
     assert known.laad == ("get_uwv_vacatures", {"provincie": "Utrecht"})
-    assert known.peilmoment == "peildatum 2023-05-16"
+    assert known.peilmoment == _PEILMOMENT_UWV
     # De rest van het resultaat blijft zoals het was.
     assert uit["totaal_vacatures"] == 1200 and uit["peildatum"] == "2023-05-16"
 
@@ -200,7 +207,7 @@ def test_bronnenlijst_van_het_rapport_noemt_uwv_en_roa_met_peilmoment(bronnen):
 
     assert [c["name"] for c in recept] == ["get_uwv_vacatures", "get_roa_benchmark"]
     assert sources_from_recipe(recept) == [
-        "UWV — UWV Open Match (uwv-open-match-data), peildatum 2023-05-16",
+        f"UWV — UWV Open Match (uwv-open-match-data), {_PEILMOMENT_UWV}",
         "ROA — AIS tot 2030 (ais2030), editie 2026, SIS 2025, versie v20251218",
     ]
 
@@ -212,7 +219,7 @@ def test_citatie_wijst_naar_de_tabel_met_bron_en_peildatum(bronnen):
     cluster = next(w for w in meetwaarden(resultaat) if "Beroepencluster: Zorg en welzijn" in w.selectie)
 
     assert totaal["vastgesteld"] and totaal["data_key"] == "uwv:utrecht"
-    assert totaal["bron"] == "UWV · UWV Open Match, peildatum 2023-05-16"
+    assert totaal["bron"] == f"UWV · UWV Open Match, {_PEILMOMENT_UWV}"
     assert cluster.data_key == "uwv:utrecht" and cluster.bron is None
     assert cluster.selectie == ("Provincie: Utrecht", "Beroepencluster: Zorg en welzijn")
 
@@ -222,7 +229,7 @@ def test_bronnenblok_onder_het_antwoord_noemt_de_tabel_een_keer(bronnen):
     selectie = query_data("uwv:utrecht", filters={"BEROEPENCLUSTER": "ICT"})
 
     assert bronnen_van([("get_uwv_vacatures", resultaat), ("query_data", selectie)]) == [
-        "UWV · UWV Open Match, peildatum 2023-05-16 (uwv-open-match-data)"
+        f"UWV · UWV Open Match, {_PEILMOMENT_UWV} (uwv-open-match-data)"
     ]
 
 
@@ -238,7 +245,7 @@ def test_recept_haalt_de_tabel_terug_na_een_herstart(bronnen):
     assert uitkomst.gelukt and uitkomst.herladen
     pd.testing.assert_frame_equal(store.get(key), voor)
     known = store.meta(key)
-    assert known is not None and known.peilmoment == "peildatum 2023-05-16"
+    assert known is not None and known.peilmoment == _PEILMOMENT_UWV
 
 
 def test_snippet_laadt_de_tabel_zonder_store(bronnen):
@@ -260,12 +267,12 @@ def test_snippet_laadt_de_tabel_zonder_store(bronnen):
 def test_manifest_en_bronregel_noemen_het_peilmoment(bronnen):
     key = json.loads(get_uwv_vacatures("Utrecht"))["data_key"]
 
-    assert manifest._data_as_of([key]) == [{"bron": "uwv", "dataset": UWV_ID, "peilmoment": "peildatum 2023-05-16"}]
+    assert manifest._data_as_of([key]) == [{"bron": "uwv", "dataset": UWV_ID, "peilmoment": _PEILMOMENT_UWV}]
     with patch(
         "agent.figuurbron.documentatie_url", return_value="https://data.overheid.nl/dataset/uwv-open-match-data"
     ):
         bron = figuurbron(key) or {}
-    assert bron["tekst"] == "UWV · UWV Open Match (uwv-open-match-data), peildatum 2023-05-16"
+    assert bron["tekst"] == f"UWV · UWV Open Match (uwv-open-match-data), {_PEILMOMENT_UWV}"
 
 
 def test_een_key_zonder_herkomst_laadt_niet_blind_opnieuw():
