@@ -161,6 +161,16 @@ def rijen_voor(username: str, conv_id: object, messages: object) -> dict[str, di
     return rijen
 
 
+def rij_van(username: str, conv_id: str, h: str) -> dict | None:
+    """De rij van één eigen antwoord (zijn tekst-hash `h`): die van het gesprek en de klaarstaande, of None.
+
+    Voor "herhaal deze analyse" (#1240). Per gebruiker: het antwoord van een ander geeft hetzelfde als een onbekend
+    antwoord. Leest de database.
+    """
+    bewaard = db.beurtbewijs_voor(username, conv_id).get(h) if conv_id else None
+    return _samen(bewaard, _klaar.get((username, h)))
+
+
 def zet_terug(session: dict, rijen: dict[str, dict]) -> None:
     """Vul een verse, net geopende sessie met het bewijs van haar antwoorden, in de volgorde van het gesprek.
 
