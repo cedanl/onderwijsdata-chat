@@ -146,6 +146,18 @@ Bij elke vraag bepaalt het LLM automatisch:
 
 Het LLM springt stappen over als ze niet nodig zijn. Dit heet **"lazy evaluation"** — efficiënter en sneller.
 
+**Richting in de vraag (#1255).** Neemt de vraag een richting aan ("Waarom is het aantal gedaald?", "Wat verklaart
+de groei?"), dan hoort het model vooraf in een beurtinstructie dat de app die richting toetst. Na de tools toetst code
+(`agent/premisse.py`) de richting tegen de ene reeks van de beurt: een `get_maat`-resultaat, of een tabel van
+`query_data` of `run_analysis` met één rij per periode en één meetkolom. Zonder jaartal vergelijkt de toets het eerste
+met het laatste jaar van de reeks, met twee jaartallen die jaren, met "sinds 2019" dat jaar met het laatste. Spreekt de
+reeks de richting tegen, dan opent het antwoord met een vaste zin uit code: "De vraag gaat uit van een daling, maar
+het aantal ingeschrevenen steeg van 26.370 naar 28.355 (2021/22 → 2024/25)." Beide getallen komen uit de reeks. Bij
+twijfel blijft het antwoord zoals het was: een vraag zonder of met beide richtingen, een ja/nee-vraag, een ontkenning,
+een periode die de reeks niet heeft, een verschil 0, of twee reeksen die elkaar tegenspreken. Wat de toets niet toetst:
+een relatieve daling (een aandeel, percentage of verhouding: de vraag krijgt geen zin), en een subgroep die de vraag
+noemt maar de reeks niet (de toets kent alleen de reeks die de tools ophaalden).
+
 ## get_maat
 
 Vaste maat uit een vast recept (#188): het model kiest de maat en de afbakening, de code kiest dataset, bestand,
@@ -733,6 +745,11 @@ reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij vacature
 
 - **Resultaat:** `peildatum`, `totaal_vacatures` en de 15 grootste beroepenclusters (`clusters_getoond` zegt het als
   er meer zijn).
+- **Ouderdom** (#1219): `peildatum_ouderdom_maanden` (hele maanden van de peildatum tot nu) en `verouderd` (meer dan
+  12 maanden, `VACATURES_VEROUDERD_MAANDEN`). Bij `verouderd` ook `ouderdom_toelichting`: hoe oud de peildatum is in
+  woorden ("ruim 3 jaar"), dat UWV de dataset niet meer bijwerkt en dat de actuele kwartaalcijfers bij UWV
+  (Vacaturemarkt) en CBS (83599NED) staan, niet in deze app. De systeemprompt laat het model die ouderdom dan noemen;
+  de bronregel onder het antwoord noemt haar altijd ("peildatum 16 mei 2023, ruim 3 jaar oud").
 - **Met `sector`** staan drie lagen apart (#460): `uwv_broncijfer` (de ongewogen aantallen van UWV),
   `lokale_classificatie` (welke clusters bij de sector horen: een indeling van deze app, gemaakt met een taalmodel) en
   `gewogen_aandeel` (het sectorgetal; een cluster dat de sector met andere deelt, telt naar rato mee).

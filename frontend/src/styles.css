@@ -868,6 +868,12 @@ html.dark .login-melding { color: var(--accent-text); }
 /* Een eigen rij, ook als de knoppen naast elkaar staan (max-width 1024px): anders staat de kop naast de eerste knop. */
 .question-buttons-kop { width: 100%; font-size: .75rem; font-weight: 600; color: var(--muted-text); }
 
+/* Een getal dat de controle nog toetst (#1254): een "…" even breed als het getal (width in ch, inline gezet), zodat
+   de regel niet verspringt als het getal verschijnt. Gedempt en zonder animatie: het is wachten, geen melding. */
+.getal-wacht {
+  display: inline-block; text-align: center; color: var(--gray-500);
+  background: var(--gray-100); border-radius: 3px; line-height: 1.25;
+}
 .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
 .ai-typing span {
   width: 7px; height: 7px; border-radius: 50%; background: var(--gray-400);
@@ -1336,6 +1342,16 @@ html.dark .db-momentopname { background: rgba(146, 64, 14, 0.15); border-color: 
   html:not(.dark):not(.light) .db-momentopname {
     background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
   }
+}
+.db-momentopname p { margin: 0; }
+.db-momentopname p + p { margin-top: 6px; }
+/* Een UWV-stand van meer dan 12 maanden oud (#1219): dezelfde amberen noot, nadrukkelijker, met de links naar de
+   actuele kwartaalcijfers. Tekst #78350F op #FEF3C7 haalt ruim 4,5:1 (WCAG 1.4.3). */
+.db-momentopname--verouderd { background: #FEF3C7; border-color: #F59E0B; border-left-width: 4px; color: #78350F; }
+.db-momentopname--verouderd a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+html.dark .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .db-momentopname--verouderd { background: rgba(180, 83, 9, 0.25); border-color: #F59E0B; color: #FDE68A; }
 }
 /* Wat de match-tegels zeggen en niet zeggen (#900). */
 .db-match-duiding { font-size: 12.5px; color: var(--muted-text); margin: 8px 0 16px; }

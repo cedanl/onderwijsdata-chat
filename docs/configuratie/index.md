@@ -97,8 +97,9 @@ APP_ENV=local
 |----------|--------------|
 | `mock/default` | Zoekt in de catalogus met de vraag, laadt één vaste CBS-tabel (mbo-studenten landelijk) en antwoordt met wat de tools gaven. Het laden haalt CBS op, dus internet is nodig. |
 | `mock/tekst` | Antwoordt met een vaste tekst, zonder tools en zonder netwerk. |
+| `mock/verzonnen` | Noemt eerst een getal dat in geen data staat (27.135, over twee tekststukken), zonder tools en zonder netwerk; de getalcontrole trekt dat antwoord in en de correctieronde noemt het niet. Voor de test dat een ingetrokken getal nooit in beeld komt (#1254). |
 
-Een rapport geeft in beide scenario's een kort vast rapport, als er data in het gesprek geladen is. Zonder
+Een rapport geeft in elk scenario een kort vast rapport, als er data in het gesprek geladen is. Zonder
 `AVAILABLE_MODELS` toont de model-picker de scenario's. Alleen voor `APP_ENV` `local` en `development`: elders start
 de app niet zodra `MODEL`, `AVAILABLE_MODELS` of `USER_MODELS` een `mock/`-model noemt. De modelnaam `mock/…` komt
 wel in de manifesten, logs en het tokengebruik van wat je lokaal maakt.

@@ -166,7 +166,7 @@ WILLMA_BASE_URL = os.getenv("WILLMA_BASE_URL", "")
 # Het nepmodel voor lokaal testen zonder providersleutel (#1065, agent/nepmodel.py): `MODEL=mock/<scenario>`. Het prefix is
 # de schakelaar; config.py weigert het buiten NEP_OMGEVINGEN.
 NEP_PREFIX = "mock/"
-NEP_SCENARIOS = ("default", "tekst")
+NEP_SCENARIOS = ("default", "tekst", "verzonnen")
 NEP_OMGEVINGEN = ("local", "development")
 
 
@@ -270,6 +270,7 @@ _KNOWN_NAMES: dict[str, tuple[str, str, str, str]] = {
     "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": ("Qwen 2.5 Coder 32B", "gericht op code", "cpu", _WILLMA),
     "mock/default": ("Nepmodel", "lokaal testen: zoekt en laadt data", "cpu", _NEP),
     "mock/tekst": ("Nepmodel, alleen tekst", "lokaal testen zonder tools", "cpu", _NEP),
+    "mock/verzonnen": ("Nepmodel, verzonnen getal", "lokaal testen: de controle trekt een getal in", "cpu", _NEP),
 }
 
 

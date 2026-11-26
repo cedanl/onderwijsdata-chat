@@ -45,7 +45,7 @@ export function MatchScoreSection({ matchScore, verhouding, weggelaten, duiding,
   return (
     <>
       <SectionHeader title={AANSLUITING_ARBEIDSMARKT} subtitle="Indicatie per sector: aandeel in de vacatures tegenover aandeel in de gediplomeerden" />
-      {duiding && <MomentopnameBanner peildatum={duiding.vacatures_peildatum} />}
+      {duiding && <MomentopnameBanner peildatum={duiding.vacatures_peildatum} ouderdomMaanden={duiding.peildatum_ouderdom_maanden} verouderd={duiding.verouderd} />}
       {alsGrafiek
         ? <MatchVerhoudingChart matchScore={matchScore} verhouding={verhouding} drempel={duiding?.drempel} dark={dark} />
         : <MatchTegels entries={entries} dark={dark} />}
@@ -71,9 +71,9 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, duidin
   return (
     <ChartCard
       title="Gediplomeerden en vacatures per sector"
-      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) tegenover gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
+      subtitle={`Gemiddeld aantal gediplomeerden per jaar (DUO${jaren ? `, diplomajaren ${jaren}` : ''}) tegenover gerelateerde vacatures (${uwvBron(duiding?.vacatures_peildatum, duiding?.peildatum_ouderdom_maanden)}). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee.`}
     >
-      <MomentopnameBanner peildatum={duiding?.vacatures_peildatum} />
+      <MomentopnameBanner peildatum={duiding?.vacatures_peildatum} ouderdomMaanden={duiding?.peildatum_ouderdom_maanden} verouderd={duiding?.verouderd} />
       <Grafiek soort="bar" data={barData} categorie="Sector" hoogte={staafHoogte(barData.labels, { perRij: 50, kader: 60, minimum: 200 })} options={{
           ...baseOpts,
           plugins: {

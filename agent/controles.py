@@ -32,6 +32,7 @@ from .rekensom import onjuiste_rekensommen
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .tabelbinding import verkeerde_tabeljaren
 from .tekens import zonder_citaatkop
+from .terugrekening import teruggerekende_cellen, zonder_teruggerekend
 from .zelfcorrectie import onvervangen_tabelcorrectie, zonder_zelfcorrectie
 
 # De regel CONTROLES blijft onder de logger van `agent/run.py`: logfilters en tests kennen die bron, en de verhuizing
@@ -53,6 +54,7 @@ CONTROLENAMEN = (
     "verkeerd_gebonden",
     "verkeerde_tabeljaren",
     "onjuiste_rekensommen",
+    "teruggerekende_cellen",
     "onjuiste_tabelbeweringen",
     "onvervangen_tabelcorrectie",
     "verkeerde_kenmerken",
@@ -133,7 +135,8 @@ def maak_getalcontrole(earlier: list[str], said_by_user: list[str]) -> Callable[
 
     def ongedekt_gelezen(gelezen: str, tool_results: list[str]) -> list[str]:
         # Het verschil van twee genoemde getallen uit de data is na te rekenen, niet verzonnen (CH-01).
-        afgeleid = afgeleide_verschillen(gelezen, tool_results)
+        # Behalve een verschil dat een onderdrukte cel terugrekent (totaal min de zichtbare delen, #1265).
+        afgeleid = zonder_teruggerekend(afgeleide_verschillen(gelezen, tool_results), tool_results)
         return [n for n in unverified(gelezen, tool_results, earlier) if n not in afgeleid]
 
     def ongedekte_getallen(text: str, tool_results: list[str]) -> list[Probleem]:
@@ -184,6 +187,8 @@ def antwoordcontrole(
             (verkeerde_tabeljaren, (zichtbaar, tool_results), False),
             # Op de getallen zoals de gebruiker ze leest: een som die in elke lezing fout is (#1001).
             (onjuiste_rekensommen, tuple(zichtbaar), True),
+            # Een onderdrukte cel, teruggerekend als totaal min de zichtbare delen (#1265): hard, het is een privacycel.
+            (teruggerekende_cellen, (text, tool_results), True),
             # Een telling of vergelijking in de lopende tekst tegen de ene tabel eronder (#1013). Zacht; alleen een
             # telling die eenduidig tegen de tabel in het antwoord staat, markeert de module zelf als hard.
             (onjuiste_tabelbeweringen, (lezingen(gelezen), tool_results), False),

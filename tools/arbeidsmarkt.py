@@ -93,9 +93,10 @@ def _slug(tekst: str) -> str:
 
 def peilmoment(tool: str) -> str | None:
     """Wanneer de momentopname achter een arbeidsmarkttool is genomen, in de woorden van de bron (#577):
-    de peildatum van UWV, de editie, het SIS-jaar en de versie van ROA (#1091). None voor een andere tool."""
+    de peildatum van UWV met haar ouderdom ("peildatum 16 mei 2023, ruim 3 jaar oud", #1219), de editie, het SIS-jaar
+    en de versie van ROA (#1091). None voor een andere tool."""
     if tool == TOOL_GET_UWV_VACATURES:
-        return f"peildatum {arbeidsmarkt.uwv_peildatum()}"
+        return arbeidsmarkt.uwv_peiltekst(arbeidsmarkt.uwv_peildatum())
     if tool == TOOL_GET_ROA_BENCHMARK:
         return arbeidsmarkt.roa_peilmoment()
     return None
@@ -180,12 +181,16 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str |
     # Sector is een zicht op dezelfde tabel, geen andere selectie: één key per plaats, in de spelling van de bron.
     args = {"provincie": stand.provincie, **({"gemeente": stand.gemeente} if stand.gemeente else {})}
     key = ":".join(["uwv", _slug(stand.provincie), *([_slug(stand.gemeente)] if stand.gemeente else [])])
-    _bewaar(key, _uwv_tabel(stand), TOOL_GET_UWV_VACATURES, args, f"peildatum {stand.peildatum}")
+    _bewaar(key, _uwv_tabel(stand), TOOL_GET_UWV_VACATURES, args, arbeidsmarkt.uwv_peiltekst(stand.peildatum))
+    # De ouderdom uit code, niet uit het model (#1219); bij een verouderde stand ook waarom en waar het actuele staat.
+    toelichting = arbeidsmarkt.uwv_actualiteit(stand.peildatum)
     result = {
         "bron": catalogus_titel(UWV_ID),
         "dataset": UWV_ID,
         "data_key": key,
         "peildatum": stand.peildatum,
+        **arbeidsmarkt.ouderdom(stand.peildatum),
+        **({"ouderdom_toelichting": toelichting} if toelichting else {}),
         "momentopname": "Vacatures op de peildatum; geen actuele stand en geen reeks.",
         "provincie": stand.provincie,
         **({"gemeente": stand.gemeente} if stand.gemeente else {}),

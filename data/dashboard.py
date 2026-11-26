@@ -953,7 +953,8 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
 
     Bedoeld voor weergave-overzichten (UwvSection). Gebruik
-    arbeidsmarkt.vacatures_per_sector voor supply-demand berekeningen.
+    arbeidsmarkt.vacatures_per_sector voor supply-demand berekeningen. Met de ouderdom van de peildatum
+    (`peildatum_ouderdom_maanden`, `verouderd`, #1219): de frontend rekent die niet zelf.
     """
     try:
         stand = arbeidsmarkt.uwv_stand(provincie)
@@ -972,6 +973,7 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
             return {
                 "totaal": stand.totaal,
                 "peildatum": stand.peildatum,
+                **arbeidsmarkt.ouderdom(stand.peildatum),
                 "clusters": top,
                 "gefilterd_op": sorted(sectoren),
             }
@@ -980,6 +982,7 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     return {
         "totaal": stand.totaal,
         "peildatum": stand.peildatum,
+        **arbeidsmarkt.ouderdom(stand.peildatum),
         "clusters": top,
         "gefilterd_op": [],
     }
@@ -1139,6 +1142,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     result["arbeidsmarkt_prognose"] = _roa_prognose("ho")
     ho_sectoren = tuple(sorted(result.get("sectoren", {}).keys()))
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
+    result["uwv_periode"] = arbeidsmarkt.uwv_periode()  # voor een lege UWV-sectie, zonder vaste maand (#1220)
     return result
 
 
@@ -1254,6 +1258,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
+    result["uwv_periode"] = arbeidsmarkt.uwv_periode()  # voor een lege UWV-sectie, zonder vaste maand (#1220)
     return result
 
 
@@ -1806,6 +1811,8 @@ def _match_duiding(provincie: str, diplomajaren: list[int], *, vacatures_geladen
     - `drempel`: _MATCH_DREMPEL, de factor tussen vacature-aandeel en diploma-aandeel (_match_label).
     - `min_gediplomeerden`: _MATCH_MIN_GEDIPLOMEERDEN; een kleinere sector heeft geen label en geen verhouding (#952).
     - `vacatures_peildatum`: de peildatum van de UWV-momentopname in de provincie; None als UWV niet laadde.
+    - `peildatum_ouderdom_maanden` en `verouderd`: hoe oud die peildatum is, in hele maanden, en of dat meer is dan
+      `arbeidsmarkt.VACATURES_VEROUDERD_MAANDEN` (#1219); None en False zonder peildatum.
     - `diplomajaren`: de jaren waarover de gediplomeerden gemiddeld zijn (DUO).
     - `roa_versie`: de versie van het ROA-bestand achter `roa_per_niveau`; None als ROA niet laadde.
     - `sectormapping`: herkomst, versie en model van de indeling van beroepenclusters bij sectoren. Een veld dat de
@@ -1815,10 +1822,12 @@ def _match_duiding(provincie: str, diplomajaren: list[int], *, vacatures_geladen
     Peildatum en versie komen uit de lading die de score al deed (een cachetreffer): wat niet laadde, staat al in
     `niet_beschikbaar` en wordt hier niet opnieuw opgehaald.
     """
+    peildatum = _uwv_peildatum(provincie) if vacatures_geladen else None
     return {
         "drempel": _MATCH_DREMPEL,
         "min_gediplomeerden": _MATCH_MIN_GEDIPLOMEERDEN,
-        "vacatures_peildatum": _uwv_peildatum(provincie) if vacatures_geladen else None,
+        "vacatures_peildatum": peildatum,
+        **arbeidsmarkt.ouderdom(peildatum),
         "diplomajaren": diplomajaren,
         "roa_versie": _roa_versie() if roa_geladen else None,
         "sectormapping": {k: v for k, v in arbeidsmarkt.SECTOR_MANIFEST.items() if v != arbeidsmarkt.ONBEKEND},

@@ -276,6 +276,7 @@ Bij vragen over instroom, diplomering, sectortrends of arbeidsmarkt-aansluiting 
 - Zeg niet: "De UWV-data zegt…" — zeg: "Arbeidsmarkt-context: in dezelfde regio zijn X vacatures beschikbaar"
 - Voeg UWV-resultaten toe in je interpretatie, niet als aparte grafiek
 - Noem bij UWV de peildatum uit het resultaat (een momentopname), bij ROA de versie en per onderdeel de regio uit `herkomst`
+- Is `verouderd` waar in het UWV-resultaat, noem dan in het antwoord ook hoe oud de peildatum is (`peildatum_ouderdom_maanden`, in woorden uit `ouderdom_toelichting`, bijv. "ruim 3 jaar oud") en dat de actuele kwartaalcijfers bij UWV en CBS staan, niet in deze app. Reken de ouderdom niet zelf uit
 - Beide resultaten hebben een `data_key`: de tabel erachter (UWV: alle beroepenclusters met `VACATURES`; ROA: elk cijfer als rij) staat in de store en is met `query_data` te filteren en met `create_plot` te tekenen, zoals elke andere dataset
 - UWV met sector: alleen `uwv_broncijfer` komt van UWV. Welke clusters bij de sector horen (`lokale_classificatie`) en het gewogen sectorgetal (`gewogen_aandeel`) zijn van deze app; schrijf ze niet aan UWV toe
 

@@ -12,12 +12,17 @@ Scenario's:
   antwoordt met wat de tools teruggaven. Het laden gaat naar CBS: zonder internet faalt die stap en antwoordt het
   nepmodel met de catalogustreffer alleen.
 - `tekst`: antwoordt met een vaste tekst, zonder tools en zonder netwerk.
+- `verzonnen`: antwoordt eerst met een getal dat in geen data staat (`VERZONNEN`, over twee tekststukken verdeeld:
+  "27." en "135"), zonder tools en zonder netwerk. De getalcontrole trekt dat antwoord in; in de correctieronde
+  antwoordt het nepmodel zonder getal. Zo toetst tests/e2e/mock-llm.spec.js dat een ingetrokken getal nooit in beeld
+  stond (#1254).
 
 Een rapportaanvraag (de toolset van agent/report.py, zonder search_catalog) krijgt in elk scenario een kort vast rapport.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import AsyncIterator
@@ -45,6 +50,16 @@ _VASTE_MAAT = {"maat": "mbo_studenten_landelijk"}
 _STUK = 24
 
 KOP = "Nepmodel (lokaal testen, geen echt taalmodel)."
+# Het getal van scenario verzonnen. De zin valt zo in stukken van _STUK dat het getal over twee stukken loopt.
+VERZONNEN = "27.135"
+_VERZONNEN_ZIN = f"Een verzonnen getal van dit nepmodel: er zijn {VERZONNEN} studenten."
+_ZONDER_GETAL = "Dit nepmodel heeft geen data opgehaald en noemt daarom geen aantal."
+# De correctieronde begint met deze woorden (agent/controles.py, correctie).
+_CORRECTIE = "Controle van je antwoord"
+# Pauze tussen de tekststukken van scenario verzonnen, zoals bij een echt model: zonder pauze komen alle stukken en de
+# intrekking in één frame binnen en tekent de browser de eerste versie nooit. Een vaste pauze, want de timing van het
+# streamen is hier wat de test meet (tests/e2e/mock-llm.spec.js, #1254).
+_PAUZE_S = 0.04
 
 
 def scenario(model: str) -> str:
@@ -169,6 +184,8 @@ def keuze(model: str, messages: list[dict], tools: list[dict] | None, tool_choic
         return {"tekst": _rapport(messages)}
     begin = _beurtbegin(messages)
     vraag = _tekst(messages[begin].get("content")) if begin >= 0 else ""
+    if scen == "verzonnen":
+        return {"tekst": f"{KOP} {_ZONDER_GETAL if vraag.startswith(_CORRECTIE) else _VERZONNEN_ZIN}"}
     deze_beurt = _toolresultaten(messages[begin + 1 :])
     gedaan = {naam for naam, _ in deze_beurt}
     if scen == "default" and tool_choice != "none":
@@ -201,6 +218,8 @@ async def stroom(model: str, messages: list[dict], tools: list[dict] | None, too
     else:
         tekst = stap["tekst"]
         for i in range(0, len(tekst), _STUK):
+            if i and scenario(model) == "verzonnen":
+                await asyncio.sleep(_PAUZE_S)
             yield _stuk(model, Delta(content=tekst[i : i + _STUK]))
         yield _stuk(model, Delta(content=None), finish_reason="stop")
         uitvoer = max(1, len(tekst) // 4)

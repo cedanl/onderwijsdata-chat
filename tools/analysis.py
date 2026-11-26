@@ -19,7 +19,19 @@ import plotly.graph_objects as go
 
 from core.config import DUO_ROW_LIMIT
 
-from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, plot, relaties, sandbox, scriptcontrole, store
+from . import (
+    afhankelijkheid,
+    cbs_afronding,
+    dekking,
+    duo,
+    fouten,
+    plot,
+    relaties,
+    sandbox,
+    scriptcontrole,
+    store,
+    terugrekenen,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +315,13 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if not run.complete and run.result is not None and not isinstance(run.result, list):
         return store.ONVOLLEDIG
     controle = _controle(run)
+    # Totaal min de zichtbare delen is een onderdrukte cel: niet als getal, tabel of grafiek (#1265). Vóór het opslaan,
+    # zodat er ook geen key met de cel ontstaat.
+    if terugrekenen.teruggerekend(
+        [run.result, run.figure], run.bronnen, constanten=afhankelijkheid.getypte_getallen(run.code)
+    ):
+        logger.info("TERUGREKENEN geweigerd  bronnen=%s", ",".join(run.bronnen))
+        return terugrekenen.MELDING
     if run.figure is None:
         return _tekst(run, _bewaar(run, controle), controle)
     # Vóór de exportrijen: een categorie zonder naam (#1016) staat dan ook niet in de grafiek-CSV.

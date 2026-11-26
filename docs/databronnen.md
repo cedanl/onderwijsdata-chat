@@ -245,12 +245,27 @@ Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel 
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | Via het UWV |
-| Inhoud | Aantallen vacatures per (sub-)sector |
-| Formaat | Momentopname |
+| Toegang | Via [data.overheid.nl](https://data.overheid.nl/dataset/uwv-open-match-data) (CKAN, dataset `uwv-open-match-data`; `onderwijsbronnen.uwv`) |
+| Licentie | CC BY 4.0 |
+| Inhoud | Vacatures en werkzoekenden per beroep(encluster) en regio (postcode, gemeente, provincie) |
+| Formaat | Wekelijkse momentopnamen, laatste 16-05-2023 |
 
 !!! warning "Bevroren data"
-    De UWV-vacaturedata is een bevroren momentopname uit mei 2023. Actuele vacaturedata is niet beschikbaar via deze bron.
+    De UWV-vacaturedata is een bevroren momentopname: de laatste peildatum is 16-05-2023. UWV maakt geen nieuwe
+    bestanden. Volgens de documentatie van UWV bij de dataset op
+    [data.overheid.nl](https://data.overheid.nl/dataset/uwv-open-match-data) ontbreken ze door een technische storing
+    tijdens de productie: "De databestanden vanaf 31-05-2023 zijn niet aanwezig en zullen niet alsnog gemaakt worden".
+
+    Actuele vacatures per kwartaal publiceren UWV, in het
+    [dashboard Vacaturemarkt](https://www.uwv.nl/nl/arbeidsmarktinformatie/dashboards/dashboard-vacaturemarkt) en de
+    [Spanningsindicator](https://www.uwv.nl/nl/arbeidsmarktinformatie/dashboards/dashboard-spanningsindicator) (per
+    arbeidsmarktregio en beroepsgroep), en CBS, in tabel
+    [83599NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table) (openstaande vacatures per provincie en
+    bedrijfstak, SBI 2008). De app laadt die (nog) niet.
+
+    Daarom noemen de dashboards, de chat en de bronregels de ouderdom van de peildatum ("peildatum 16 mei 2023, ruim 3
+    jaar oud"); boven de 12 maanden (`VACATURES_VEROUDERD_MAANDEN` in `data/arbeidsmarkt.py`) staat er een waarschuwing
+    met deze verwijzingen (#1219).
 
 ---
 

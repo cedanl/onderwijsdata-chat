@@ -18,6 +18,8 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import CopyButton from './CopyButton'
 import { splitsTelling } from '../telling'
 import { useGeavanceerd } from '../geavanceerd'
+import { rehypeGetalWacht, wachtOpControle, zonderStaart } from '../getalWacht'
+import WachtTekst from './WachtTekst'
 
 SyntaxHighlighter.registerLanguage('python', python)
 SyntaxHighlighter.registerLanguage('sql', sql)
@@ -100,7 +102,8 @@ function zichtbareKaarthoogte(panel) {
   return inBeeld ? content.getBoundingClientRect().height : 0
 }
 
-export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false }) {
+// `wacht`: de tussentekst wacht nog op de controle (#1254), met de regel van de server (null: zonder regel).
+export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false, wacht = undefined }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
   // screen before the answer. A wide screen keeps the block.
@@ -166,7 +169,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
           ))}
           {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
           {tussentekst?.map((tekst, i) => (
-            <p key={i} className="reasoning-tussentekst">{tekst}</p>
+            <p key={i} className="reasoning-tussentekst">{wacht === undefined ? tekst : <WachtTekst tekst={tekst} regel={wacht} />}</p>
           ))}
           {hasSnippets && !codePerStap && (
             <div className="reasoning-snippets">
@@ -193,17 +196,25 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
 }
 
 // Parsing markdown is the costly part of a message; props are stable while a message is unchanged.
-export const Markdown = memo(function Markdown({ text, citaties }) {
+// `wacht` (#1254): de getallen die de controle toetst, staan als "…" tot ze gecontroleerd zijn. Een regel van de
+// server, of null zonder regel (dan wacht elk getal); weggelaten wacht er niets.
+export const Markdown = memo(function Markdown({ text, citaties, wacht = undefined }) {
+  const plugins = wacht === undefined ? [rehypeCitaties(citaties)] : [rehypeCitaties(citaties), rehypeGetalWacht(wacht)]
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeCitaties(citaties)]}
+      rehypePlugins={plugins}
       components={MARKDOWN_COMPONENTS}
     >
       {text}
     </ReactMarkdown>
   )
 })
+
+// De regel waarmee de getallen van dit bericht wachten, of undefined als het bericht gecontroleerd is.
+export function wachtVan(msg) {
+  return wachtOpControle(msg) ? (msg.getalregel ?? null) : undefined
+}
 
 // Het Telling-blok van de backend: de eerste zin, de rest uitklapbaar (#402). Onder de vaste
 // bouwstenen (#416) staat het label er al naast; dan zonder eigen kop.
@@ -213,7 +224,7 @@ export function TellingDetails({ msg, kop = true }) {
   return (
     <details className="telling">
       <summary>{kop ? <><strong>Telling</strong> {samenvatting}</> : samenvatting || 'Toon de telling'}</summary>
-      <Markdown text={telling} citaties={msg.citaties} />
+      <Markdown text={telling} citaties={msg.citaties} wacht={wachtVan(msg)} />
     </details>
   )
 }
@@ -221,11 +232,15 @@ export function TellingDetails({ msg, kop = true }) {
 export function MessageContent({ msg, blocks = null }) {
   if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
   if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
-  const { antwoord, telling } = splitsTelling(msg.content)
-  if (!telling) return <Markdown text={msg.content} citaties={msg.citaties} />
+  const wacht = wachtVan(msg)
+  // Tijdens het streamen kan het eind van de tekst het begin van een getal zijn ("27." voor "135", "70,6 pro" voor
+  // "70,6 procent"): dat wacht mee.
+  const tekst = msg.done ? msg.content : zonderStaart(msg.content, wacht)
+  const { antwoord, telling } = splitsTelling(tekst)
+  if (!telling) return <Markdown text={tekst} citaties={msg.citaties} wacht={wacht} />
   return (
     <>
-      <Markdown text={antwoord} citaties={msg.citaties} />
+      <Markdown text={antwoord} citaties={msg.citaties} wacht={wacht} />
       {/* Met de vaste bouwstenen staat de Telling daar, op een vaste plek (#416). */}
       {!blocks && <TellingDetails msg={msg} />}
     </>
