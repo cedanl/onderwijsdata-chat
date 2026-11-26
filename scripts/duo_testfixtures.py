@@ -61,15 +61,12 @@ MBO_DASHBOARD = {"27GZ", "00GT", "25LP", "21CY", "25LX", "24ZW", "30BC"}
 
 # (dataset, resource) → (kolom met de instellingscode, de codes die blijven); None houdt het hele bestand.
 ALLE = set(HO) | set(MBO)
+_HO_DASHBOARD = ("p01hoinges", "p02ho1ejrs", "p04hogdipl")
 BESTANDEN: dict[tuple[str, int], tuple[str, set[str]] | None] = {
     ("adressen_ho", 1): None,
     ("adressen_mbo", 1): None,
-    ("p01hoinges", 0): ("INSTELLINGSCODE_ACTUEEL", ALLE),
-    ("p01hoinges", 1): ("INSTELLINGSCODE_ACTUEEL", ALLE),
-    ("p02ho1ejrs", 0): ("INSTELLINGSCODE_ACTUEEL", ALLE),
-    ("p02ho1ejrs", 1): ("INSTELLINGSCODE_ACTUEEL", ALLE),
-    ("p04hogdipl", 0): ("INSTELLINGSCODE_ACTUEEL", ALLE),
-    ("p04hogdipl", 1): ("INSTELLINGSCODE_ACTUEEL", ALLE),
+    # Alle zes bestanden van de ho-datasets van het dashboard: per instelling en jaar kiest het er één (#1238).
+    **{(dataset, resource): ("INSTELLINGSCODE_ACTUEEL", ALLE) for dataset in _HO_DASHBOARD for resource in range(6)},
     ("mbo-studenten-per-instelling", 0): ("INSTELLINGSCODE", ALLE),
     ("gediplomeerde-mbo-studenten", 0): ("INSTELLINGSCODE", MBO_DASHBOARD),
     # 1, 3, …, 9: de bestanden "met soorten instroom" (_INSTROMENDE_MBO_HISTORISCH); 8: het hoofdgroep-bestand van het

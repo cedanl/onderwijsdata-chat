@@ -3,12 +3,15 @@
 Elk verwacht getal is met pandas nagerekend uit dezelfde bevroren DUO-fixtures (#766), los van data/dashboard.py.
 """
 
+import json
+
 import pandas as pd
 import pytest
 
 import data.dashboard as dashboard
 from core import domeinregels
 from core.sentinels import mask_sentinels
+from tests import bestandskeuze_hulp
 
 # UWV en ROA uit fixtures (#915): de regio- en arbeidsmarktdashboards halen ze anders live op.
 pytestmark = pytest.mark.usefixtures("duo_fixtures", "arbeidsmarkt_fixtures")
@@ -80,8 +83,9 @@ def test_een_sector_in_een_van_drie_jaren_is_gemiddeld_over_alle_drie():
 
 
 def test_de_hu_taal_en_cultuur_telt_het_jaar_zonder_diplomas_mee():
-    # De DUO-fixture (p04hogdipl van 08-04-2026): HU heeft TAAL_EN_CULTUUR in 2023 (52) en 2024 (76), niet in 2022.
-    dipl = pd.concat([_duo("p04hogdipl", 0), _duo("p04hogdipl", 1)])
+    # De DUO-fixtures (p04hogdipl), per instelling en jaar het bestand van #1238: HU heeft TAAL_EN_CULTUUR in 2023 (52)
+    # en 2024 (76), niet in 2022.
+    dipl = mask_sentinels(bestandskeuze_hulp.gekozen("p04hogdipl"))[0]
     hu = dipl[dipl["INSTELLINGSNAAM_ACTUEEL"] == "Hogeschool Utrecht"]
     jaren = sorted(hu["DIPLOMAJAAR"].unique())[-3:]
     per_jaar = hu[hu["DIPLOMAJAAR"].isin(jaren)].pivot_table(
@@ -214,7 +218,7 @@ def test_een_pseudocohort_zonder_diplomajaar_is_none_geen_nul():
 def test_een_sector_zonder_inschrijvingen_in_een_jaar_is_een_gat_in_de_trend():
     result = dashboard.load_dashboard_regio("Hogeschool Utrecht")
 
-    ins = pd.concat([_duo("p01hoinges", 0), _duo("p01hoinges", 1)])
+    ins = mask_sentinels(bestandskeuze_hulp.gekozen("p01hoinges"))[0]
     hu = ins[ins["INSTELLINGSNAAM_ACTUEEL"] == "Hogeschool Utrecht"]
     for onderdeel, trend in result["sectoren_trend"].items():
         jaren = set(hu.loc[hu["ONDERDEEL"] == onderdeel, "STUDIEJAAR"].astype(int))
@@ -278,24 +282,28 @@ def test_een_mbo_instelling_heeft_in_dashboard_en_chat_hetzelfde_aantal():
 
 
 @pytest.mark.usefixtures("gouden")
-def test_een_ho_instelling_wijkt_alleen_af_waar_het_dashboard_een_ondergrens_meldt():
-    """Bewust verschil: het dashboard telt p01hoinges per onderdeel en geslacht, de chat het bestand met
-    opleidingsvorm (bestand 4). Elk onderdrukt andere cellen; een verschil valt dus in een jaar dat het dashboard als
-    ondergrens meldt, en is klein."""
+def test_een_ho_instelling_heeft_in_dashboard_en_chat_hetzelfde_aantal():
+    """#1238: chat en dashboard kiezen per instelling en jaar hetzelfde bestand (de minste -1, dan het hoogste totaal,
+    dan het eerste van de groep). Tot #1238 telde het dashboard het geslacht-bestand en de chat het opleidingsvorm-
+    bestand, en weken ze af in elk jaar met een andere onderdrukte cel. Op de bevroren bestanden van de UU kiest 2022 het
+    niveau-bestand (geen -1, 37.676), de andere jaren het opleidingsvorm-bestand."""
     from tools import maten
     from tools.maten import get_maat
 
     uu = "Universiteit Utrecht"
-    chat = _per_jaar(get_maat(maten.PERSONEN_HO, uu, vorm="alle"))
+    uit = json.loads(get_maat(maten.PERSONEN_HO, uu, vorm="alle"))
+    chat = _per_jaar(json.dumps(uit))
     regio = dashboard.load_dashboard_regio(uu)
+    nationaal = dashboard.load_dashboard_nationaal(uu)
 
-    assert set(regio["ingeschrevenen"]) == set(chat)
-    verschil = {j: chat[j] - regio["ingeschrevenen"][j] for j in chat if chat[j] != regio["ingeschrevenen"][j]}
-    assert verschil, "de bestanden onderdrukken andere cellen; is dat veranderd, pas dan de test en docs aan"
-    for jaar, d in verschil.items():
-        assert regio["onderdrukt"]["ingeschrevenen"].get(jaar), jaar
-        # Een onderdrukte cel is 1 tot en met 4; het bestand van de chat onderdrukt hier één cel (test_gouden_maten).
-        assert abs(d) <= 4 * regio["onderdrukt"]["ingeschrevenen"][jaar] + 4, (jaar, d)
+    assert regio["ingeschrevenen"] == chat
+    assert chat[2022] == 37676
+    eigen = next(i for i in nationaal["alle_instellingen"] if i["naam"] == uu)
+    assert eigen["ingeschrevenen"] == chat[nationaal["laatste_jaar"]]
+    # Beide noemen het bestand van 2022: de chat per schooljaar, het dashboard per reeks en jaar.
+    assert "niveau opleiding" in uit["bestandskeuze"]["per_schooljaar"]["2022/23"]
+    assert "niveau opleiding" in regio["bestandskeuze"]["ingeschrevenen"][2022]
+    assert "opleidingsvorm" in regio["bestandskeuze"]["ingeschrevenen"][2025]
 
 
 def test_het_aantal_peers_staat_per_jaar_en_telt_alleen_peers_met_data():

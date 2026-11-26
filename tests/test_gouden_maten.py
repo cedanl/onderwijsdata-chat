@@ -52,8 +52,11 @@ def test_elk_recept_heeft_hier_een_gouden_test():
 # Elk bestand heeft één onderdrukte cel (-1), in DT: p01 en p03 in 2022, p02 in 2021. Bij voltijd valt die buiten de
 # selectie; bij alle vormen telt de cel niet mee (de app maskeert -1), dus de som is 1 hoger dan de ruwe som met -1.
 _PERSONEN_VT = {2021: 36534, 2022: 37317, 2023: 37910, 2024: 37357, 2025: 36769}
-# Alle vormen: ruwe som 36932, 37673, 38288, 37701, 37099; 2022 zonder de -1: 37673 + 1 = 37674.
-_PERSONEN_ALLE = {2021: 36932, 2022: 37674, 2023: 38288, 2024: 37701, 2025: 37099}
+# Alle vormen: ruwe som 36932, 37673, 38288, 37701, 37099; 2022 zonder de -1: 37673 + 1 = 37674. Bij alle vormen kiest
+# get_maat per jaar het bestand met de minste -1 (#1238): in 2022 is dat "… wetenschappelijk onderwijs niveau opleiding"
+# (bestand 5, uit de DUO-fixtures van #766), zonder -1 en met 37676; de andere jaren bestand 4 (geen -1, of in 2025 één
+# minder dan bestand 5).
+_PERSONEN_ALLE = {2021: 36932, 2022: 37676, 2023: 38288, 2024: 37701, 2025: 37099}
 _EERSTEJAARS_VT = {2021: 5076, 2022: 5133, 2023: 5183, 2024: 5218, 2025: 4884}
 _INSCHRIJVINGEN_VT = {2021: 38402, 2022: 39212, 2023: 39749, 2024: 39074, 2025: 38619}
 

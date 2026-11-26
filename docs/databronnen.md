@@ -120,6 +120,31 @@ in de repo (en dus op de publieke spiegel) valt onder dezelfde regel, met de URL
 | Instroom | Eerstejaars inschrijvingen |
 | Adressen | Vestigingsadressen instellingen: `adressen_ho` en `adressen_mbo` hebben de besturen in bestand 0 en de instellingen (met BRIN) in bestand 1, de standaard zonder bestandskeuze (#1033) |
 
+**Bestandskeuze per instelling en jaar (ho, #1238):** de ho-datasets `p01hoinges`, `p02ho1ejrs`, `p03hoinschr` en
+`p04hogdipl` hebben per sector (hbo, wo) drie bestanden met dezelfde telling en een andere uitsplitsing: inclusief
+geslacht, inclusief opleidingsvorm en niveau opleiding. Elk bestand onderdrukt andere kleine aantallen als -1, dus een
+totaal per instelling verschilt per bestand. De vaste maat in de chat (`get_maat`) en de dashboards
+(`data/dashboard._load_ho_dataset`) kiezen daarom per dataset, sector, instelling en jaar hetzelfde bestand, met
+dezelfde functie (`tools/duo_bestandskeuze.kies_rijen`, besluit #1214). De tiebreak:
+
+1. het bestand met de minste onderdrukte cellen (-1) in de telkolom voor die instelling en dat jaar;
+2. bij een gelijk aantal onderdrukte cellen het hoogste totaal (zonder de -1);
+3. bij een nog gelijk totaal het bestand dat in de groep het eerst staat (`_GROEPEN`), zodat de keuze vastligt.
+
+Zonder instelling (landelijk) telt de keuze de onderdrukte cellen per jaar over alle instellingen samen. Het landelijke
+totaal van het dashboard is de som per instelling, dus daar telt de keuze per instelling. Een bestand zonder rijen voor
+die instelling en dat jaar doet niet mee; laadt een bestand niet, dan kiest `get_maat` uit de andere en noemt het onder
+`bestandskeuze.niet_geladen`. Binnen één reeks kan het bestand per jaar wisselen: `get_maat` noemt dan het bestand per
+schooljaar (`bestandskeuze.per_schooljaar` en een regel in het Telling-blok), het regiodashboard van een
+ho-instelling per reeks en jaar (`bestandskeuze`), en elk dashboard in zijn bronblok elk bestand dat minstens één instelling en jaar leverde. Een vorm (voltijd,
+deeltijd, duaal) filtert op OPLEIDINGSVORM, die alleen het opleidingsvorm-bestand heeft: dan is dat het bestand. De
+verdeling naar geslacht op het dashboard komt uit het geslacht-bestand, het enige met GESLACHT; haar som kan een paar
+studenten van het totaal afwijken. Mbo (één bestand per instelling en leerweg) en de prognosebestanden vallen buiten
+deze keuze. Tot #1238 nam de chat het opleidingsvorm-bestand over alle jaren en telde het dashboard de twee
+geslacht-bestanden: voor dezelfde instelling en hetzelfde jaar gaven ze een ander getal. Het eerste bestand van een
+groep heet nog leidend: over alle jaren zijn daarin de minste cellen onderdrukt, en `get_duo_data` zonder resource
+laadt het.
+
 **Regio en nevenlocaties (mbo, #744):** adressen en studentaantallen bestaan bij DUO alleen per instelling (BRIN), met
 de plaats van de hoofdvestiging. Zone.college (31JC) heeft zijn hoofdvestiging in Lochem en geeft 22 opleidingen in
 Doetinchem, waar het Graafschap College (24ZZ) staat; het is geen vestiging van het Graafschap College. Filtert

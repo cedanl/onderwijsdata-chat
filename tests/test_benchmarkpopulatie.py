@@ -15,6 +15,7 @@ import pandas as pd
 import pytest
 
 from data import dashboard
+from tests import bestandskeuze_hulp
 
 # ─── De trap: arbeidsmarktregio → provincie → landelijk ──────────────────────
 
@@ -379,7 +380,7 @@ def _typen() -> dict[str, str]:
         ),
         # hbo: in Midden-Utrecht staan HKU en Universiteit Utrecht; alleen HKU is een hogeschool, en in de provincie
         # ook. Eerder stond de universiteit tussen de peers van HU. Landelijk valt Codarts af: 966 ingeschrevenen is
-        # minder dan 10% van de 35.058 van HU (#1008).
+        # minder dan 10% van de 35.064 van HU (#1008).
         (
             "Hogeschool Utrecht",
             "hbo",
@@ -408,11 +409,12 @@ def test_vergelijkingsgroep_per_niveau_is_type_zuiver(instelling, soort, label):
 
 @_met_duo
 def test_de_omvang_komt_uit_de_ingeschrevenen_van_het_laatste_jaar():
-    # ho: per INSTELLINGSCODE_ACTUEEL over hbo en wo samen (HvA: 41.889 hbo + 58 wo); mbo: per naam over alle codes,
-    # dezelfde 15.288 als de reeks van Curio (test_dashboard_mbo_reeksen).
+    # ho: per INSTELLINGSCODE_ACTUEEL over hbo en wo samen (HvA: 41.891 hbo + 58 wo), per instelling en jaar uit het
+    # bestand met de minste -1 (#1238); mbo: per naam over alle codes, dezelfde 15.288 als de reeks van Curio
+    # (test_dashboard_mbo_reeksen).
     ho, mbo = dashboard._omvang_per_code("ho"), dashboard._omvang_per_code("mbo")
 
-    assert (ho["21PD"], ho["28DN"], ho["14NI"]) == (37090, 41889 + 58, 966)
+    assert (ho["21PD"], ho["28DN"], ho["14NI"]) == (37099, 41891 + 58, 966)
     assert mbo["21CY"] == mbo["25LX"] == 15288
     assert mbo["24ZW"] == 0  # BBO de Schalm: onderdrukte cellen en nullen
 
@@ -444,12 +446,12 @@ _INST = "INSTELLINGSNAAM_ACTUEEL"
 
 
 def _ho_laatste_jaar() -> tuple[pd.DataFrame, set[str]]:
-    """De ingeschrevenen ho van het laatste jaar (beide resources, -1 als leeg) en de hogescholen: de namen uit de
-    hbo-resource. Een hogeschool met wo-studenten (HvA) staat ook in de wo-resource, maar is een hogeschool."""
+    """De ingeschrevenen ho van het laatste jaar (de bestandskeuze van #1238, -1 als leeg) en de hogescholen: de namen
+    uit de hbo-resource. Een hogeschool met wo-studenten (HvA) staat ook in de wo-resource, maar is een hogeschool."""
     from onderwijsbronnen import duo
 
-    hbo, wo = duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)
-    df = pd.concat([hbo, wo], ignore_index=True)
+    hbo = duo.load("p01hoinges", 0)
+    df = bestandskeuze_hulp.gekozen("p01hoinges")
     df = df[df["AANTAL_INGESCHREVENEN"] >= 0]
     return df[df["STUDIEJAAR"] == df["STUDIEJAAR"].max()], set(hbo[_INST])
 
@@ -497,8 +499,8 @@ def test_marktaandeel_rekent_over_het_totaal_van_het_eigen_type(instelling, soor
     # hogeschool met wo-studenten (HvA) telt met al haar studenten bij de hogescholen, zoals in de ranking.
     from onderwijsbronnen import duo
 
-    hbo, wo = duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)
-    alles = pd.concat([hbo, wo], ignore_index=True)
+    hbo = duo.load("p01hoinges", 0)
+    alles = bestandskeuze_hulp.gekozen("p01hoinges")  # per instelling en jaar het bestand van #1238
     alles = alles[alles["AANTAL_INGESCHREVENEN"] >= 0]
     in_soort = alles[alles[_INST].isin(set(hbo[_INST])) == (soort == "hbo")]
     verwacht: dict[str, dict[int, int]] = {}
