@@ -1,6 +1,7 @@
 import { getToken, endSessionIfCurrent } from './auth'
 import { saveFile } from './saveFile'
 import { metVoorbehoud } from './voorbehoud'
+import { antwoordHash } from './herhaalAnalyse'
 
 function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -52,6 +53,14 @@ export async function downloadDataCsv(key, voorbehoud = []) {
     saveFile(new Blob(['\uFEFF' + metVoorbehoud(tekst, voorbehoud)], { type: 'text/csv;charset=utf-8' }), filename)
   }
   return res.headers.get('X-Data-Herladen')
+}
+
+// "Herhaal deze analyse" (#1240): the server fetches the CBS tables behind an own answer again and sets the newest
+// state beside the one of the answer. The answer is named by the sha256 of its text, as the server keys its evidence;
+// the text itself does not travel. Rejects with the server's message (404, 402 budget, 429 limit).
+export async function herhaalAnalyse(gesprekId, tekst, { hash = antwoordHash } = {}) {
+  const h = await hash(tekst)
+  return apiFetch(`/api/conversations/${encodeURIComponent(gesprekId)}/antwoorden/${h}/herhaal`, { method: 'POST' })
 }
 
 // Everything the server keeps under this account as one JSON file (#645), fetched as a blob for the same
