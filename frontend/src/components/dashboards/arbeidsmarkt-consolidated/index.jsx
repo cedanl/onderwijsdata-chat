@@ -138,7 +138,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
 
         <MatchScoreSection matchScore={matchData?.match_score} verhouding={matchData?.match_verhouding} weggelaten={matchData?.match_weggelaten} duiding={matchData?.match_duiding} dark={dark} />
 
-        <SectionHeader title="Aanbod en vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
+        <SectionHeader title="Aanbod en vraag" subtitle="Gediplomeerden tegenover de vacatures in de bedrijfstakken van hun sector" />
         <SupplyDemandChart
           gediplomeerdenPerSector={matchData?.gediplomeerden_per_sector}
           vacaturesPerSector={matchData?.vacatures_per_sector}

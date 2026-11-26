@@ -240,7 +240,7 @@ describe('kap op de staaf en kleine sectoren (#952)', () => {
     render({ matchScore: score, verhouding, duiding: { ...DUIDING, min_gediplomeerden: 30 } })
 
     const duiding = container.querySelector('.db-match-duiding').textContent
-    expect(duiding).toContain('een gemiddelde voorraad over 4 kwartalen in de hele provincie, de gediplomeerden een jaarlijkse')
+    expect(duiding).toContain('Teller en noemer verschillen: een gemiddelde voorraad vacatures over 4 kwartalen in de hele provincie')
     expect(duiding).toContain('minder dan 30 gediplomeerden per jaar krijgt geen label')
   })
 })

@@ -89,9 +89,10 @@ export function MatchDuiding({ duiding }) {
         </ul>
       )}
       <p>
-        Wat deze indicatie niet zegt: {duiding.uitleg || 'de vacatures tellen per bedrijfstak, niet per beroep; het label per sector is indicatief.'}{' '}
-        De vacatures zijn een gemiddelde voorraad over {kwartalen} in de hele provincie, de gediplomeerden een jaarlijkse
-        stroom van deze ene instelling; de verhouding zegt niet hoeveel vacatures er per gediplomeerde zijn. Een
+        {duiding.uitleg || 'De vacatures tellen per bedrijfstak, niet per beroep: het label per sector is indicatief.'}{' '}
+        Teller en noemer verschillen: een gemiddelde voorraad vacatures over {kwartalen} in de hele provincie tegenover
+        een jaarlijkse stroom diploma&apos;s van deze ene instelling; de verhouding zegt niet hoeveel vacatures er per
+        gediplomeerde zijn. Een
         bedrijfstak die bij meer sectoren hoort, telt per sector naar rato mee. De koppeltabel van bedrijfstakken en
         sectoren is {koppeltabel.herkomst || 'een indeling van deze app'}{bijgewerkt}.
         {minimum && ` Een sector met minder dan ${minimum} gediplomeerden per jaar krijgt geen label: daar verschuift één diploma de verhouding te sterk.`}

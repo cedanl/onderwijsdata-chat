@@ -85,7 +85,7 @@ describe('de arbeidsmarktmatch noemt bron, kwartalen, drempel en definitie (#900
     expect(tekst).toContain('Evenwicht')
     expect(tekst).toContain('per bedrijfstak van de werkgever (SBI), niet per beroep')
     expect(tekst).toContain('indicatief')
-    expect(tekst).toContain('gemiddelde voorraad over 4 kwartalen')
+    expect(tekst).toContain('gemiddelde voorraad vacatures over 4 kwartalen')
     expect(tekst).toContain('koppeltabel van bedrijfstakken en sectoren is met de hand opgesteld, geen taalmodel')
   })
 
