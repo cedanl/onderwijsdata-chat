@@ -191,8 +191,20 @@ _PROVINCIES = (
 
 
 @pytest.fixture
-def arbeidsmarkt_fixtures(monkeypatch):
-    """UWV en ROA zonder netwerk (#915), voor de vormtests van dashboards en chat.
+def cbs_vacatures(monkeypatch):
+    """CBS 83599NED, de vacatures van de arbeidsmarktdashboards (#1223), uit het opgenomen OData-antwoord: de 12
+    provincies, de laatste vijf kwartalen (tests/cbs_83599ned.py). Geeft de params van elke TypedDataSet-aanroep."""
+    from data import vacatures_cbs
+    from tests import cbs_83599ned
+
+    yield cbs_83599ned.zet_klaar(monkeypatch)
+    vacatures_cbs._tabel.cache_clear()
+
+
+@pytest.fixture
+def arbeidsmarkt_fixtures(monkeypatch, cbs_vacatures):
+    """UWV, ROA en de CBS-vacatures (83599NED, fixture `cbs_vacatures`) zonder netwerk (#915), voor de vormtests van
+    dashboards en chat.
 
     ROA is de bevroren snapshot van de gouden tests (`tests/fixtures/gouden/`). De gouden UWV-snapshot kent alleen
     Flevoland; hier krijgt elke provincie tien vacatures per beroepencluster uit de sectorindeling, zodat elke
