@@ -120,6 +120,31 @@ in de repo (en dus op de publieke spiegel) valt onder dezelfde regel, met de URL
 | Instroom | Eerstejaars inschrijvingen |
 | Adressen | Vestigingsadressen instellingen: `adressen_ho` en `adressen_mbo` hebben de besturen in bestand 0 en de instellingen (met BRIN) in bestand 1, de standaard zonder bestandskeuze (#1033) |
 
+**Bestandskeuze per instelling en jaar (ho, #1238):** de ho-datasets `p01hoinges`, `p02ho1ejrs`, `p03hoinschr` en
+`p04hogdipl` hebben per sector (hbo, wo) drie bestanden met dezelfde telling en een andere uitsplitsing: inclusief
+geslacht, inclusief opleidingsvorm en niveau opleiding. Elk bestand onderdrukt andere kleine aantallen als -1, dus een
+totaal per instelling verschilt per bestand. De vaste maat in de chat (`get_maat`) en de dashboards
+(`data/dashboard._load_ho_dataset`) kiezen daarom per dataset, sector, instelling en jaar hetzelfde bestand, met
+dezelfde functie (`tools/duo_bestandskeuze.kies_rijen`, besluit #1214). De tiebreak:
+
+1. het bestand met de minste onderdrukte cellen (-1) in de telkolom voor die instelling en dat jaar;
+2. bij een gelijk aantal onderdrukte cellen het hoogste totaal (zonder de -1);
+3. bij een nog gelijk totaal het bestand dat in de groep het eerst staat (`_GROEPEN`), zodat de keuze vastligt.
+
+Zonder instelling (landelijk) telt de keuze de onderdrukte cellen per jaar over alle instellingen samen. Het landelijke
+totaal van het dashboard is de som per instelling, dus daar telt de keuze per instelling. Een bestand zonder rijen voor
+die instelling en dat jaar doet niet mee; laadt een bestand niet, dan kiest `get_maat` uit de andere en noemt het onder
+`bestandskeuze.niet_geladen`. Binnen één reeks kan het bestand per jaar wisselen: `get_maat` noemt dan het bestand per
+schooljaar (`bestandskeuze.per_schooljaar` en een regel in het Telling-blok), het regiodashboard van een
+ho-instelling per reeks en jaar (`bestandskeuze`), en elk dashboard in zijn bronblok elk bestand dat minstens één instelling en jaar leverde. Een vorm (voltijd,
+deeltijd, duaal) filtert op OPLEIDINGSVORM, die alleen het opleidingsvorm-bestand heeft: dan is dat het bestand. De
+verdeling naar geslacht op het dashboard komt uit het geslacht-bestand, het enige met GESLACHT; haar som kan een paar
+studenten van het totaal afwijken. Mbo (één bestand per instelling en leerweg) en de prognosebestanden vallen buiten
+deze keuze. Tot #1238 nam de chat het opleidingsvorm-bestand over alle jaren en telde het dashboard de twee
+geslacht-bestanden: voor dezelfde instelling en hetzelfde jaar gaven ze een ander getal. Het eerste bestand van een
+groep heet nog leidend: over alle jaren zijn daarin de minste cellen onderdrukt, en `get_duo_data` zonder resource
+laadt het.
+
 **Regio en nevenlocaties (mbo, #744):** adressen en studentaantallen bestaan bij DUO alleen per instelling (BRIN), met
 de plaats van de hoofdvestiging. Zone.college (31JC) heeft zijn hoofdvestiging in Lochem en geeft 22 opleidingen in
 Doetinchem, waar het Graafschap College (24ZZ) staat; het is geen vestiging van het Graafschap College. Filtert
@@ -768,6 +793,43 @@ dat één paar: mbo-studenten landelijk, CBS 85354NED tegenover DUO "Mbo-student
 instellingen. De regel "**Ter controle:**" onder het antwoord noemt het getal van de tweede bron, het verschil en de
 bekende redenen uit de tabel. Welke bronnen een paar zijn, hoe een paar erbij komt en wat de kruiscontrole niet zegt:
 [Domeinregels, "Bronparen"](domeinregels.md#bronparen).
+
+---
+
+## Actualiteit van de bronnen
+
+De pagina **Actualiteit van de bronnen** (`/bronnen`, link onderaan de startpagina; #1266) toont per bron en per
+dataset hoe actueel de data is: de laatste periode of editie, de laatste wijziging, de status (voorlopig of
+definitief), de frequentie en een verwachte volgende editie. Dezelfde inhoud geeft
+[`GET /api/bronactualiteit`](api.md#infrastructuur) en de MCP-resource
+[`onderwijscatalogus://bronactualiteit`](mcp.md#resource-actualiteit-van-de-bronnen). Code:
+`core/bronactualiteit_overzicht.py`.
+
+Drie regels gelden voor elke bron:
+
+- **Uit de catalogus, niet live.** Alles komt uit de metadata die de app al heeft: de catalogus van `onderwijsbronnen`
+  (het broncontract, en bij CBS de vastgelegde TableInfos). Voor de pagina gaat geen verzoek naar een bron, dus een
+  trage bron houdt haar niet op. Of een bron nu antwoordt, komt uit de [bronstatus](operatie.md#bronstatus-in-de-app-1057):
+  een bron die niet antwoordt staat er als "niet bereikbaar", met de laatst bekende stand uit de catalogus.
+- **Een verwachte editie alleen uit de bron.** De app rekent geen volgende datum uit de frequentie. Noemt de bron zelf
+  niets, dan is de verwachte editie "onbekend" en staat er "frequentie: …, laatste update …".
+- **Een datum zoals de bron hem geeft.** Datums staan er letterlijk (`2026-04-14`), niet omgerekend. Een veld dat de
+  bron niet levert, is "onbekend".
+
+| Bron | Welke datasets | Laatste periode of editie | Laatste wijziging | Status | Verwachte volgende editie |
+|------|----------------|---------------------------|-------------------|--------|---------------------------|
+| CBS | de tabellen die de chat kan laden, zonder de gearchiveerde | de laatste periode in de TableInfos (`perioden.codes`) | `TableInfos.Modified` uit de catalogus (`_laatste_update`) | de status van die laatste periode (Voorlopig, Nader voorlopig, Definitief) | de zin van CBS onder "Wanneer komen er nieuwe cijfers?" in de TableInfos van die tabel, letterlijk, met de tabel als bron; zonder zo'n zin "onbekend" |
+| DUO | de datasets die de chat kan laden | de periode uit de catalogus | `metadata_modified` van het CKAN-pakket toen de catalogus het vastlegde | voorlopig of definitief uit de gecontroleerde beschrijving (`_tijd`), anders "onbekend" | onbekend: DUO noemt geen datum |
+| RIO | de registers die de chat kan laden | "actueel": een live register | onbekend (geen wijzigingsdatum per register) | onbekend (een register kent geen voorlopige cijfers) | onbekend |
+| UWV | Open Match | de laatste peildatum (`2023-05-16`), met de leeftijd van de stand in dezelfde woorden als op de dashboards (`ouderdom_tekst`, #1219) | onbekend (bevroren reeks) | onbekend | onbekend |
+| ROA | AIS tot 2030 en tot 2028 | de nieuwste editie in de catalogus | de DataverseNL-release van die editie | onbekend (ROA markeert niets als voorlopig) | onbekend |
+| SKDB | de Studiekeuzedatabase | onbekend (de exportdatum staat pas in een lading) | onbekend | definitief | onbekend |
+
+**Onder een antwoord.** Las een data-antwoord voorlopige CBS-cijfers, dan staat er één regel onder: "Let op: voorlopig
+cijfer: 2025/26 in 85423NED. CBS kan het nog herzien." Noemt CBS in de TableInfos van een gelezen tabel een dag voor de
+volgende cijfers die binnen 30 dagen valt, dan staat er ook "Nieuwe editie verwacht op <dag> (bron: CBS,
+tabelinformatie <tabel> …)". Een kwartaal of maand is geen dag: dan geen regel. Beide regels gaan mee in de kopie, de
+gespreksexport en de CSV-kop (`message_end`, veld `actualiteit`; `agent/bronvermelding.py`).
 
 ---
 

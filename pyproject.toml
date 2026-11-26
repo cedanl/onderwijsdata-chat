@@ -48,7 +48,12 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.15.16",
     # Gepind op één patchversie: een nieuwe ty meldt vaak nieuwe diagnostics; optillen in een eigen MR met triage (#1206).
-    "ty>=0.0.110,<0.0.111",
+    "ty>=0.0.111,<0.0.112",
+    # tests/test_notebook_export.py draait de notebookexport van de gespreksexport (#1247) in een echte kernel en
+    # valideert hem tegen het nbformat-schema. Alleen voor de tests: het productie-image installeert zonder dev.
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "ipykernel>=6.29",
 ]
 # Alleen voor demo/narrate.py (TTS-narratie van de demo-video): piper-tts trekt
 # onnxruntime mee (~185 MB) — niet in elke venv of de productie-image.
@@ -97,7 +102,9 @@ line-length = 120
 # Bewust uitgesloten (besluit bij #886): de pakketten kregen als losse repo's nooit ruff, en opnemen geeft 248 bevindingen
 # plus 93 bestanden die ruff anders zou opmaken, een opmaakcommit die de git blame van de pakketten overschrijft. Opruimen
 # kan per pakket in een eigen MR; haal het pakket dan hier en uit [tool.ty.src] weg (CONTRIBUTING.md).
-extend-exclude = ["packages"]
+# tests/fixtures/notebook: het notebook is letterlijk wat de gespreksexport maakt (#1247), met de snippets zoals de app ze
+# schrijft; ruff zou het herschrijven en dan wijkt het af van de export die vitest ertegen houdt.
+extend-exclude = ["packages", "tests/fixtures/notebook"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "PERF", "LOG", "RUF", "C4", "FURB"]

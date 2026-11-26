@@ -1,4 +1,4 @@
-"""Welk DUO-bestand leidend is voor een totaal per instelling (#325).
+"""Welk DUO-bestand een totaal per instelling en jaar geeft (#325, #1238).
 
 Een DUO-dataset heeft per sector meerdere bestanden met dezelfde telling en een andere
 uitsplitsing (geslacht, opleidingsvorm, niveau opleiding). Elk bestand onderdrukt andere
@@ -8,12 +8,27 @@ in de selectie zijn de totalen gelijk; het verschil is alleen onderdrukking. Het
 per gesprek een ander bestand, en de standaard (index 0) was het geslacht-bestand, met de
 meeste -1.
 
-Leidend is per groep het bestand dat over alle jaren het minst onder het hoogste totaal per
-instelling blijft (scripts/meet_duo_bestandskeuze.py, 09-10-2026). Voor wo is dat steeds
-het opleidingsvorm-bestand; voor hbo wisselt het per dataset tussen niveau opleiding en
-opleidingsvorm. Het geslacht-bestand komt overal het meest tekort. Bij mbo is het bestand
-per instelling en leerweg leidend: de fijnere uitsplitsingen tellen honderden studenten
-minder per instelling.
+Keuze per instelling en jaar (#1238, besluit #1214): chat (`get_maat`) en dashboard
+(`data/dashboard._load_ho_dataset`) nemen voor de ho-datasets p01hoinges, p02ho1ejrs,
+p03hoinschr en p04hogdipl per (dataset, sector, instelling, jaar) hetzelfde bestand uit de
+groep van die sector (`kies_rijen`). Tiebreak, in deze volgorde:
+  1. het bestand met de minste onderdrukte cellen (-1) in de telkolom voor die instelling en dat jaar;
+  2. bij een gelijk aantal onderdrukte cellen het hoogste totaal (zonder de -1);
+  3. bij een nog gelijk totaal het bestand dat in de groep het eerst staat (deterministisch).
+Zonder instelling (landelijk) telt de keuze de onderdrukte cellen per jaar over alle
+instellingen samen. Een bestand zonder rijen voor die instelling en dat jaar doet niet mee.
+Tot #1238 nam de chat per groep één bestand over alle jaren en voegde het dashboard de twee
+geslacht-bestanden (resource 0 en 1) samen: voor dezelfde instelling en hetzelfde jaar gaven ze
+een ander getal. Een vorm-filter (voltijd, deeltijd, duaal) kan alleen op het bestand met de
+kolom OPLEIDINGSVORM; daar is er dus één kandidaat.
+
+Het eerste ID van een groep heet nog het leidende bestand: dat bestand bleef over alle jaren het
+minst onder het hoogste totaal per instelling (scripts/meet_duo_bestandskeuze.py, 09-10-2026). Het
+is de standaard van get_duo_data zonder resource en het eerste bestand bij een gelijke stand. Voor
+wo is dat steeds het opleidingsvorm-bestand; voor hbo wisselt het per dataset tussen niveau
+opleiding en opleidingsvorm. Het geslacht-bestand komt overal het meest tekort. Bij mbo is het
+bestand per instelling en leerweg leidend: de fijnere uitsplitsingen tellen honderden studenten
+minder per instelling (mbo valt buiten de keuze per jaar).
 
 Buiten de groepen een vaste standaard per dataset (#1033): de adressenbestanden hebben de
 besturen op index 0 en de instellingen (met BRIN) op index 1; zonder resource het tweede.
@@ -22,6 +37,11 @@ Die staan bewust niet in de groepen: ze tellen niets, dus geen tekst over onderd
 Op resource-ID, niet op index: de ID's zijn stabiel. Een ID dat de catalogus niet meer
 kent, geeft geen keuze; test_duo_bestandskeuze houdt de ID's bij de gepinde catalogus.
 """
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+
+import pandas as pd
 
 from . import duo_meta
 
@@ -115,6 +135,12 @@ def _naam(dataset_id: str, index: int) -> str:
     return _bestanden(dataset_id)[index].get("naam", str(index))
 
 
+def titel(dataset_id: str, index: int) -> str:
+    """De naam van bestand `index` in de catalogus; de index zelf als de catalogus hem niet kent."""
+    bestanden = _bestanden(dataset_id)
+    return bestanden[index].get("naam", str(index)) if 0 <= index < len(bestanden) else str(index)
+
+
 def leidende_ids(dataset_id: str) -> set[str]:
     """De resource-ID's die leidend zijn voor een totaal per instelling."""
     return {groep[0] for groep in _GROEPEN.get(dataset_id, ())}
@@ -154,11 +180,17 @@ def melding(dataset_id: str, resource: int | str) -> str | None:
     index = leidend(dataset_id, resource)
     if index is None or index == resource:
         return None
+    keuze = (
+        " Een vaste maat (get_maat) kiest voor een totaal per instelling zelf per instelling en jaar het bestand met de "
+        "minste onderdrukte cellen."
+        if dataset_id in TELKOLOMMEN
+        else ""
+    )
     return (
         f"Voor een totaal per instelling is get_duo_data('{dataset_id}', {index}) leidend "
-        f"('{_naam(dataset_id, index)}'): daarin zijn de minste cellen onderdrukt. Dit bestand "
+        f"('{_naam(dataset_id, index)}'): daarin zijn over alle jaren de minste cellen onderdrukt. Dit bestand "
         "onderdrukt andere kleine aantallen, dus een totaal hieruit valt meestal lager uit. Gebruik het "
-        "alleen voor de uitsplitsing die alleen dit bestand heeft."
+        f"alleen voor de uitsplitsing die alleen dit bestand heeft.{keuze}"
     )
 
 
@@ -169,12 +201,17 @@ def noot(dataset_id: str, resource: int | str | None) -> str | None:
         return None
     keuze = f"totalen uit bestand '{_naam(dataset_id, resource)}'"
     if index == resource:
-        keuze += ", het leidende bestand voor totalen per instelling"
+        keuze += ", het leidende bestand voor totalen per instelling (over alle jaren de minste onderdrukte cellen)"
     else:
-        keuze += f"; leidend voor totalen per instelling is '{_naam(dataset_id, index)}'"
+        keuze += f"; leidend voor totalen per instelling is '{_naam(dataset_id, index)}' (over alle jaren)"
+    per_jaar = (
+        " Een vaste maat en het dashboard kiezen per instelling en jaar het bestand met de minste onderdrukte cellen."
+        if dataset_id in TELKOLOMMEN
+        else ""
+    )
     return (
         f"{keuze}. De andere bestanden van deze dataset splitsen anders uit en onderdrukken "
-        "andere cellen; hun totalen wijken daardoor af."
+        f"andere cellen; hun totalen wijken daardoor af.{per_jaar}"
     )
 
 
@@ -192,3 +229,172 @@ def historienoot(dataset_id: str, selectie) -> str | None:
         "jaren met Type 'Historie' komen uit het prognosebestand en wijken licht af van de "
         f"gerealiseerde aantallen in {andere}."
     )
+
+
+# --- De keuze per instelling en jaar (#1238) ---------------------------------------------------------------------------
+
+# Per ho-dataset de jaar- en de telkolom: de keuze telt de onderdrukte cellen (-1) in de telkolom.
+TELKOLOMMEN: dict[str, tuple[str, str]] = {
+    "p01hoinges": ("STUDIEJAAR", "AANTAL_INGESCHREVENEN"),
+    "p02ho1ejrs": ("STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"),
+    "p03hoinschr": ("STUDIEJAAR", "AANTAL_INSCHRIJVINGEN"),
+    "p04hogdipl": ("DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN"),
+}
+INSTELLINGSKOLOM = "INSTELLINGSCODE_ACTUEEL"
+# De groepen van een ho-dataset in _GROEPEN, in deze volgorde: eerst hbo, dan wo.
+HO_SECTOREN = ("hbo", "wo")
+
+KEUZEREGEL = (
+    "per instelling en jaar het bestand met de minste onderdrukte cellen (-1); bij een gelijk aantal het hoogste "
+    "totaal, bij een nog gelijk totaal het eerste bestand van de groep"
+)
+
+
+@dataclass(frozen=True)
+class Telling:
+    """Wat één bestand voor één instelling (of landelijk) in één jaar telt."""
+
+    onderdrukt: int  # cellen met -1 in de telkolom
+    totaal: float  # de som van de telkolom zonder de -1
+
+
+def _rang(telling: Telling) -> tuple[int, float]:
+    return telling.onderdrukt, -telling.totaal
+
+
+def kies(tellingen: Sequence[Telling | None]) -> int | None:
+    """De positie van het gekozen bestand in `tellingen` (in groepsvolgorde); None als geen bestand rijen heeft.
+
+    Eerst de minste onderdrukte cellen, dan het hoogste totaal, dan het eerste in de groep. None is een bestand zonder
+    rijen voor die instelling en dat jaar: dat doet niet mee.
+    """
+    beste: tuple[tuple[int, float], int] | None = None
+    for positie, telling in enumerate(tellingen):
+        if telling is not None and (beste is None or _rang(telling) < beste[0]):
+            beste = (_rang(telling), positie)
+    return None if beste is None else beste[1]
+
+
+def kandidaten(dataset_id: str, sector: str) -> list[int]:
+    """De indexen van de bestanden van een ho-sector (hbo, wo), in groepsvolgorde; leeg zonder groep."""
+    groepen = _GROEPEN.get(dataset_id, ()) if dataset_id in TELKOLOMMEN else ()
+    if sector not in HO_SECTOREN or len(groepen) != len(HO_SECTOREN):
+        return []
+    return [i for i in _indexen(dataset_id, groepen[HO_SECTOREN.index(sector)]) if i is not None]
+
+
+def geslachtbestanden(dataset_id: str) -> list[int]:
+    """Per ho-sector het bestand met de kolom GESLACHT (de verdeling naar geslacht staat alleen daarin)."""
+    return [
+        i
+        for sector in HO_SECTOREN
+        for i in kandidaten(dataset_id, sector)
+        if "geslacht" in _naam(dataset_id, i).lower()
+    ]
+
+
+def _sleutelkolommen(periodekolom: str, instellingskolom: str | None) -> list[str]:
+    return [instellingskolom, periodekolom] if instellingskolom else [periodekolom]
+
+
+def _sleutel(waarde) -> tuple[str, int] | int:
+    if isinstance(waarde, tuple):
+        code, jaar = waarde
+        return str(code), int(jaar)
+    return int(waarde)
+
+
+def tellingen(
+    df: pd.DataFrame,
+    cellen: pd.DataFrame | None,
+    periodekolom: str,
+    waardekolom: str,
+    instellingskolom: str | None = INSTELLINGSKOLOM,
+) -> dict:
+    """Per (instellingscode, jaar), of per jaar zonder instellingskolom (landelijk), de telling van één bestand.
+
+    `df` is gemaskeerd en `cellen` zijn zijn onderdrukte cellen zoals `core.sentinels.mask_sentinels` ze geeft (index
+    van df, per kolom 0/1). Zonder `cellen` maskeert deze functie zelf: dan mag `df` nog -1 hebben.
+    """
+    from core.sentinels import mask_sentinels  # lazy: core.sentinels leest de domeinregels
+
+    if cellen is None:
+        df, cellen = mask_sentinels(df)
+    kolommen = _sleutelkolommen(periodekolom, instellingskolom)
+    onderdrukt = (
+        cellen[waardekolom].reindex(df.index, fill_value=0)
+        if waardekolom in cellen.columns
+        else pd.Series(0, index=df.index)
+    )
+    per = df[kolommen].assign(_onderdrukt=onderdrukt, _totaal=pd.to_numeric(df[waardekolom], errors="coerce"))
+    som = per.groupby(kolommen if instellingskolom else periodekolom, dropna=True)[["_onderdrukt", "_totaal"]].sum()
+    return {
+        _sleutel(sleutel): Telling(int(rij["_onderdrukt"]), float(rij["_totaal"])) for sleutel, rij in som.iterrows()
+    }
+
+
+@dataclass(frozen=True)
+class Keuze:
+    """De rijen uit de gekozen bestanden: per sleutel (instellingscode en jaar, of jaar) de rijen van één bestand."""
+
+    rijen: pd.DataFrame  # gemaskeerd, index 0..n-1
+    cellen: pd.DataFrame  # de onderdrukte cellen van die rijen, zoals mask_sentinels (alleen rijen met een cel)
+    bestand: Mapping = field(default_factory=dict)  # sleutel -> index van het gekozen bestand
+
+    def gebruikt(self) -> list[int]:
+        """De bestanden waaruit minstens één sleutel komt, in de volgorde van hun eerste jaar en dan hun index."""
+        return sorted(
+            set(self.bestand.values()), key=lambda i: (min(_jaar(s) for s, b in self.bestand.items() if b == i), i)
+        )
+
+    def per_jaar(self) -> dict[int, list[int]]:
+        """Per jaar de gekozen bestanden (meer dan één als de instellingscodes verschillend kozen)."""
+        uit: dict[int, set[int]] = {}
+        for sleutel, index in self.bestand.items():
+            uit.setdefault(_jaar(sleutel), set()).add(index)
+        return {jaar: sorted(uit[jaar]) for jaar in sorted(uit)}
+
+
+def _jaar(sleutel) -> int:
+    return sleutel[1] if isinstance(sleutel, tuple) else sleutel
+
+
+def kies_rijen(
+    bestanden: Sequence[tuple[int, pd.DataFrame, pd.DataFrame | None]],
+    periodekolom: str,
+    waardekolom: str,
+    instellingskolom: str | None = INSTELLINGSKOLOM,
+) -> Keuze:
+    """Kies per instelling en jaar (of per jaar zonder instellingskolom) één bestand en geef zijn rijen.
+
+    `bestanden`: (index, gemaskeerde rijen, cellen) per kandidaat, in groepsvolgorde (`kandidaten`); cellen None
+    laat de functie zelf maskeren. Chat en dashboard roepen dit allebei aan, dus ze kiezen hetzelfde bestand.
+    """
+    from core.sentinels import mask_sentinels
+
+    klaar = [(index, *((df, cellen) if cellen is not None else mask_sentinels(df))) for index, df, cellen in bestanden]
+    per_bestand = [tellingen(df, cellen, periodekolom, waardekolom, instellingskolom) for _, df, cellen in klaar]
+    alle = dict.fromkeys(s for telling in per_bestand for s in telling)
+    gekozen = {
+        sleutel: klaar[positie][0]
+        for sleutel in alle
+        if (positie := kies([telling.get(sleutel) for telling in per_bestand])) is not None
+    }
+    rijen, cellen = [], []
+    for index, df, bestandscellen in klaar:
+        eigen = [s for s, i in gekozen.items() if i == index]
+        if not eigen:
+            continue
+        if instellingskolom:
+            sleutels = pd.MultiIndex.from_arrays([df[instellingskolom].astype(str), df[periodekolom]])
+            masker = sleutels.isin(eigen)
+        else:
+            masker = df[periodekolom].isin(eigen)
+        rijen.append(df[masker])
+        cellen.append(bestandscellen.reindex(df.index[masker], fill_value=0))
+    if not rijen:
+        leeg = klaar[0][1].iloc[0:0] if klaar else pd.DataFrame()
+        return Keuze(leeg.reset_index(drop=True), pd.DataFrame(index=pd.RangeIndex(0)), {})
+    samen = pd.concat(rijen, ignore_index=True)
+    alle_cellen = pd.concat(cellen, ignore_index=True).fillna(0).astype(int)
+    return Keuze(samen, alle_cellen[alle_cellen.any(axis=1)], gekozen)

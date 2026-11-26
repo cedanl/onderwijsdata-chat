@@ -10,6 +10,7 @@ vi.mock('../api', () => {
   const pending = () => new Promise(() => {})
   return {
     fetchCatalogCounts: pending,
+    fetchBronActualiteit: pending,
     fetchConversations: pending,
     fetchSettingsConfig: pending,
     putConversation: pending,
@@ -47,6 +48,7 @@ vi.mock('../hooks/useChat', () => ({
 import HomePage from '../pages/HomePage'
 import DashboardPage from '../pages/DashboardPage'
 import ChatPage from '../pages/ChatPage'
+import BronActualiteitPage from '../pages/BronActualiteitPage'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -82,5 +84,10 @@ describe('page titles', () => {
   it('the chat page says Chat, never the conversation title', async () => {
     await render(ChatPage, { settings: {}, user: 'gast' })
     expect(document.title).toBe('Chat — openEDUdata+')
+  })
+
+  it('the sources page says Actualiteit van de bronnen (#1266)', async () => {
+    await render(BronActualiteitPage)
+    expect(document.title).toBe('Actualiteit van de bronnen — openEDUdata+')
   })
 })

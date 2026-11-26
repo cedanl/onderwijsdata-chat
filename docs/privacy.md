@@ -121,8 +121,9 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
   dan volgt dezelfde melding. Stel je na het verwijderen nog een vraag in het gesprek, dan blijft het bewaard. Log je
   uit, dan gaan ook deze verwijderingen eerst nog met je login. Is je sessie bij je volgende bezoek verlopen, dan is het
   ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
-- Een gesprek exporteren als Markdown en, met de instelling "Geavanceerd" (#1269), de tabel achter een antwoord
-  downloaden als CSV (`/api/data/csv`).
+- Een gesprek exporteren als Markdown en, met de instelling "Geavanceerd" (#1269), ook als Jupyter-notebook (#1247; je
+  browser maakt het bestand, zonder account- of sessiegegevens) en de tabel achter een antwoord downloaden als CSV
+  (`/api/data/csv`).
 - Het bewijs van een dataantwoord downloaden met "Bewijs (JSON)" (#1244). Je browser maakt dat bestand uit het
   antwoord dat al op je scherm staat: er gaat niets naar de server of de AI-dienst. **Wel erin:** de antwoordtekst, de
   bronnen met hun links, de citaties, de controlemeldingen, wat de controle deed (de regel "Wat is gecontroleerd" en

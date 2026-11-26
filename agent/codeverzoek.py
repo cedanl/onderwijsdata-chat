@@ -30,6 +30,9 @@ GEEN_DATASTAP = (
     "Sinds dit gesprek open staat, heeft de app nog geen data opgehaald: er is hier geen code om te tonen. "
     'Bij een eerder antwoord staat de code onder "Bekijk code" bij de stap, als de instelling "Geavanceerd" aan staat.'
 )
+# Het slot van de zin bij een stap zonder snippet; de notebookexport (#1247) zegt het per stap letterlijk zo
+# (`GEEN_CODE` in frontend/src/conversationExport.js, bewaakt door tests/test_notebook_export.py).
+GEEN_CODE = "voor die stap maakt de app geen code om zelf na te rekenen."
 
 # De sessiesleutel: {"label": ..., "snippet": ... of None}. Een nieuw of heropend gesprek begint met een lege sessie.
 _SESSIESLEUTEL = "laatste_datastap"
@@ -95,10 +98,7 @@ def codeblok(session: dict) -> str:
         return f"{CODEKOP}\n{GEEN_DATASTAP}"
     label, snippet = stap["label"], stap["snippet"]
     if snippet is None:
-        return (
-            f'{CODEKOP}\nDe laatste datastap, "{label}", heeft geen code: voor die stap maakt de app geen code om '
-            "zelf na te rekenen."
-        )
+        return f'{CODEKOP}\nDe laatste datastap, "{label}", heeft geen code: {GEEN_CODE}'
     return (
         f'{CODEKOP}\nDe code van de laatste datastap, "{label}", dezelfde als onder "Bekijk code" bij die stap '
         '(met de instelling "Geavanceerd"):\n\n'

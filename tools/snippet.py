@@ -26,6 +26,7 @@ from . import (
     cbs,
     cbs_selectie,
     cbs_standaard,
+    duo_bestandskeuze,
     geslacht_opleiding,
     instellingsprovincie,
     kaartlocaties,
@@ -916,13 +917,57 @@ def _maat_regels(args: dict) -> tuple[list[str], str | None]:
                 f'df = df.groupby("Perioden", as_index=False)[{r.onderwerp!r}].sum(min_count={len(r.somcodes)})'
             )
         return lines, None
-    lines = _duo_laadregels({"dataset_id": p.recept.dataset, "resource": p.bestand})
+    if maten.kiest_per_jaar(p):
+        lines = _bestandskeuzeregels(p)
+    else:
+        lines = _duo_laadregels({"dataset_id": p.recept.dataset, "resource": p.bestand})
     lines += [_filterregel(key, val) for key, val in maten.filters(p).items()]
     lines += _aggregatieregels([p.recept.periodekolom], maten.aggregate(p))
     if isinstance(p.recept, maten.DuoBreedRecept):
         kolommen = list(p.recept.leerwegen[p.vorm])
         lines.append(f'df["{maten.AANTAL}"] = df[{kolommen!r}].sum(axis=1, min_count=1)')
     return lines, None
+
+
+def _bestandskeuzeregels(p: maten.Plan) -> list[str]:
+    """De bestandskeuze van get_maat (#1238) als script: elk bestand van de sector, per instelling en jaar één.
+
+    Dezelfde regel als `duo_bestandskeuze.kies_rijen`: de minste onderdrukte cellen in de telkolom, dan het hoogste
+    totaal zonder die cellen, dan het eerste bestand van de groep. Daarna dezelfde maskering als bij één bestand.
+    """
+    r = p.recept
+    assert isinstance(r, maten.DuoRecept) and p.instelling is not None
+    periodekolom, waardekolom = duo_bestandskeuze.TELKOLOMMEN[r.dataset]
+    sleutel = [r.instellingskolom, periodekolom]
+    indexen = duo_bestandskeuze.kandidaten(r.dataset, p.sector)
+    return [
+        "import pandas as pd",
+        "from onderwijsbronnen import duo",
+        "",
+        f"# Bestandskeuze (#1238): {duo_bestandskeuze.KEUZEREGEL}.",
+        "bestanden = {}",
+        f"for index in {indexen!r}:",
+        f"    deel = duo.load({_lit(r.dataset)}, index)",
+        f"    bestanden[index] = deel[deel[{r.instellingskolom!r}].astype(str).isin({maten.instellingscodes(p.instelling)!r})]",
+        "tellingen = []",
+        "for positie, (index, deel) in enumerate(bestanden.items()):",
+        f"    onderdrukt = deel[{waardekolom!r}].isin({list(SENTINELS)!r})",
+        f"    telling = deel[{sleutel!r}].assign(",
+        "        onderdrukt=onderdrukt.astype(int),",
+        f"        totaal=deel[{waardekolom!r}].mask(onderdrukt),",
+        "    )",
+        f"    telling = telling.groupby({sleutel!r})[['onderdrukt', 'totaal']].sum().reset_index()",
+        "    tellingen.append(telling.assign(positie=positie, index=index))",
+        "keuze = pd.concat(tellingen).sort_values(['onderdrukt', 'totaal', 'positie'], ascending=[True, False, True])",
+        f"keuze = keuze.drop_duplicates({sleutel!r})",
+        "df = pd.concat(",
+        f"    [deel.merge(keuze.loc[keuze['index'] == index, {sleutel!r}]) for index, deel in bestanden.items()],",
+        "    ignore_index=True,",
+        ")",
+        *_duo_sentinelregels(),
+        'if "STUDIEJAAR" in df.columns:',
+        f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")',
+    ]
 
 
 def _geslachtregels(p: maten.Plan) -> list[str]:

@@ -1,0 +1,95 @@
+[
+ {
+  "role": "user",
+  "content": "Hoeveel eerstejaars hbo-studenten kozen per studiejaar voor techniek?"
+ },
+ {
+  "role": "assistant",
+  "content": "Per studiejaar kozen tussen 2021 en 2025 elk jaar enkele duizenden eerstejaars hbo-studenten voor techniek.",
+  "done": true,
+  "bronnen": [
+   "DUO · Eerstejaars ingeschrevenen hbo (p02ho1ejrs)"
+  ],
+  "manifest": {
+   "model": "mock/default",
+   "model_naam": "Testmodel",
+   "sampling": {
+    "seed_toegepast": false
+   },
+   "prompt_hash": "abc123def456",
+   "catalogus": "bd4942907ddd",
+   "app": "2.8.0",
+   "commit": "7d3488aa",
+   "data_as_of": [
+    {
+     "bron": "duo",
+     "dataset": "p02ho1ejrs",
+     "herladen_op": "26-11-2026"
+    }
+   ]
+  },
+  "controle": [
+   "de aantallen zijn een ondergrens: DUO onderdrukt kleine cellen"
+  ],
+  "tools": [
+   {
+    "name": "search_catalog",
+    "label": "Catalogus doorzocht",
+    "done": true,
+    "snippet": null
+   },
+   {
+    "name": "query_data",
+    "label": "Data gefilterd",
+    "done": true,
+    "snippet": "# Gemaakt met onderwijsbronnen 0.11.2, app 2.8.0, commit 7d3488aa.\n# Dezelfde versies installeren: pip install \"onderwijsbronnen[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@7d3488aa0c1e5b2f9a64d3e8b1c07f25e9a4d6b3#subdirectory=packages/onderwijsbronnen\"\n\nimport pandas as pd\nfrom onderwijsbronnen import duo\n\ndf = duo.load(\"p02ho1ejrs\", 0)\n# DUO-sentinel -1 = onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde. De app sluit ze uit.\n# Totalen over een selectie met zulke cellen zijn een ondergrens.\nfor kolom in df.select_dtypes('number').columns:\n    if not any(h in str(kolom).upper() for h in ('MUTATIE', 'SALDO', 'VERSCHIL', 'GROEI', 'DELTA')):\n        df[kolom] = df[kolom].mask(df[kolom].isin([-1]))\nif \"STUDIEJAAR\" in df.columns:\n    df[\"STUDIEJAAR_LABEL\"] = df[\"STUDIEJAAR\"].map(lambda j: f\"{j}/{j + 1}\")\ndf = df[df['ONDERDEEL'].astype(str).str.lower().isin(['techniek'])]\ngroup_by = ['STUDIEJAAR']\nif \"STUDIEJAAR_LABEL\" in df.columns and \"STUDIEJAAR_LABEL\" not in group_by:\n    group_by.append(\"STUDIEJAAR_LABEL\")\nfor kolom in ['AANTAL_EERSTEJAARS_INGESCHREVENEN']:\n    df[kolom] = pd.to_numeric(df[kolom], errors=\"coerce\")\ndf = df.groupby(group_by, dropna=False).agg({'AANTAL_EERSTEJAARS_INGESCHREVENEN': lambda s: s.sum(min_count=1)}).reset_index()\nprint(df)"
+   }
+  ]
+ },
+ {
+  "role": "user",
+  "content": "Reken het zelf na met een eigen analyse."
+ },
+ {
+  "role": "assistant",
+  "content": "Een eigen analyse op hetzelfde bestand geeft dezelfde aantallen.",
+  "done": true,
+  "bronnen": [
+   "DUO · Eerstejaars ingeschrevenen hbo (p02ho1ejrs)"
+  ],
+  "manifest": {
+   "model": "mock/default",
+   "model_naam": "Testmodel",
+   "sampling": {
+    "seed_toegepast": false
+   },
+   "prompt_hash": "abc123def456",
+   "catalogus": "bd4942907ddd",
+   "app": "2.8.0",
+   "commit": "7d3488aa",
+   "data_as_of": [
+    {
+     "bron": "duo",
+     "dataset": "p02ho1ejrs",
+     "herladen_op": "26-11-2026"
+    }
+   ]
+  },
+  "tools": [
+   {
+    "name": "query_data",
+    "label": "Data gefilterd",
+    "done": true,
+    "status": "error",
+    "statusLabel": "Kolom bestaat niet",
+    "snippet": "df[df.X == 1]"
+   },
+   {
+    "name": "run_analysis",
+    "label": "Analyse uitgevoerd",
+    "done": true,
+    "snippet": "# Gemaakt met onderwijsbronnen 0.11.2, app 2.8.0, commit 7d3488aa.\n# Dezelfde versies installeren: pip install \"onderwijsbronnen[analyse] @ git+https://github.com/cedanl/onderwijsdata-chat@7d3488aa0c1e5b2f9a64d3e8b1c07f25e9a4d6b3#subdirectory=packages/onderwijsbronnen\" plotly\n\nimport pandas as pd\nfrom onderwijsbronnen import duo\n\ndf = duo.load(\"p02ho1ejrs\", 0)\n# DUO-sentinel -1 = onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde. De app sluit ze uit.\n# Totalen over een selectie met zulke cellen zijn een ondergrens.\nfor kolom in df.select_dtypes('number').columns:\n    if not any(h in str(kolom).upper() for h in ('MUTATIE', 'SALDO', 'VERSCHIL', 'GROEI', 'DELTA')):\n        df[kolom] = df[kolom].mask(df[kolom].isin([-1]))\nif \"STUDIEJAAR\" in df.columns:\n    df[\"STUDIEJAAR_LABEL\"] = df[\"STUDIEJAAR\"].map(lambda j: f\"{j}/{j + 1}\")\nimport numpy as np\nimport plotly.express as px\nimport plotly.graph_objects as go\n\ntechniek = df[df[\"ONDERDEEL\"].astype(str).str.lower() == \"techniek\"]\nresult = techniek.groupby(\"STUDIEJAAR\", as_index=False)[\"AANTAL_EERSTEJAARS_INGESCHREVENEN\"].sum()\nprint(result)"
+   }
+  ]
+ }
+]

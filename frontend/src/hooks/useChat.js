@@ -11,6 +11,7 @@ import { markeerWeggegaan } from '../weggegaan'
 import { regelUit } from '../getalWacht'
 import { vasteMaat } from '../vasteMaat'
 import { hoofdgetalUit } from '../eigenGetal'
+import { actualiteitRegels } from '../voorbehoud'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // a few minutes (#417); the server ends a report itself after GENEREER_TIMEOUT_S (8 min, #759), which
@@ -364,6 +365,8 @@ export function useChat({ maxHistory } = {}) {
             ...(ev.controle?.length && { controle: ev.controle }),
             // What the check did, for the line "Wat is gecontroleerd" (#1260): counts from code, never from the model.
             ...(ev.controles && typeof ev.controles === 'object' && !Array.isArray(ev.controles) && { controles: ev.controles }),
+            // "Let op: voorlopig cijfer" and an expected edition the source names itself (#1266), from code.
+            ...(actualiteitRegels(ev).length && { actualiteit: actualiteitRegels(ev) }),
             // Sentences in which the model revised itself go to the reasoning card, not the answer (#412).
             ...(ev.tussentekst?.length && { tussentekst: [...(m.tussentekst || []), ...ev.tussentekst] }),
             // The numbers that passed the check, each with the step it came from (#365).

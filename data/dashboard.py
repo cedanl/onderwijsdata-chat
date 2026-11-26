@@ -15,7 +15,7 @@ from onderwijsbronnen import duo
 from core import actualiteit, brongebruik
 from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
-from tools import periode
+from tools import duo_bestandskeuze, periode
 
 from . import arbeidsmarkt, bronblok, kaart_regio, sbi_koppeling, vacatures_cbs
 from .instellingen import get_adres_lookup, resolve_alias
@@ -747,26 +747,33 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
         return None
 
 
-def _duo_load(dataset_id: str, resource: int) -> pd.DataFrame:
-    """DUO-data met -1 gemaskeerd, zoals de chat-tools hem zien (#228).
+def _duo_bestand(dataset_id: str, resource: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """Eén DUO-bestand met -1 gemaskeerd, zoals de chat-tools hem zien (#228): (data, onderdrukte cellen, melding).
 
     Elke DUO-lading van de dashboards loopt hierlangs: anders tellen onderdrukte
     cellen als -1 mee (BBO de Schalm: -1 studenten; Grafisch Lyceum 2377 i.p.v. 2379).
-    Het bestand meldt zich met zijn versie van riodata voor het bronblok (#904, #717).
+    De melding is het bestand met zijn versie van riodata voor het bronblok (#904, #717); wie het bestand gebruikt,
+    meldt haar (`brongebruik.meld`).
     """
     df = duo.load(dataset_id, resource)
     versie = df.attrs.get("bron") or {}
-    brongebruik.meld(
-        {
-            "bron": "DUO",
-            "dataset": dataset_id,
-            "resource": resource,
-            "resource_id": versie.get("resource_id"),
-            "last_modified": versie.get("last_modified"),
-            "opgehaald_op": actualiteit.nu().isoformat(),
-        }
-    )
-    return mask_sentinels(df)[0]
+    melding = {
+        "bron": "DUO",
+        "dataset": dataset_id,
+        "resource": resource,
+        "resource_id": versie.get("resource_id"),
+        "last_modified": versie.get("last_modified"),
+        "opgehaald_op": actualiteit.nu().isoformat(),
+    }
+    gemaskeerd, cellen = mask_sentinels(df)
+    return gemaskeerd, cellen, melding
+
+
+def _duo_load(dataset_id: str, resource: int) -> pd.DataFrame:
+    """Een DUO-bestand met -1 gemaskeerd, gemeld voor het bronblok (`_duo_bestand`)."""
+    df, _, melding = _duo_bestand(dataset_id, resource)
+    brongebruik.meld(melding)
+    return df
 
 
 @actualiteit.Lading
@@ -910,9 +917,73 @@ def _gemiddeld_per_sector(
 
 @actualiteit.Lading
 def _load_ho_dataset(dataset_id: str) -> pd.DataFrame:
-    """hbo (resource 0) en wo (resource 1) van één ho-dataset samen. Per dataset een eigen lading: een dashboard dat
+    """hbo en wo van één ho-dataset samen, per instelling en jaar uit het bestand dat de chat ook kiest (#1238).
+
+    Per sector laadt dit elk bestand van de groep (geslacht, opleidingsvorm, niveau opleiding) en neemt per instelling
+    en jaar de rijen van het bestand met de minste onderdrukte cellen, dan het hoogste totaal, dan het eerste van de
+    groep (`duo_bestandskeuze.kies_rijen`, dezelfde functie als `get_maat`). Tot #1238 waren het de twee
+    geslacht-bestanden (resource 0 en 1), met de meeste -1: chat en dashboard gaven voor dezelfde instelling en
+    hetzelfde jaar een ander getal. De kolommen die alleen één bestand heeft (GESLACHT, OPLEIDINGSVORM, de opleiding)
+    zijn leeg in de rijen van een ander bestand: de verdeling naar geslacht komt uit `_load_ho_geslacht`. Het bronblok
+    noemt de bestanden die minstens één instelling en jaar leverden. Per dataset een eigen lading: een dashboard dat
     alleen de ingeschrevenen gebruikt, laadt en noemt in zijn bronblok de andere twee niet (#904)."""
-    return pd.concat([_duo_load(dataset_id, 0), _duo_load(dataset_id, 1)], ignore_index=True)
+    periodekolom, waardekolom = duo_bestandskeuze.TELKOLOMMEN[dataset_id]
+    delen = []
+    for sector in duo_bestandskeuze.HO_SECTOREN:
+        geladen = [
+            (index, *_duo_bestand(dataset_id, index)) for index in duo_bestandskeuze.kandidaten(dataset_id, sector)
+        ]
+        keuze = duo_bestandskeuze.kies_rijen(
+            [(i, df, cellen) for i, df, cellen, _ in geladen], periodekolom, waardekolom
+        )
+        gebruikt = set(keuze.gebruikt())
+        brongebruik.meld(*(melding for i, _, _, melding in geladen if i in gebruikt))
+        delen.append(keuze.rijen.assign(**{_BESTAND: _bestandkolom(keuze, periodekolom)}))
+    return pd.concat(delen, ignore_index=True)
+
+
+_BESTAND = "DUO_BESTAND"  # de index van het bestand waaruit een rij komt (#1238)
+# Per reeks van het ho-dashboard de dataset en de jaarkolom.
+_HO_REEKSEN = {
+    "ingeschrevenen": ("p01hoinges", "STUDIEJAAR"),
+    "eerstejaars": ("p02ho1ejrs", "STUDIEJAAR"),
+    "gediplomeerden": ("p04hogdipl", "DIPLOMAJAAR"),
+}
+
+
+def _bestandkolom(keuze: duo_bestandskeuze.Keuze, periodekolom: str) -> list[int]:
+    rijen = keuze.rijen
+    if rijen.empty:
+        return []
+    codes = rijen[duo_bestandskeuze.INSTELLINGSKOLOM].astype(str)
+    return [keuze.bestand[(code, int(jaar))] for code, jaar in zip(codes, rijen[periodekolom], strict=True)]
+
+
+def _ho_bestandskeuze(reeksen: dict[str, pd.DataFrame]) -> dict[str, dict[int, str]]:
+    """Per reeks en jaar het DUO-bestand waaruit het getal van de instelling komt (#1238), zoals de chat het noemt."""
+    uit: dict[str, dict[int, str]] = {}
+    for sleutel, df in reeksen.items():
+        dataset, jaarkolom = _HO_REEKSEN[sleutel]
+        if df.empty or _BESTAND not in df.columns:
+            continue
+        per_jaar: dict[int, set[int]] = {}
+        for jaar, index in zip(df[jaarkolom].astype(int), df[_BESTAND].astype(int), strict=True):
+            per_jaar.setdefault(jaar, set()).add(index)
+        uit[sleutel] = {
+            jaar: " + ".join(duo_bestandskeuze.titel(dataset, i) for i in sorted(indexen))
+            for jaar, indexen in sorted(per_jaar.items())
+        }
+    return uit
+
+
+@actualiteit.Lading
+def _load_ho_geslacht() -> pd.DataFrame:
+    """De ingeschrevenen naar geslacht: alleen de geslacht-bestanden van p01hoinges (hbo en wo) hebben GESLACHT.
+
+    Die verdeling komt uit een ander bestand dan het totaal (`_load_ho_dataset`), dus haar som kan een paar studenten
+    van het totaal afwijken: elk bestand onderdrukt andere cellen (#1238)."""
+    bestanden = duo_bestandskeuze.geslachtbestanden("p01hoinges")
+    return pd.concat([_duo_load("p01hoinges", index) for index in bestanden], ignore_index=True)
 
 
 def _load_ho_ingeschrevenen() -> pd.DataFrame:
@@ -1033,14 +1104,16 @@ def _geslacht(df: pd.DataFrame) -> dict[str, int]:
 
 
 def _ho_kern(hu_inges: pd.DataFrame, hu_ej: pd.DataFrame, hu_dipl: pd.DataFrame) -> dict:
-    """De reeksen van één ho-instelling op het regiodashboard (#899, #902)."""
+    """De reeksen van één ho-instelling op het regiodashboard (#899, #902), ook voor de vergelijkingsgroep (#1267).
+
+    Zonder geslacht: dat staat alleen in het geslacht-bestand, niet in de rijen van de bestandskeuze (#1238); het
+    regiodashboard voegt het zelf toe."""
     result: dict = {}
     result["ingeschrevenen"], leeg = _reeks(hu_inges, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     _met_onderdrukt(result, "ingeschrevenen", leeg)
     laatste_jaar = max(result["ingeschrevenen"], default=int(hu_inges["STUDIEJAAR"].max()))
     result["laatste_jaar"] = laatste_jaar
     laatste = hu_inges[hu_inges["STUDIEJAAR"] == laatste_jaar]
-    result["geslacht"] = _geslacht(laatste)
     sectoren = _som(laatste, "ONDERDEEL", "AANTAL_INGESCHREVENEN").dropna().sort_values(ascending=False)
     result["sectoren"] = {str(k): int(v) for k, v in sectoren.items()}
     _met_onderdrukt(result, "sectoren", _alleen_leeg(_leeg(laatste, "ONDERDEEL", "AANTAL_INGESCHREVENEN")))
@@ -1082,6 +1155,7 @@ def _ho_regio_benchmark(ctx, df_inges, df_ej, df_dipl, code_col, inst_col, eigen
 def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
+        df_geslacht = _load_ho_geslacht()
     except Exception as e:
         _hoofdbron_niet_beschikbaar(e, "regio-ho: data laden mislukt", instelling)
         return None
@@ -1105,11 +1179,19 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
 
     hu_ej = df_ej[df_ej[inst_col].str.lower() == instelling.lower()]
     hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
+    hu_geslacht = df_geslacht[df_geslacht[inst_col].str.lower() == instelling.lower()]
     result.update(_ho_kern(hu_inges, hu_ej, hu_dipl))
-    laatste = hu_inges[hu_inges["STUDIEJAAR"] == result["laatste_jaar"]]
+    result["bestandskeuze"] = _ho_bestandskeuze(
+        {"ingeschrevenen": hu_inges, "eerstejaars": hu_ej, "gediplomeerden": hu_dipl}
+    )
+    laatste_geslacht = hu_geslacht[hu_geslacht["STUDIEJAAR"] == result["laatste_jaar"]]
 
-    result["geslacht_trend"] = {int(jaar): _geslacht(grp) for jaar, grp in hu_inges.groupby("STUDIEJAAR")}
-    result["geslacht_per_sector"] = {str(onderdeel): _geslacht(grp) for onderdeel, grp in laatste.groupby("ONDERDEEL")}
+    # De verdeling naar geslacht staat alleen in het geslacht-bestand; het totaal komt uit de bestandskeuze (#1238).
+    result["geslacht"] = _geslacht(laatste_geslacht)
+    result["geslacht_trend"] = {int(jaar): _geslacht(grp) for jaar, grp in hu_geslacht.groupby("STUDIEJAAR")}
+    result["geslacht_per_sector"] = {
+        str(onderdeel): _geslacht(grp) for onderdeel, grp in laatste_geslacht.groupby("ONDERDEEL")
+    }
     # Sector trend: per onderdeel per studiejaar (stacked area frontend). Een jaar zonder waarde blijft een gat.
     result["sectoren_trend"], leeg = _genest(hu_inges, "ONDERDEEL", "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
     _met_onderdrukt(result, "sectoren_trend", leeg)

@@ -35,6 +35,7 @@ import { RunBewaking, useBewaak } from './runBewaking'
 const ChatPage = lazy(() => import('./pages/ChatPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const RapportenPage = lazy(() => import('./pages/RapportenPage'))
+const BronActualiteitPage = lazy(() => import('./pages/BronActualiteitPage'))
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
@@ -357,6 +358,7 @@ function AppShell() {
                 <Route path="/dashboards" element={dashboardsEnabled ? <BronnenAan.Provider value={bronnen}><DashboardPage settings={profiel} instellingen={instellingen} bronnen={bronnen} feedbackEnabled={feedbackEnabled} onOpenSettings={openInstellingen} /></BronnenAan.Provider> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={profiel} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/bronnen" element={<BronActualiteitPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>

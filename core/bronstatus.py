@@ -102,6 +102,12 @@ async def controleer(client: httpx.AsyncClient) -> None:
         _bewaar(bron, live)
 
 
+def live(naam: str) -> bool | None:
+    """Antwoordde de bron in de laatste ronde? None als ze niet bewaakt wordt of er nog geen ronde was (#1266)."""
+    stand = _stand.get(naam)
+    return None if stand is None else stand.live
+
+
 def niet_live() -> list[dict]:
     """De bronnen die in de laatste ronde niet antwoordden; leeg zolang er nog geen ronde was of alles live is."""
     lijst = []

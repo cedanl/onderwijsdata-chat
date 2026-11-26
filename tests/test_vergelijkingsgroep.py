@@ -19,6 +19,7 @@ import pytest
 from agent import controlestappen
 from agent.onder_antwoord import KOP_GROEP
 from data import dashboard
+from tests import bestandskeuze_hulp
 from tools import LABELS, dispatch
 from tools.schemas import TOOL_SCHEMAS, TOOL_VERGELIJKINGSGROEP
 from tools.vergelijkingsgroep import vergelijkingsgroep
@@ -88,6 +89,20 @@ def test_een_eigen_groep_is_niet_de_dashboardgroep():
     assert all(r["Peers met cijfers"] <= 2 for r in chat["rijen"])
     regel = controlestappen.met_regels("Antwoord.", controlestappen.Controles(groepen=[chat["zin"]]))
     assert regel.endswith(f"{KOP_GROEP} {chat['zin']}")
+
+
+@_met_duo
+@pytest.mark.parametrize("instelling", ["Hogeschool Utrecht", "Universiteit Utrecht"])
+def test_de_eigen_ingeschrevenen_komen_uit_de_bestandskeuze_van_het_dashboard(instelling):
+    # Per instelling en jaar het bestand met de minste -1 (#1238), niet alleen de geslacht-bestanden: dezelfde rijen als
+    # het regiodashboard. Onafhankelijk nagerekend met `bestandskeuze_hulp`; DUO's -1 telt als 0, zoals het dashboard.
+    df = bestandskeuze_hulp.gekozen("p01hoinges")
+    rijen = df[df["INSTELLINGSNAAM_ACTUEEL"] == instelling]
+    aantal = rijen["AANTAL_INGESCHREVENEN"].where(rijen["AANTAL_INGESCHREVENEN"] >= 0, 0)
+    verwacht = {int(j): int(v) for j, v in aantal.groupby(rijen["STUDIEJAAR"]).sum().items()}
+
+    eigen = {int(r["Schooljaar"][:4]): r["Ingeschrevenen eigen instelling"] for r in _chat(instelling)["rijen"]}
+    assert eigen == verwacht == dashboard.load_dashboard_regio(instelling)["ingeschrevenen"]
 
 
 # --- 22. de groep in een vaste zin uit code ---------------------------------------------------------------------------

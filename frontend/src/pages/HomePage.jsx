@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
 import FeedbackLink from '../components/FeedbackLink'
@@ -143,6 +143,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
               <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
                 {`Gebaseerd op ${onderwijsdata(bronnenLijst)}`}
               </button>
+              <Link to="/bronnen" className="sources-link">Actualiteit van de bronnen</Link>
               <PrivacyLink className="sources-link">Privacy</PrivacyLink>
               {feedbackEnabled && <FeedbackLink className="sources-link" />}
             </span>

@@ -1,6 +1,5 @@
 import { useId, useState } from 'react'
-import { conversationMarkdown } from '../conversationExport'
-import { conversationTitle } from '../conversationTitle'
+import { conversationMarkdown, conversationNotebook, exportBestandsnaam } from '../conversationExport'
 import { useDialog } from '../hooks/useDialog'
 import { saveFile } from '../saveFile'
 import { useGeavanceerd } from '../geavanceerd'
@@ -10,27 +9,49 @@ const DATUM = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', 
 function ExportDialog({ messages, save, onClose }) {
   const dialogRef = useDialog(onClose)
   const titleId = useId()
-  // De code per stap hoort bij "Geavanceerd" (#1269): zonder die instelling geen keuze, en een export zonder code.
   const geavanceerd = useGeavanceerd()
+  const formaatNaam = useId()
   const [snippets, setSnippets] = useState(true)
   const [fouten, setFouten] = useState(false)
+  const [formaat, setFormaat] = useState('markdown')
+  // Het notebook is de code: het hoort bij "Geavanceerd" (#1269).
+  const notebook = geavanceerd && formaat === 'notebook'
 
   function download() {
-    const markdown = conversationMarkdown(messages, { snippets: geavanceerd && snippets, fouten, datum: DATUM.format(new Date()) })
-    const title = conversationTitle(messages.find(m => m.role === 'user')?.content)
-    save(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), title.replace(/[^a-zA-Z0-9]/g, '_') + '.md')
+    const datum = DATUM.format(new Date())
+    if (notebook) {
+      // Een notebook is de code: de codecellen gaan altijd mee (#1247).
+      const json = JSON.stringify(conversationNotebook(messages, { fouten, datum }), null, 1) + '\n'
+      save(new Blob([json], { type: 'application/x-ipynb+json' }), exportBestandsnaam(messages, '.ipynb'))
+    } else {
+      const markdown = conversationMarkdown(messages, { snippets: geavanceerd && snippets, fouten, datum })
+      save(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), exportBestandsnaam(messages, '.md'))
+    }
     onClose()
   }
 
   return (
     <div className="confirm-overlay">
       <div className="confirm-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-        <p className="confirm-message" id={titleId}>Exporteer dit gesprek als markdownbestand</p>
+        <p className="confirm-message" id={titleId}>Exporteer dit gesprek als bestand</p>
         {geavanceerd && (
-          <label className="export-option">
-            <input type="checkbox" checked={snippets} onChange={e => setSnippets(e.target.checked)} />
-            Code per stap (Python, met de bron)
-          </label>
+          <>
+            <fieldset className="export-formaat">
+              <legend className="export-formaat-legend">Formaat</legend>
+              <label className="export-option">
+                <input type="radio" name={formaatNaam} value="markdown" checked={!notebook} onChange={() => setFormaat('markdown')} />
+                Markdown
+              </label>
+              <label className="export-option">
+                <input type="radio" name={formaatNaam} value="notebook" checked={notebook} onChange={() => setFormaat('notebook')} />
+                Jupyter-notebook (.ipynb)
+              </label>
+            </fieldset>
+            <label className="export-option">
+              <input type="checkbox" checked={snippets || notebook} disabled={notebook} onChange={e => setSnippets(e.target.checked)} />
+              Code per stap (Python, met de bron)
+            </label>
+          </>
         )}
         <label className="export-option">
           <input type="checkbox" checked={fouten} onChange={e => setFouten(e.target.checked)} />
@@ -45,7 +66,7 @@ function ExportDialog({ messages, save, onClose }) {
   )
 }
 
-// The conversation as an audit file, with the code that reproduces each step (#366).
+// The conversation as an audit file, with the code that reproduces each step (#366): Markdown, or a Jupyter notebook (#1247).
 // onClose: de dialoog is dicht (geannuleerd of gedownload); het ⋯-menu in de navbar sluit dan ook (#596).
 export default function ConversationExport({ messages, save = saveFile, onClose }) {
   const [open, setOpen] = useState(false)

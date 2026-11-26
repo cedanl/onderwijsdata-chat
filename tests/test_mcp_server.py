@@ -385,7 +385,10 @@ def test_protocol_noemt_prompt_en_resource_bronregels():
 
     _, (prompts, resources) = _via_protocol(lijsten)
     assert [p.name for p in prompts.prompts] == ["bronregels"]
-    assert [(r.name, r.uri) for r in resources.resources] == [("bronregels", "onderwijsdata://bronregels")]
+    assert [(r.name, str(r.uri)) for r in resources.resources] == [
+        ("bronregels", "onderwijsdata://bronregels"),
+        ("bronactualiteit", mcp_server.BRONACTUALITEIT_URI),
+    ]
 
 
 def test_protocol_geeft_dezelfde_tekst_als_prompt_en_als_resource():
