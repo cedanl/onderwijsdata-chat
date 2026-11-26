@@ -116,6 +116,9 @@ analyse achter een antwoord zelf wil zien en bijsturen. Aan zet hij erbij (#1269
 - de technische key onder "Technische details" bij een getal met herkomst;
 - de downloads "Download data als CSV" en "Download cijfers als CSV", met "Vraag opnieuw stellen" als een download
   mislukt;
+- **Herhaal deze analyse** onder een antwoord met een CBS-tabel: de app haalt die tabellen opnieuw op en zet de stand
+  van nu naast die van toen, alleen getallen en bronversie (#1240, zie
+  [Reproduceerbare analyses](reproducibility.md#is-het-dezelfde-data-peildag-bestandsversie-en-hash));
 - de modelkiezer en "Opnieuw met <ander model>" na een fout. Uit gaat elke vraag met het standaardmodel (`MODEL`); de
   server houdt zich daar zelf ook aan.
 

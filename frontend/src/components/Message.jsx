@@ -9,6 +9,7 @@ import CopyButton from './CopyButton'
 import ErrorRetry from './ErrorRetry'
 import ClarificationButtons from './ClarificationButtons'
 import EigenGetal from './EigenGetal'
+import HerhaalAnalyse from './HerhaalAnalyse'
 import { answerBlocks, kopieerTekst } from '../answerBlocks'
 import { actualiteitRegels, voorbehoudRegels } from '../voorbehoud'
 import ControleRegel from './ControleRegel'
@@ -76,7 +77,8 @@ function kopieVan(msg) {
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
 // vraag: de vraag vóór dit antwoord; alleen voor de naam van het bewijsbestand, met de regel van de export (#1244).
 // onEigenGetal: (id, getal) => verstuurd?; onder een antwoord met één hoofdgetal de knop "Wijkt af van je eigen cijfer?" (#1258).
-export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
+// gesprekId: het gesprek van dit antwoord; daarmee vraagt "Herhaal deze analyse" de server om de tabellen (#1240).
+export function Message({ msg, gesprekId = null, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
   const geavanceerd = useGeavanceerd()
   if (msg.role === 'user') {
@@ -155,6 +157,8 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
               : dataExport}
             {/* Onder elk data-antwoord, ingeklapt (#1260): wat de controle deed, en altijd wat ze niet toetste. */}
             {blocks && <ControleRegel controles={msg.controles} />}
+            {/* Achter Geavanceerd (#1269): de CBS-tabellen opnieuw, als tak naast het antwoord (#1240). */}
+            {blocks && <HerhaalAnalyse msg={msg} gesprekId={gesprekId} />}
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren}
               vraag={typeof msg.content === 'string' ? msg.content : null} />
             <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
