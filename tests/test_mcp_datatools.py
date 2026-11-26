@@ -334,6 +334,140 @@ def test_elk_resultaat_heeft_bewijs_en_vervolg_en_geen_data_key(naam, argumenten
     assert "data_key" not in set(_sleutels(uit)), "sessieloos: geen key naar buiten"
 
 
+@pytest.mark.parametrize(
+    ("naam", "argumenten"),
+    [
+        ("aantallen_per_jaar", {"instelling": UU, "vorm": "voltijd"}),
+        ("aantallen_per_jaar", {"instelling": UU, "opleiding": "50400"}),
+        ("vergelijk_instellingen", {"instellingen": MBO}),
+    ],
+)
+def test_de_kwaliteit_heeft_een_vaste_sleutelset(naam, argumenten):
+    """#1248: `bewijs.kwaliteit` bij elk resultaat van een datatool; bij een vergelijking één blok per instelling."""
+    kwaliteit = _mcp(naam, argumenten)["bewijs"]["kwaliteit"]
+
+    blokken = kwaliteit if naam == "vergelijk_instellingen" else [kwaliteit]
+    for blok in blokken:
+        sleutels = list(blok)
+        if naam == "vergelijk_instellingen":
+            assert sleutels[0] == "instellingscode"
+            sleutels = sleutels[1:]
+        assert sleutels == list(kernvragen.KWALITEIT_SLEUTELS)
+
+
+def _kwaliteit(naam: str, argumenten: dict) -> dict:
+    kwaliteit = _mcp(naam, argumenten)["bewijs"]["kwaliteit"]
+    assert isinstance(kwaliteit, dict), kwaliteit
+    return kwaliteit
+
+
+def test_een_volledige_reeks_heeft_een_lege_kwaliteit():
+    """UU voltijd: geen onderdrukte cel in de selectie, elk jaar er, niets afgekapt of niet gevonden."""
+    assert _kwaliteit("aantallen_per_jaar", {"instelling": UU, "vorm": "voltijd"}) == {
+        "onderdrukte_cellen": 0,
+        "ondergrens": False,
+        "ondergrens_regel": None,
+        "ontbrekende_schooljaren": [],
+        "afgekapt": False,
+        "weggelaten_rijen": 0,
+        "niet_gevonden": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "argumenten",
+    [{"instelling": UU, "opleiding": "50400"}, {"instelling": UU}],
+    ids=["opleiding-met-min-een-in-2023", "uu-alle-vormen"],
+)
+def test_een_onderdrukte_cel_maakt_de_reeks_een_ondergrens(argumenten):
+    """De onderdrukte cel (-1) van B Rechtsgeleerdheid in 2023 (het niveaubestand hierboven), en die in de bevroren
+    p01hoinges bij UU over alle vormen: de som is een ondergrens, met de zin uit de domeinregel [sentinel]."""
+    from core import domeinregels
+
+    kwaliteit = _kwaliteit("aantallen_per_jaar", argumenten)
+
+    assert kwaliteit["onderdrukte_cellen"] == 1
+    assert kwaliteit["ondergrens"] is True
+    assert domeinregels.laad().sentinel.betekenis in kwaliteit["ondergrens_regel"]
+    assert "ondergrens" in kwaliteit["ondergrens_regel"]
+
+
+def test_een_jaar_dat_niet_in_de_bron_staat_is_een_ontbrekend_schooljaar():
+    uit = _mcp("aantallen_per_jaar", {"instelling": UU, "vorm": "voltijd", "schooljaren": ["2020", "2024"]})
+
+    assert _per_jaar(uit["reeks"]) == {"2024/25": 37357}
+    assert uit["bewijs"]["kwaliteit"]["ontbrekende_schooljaren"] == ["2020/21"]
+    assert uit["ontbrekende_schooljaren"] == ["2020/21"], "de noot van get_maat blijft zoals hij was"
+
+
+def test_een_instellingscode_zonder_rijen_is_niet_gevonden(monkeypatch):
+    """Een instelling met meer codes (#1069) waarvan het bestand er één niet heeft: die code is niet gevonden."""
+    from data import instellingen
+
+    eerder = instellingen.instellingsprofiel
+
+    def profiel(naam):
+        gevonden = eerder(naam)
+        if gevonden and gevonden["instellingscode"] == "27GZ":
+            return {**gevonden, "instellingscodes": ["27GZ", "99ZZ"]}
+        return gevonden
+
+    monkeypatch.setattr(instellingen, "instellingsprofiel", profiel)
+
+    kwaliteit = _kwaliteit("aantallen_per_jaar", {"instelling": ROC})
+
+    assert kwaliteit["niet_gevonden"] == ["99ZZ"]
+
+
+def test_een_afgekapte_bron_heet_afgekapt(monkeypatch):
+    """Een selectie op een afgekapte pagina (KeyMeta.volledig False, #186): afgekapt, het aantal weggelaten rijen
+    onbekend."""
+    import dataclasses
+
+    eerder = store.meta
+
+    def meta(key):
+        gevonden = eerder(key)
+        return dataclasses.replace(gevonden, volledig=False) if gevonden is not None else None
+
+    monkeypatch.setattr(store, "meta", meta)
+
+    kwaliteit = _kwaliteit("aantallen_per_jaar", {"instelling": UU, "vorm": "voltijd"})
+
+    assert kwaliteit["afgekapt"] is True
+    assert kwaliteit["weggelaten_rijen"] is None
+
+
+def test_een_vergelijking_heeft_de_kwaliteit_per_instelling():
+    """Grafisch Lyceum heeft onderdrukte cellen in de selectie (EX), de andere instellingen niet."""
+    namen = ["Albeda", "Grafisch Lyceum R'dam", ROC]
+    uit = _mcp("vergelijk_instellingen", {"instellingen": namen})
+    kwaliteit = uit["bewijs"]["kwaliteit"]
+
+    codes = [d["instelling"]["instellingscode"] for d in uit["instellingen"]]
+    assert [k["instellingscode"] for k in kwaliteit] == codes
+    per_naam = dict(zip(namen, kwaliteit, strict=True))
+    assert per_naam["Grafisch Lyceum R'dam"]["ondergrens"] is True
+    assert per_naam["Grafisch Lyceum R'dam"]["onderdrukte_cellen"] == 2
+    assert [per_naam[n]["ondergrens"] for n in ("Albeda", ROC)] == [False, False]
+
+
+def test_begrens_houdt_de_kwaliteit_bij_afkappen():
+    """#940, #1248: een te groot resultaat wordt één JSON-object onder de grens, met het hele `bewijs`."""
+    zeven = ["Albeda", "Deltion College", "Grafisch Lyceum R'dam", "ROC Graafschap College", "ROC Midden Nederland"]
+    tekst, fout = mcp_server.voer_uit("vergelijk_instellingen", {"instellingen": [*zeven, ROC, "Zadkine"]})
+    assert not fout, tekst
+    grens = 4000
+    assert len(tekst) > grens
+
+    begrensd = mcp_server.begrens(tekst, grens)
+
+    assert len(begrensd) <= grens
+    uit, volledig = json.loads(begrensd), json.loads(tekst)
+    assert uit["bewijs"]["kwaliteit"] == volledig["bewijs"]["kwaliteit"]
+    assert uit["bewijs"] == volledig["bewijs"] and uit["vervolg"] == volledig["vervolg"]
+
+
 def test_het_bewijs_noemt_het_recept_van_de_chat():
     bewijs = _mcp("aantallen_per_jaar", {"instelling": UU, "opleiding": "50400"})["bewijs"]
 

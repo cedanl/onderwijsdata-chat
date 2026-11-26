@@ -159,6 +159,20 @@ def test_elk_resultaat_is_een_envelope_met_bewijs_en_vervolg(naam, argumenten):
     assert envelop["vervolg"]["url"].startswith(f"{mcp_server.STANDAARD_APP_URL}/chat")
 
 
+def test_kwaliteit_hoort_bij_de_vaste_sleutels_van_bewijs():
+    """#1248: een nieuwe sleutel achteraan, geen bestaande weg of verplaatst (docs/api.md: stabiel)."""
+    assert mcp_server.BEWIJS_SLEUTELS == (
+        "bron", "dataset_id", "selectie", "maat", "waarde", "peildatum", "versie", "verwijzing", "kwaliteit",
+    )  # fmt: skip
+
+
+@pytest.mark.parametrize(("naam", "argumenten"), RESULTATEN)
+def test_een_catalogustool_heeft_geen_kwaliteit(naam, argumenten):
+    """De catalogustools geven metadata, geen getallen uit een bestand: `kwaliteit` staat er als null (#1248)."""
+    envelop = json.loads(mcp_server.voer_uit(naam, argumenten)[0])
+    assert "kwaliteit" in envelop["bewijs"] and envelop["bewijs"]["kwaliteit"] is None
+
+
 @pytest.mark.parametrize(("naam", "argumenten"), RESULTATEN)
 def test_geen_tekst_die_in_de_client_actief_wordt(naam, argumenten):
     tekst, _ = mcp_server.voer_uit(naam, argumenten)
