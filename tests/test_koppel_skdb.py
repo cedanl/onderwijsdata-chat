@@ -77,6 +77,11 @@ def _vlaggen(uit: dict) -> dict[str, object]:
     return {r["croho"]: r[koppel.ONZEKER] for r in uit["rijen"]}
 
 
+def _rijen(per_graad: dict) -> dict[str, int]:
+    """Alleen het aantal rijen per graad, zonder de score-tellingen (#1274)."""
+    return {g: deel["rijen"] for g, deel in per_graad.items()}
+
+
 # --- onzeker per rij -------------------------------------------------------------------------------------------------
 
 
@@ -133,18 +138,18 @@ def test_de_rijen_zonder_duo_rij_staan_per_graad_geteld():
     """HU: 29 masters, 1 bachelor, 1 associate degree zonder DUO-rij; gelijk aan een telling op de tabel zelf."""
     _hu()
     uit = _koppel()
-    assert uit[koppel.PER_GRAAD] == {"bachelor": 1, "master": 29, "associate degree": 1}
+    assert _rijen(uit[koppel.PER_GRAAD]) == {"bachelor": 1, "master": 29, "associate degree": 1}
     df = store.get(uit["data_key"])
     direct = df.loc[df["koppelstatus"] == _ALLEEN, "graad"].str.lower().value_counts().to_dict()
-    assert uit[koppel.PER_GRAAD] == direct
-    assert sum(uit[koppel.PER_GRAAD].values()) == uit["telling"][_ALLEEN] == 31
+    assert _rijen(uit[koppel.PER_GRAAD]) == direct
+    assert sum(_rijen(uit[koppel.PER_GRAAD]).values()) == uit["telling"][_ALLEEN] == 31
 
 
 def test_een_onbekende_of_lege_graad_telt_onder_een_eigen_sleutel():
     _hu([("60000", "Master"), ("60001", None), ("60002", ""), ("60003", "Doctoraal"), ("80001", "ad")])
     uit = _koppel()
-    assert uit[koppel.PER_GRAAD] == {"master": 1, "associate degree": 1, "doctoraal": 1, koppel.GEEN_GRAAD: 2}
-    assert sum(uit[koppel.PER_GRAAD].values()) == uit["telling"][_ALLEEN]
+    assert _rijen(uit[koppel.PER_GRAAD]) == {"master": 1, "associate degree": 1, "doctoraal": 1, koppel.GEEN_GRAAD: 2}
+    assert sum(_rijen(uit[koppel.PER_GRAAD]).values()) == uit["telling"][_ALLEEN]
 
 
 def test_een_botsende_graadkolom_telt_de_skdb_kant():
@@ -152,7 +157,7 @@ def test_een_botsende_graadkolom_telt_de_skdb_kant():
     _hu()
     store.put(_DUO, store.get(_DUO).assign(graad="wo"), _DUO_META)
     uit = _koppel()
-    assert uit[koppel.PER_GRAAD] == {"bachelor": 1, "master": 29, "associate degree": 1}
+    assert _rijen(uit[koppel.PER_GRAAD]) == {"bachelor": 1, "master": 29, "associate degree": 1}
 
 
 def test_de_toelichting_zegt_de_vlag_en_de_telling_over_te_nemen():
@@ -184,7 +189,7 @@ def test_een_koppeling_zonder_skdb_kant_krijgt_geen_vlag_of_telling():
     )
     store.put(_DUO2, tweede, KeyMeta(bron="duo", dataset="p02ho1ejrs", resource=0, periodekolom="STUDIEJAAR"))
     uit = _koppel(_DUO2, _DUO)
-    assert koppel.PER_GRAAD not in uit
+    assert koppel.PER_GRAAD not in uit and koppel.GEKOPPELD_PER_GRAAD not in uit and koppel.ALLEEN_DUO not in uit
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
 
 
@@ -192,7 +197,8 @@ def test_een_koppeling_op_alleen_croho_krijgt_geen_vlag_of_telling():
     _hu()
     store.put(_SKDB, store.get(_SKDB).drop(columns="brin"), _SKDB_META)
     uit = _koppel(sleutels=["croho"])
-    assert koppel.PER_GRAAD not in uit
+    # Koppelen op alleen croho is #1273; tot die er is krijgt zo'n koppeling geen van de velden van #1231 en #1274.
+    assert koppel.PER_GRAAD not in uit and koppel.GEKOPPELD_PER_GRAAD not in uit and koppel.ALLEEN_DUO not in uit
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
 
 
@@ -202,7 +208,10 @@ def test_een_skdb_tabel_zonder_nse_cijfers_krijgt_geen_vlag():
     uit = _koppel()
     assert koppel.ONZEKER not in store.get(uit["data_key"]).columns
     assert "onzeker" not in json.dumps(uit["toelichting"], ensure_ascii=False)
-    assert uit[koppel.PER_GRAAD] == {"bachelor": 1, "master": 29, "associate degree": 1}
+    assert _rijen(uit[koppel.PER_GRAAD]) == {"bachelor": 1, "master": 29, "associate degree": 1}
+    # Zonder NSE-cijfer niets om te tellen: per graad alleen het aantal rijen (#1274).
+    assert uit[koppel.GEKOPPELD_PER_GRAAD] == {"bachelor": {"rijen": 6}}
+    assert uit[koppel.PER_GRAAD]["master"] == {"rijen": 29}
 
 
 def test_een_eigen_kolom_onzeker_blijft_staan():
@@ -220,3 +229,142 @@ def test_de_celtelling_vooraf_rekent_de_kolom_onzeker_mee(monkeypatch):
     assert "data_key" in _koppel()
     monkeypatch.setattr(koppel, "MAX_CELLEN", cellen - 1)
     assert _koppel()["verwachte_cellen"] == cellen
+
+
+# --- alle opleidingen: per graad gekoppeld, met score, en alleen DUO met reden (#1274) ----------------------------
+
+
+def _hu_alle() -> pd.DataFrame:
+    """De vorm van HU in #1274: 69 opleidingen met een DUO-rij (54 bachelor, 15 associate degree), 31 zonder (29 master,
+    waarvan 27 met een NSE-score, 1 bachelor, 1 associate degree) en één DUO-rij zonder SKDB-rij (CROHO 80065): 101
+    rijen. 80166 heeft 28 respondenten. De aantallen zijn verzonnen."""
+    gekoppeld = [("80166", "Bachelor", 28, 3.9)]
+    gekoppeld += [(f"3{i:04d}", "Bachelor", 40 + i, 3.5) for i in range(50)]
+    gekoppeld += [(f"3{i:04d}", "Bachelor", None, None) for i in range(50, 53)]  # drie bachelors zonder NSE-cijfer
+    gekoppeld += [(f"8{i:04d}", "Associate degree", 10 if i < 3 else 35, 3.6) for i in range(1, 16)]
+    zonder = [(f"6{i:04d}", "Master", 50, 3.8) for i in range(27)] + [
+        (f"6{i:04d}", "Master", None, None) for i in (27, 28)
+    ]
+    zonder += [("31000", "Bachelor", None, None), ("80999", "Associate degree", 12, 3.1)]
+    skdb = pd.DataFrame(
+        [
+            {"brin": "25DW", "croho": c, "graad": g, "nse_oordeel": o, "nse_respondenten": n}
+            for c, g, n, o in gekoppeld + zonder
+        ]
+    )
+    store.put(_SKDB, skdb, _SKDB_META)
+    codes = [float(c) for c, *_ in gekoppeld] + [80065.0]
+    duo = pd.DataFrame(
+        {
+            "STUDIEJAAR": 2025,
+            "INSTELLINGSCODE_ACTUEEL": "25DW",
+            "OPLEIDINGSCODE_ACTUEEL": codes,
+            "AANTAL_INGESCHREVENEN": range(100, 100 + len(codes)),
+        }
+    )
+    store.put(_DUO, duo, _DUO_META)
+    return skdb
+
+
+def test_gekoppeld_per_graad_telt_op_tot_beide():
+    """HU: 69 opleidingen met een DUO-rij, 54 bachelor en 15 associate degree, met per graad met_score en onzeker."""
+    _hu_alle()
+    uit = _koppel()
+    per_graad = uit[koppel.GEKOPPELD_PER_GRAAD]
+    assert per_graad == {
+        "bachelor": {"rijen": 54, "met_score": 51, "onzeker": 1},
+        "associate degree": {"rijen": 15, "met_score": 15, "onzeker": 2},
+    }
+    assert sum(deel["rijen"] for deel in per_graad.values()) == uit["telling"]["beide"] == 69
+
+
+def test_gekoppeld_per_graad_gelijk_aan_de_tabel_zelf():
+    """Dezelfde aantallen als een telling op de bewaarde tabel: de vlag onzeker en een NSE-cijfer per rij."""
+    _hu_alle()
+    uit = _koppel()
+    df = store.get(uit["data_key"])
+    beide = df[df["koppelstatus"] == "beide"]
+    for graad, deel in uit[koppel.GEKOPPELD_PER_GRAAD].items():
+        rijen = beide[beide["graad"].str.lower() == graad]
+        assert deel["rijen"] == len(rijen)
+        assert deel["met_score"] == int(rijen["nse_oordeel"].notna().sum())
+        assert deel["onzeker"] == int((rijen[koppel.ONZEKER] == True).sum())  # noqa: E712
+
+
+def test_de_opleiding_met_28_respondenten_blijft_in_gekoppeld_per_graad():
+    _hu_alle()
+    uit = _koppel()
+    df = store.get(uit["data_key"])
+    rij = df.set_index("croho").loc["80166"]
+    assert rij["koppelstatus"] == "beide" and rij[koppel.ONZEKER] is True
+    assert uit[koppel.GEKOPPELD_PER_GRAAD]["bachelor"]["onzeker"] == 1
+
+
+def test_niet_gekoppeld_per_graad_telt_ook_met_score():
+    """HU: 29 masters zonder DUO-rij, waarvan 27 met een NSE-score; samen 31 = telling alleen SKDB."""
+    _hu_alle()
+    uit = _koppel()
+    per_graad = uit[koppel.PER_GRAAD]
+    assert per_graad["master"] == {"rijen": 29, "met_score": 27, "onzeker": 0}
+    assert per_graad["bachelor"] == {"rijen": 1, "met_score": 0, "onzeker": 0}
+    assert per_graad["associate degree"] == {"rijen": 1, "met_score": 1, "onzeker": 1}
+    assert sum(deel["rijen"] for deel in per_graad.values()) == uit["telling"][_ALLEEN] == 31
+
+
+def test_alleen_duo_staat_erin_met_een_vaste_reden():
+    """HU: één DUO-rij zonder SKDB-rij (CROHO 80065), met een vaste reden; de delen tellen op tot 101 rijen."""
+    _hu_alle()
+    uit = _koppel()
+    alleen_duo = uit[koppel.ALLEEN_DUO]
+    assert alleen_duo["rijen"] == uit["telling"]["alleen DUO"] == 1
+    assert alleen_duo["opleidingen"] == [{"brin": "25DW", "croho": "80065", "reden": koppel.REDEN_ALLEEN_DUO}]
+    assert "alleen in DUO" in koppel.REDEN_ALLEEN_DUO
+    delen = (
+        sum(d["rijen"] for d in uit[koppel.GEKOPPELD_PER_GRAAD].values())
+        + sum(d["rijen"] for d in uit[koppel.PER_GRAAD].values())
+        + alleen_duo["rijen"]
+    )
+    assert delen == sum(uit["telling"].values()) == len(store.get(uit["data_key"])) == 101
+
+
+def test_alleen_duo_noemt_hooguit_een_maximum_aan_opleidingen(monkeypatch):
+    """Een DUO-tabel van alle instellingen geeft duizenden rijen alleen DUO: de lijst is begrensd, het aantal niet."""
+    _hu_alle()
+    duo = store.get(_DUO)
+    extra = pd.DataFrame(
+        {
+            "STUDIEJAAR": 2025,
+            "INSTELLINGSCODE_ACTUEEL": "21PB",
+            "OPLEIDINGSCODE_ACTUEEL": [float(50000 + i) for i in range(10)],
+            "AANTAL_INGESCHREVENEN": 1,
+        }
+    )
+    store.put(_DUO, pd.concat([duo, extra], ignore_index=True), _DUO_META)
+    monkeypatch.setattr(koppel, "MAX_ALLEEN_DUO", 4)
+    alleen_duo = _koppel()[koppel.ALLEEN_DUO]
+    assert alleen_duo["rijen"] == 11
+    assert len(alleen_duo["opleidingen"]) == 4 and alleen_duo["niet_getoond"] == 7
+
+
+def test_de_kant_van_de_vraag_geeft_dezelfde_tellingen_per_graad():
+    _hu_alle()
+    links, rechts = _koppel(), _koppel(_DUO, _SKDB)
+    for veld in (koppel.GEKOPPELD_PER_GRAAD, koppel.PER_GRAAD, koppel.ALLEEN_DUO):
+        assert links[veld] == rechts[veld], veld
+
+
+def test_de_toelichting_zegt_bij_alle_een_tabel_per_graad():
+    """Bij een vraag naar alle opleidingen: een tabel per graad, de niet-gekoppelde rijen met reden, onzeker met label,
+    de graad niet vernauwen, tellingen overnemen. Ook de tooltekst zegt het."""
+    _hu_alle()
+    uit = _koppel()
+    beide = uit["toelichting"]["beide"]
+    for woord in ("alle opleidingen", "één tabel per graad", koppel.GEKOPPELD_PER_GRAAD, koppel.PER_GRAAD):
+        assert woord in beide, woord
+    assert koppel.ALLEEN_DUO in beide and "reden" in beide
+    assert "onzeker: true" in beide and "laat ze niet weg" in beide
+    assert "vernauw de graad niet" in beide and "tel niet zelf" in beide
+    assert koppel.ALLEEN_DUO in uit["toelichting"]["alleen DUO"]
+    assert "onzeker" not in uit["toelichting"]["alleen DUO"]
+    beschrijving = next(t for t in TOOL_SCHEMAS if t["function"]["name"] == TOOL_KOPPEL_DATA)["function"]["description"]
+    assert koppel.GEKOPPELD_PER_GRAAD in beschrijving and "tabel per graad" in beschrijving
