@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import SettingsModal from '../components/SettingsModal'
+import SettingsModal, { GEAVANCEERD_VRAAG } from '../components/SettingsModal'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -128,5 +128,96 @@ describe('SettingsModal weergave (#779)', () => {
     await act(async () => { button('Licht').click() })
     expect(button('Licht').getAttribute('aria-pressed')).toBe('true')
     expect(button('Donker').getAttribute('aria-pressed')).toBe('false')
+  })
+})
+
+describe('SettingsModal: Geavanceerd (#1269)', () => {
+  const schakelaar = () => container.querySelector('[role="switch"]')
+  const button = text => [...container.querySelectorAll('button')].find(b => b.textContent === text)
+
+  it('has a switch named Geavanceerd, off by default', async () => {
+    await render({})
+    expect(schakelaar().textContent).toBe('Geavanceerd')
+    expect(schakelaar().getAttribute('aria-checked')).toBe('false')
+    // The explanation says what it adds, and that the checks stay.
+    const uitleg = document.getElementById(schakelaar().getAttribute('aria-describedby')).textContent
+    expect(uitleg).toContain('code')
+    expect(uitleg).toContain('altijd')
+  })
+
+  it('saves the choice as geavanceerd, next to the profile', async () => {
+    const onSave = vi.fn()
+    await render({ onSave })
+    await act(async () => { schakelaar().click() })
+    expect(schakelaar().getAttribute('aria-checked')).toBe('true')
+    await act(async () => { button('Opslaan').click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: true }))
+  })
+
+  it('starts on the stored value and can switch it off', async () => {
+    const onSave = vi.fn()
+    await render({ onSave, geavanceerd: true })
+    expect(schakelaar().getAttribute('aria-checked')).toBe('true')
+    await act(async () => { schakelaar().click() })
+    await act(async () => { button('Opslaan').click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: false }))
+  })
+
+  it('follows a stored value that arrives after opening, until the user chooses', async () => {
+    const onSave = vi.fn()
+    await render({ onSave, geavanceerd: false })
+    await act(async () => {
+      root.render(createElement(SettingsModal, { settings: {}, onSave, onClose: vi.fn(), geavanceerd: true }))
+    })
+    expect(schakelaar().getAttribute('aria-checked')).toBe('true')
+    await act(async () => { button('Opslaan').click() })
+    // Saving without a choice of one's own keeps what the server has: no switch back to off.
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: true }))
+  })
+
+  it('is no profile field: a stored geavanceerd in the settings does not switch it on', async () => {
+    await render({ settings: { geavanceerd: true, functie: 'IR-specialist' } })
+    expect(schakelaar().getAttribute('aria-checked')).toBe('false')
+  })
+})
+
+describe('SettingsModal: the onboarding question about the work (#1269)', () => {
+  const button = text => [...container.querySelectorAll('button')].find(b => b.textContent === text)
+  const vraag = () => [...container.querySelectorAll('[role="group"]')]
+    .find(g => document.getElementById(g.getAttribute('aria-labelledby'))?.textContent === GEAVANCEERD_VRAAG)
+
+  it('asks whether to see the code and data behind an answer, with Nee chosen', async () => {
+    await render({ isOnboarding: true })
+    expect(GEAVANCEERD_VRAAG).toBe('Wil je de code en de data achter een antwoord zien en zelf bijsturen?')
+    expect(vraag()).toBeDefined()
+    expect(button('Nee').getAttribute('aria-pressed')).toBe('true')
+    expect(button('Ja').getAttribute('aria-pressed')).toBe('false')
+    // During onboarding the question takes the place of the switch.
+    expect(container.querySelector('[role="switch"]')).toBeNull()
+  })
+
+  it('saves Nee as off when the user does not answer', async () => {
+    const onSave = vi.fn()
+    await render({ isOnboarding: true, onSave })
+    await act(async () => { button('Opslaan').click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: false }))
+  })
+
+  it('starts on Ja for an account that already has it on (pilot list, another device)', async () => {
+    const onSave = vi.fn()
+    await render({ isOnboarding: true, onSave, geavanceerd: true })
+    expect(button('Ja').getAttribute('aria-pressed')).toBe('true')
+    await act(async () => { button('Opslaan').click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: true }))
+  })
+
+  it('saves Ja as on', async () => {
+    const onSave = vi.fn()
+    await render({ isOnboarding: true, onSave })
+    await act(async () => { button('Ja').click() })
+    expect(button('Ja').getAttribute('aria-pressed')).toBe('true')
+    expect(button('Nee').getAttribute('aria-pressed')).toBe('false')
+    await act(async () => { button('Opslaan').click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ geavanceerd: true }))
   })
 })

@@ -438,3 +438,54 @@ def test_na_een_minuut_mag_een_onbekende_kid_weer_opnieuw_ophalen(client, provid
     provider.sleutels = [NIEUWE_SLEUTEL]  # de provider roteerde intussen echt
     assert client.get(CALLBACK, headers={"Cookie": COOKIES}).headers["location"].startswith("/#token=")
     assert provider.opgehaald.count(provider.discovery["jwks_uri"]) == 3
+
+
+# ── #1269: de pilotlijst voor "Geavanceerd" bij de eerste SRAM-login ─────────────────────────────
+
+
+def test_een_pilotaccount_heeft_geavanceerd_aan_na_de_eerste_sram_login(client, provider, tokens, monkeypatch):
+    from core import config, geavanceerd
+
+    monkeypatch.setattr(config, "GEAVANCEERD_PILOT", frozenset({"anna@hu.nl"}))
+
+    assert client.get(CALLBACK, headers={"Cookie": COOKIES}).headers["location"].startswith("/#token=")
+
+    assert geavanceerd.lees("anna@hu.nl") is True
+
+
+def test_uit_blijft_uit_na_een_volgende_sram_login_ook_met_andere_attributen(client, provider, tokens, monkeypatch):
+    """De pilotlijst geldt alleen zonder bewaarde keuze; andere SRAM-attributen (organisatie, affiliatie) zetten de
+    keuze ook niet terug."""
+    from core import config, geavanceerd
+
+    monkeypatch.setattr(config, "GEAVANCEERD_PILOT", frozenset({"anna@hu.nl"}))
+    client.get(CALLBACK, headers={"Cookie": COOKIES})
+    geavanceerd.zet("anna@hu.nl", False)
+
+    provider.userinfo = {
+        **provider.userinfo,
+        "eduperson_entitlement": ["urn:mace:surf.nl:sram:group:ir-analisten:co:geavanceerd"],
+        "voperson_external_affiliation": ["analist@hu.nl"],
+    }
+    client.get(CALLBACK, headers={"Cookie": COOKIES})
+
+    assert geavanceerd.lees("anna@hu.nl") is False
+
+
+def test_sram_attributen_zetten_geavanceerd_nooit_aan(client, provider, tokens, monkeypatch):
+    """Buiten de pilotlijst zet geen attribuut uit SRAM de instelling aan, hoe het profiel ook heet (#1269)."""
+    from core import config, geavanceerd
+
+    monkeypatch.setattr(config, "GEAVANCEERD_PILOT", frozenset({"iemand-anders@hu.nl"}))
+    provider.userinfo = {
+        **provider.userinfo,
+        "eduperson_entitlement": ["urn:mace:surf.nl:sram:group:geavanceerd:co:geavanceerd"],
+        "voperson_external_affiliation": ["geavanceerd@hu.nl"],
+        "geavanceerd": True,
+    }
+
+    client.get(CALLBACK, headers={"Cookie": COOKIES})
+
+    assert geavanceerd.lees("anna@hu.nl") is False
+    with db._connection() as conn:
+        assert db._execute(conn, "SELECT COUNT(*) AS n FROM geavanceerd").fetchone()["n"] == 0

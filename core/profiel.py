@@ -4,7 +4,8 @@ Het profiel is invoer van de client en gaat de systeemprompt in. Vrije tekst daa
 een "hard" getal dat de gebruiker niet zelf noemde, en een instructie aan het model. Daarom laat dit profiel
 alleen bekende waarden door: een functie uit de vaste lijst, een sector van de app en een instelling uit het
 register (als de canonieke registernaam). De rest valt stil weg; `model` gaat ongewijzigd door, want `_model`
-in `routes/chat.py` begrenst dat al (#755).
+in `routes/chat.py` begrenst dat al (#755). Ook een sleutel `geavanceerd` valt weg: die instelling komt alleen uit de
+database (core/geavanceerd.py, #1269), nooit uit wat de client meestuurt.
 """
 
 from data.instellingen import instellingsprofiel

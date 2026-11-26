@@ -191,7 +191,9 @@ Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenme
 **Foutmeldingen: wat ziet de gebruiker, wat de beheerder** (#703)
 
 De meldingen met fout-ID sturen de gebruiker naar Geef feedback met dat ID (#1147): hij kent geen beheerder. "Of kies een
-ander model" staat er alleen als hij er een kan kiezen, dus bij twee of meer modellen in zijn aanbod (#1167).
+ander model" staat er alleen als hij er een kan kiezen, dus bij twee of meer modellen in zijn aanbod (#1167), en met een
+login alleen met de instelling "Geavanceerd" aan (#1269). De knop "Opnieuw met een ander model" hieronder staat er alleen
+met Geavanceerd.
 
 | Categorie | De gebruiker ziet | Knoppen | De beheerder ziet |
 |---|---|---|---|

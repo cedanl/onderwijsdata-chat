@@ -17,6 +17,7 @@ import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { useDarkMode } from '../hooks/useDarkMode'
 import CopyButton from './CopyButton'
 import { splitsTelling } from '../telling'
+import { useGeavanceerd } from '../geavanceerd'
 import { rehypeGetalWacht, wachtOpControle, zonderStaart } from '../getalWacht'
 import WachtTekst from './WachtTekst'
 
@@ -82,9 +83,10 @@ function StapCode({ code }) {
 }
 
 // De code van een stap, of niets. Een stap die de scopegrens weigerde (`buiten_scope`, #1103) laadde geen data: een
-// snippet erbij zou de geweigerde tabel laden alsof de stap slaagde, dus die toont de kaart nooit.
-function stapcode(tool) {
-  return tool.status === 'buiten_scope' ? null : tool.snippet
+// snippet erbij zou de geweigerde tabel laden alsof de stap slaagde, dus die toont de kaart nooit. De code hoort bij
+// "Geavanceerd" (#1269): zonder die instelling toont de kaart de stappen zelf, zonder code.
+function stapcode(tool, geavanceerd) {
+  return !geavanceerd || tool.status === 'buiten_scope' ? null : tool.snippet
 }
 
 // De hoogte van de open stappenlijst als de kop van de kaart in beeld staat (#609); 0 als de kaart boven of onder
@@ -107,6 +109,8 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false,
   // screen before the answer. A wide screen keeps the block.
   const codePerStap = useMediaQuery(NARROW_SCREEN)
   const codeThema = useCodeTheme()
+  const geavanceerd = useGeavanceerd()
+  const code = tool => stapcode(tool, geavanceerd)
   const panelRef = useRef(null)
   // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
   // die vanzelf openging bij het wachten.
@@ -142,7 +146,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false,
     compensatie.current = 0
   }, [open])
   if (!tools?.length) return null
-  const hasSnippets = tools.some(stapcode)
+  const hasSnippets = tools.some(code)
   const toggle = () => { handmatig.current = true; setOpen(o => !o) }
 
   return (
@@ -160,7 +164,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false,
         <div className="reasoning-content">
           {markRecovered(tools).map((t, i) => (
             <ReasoningStep key={`${t.name}-${i}`} tool={t}>
-              {codePerStap && stapcode(t) && <StapCode code={stapcode(t)} />}
+              {codePerStap && code(t) && <StapCode code={code(t)} />}
             </ReasoningStep>
           ))}
           {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
@@ -170,7 +174,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false,
           {hasSnippets && !codePerStap && (
             <div className="reasoning-snippets">
               {tools.map((t, i) => (
-                stapcode(t) && (
+                code(t) && (
                   <div key={`${t.name}-${i}`} className="reasoning-snippet-block">
                     <div className="reasoning-snippet-label">{t.label}</div>
                     <SyntaxHighlighter
@@ -178,7 +182,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false,
                       style={codeThema}
                       customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
                     >
-                      {stapcode(t)}
+                      {code(t)}
                     </SyntaxHighlighter>
                   </div>
                 )

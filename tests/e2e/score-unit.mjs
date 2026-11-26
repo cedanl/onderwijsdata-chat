@@ -407,6 +407,42 @@ test('inloggegevens komen uit de omgeving, met de lokale standaard als er niets 
   assert.deepEqual(inloggegevens({ EVAL_USERNAME: 'tester', EVAL_PASSWORD: 'geheim' }), { username: 'tester', password: 'geheim' })
 })
 
+// --- de modelkeuze van de runners (#1269): met login telt die alleen met "Geavanceerd" aan ----------------------------
+import { haalToken } from './chatstream.js'
+
+/** Een nep-fetch in plaats van de echte (t.mock zet hem na de test terug): geeft per aanroep het volgende antwoord. */
+function nepFetch(t, antwoorden) {
+  const gevraagd = []
+  t.mock.method(globalThis, 'fetch', async (url, opties = {}) => {
+    gevraagd.push({ url, ...opties })
+    const { status = 200, body = {} } = antwoorden.shift()
+    return { status, ok: status >= 200 && status < 300, headers: new Map(), json: async () => body }
+  })
+  return gevraagd
+}
+
+test('haalToken zet Geavanceerd aan voor het eval-account, anders draait elk model als het standaardmodel', async (t) => {
+  const gevraagd = nepFetch(t, [{ body: { token: 't1' } }, { body: { geavanceerd: true } }])
+  assert.equal(await haalToken('http://app'), 't1')
+  assert.equal(gevraagd.length, 2)
+  const zet = gevraagd[1]
+  assert.equal(zet.url, 'http://app/api/mijn-gegevens/geavanceerd')
+  assert.equal(zet.method, 'PUT')
+  assert.equal(zet.headers.Authorization, 'Bearer t1')
+  assert.deepEqual(JSON.parse(zet.body), { geavanceerd: true })
+})
+
+test('haalToken zonder login (404 op Geavanceerd): de server neemt de modelkeuze dan al over', async (t) => {
+  nepFetch(t, [{ body: { token: 't1' } }, { status: 404, body: { detail: 'geen eigen account' } }])
+  assert.equal(await haalToken('http://app'), 't1')
+})
+
+test('haalToken faalt luid als Geavanceerd niet aan kan: geen stille vergelijking van het standaardmodel', async (t) => {
+  nepFetch(t, [{ body: { token: 't1' } }, { status: 401, body: {} }, { body: { token: 't2' } }, { body: { geavanceerd: false } }])
+  await assert.rejects(haalToken('http://app'), /Geavanceerd/)
+  await assert.rejects(haalToken('http://app'), /Geavanceerd/)
+})
+
 // --- verplichte tools met alternatieven (#188): de vaste maat vervangt de laadstap --------------
 test('een verplichte tool met | is gehaald als één van de alternatieven is aangeroepen', () => {
   const ev = { expected: { must_contain_tools: ['get_duo_data|get_maat', 'create_plot'] } }

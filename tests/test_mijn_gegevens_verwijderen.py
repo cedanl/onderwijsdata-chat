@@ -1,6 +1,7 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met rijen van alle acht soorten (sinds #1209 ook het SRAM-profiel). Na
+Twee accounts in CHAT_USERS, elk met rijen van alle negen soorten (sinds #1209 ook het SRAM-profiel, sinds #1269 de
+instelling "Geavanceerd"). Na
 `DELETE /api/mijn-gegevens` van Anna heeft zij nergens nog een rij, staan die van Bert er ongewijzigd, zijn al haar
 tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
@@ -31,6 +32,7 @@ _SOORTEN = [
     "beurtbewijs",
     "tokengebruik",
     "oidc_gebruiker",
+    "geavanceerd",
 ]
 _ALLES_NUL = dict.fromkeys(_SOORTEN, 0)
 # Anna's rijen per soort na _vul_anna: elk aantal anders, zodat een verwisselde sleutel opvalt.
@@ -43,6 +45,7 @@ _ANNA = {
     "beurtbewijs": 2,
     "tokengebruik": 3,
     "oidc_gebruiker": 1,
+    "geavanceerd": 1,
 }
 # Bert's rijen na _vul.
 _BERT = {
@@ -54,6 +57,7 @@ _BERT = {
     "beurtbewijs": 1,
     "tokengebruik": 1,
     "oidc_gebruiker": 1,
+    "geavanceerd": 1,
 }
 
 
@@ -117,13 +121,15 @@ _TABEL = {"oidc_gebruiker": "oidc_gebruikers"}
 
 
 def _filter(soort: str, gebruiker: str) -> tuple[str, str, tuple]:
-    """`tokengebruik` en het SRAM-profiel staan onder een pseudoniem van de naam (#1112, #984), de andere tabellen onder
-    de naam zelf. Het pseudoniem wordt hier zelf afgeleid, los van de code onder test."""
+    """`tokengebruik`, het SRAM-profiel en "Geavanceerd" staan onder een pseudoniem van de naam (#1112, #984, #1269), de
+    andere tabellen onder de naam zelf. Het pseudoniem wordt hier zelf afgeleid, los van de code onder test."""
     tabel = _TABEL.get(soort, soort)
     if soort == "tokengebruik":
         return tabel, "sleutel = ?", (_sleutel(gebruiker),)
     if soort == "oidc_gebruiker":
         return tabel, "sleutel = ?", (pseudoniem("oidc_gebruiker", gebruiker),)
+    if soort == "geavanceerd":
+        return tabel, "sleutel = ?", (pseudoniem("geavanceerd", gebruiker),)
     return tabel, "username = ?", (gebruiker,)
 
 
@@ -363,7 +369,7 @@ def test_een_fout_halverwege_geeft_500_en_het_token_blijft_geldig(client, monkey
 
 
 def _faal_bij_het_sram_profiel(monkeypatch) -> None:
-    """De DELETE van het SRAM-profiel faalt: die komt als laatste in de transactie (#1209)."""
+    """De DELETE van het SRAM-profiel faalt: die komt na de andere in de transactie (#1209)."""
     echte = db._execute
 
     def execute(conn, sql, params=()):
@@ -473,7 +479,7 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
     assert len(regels) == 1
     assert regels[0] == (
         "verwijder mijn gegevens: conversations=3, workbooks=2, feedback=4, algemene_feedback=5, "
-        "data_recipes=1, beurtbewijs=2, tokengebruik=3, oidc_gebruiker=1"
+        "data_recipes=1, beurtbewijs=2, tokengebruik=3, oidc_gebruiker=1, geavanceerd=1"
     )
     assert next(r for r in caplog.records if r.name == "routes.mijn_gegevens").levelno == logging.INFO
 
@@ -482,9 +488,9 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
 
 
 def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path, monkeypatch):
-    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test. `tokengebruik` en
-    `oidc_gebruikers` hebben geen kolom `username` maar een pseudoniem van de naam (#1112, #984), en horen er toch bij
-    (#1074, #1209)."""
+    """Een nieuwe tabel met `username` moet in verwijderen én in de export, anders faalt deze test. `tokengebruik`,
+    `oidc_gebruikers` en `geavanceerd` hebben geen kolom `username` maar een pseudoniem van de naam (#1112, #984, #1269),
+    en horen er toch bij (#1074, #1209)."""
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     db.init_db()
     with db._connection() as conn:
@@ -493,14 +499,16 @@ def test_elke_tabel_met_een_gebruikersnaam_wordt_gewist_en_geexporteerd(tmp_path
             t for t in tabellen if any(k["name"] == "username" for k in db._execute(conn, f"PRAGMA table_info({t})"))
         }
 
-    assert met_gebruiker == set(_SOORTEN) - {"tokengebruik", "oidc_gebruiker"}
+    assert met_gebruiker == set(_SOORTEN) - {"tokengebruik", "oidc_gebruiker", "geavanceerd"}
     assert "oidc_gebruikers" in tabellen
+    assert "geavanceerd" in tabellen
     assert list(verwijderen.DELETES) == list(export.SOORTEN) == _SOORTEN
 
 
 def test_elke_delete_filtert_op_de_gebruiker():
-    *op_naam, tokengebruik, oidc_gebruiker = verwijderen.DELETES.items()
+    *op_naam, tokengebruik, oidc_gebruiker, geavanceerd = verwijderen.DELETES.items()
     for soort, sql in op_naam:
         assert sql == f"DELETE FROM {soort} WHERE username = ?"
     assert tokengebruik == ("tokengebruik", "DELETE FROM tokengebruik WHERE sleutel = ?")
     assert oidc_gebruiker == ("oidc_gebruiker", "DELETE FROM oidc_gebruikers WHERE sleutel = ?")
+    assert geavanceerd == ("geavanceerd", "DELETE FROM geavanceerd WHERE sleutel = ?")

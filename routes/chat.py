@@ -16,7 +16,7 @@ from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from agent.timebox import harde_grens
 from config import Config
-from core import tokenbudget
+from core import geavanceerd, tokenbudget
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import (
     CHAT_RATE_LIMIT,
@@ -95,6 +95,8 @@ def _new_session(username: str | None = None, verbinding: str | None = None) -> 
         "username": username or FALLBACK_USER,
         # Eén ID per WebSocket-verbinding; blijft bij een reset, anders ontloopt een gast de berichtlimiet (#444).
         "verbinding": verbinding or uuid.uuid4().hex[:8],
+        # Telt de modelkeuze van de client (#1269)? Pas na `_ververs_modelkeuze`; tot dan niet: het standaardmodel.
+        "modelkeuze": False,
     }
 
 
@@ -161,7 +163,9 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     try:
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
-        await emit(error_event(e, ander_model=ander_model_te_kiezen(session.get("username"))))
+        # Zonder Geavanceerd kiest de gebruiker geen model (#1269), dus stelt de melding dat ook niet voor.
+        ander_model = bool(session.get("modelkeuze")) and ander_model_te_kiezen(session.get("username"))
+        await emit(error_event(e, ander_model=ander_model))
         # De vraag blijft staan, met een afbreekmarkering als antwoord: het gesprek blijft in beurten,
         # een herhaling bouwt op de afgeronde stappen (#431) en een andere vraag gaat niet op deze door (#548).
         messages.append(afgebroken_beurt())
@@ -430,10 +434,34 @@ async def _weiger_te_lang(content: str, emit) -> bool:
     return True
 
 
+async def _ververs_modelkeuze(session: dict) -> None:
+    """Telt de modelkeuze van de client in deze beurt? Met login alleen als het account "Geavanceerd" aan heeft (#1269).
+
+    Bij elk verzoek dat een model kiest opnieuw uit de database (core/geavanceerd.py), zodat een wissel in Instellingen
+    meteen geldt, ook in een verbinding die al openstond; nooit uit wat de client in `settings` meestuurt. Zonder login is
+    er geen eigen account om de keuze aan te koppelen: de browser houdt haar dan zelf en de server begrenst het model
+    alleen tot het aanbod, zoals voorheen.
+    """
+    username = session.get("username")
+    if not AUTH_ENABLED or not username or username == FALLBACK_USER:
+        session["modelkeuze"] = not AUTH_ENABLED
+        return
+    session["modelkeuze"] = await asyncio.to_thread(geavanceerd.lees, username)
+
+
 def _model(session: dict) -> str:
-    """Het model van deze beurt uit de instellingen van de client, begrensd tot het aanbod (#755)."""
+    """Het model van deze beurt uit de instellingen van de client, begrensd tot het aanbod (#755).
+
+    Zonder "Geavanceerd" (`modelkeuze` uit, #1269) altijd `MODEL`: de modelkiezer is dan verborgen, en een eigen client
+    die toch een model meestuurt, krijgt het standaardmodel. Zo is de grens niet alleen die van de interface.
+    """
     instellingen = session.get("chat_settings")
     gevraagd = instellingen.get("model") if isinstance(instellingen, dict) else None
+    if not session.get("modelkeuze"):
+        standaard = toegestaan_model(session.get("username"), None)
+        if gevraagd and gevraagd != standaard:
+            logger.info("Modelkeuze zonder Geavanceerd, MODEL gebruikt: %s", tekst_kenmerk(str(gevraagd), "model_"))
+        return standaard
     model = toegestaan_model(session.get("username"), gevraagd)
     if gevraagd and gevraagd != model:
         # De naam is invoer van de client: alleen een kenmerk in het log (#580).
@@ -475,6 +503,7 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
     content = _invoer(msg, "content")
     if not content or await _weiger_te_lang(content, emit):
         return current_task
+    await _ververs_modelkeuze(session)
     model = _model(session)
     session["current_model"] = model
     session["clarify_rondes"] = 0
@@ -530,6 +559,7 @@ async def _handle_generate_report(
         return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
+    await _ververs_modelkeuze(session)
     model = _model(session)
     author = msg.get("author")
     return asyncio.create_task(

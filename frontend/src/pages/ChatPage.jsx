@@ -9,6 +9,7 @@ import { saveWorkbookWithSync, syncWorkbook } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
+import { useGeavanceerd } from '../geavanceerd'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { refusalReason } from '../sendBlockReason'
@@ -95,6 +96,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
+  // De modelkeuze hoort bij "Geavanceerd" (#1269): zonder die instelling gaat elke vraag met het standaardmodel, en
+  // de server houdt zich daar zelf ook aan (routes/chat.py, `_model`). De eigen keuze blijft bewaard voor later.
+  const geavanceerd = useGeavanceerd()
+  const actiefModel = geavanceerd ? selectedModel : defaultModel
   const [showSources, setShowSources] = useState(false)
   const bronnenLijst = useBronnenLijst()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -608,16 +613,16 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
   }, [initialChat])
 
   useEffect(() => {
-    const s = chatSettings(selectedModel, settings.instelling, settings.functie)
+    const s = chatSettings(actiefModel, settings.instelling, settings.functie)
     if (Object.keys(s).some(k => s[k])) sendSettings(s)
-  }, [selectedModel, settings.instelling, settings.functie, sendSettings])
+  }, [actiefModel, settings.instelling, settings.functie, sendSettings])
 
   useAutoScroll(messagesContainerRef, messages)
 
   // Opnieuw na een foutmelding (#333). Met een ander model gaan de instellingen eerst:
   // de server beantwoordt de vraag met het model uit zijn instellingen.
   const handleRetry = (question, modelId) => {
-    if (modelId && modelId !== selectedModel) {
+    if (modelId && modelId !== actiefModel) {
       handleModelChange(modelId)
       sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
     }
@@ -762,7 +767,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
             Nieuw gesprek
           </button>
           {/* Op een telefoon staat de modelkeuze hier, niet in het invoerkader (#596). */}
-          {narrowScreen && models.length > 0 && (
+          {narrowScreen && geavanceerd && models.length > 0 && (
             <div className="sidebar-model">
               <h2 className="sidebar-section-title">Model</h2>
               <ModelPicker models={models} value={selectedModel} onChange={handleModelChange} />
@@ -794,7 +799,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
             onToggleSidebar={() => setSidebarOpen(o => !o)}
             exportMessages={hasMessages ? displayMessages : null}
             feedback={feedbackEnabled}
-            aanbieder={models.find(m => m.id === selectedModel)?.provider}
+            aanbieder={models.find(m => m.id === actiefModel)?.provider}
           />
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
@@ -836,7 +841,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, br
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
                 retry={offersRetryAt(displayMessages, i) ? {
                   question: questionBefore(displayMessages, i),
-                  models, selectedModel, onRetry: handleRetry,
+                  // Zonder Geavanceerd geen "Opnieuw met <ander model>" (#1269): de server zou het niet laten gelden.
+                  models: geavanceerd ? models : [], selectedModel: actiefModel, onRetry: handleRetry,
                   modelafhankelijk: msg.modelafhankelijk !== false,
                   // Een geweigerd rapport opnieuw (#515), alleen als er nu een rapport kan komen.
                   herstel: msg.herstel, onRapport: reportState === 'ready' ? handleMakeRapport : null,

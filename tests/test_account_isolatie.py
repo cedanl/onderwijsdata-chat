@@ -353,6 +353,31 @@ def test_verwijderen_door_anna_laat_de_gegevens_van_bert_staan(client):
     assert client.get("/api/data/csv", params={"key": _BERT_KEY}).status_code == 200
 
 
+# Controle 7 (#1269): de instelling "Geavanceerd" is per account; Bert leest of zet die van Anna niet.
+_GEAVANCEERD = "/api/mijn-gegevens/geavanceerd"
+
+
+def test_bert_leest_of_zet_geavanceerd_van_anna_niet(client):
+    _als(client, "anna")
+    assert client.put(_GEAVANCEERD, json={"geavanceerd": True}).json() == {"geavanceerd": True}
+
+    _als(client, "bert")
+    assert client.get(_GEAVANCEERD).json() == {"geavanceerd": False}
+    assert client.get(_GEAVANCEERD, params={"username": "anna"}).json() == {"geavanceerd": False}
+    assert client.put(_GEAVANCEERD, json={"geavanceerd": False, "username": "anna"}).status_code == 422
+    assert client.put(_GEAVANCEERD, params={"username": "anna"}, json={"geavanceerd": True}).json() == {
+        "geavanceerd": True
+    }
+    assert _export(client)["geavanceerd"][0]["aan"] is True
+
+    _als(client, "anna")
+    assert client.get(_GEAVANCEERD).json() == {"geavanceerd": True}
+    _als(client, "bert")
+    assert client.put(_GEAVANCEERD, json={"geavanceerd": False}).json() == {"geavanceerd": False}
+    _als(client, "anna")
+    assert client.get(_GEAVANCEERD).json() == {"geavanceerd": True}
+
+
 # Controle 6: zonder, met een ongeldig of met een ingetrokken token: 401 op elk eindpunt hierboven.
 _EINDPUNTEN = [
     ("GET", "/api/conversations", None),
@@ -370,6 +395,8 @@ _EINDPUNTEN = [
     ("GET", "/api/feedback/given", None),
     ("GET", "/api/mijn-gegevens/export", None),
     ("DELETE", "/api/mijn-gegevens", _BEVESTIGD),
+    ("GET", "/api/mijn-gegevens/geavanceerd", None),
+    ("PUT", "/api/mijn-gegevens/geavanceerd", {"geavanceerd": True}),
 ]
 
 

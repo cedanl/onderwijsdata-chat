@@ -77,6 +77,10 @@ def _namenlijst(naam: str) -> frozenset[str]:
 # Accounts zonder tokenbudget (#1234): op test het gedeelde account `demo`, dat team, demo's en audits samen gebruiken.
 # Hun gebruik telt nog wel mee in de database. De naam moet precies kloppen, zoals bij het inloggen (core/auth.py).
 TOKENBUDGET_VRIJGESTELD = _namenlijst("TOKENBUDGET_VRIJGESTELD")
+# Pilotaccounts voor de instelling "Geavanceerd" (#1269): bij hun eerste login, als er nog geen keuze bewaard is, staat
+# ze aan; daarna beslist de gebruiker zelf, en uit blijft uit. Accountnamen (SRAM: het e-mailadres, anders `sub`), de naam
+# moet precies kloppen. Nooit een rol, instelling of functie: die bepalen de instelling niet.
+GEAVANCEERD_PILOT = _namenlijst("GEAVANCEERD_PILOT")
 # Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))

@@ -148,11 +148,11 @@ THEMAS_WEGGELATEN = (
 )
 # S1 (#979): het antwoord zei geen bestand te kunnen klaarzetten. Een tabel van deze tool krijgt altijd de CSV-knop
 # (tools/csv_export._EIGEN_VORM); het label is csv_export.KNOP, hier letterlijk want csv_export importeert via herlaad
-# deze module (tests/test_studiekeuze.py houdt ze gelijk).
+# deze module (tests/test_studiekeuze.py houdt ze gelijk). De knop staat er alleen met de instelling "Geavanceerd" (#1269).
 BESTAND = (
-    "De app zet de hele tabel ({n} rijen) als CSV-bestand onder je antwoord, met de knop 'Download data als CSV'. Zeg "
-    "niet dat je geen bestand kunt geven: verwijs naar die knop. Een eigen selectie maak je met query_data; die krijgt "
-    "dezelfde knop."
+    "De app zet de hele tabel ({n} rijen) als CSV-bestand onder je antwoord, met de knop 'Download data als CSV'; die "
+    "staat er als de gebruiker de instelling 'Geavanceerd' aan heeft. Zeg niet dat je geen bestand kunt geven: verwijs "
+    "naar die knop en die instelling. Een eigen selectie maak je met query_data; die krijgt dezelfde knop."
 )
 OVERNEMEN = (
     "Neem de getallen letterlijk over en reken niet zelf; elk getal staat in `rijen`. Noem de bron met de bronregel: "

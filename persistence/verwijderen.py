@@ -1,8 +1,8 @@
 """Alles wat de server onder één gebruikersnaam bewaart, in één keer weg (AVG art. 17, #646).
 
-Eén `DELETE ... WHERE username = ?` per soort, in één transactie; `tokengebruik` en het SRAM-profiel (`oidc_gebruikers`)
-staan onder een pseudoniem van de naam (#1112, #984) en gaan weg met `WHERE sleutel = ?` en dat pseudoniem (#1074,
-#1209). Alles in één transactie: lukt één ervan niet, dan blijft alles staan
+Eén `DELETE ... WHERE username = ?` per soort, in één transactie; `tokengebruik`, het SRAM-profiel (`oidc_gebruikers`)
+en de instelling "Geavanceerd" (`geavanceerd`) staan onder een pseudoniem van de naam (#1112, #984, #1269) en gaan weg met
+`WHERE sleutel = ?` en dat pseudoniem (#1074, #1209). Alles in één transactie: lukt één ervan niet, dan blijft alles staan
 (rollback bij SQLite, en de Postgres-pool rolt een niet-gecommitte verbinding terug). Opnieuw proberen is veilig:
 een tweede keer verwijdert nul rijen.
 
@@ -14,8 +14,8 @@ account bij (#786).
 from persistence import db
 
 # Per soort zijn ene DELETE; de sleutels en hun volgorde zijn die van export.SOORTEN, en het zijn precies de
-# tabellen met een kolom `username`, plus `tokengebruik` en `oidc_gebruikers` (tests/test_mijn_gegevens_verwijderen.py
-# bewaakt beide).
+# tabellen met een kolom `username`, plus `tokengebruik`, `oidc_gebruikers` en `geavanceerd`
+# (tests/test_mijn_gegevens_verwijderen.py bewaakt beide).
 DELETES: dict[str, str] = {
     "conversations": "DELETE FROM conversations WHERE username = ?",
     "workbooks": "DELETE FROM workbooks WHERE username = ?",
@@ -25,6 +25,7 @@ DELETES: dict[str, str] = {
     "beurtbewijs": "DELETE FROM beurtbewijs WHERE username = ?",
     "tokengebruik": "DELETE FROM tokengebruik WHERE sleutel = ?",
     "oidc_gebruiker": "DELETE FROM oidc_gebruikers WHERE sleutel = ?",
+    "geavanceerd": "DELETE FROM geavanceerd WHERE sleutel = ?",
 }
 
 
@@ -33,6 +34,7 @@ def verwijder_alles(username: str) -> dict[str, int]:
     parameters = dict.fromkeys(DELETES, username) | {
         "tokengebruik": db.tokengebruik_sleutel(username),
         "oidc_gebruiker": db.oidc_sleutel(username),
+        "geavanceerd": db.geavanceerd_sleutel(username),
     }
     with db._connection() as conn:
         aantallen = {soort: db._execute(conn, sql, (parameters[soort],)).rowcount for soort, sql in DELETES.items()}

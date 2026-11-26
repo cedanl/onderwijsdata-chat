@@ -8,12 +8,12 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, StrictBool
 
 from agent import beurtbewijs, recepten
-from core import auth
+from core import auth, geavanceerd
 from core.auth import get_current_user
 from core.openapi_schema import bijlage
 from persistence import export, verwijderen
@@ -83,3 +83,30 @@ def verwijder_mijn_gegevens(
     beurtbewijs.vergeet_gebruiker(username)
     auth.revoke_all_tokens(username)
     return {"ok": True, "verwijderd": aantallen}
+
+
+class GeavanceerdKeuze(BaseModel):
+    """Precies `{"geavanceerd": true}` of `{"geavanceerd": false}`; een ander veld (zoals een gebruikersnaam) geeft 422."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    geavanceerd: StrictBool
+
+
+@router.get("/api/mijn-gegevens/geavanceerd")
+def lees_geavanceerd(username: Annotated[str, Depends(eigen_account)], response: Response) -> dict:
+    """De instelling "Geavanceerd" van dit account (#1269), op elk apparaat dezelfde; zonder bewaarde keuze uit.
+
+    Alleen de eigen waarde: het token bepaalt het account, er is geen parameter voor een ander. Zonder login 404,
+    zoals de export: dan houdt de browser de keuze zelf. no-store: een bewaard antwoord toont na een wissel op een ander
+    apparaat de oude stand.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    return {"geavanceerd": geavanceerd.lees(username)}
+
+
+@router.put("/api/mijn-gegevens/geavanceerd")
+def zet_geavanceerd(keuze: GeavanceerdKeuze, username: Annotated[str, Depends(eigen_account)]) -> dict:
+    """Zet "Geavanceerd" voor dit account aan of uit (#1269); de keuze geldt daarna op elk apparaat en bij elke login,
+    ook voor een account op de pilotlijst."""
+    return {"geavanceerd": geavanceerd.zet(username, keuze.geavanceerd)}

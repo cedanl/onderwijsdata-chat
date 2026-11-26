@@ -2,17 +2,20 @@ import { useId, useState } from 'react'
 import { conversationMarkdown, conversationNotebook, exportBestandsnaam } from '../conversationExport'
 import { useDialog } from '../hooks/useDialog'
 import { saveFile } from '../saveFile'
+import { useGeavanceerd } from '../geavanceerd'
 
 const DATUM = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 
 function ExportDialog({ messages, save, onClose }) {
   const dialogRef = useDialog(onClose)
   const titleId = useId()
+  const geavanceerd = useGeavanceerd()
   const formaatNaam = useId()
   const [snippets, setSnippets] = useState(true)
   const [fouten, setFouten] = useState(false)
   const [formaat, setFormaat] = useState('markdown')
-  const notebook = formaat === 'notebook'
+  // Het notebook is de code: het hoort bij "Geavanceerd" (#1269).
+  const notebook = geavanceerd && formaat === 'notebook'
 
   function download() {
     const datum = DATUM.format(new Date())
@@ -21,7 +24,7 @@ function ExportDialog({ messages, save, onClose }) {
       const json = JSON.stringify(conversationNotebook(messages, { fouten, datum }), null, 1) + '\n'
       save(new Blob([json], { type: 'application/x-ipynb+json' }), exportBestandsnaam(messages, '.ipynb'))
     } else {
-      const markdown = conversationMarkdown(messages, { snippets, fouten, datum })
+      const markdown = conversationMarkdown(messages, { snippets: geavanceerd && snippets, fouten, datum })
       save(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), exportBestandsnaam(messages, '.md'))
     }
     onClose()
@@ -31,21 +34,25 @@ function ExportDialog({ messages, save, onClose }) {
     <div className="confirm-overlay">
       <div className="confirm-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <p className="confirm-message" id={titleId}>Exporteer dit gesprek als bestand</p>
-        <fieldset className="export-formaat">
-          <legend className="export-formaat-legend">Formaat</legend>
-          <label className="export-option">
-            <input type="radio" name={formaatNaam} value="markdown" checked={!notebook} onChange={() => setFormaat('markdown')} />
-            Markdown
-          </label>
-          <label className="export-option">
-            <input type="radio" name={formaatNaam} value="notebook" checked={notebook} onChange={() => setFormaat('notebook')} />
-            Jupyter-notebook (.ipynb)
-          </label>
-        </fieldset>
-        <label className="export-option">
-          <input type="checkbox" checked={snippets || notebook} disabled={notebook} onChange={e => setSnippets(e.target.checked)} />
-          Code per stap (Python, met de bron)
-        </label>
+        {geavanceerd && (
+          <>
+            <fieldset className="export-formaat">
+              <legend className="export-formaat-legend">Formaat</legend>
+              <label className="export-option">
+                <input type="radio" name={formaatNaam} value="markdown" checked={!notebook} onChange={() => setFormaat('markdown')} />
+                Markdown
+              </label>
+              <label className="export-option">
+                <input type="radio" name={formaatNaam} value="notebook" checked={notebook} onChange={() => setFormaat('notebook')} />
+                Jupyter-notebook (.ipynb)
+              </label>
+            </fieldset>
+            <label className="export-option">
+              <input type="checkbox" checked={snippets || notebook} disabled={notebook} onChange={e => setSnippets(e.target.checked)} />
+              Code per stap (Python, met de bron)
+            </label>
+          </>
+        )}
         <label className="export-option">
           <input type="checkbox" checked={fouten} onChange={e => setFouten(e.target.checked)} />
           Mislukte stappen en foutmeldingen

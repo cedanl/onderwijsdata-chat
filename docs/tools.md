@@ -2,7 +2,8 @@
 
 De assistent beschikt over de volgende tools. Ze worden automatisch ingezet op basis van je vraag — je hoeft ze niet expliciet aan te roepen.
 
-Bij elke tool-aanroep wordt een reproduceerbaar Python-snippet getoond in de chat, zodat je de analyse lokaal kunt herhalen.
+Bij elke tool-aanroep maakt de app een reproduceerbaar Python-snippet, zodat je de analyse lokaal kunt herhalen; met de
+instelling "Geavanceerd" (#1269) staat het in de chat bij de stap.
 
 ## Hoe tool calling werkt
 
@@ -732,7 +733,7 @@ playground); zonder sleutel staat de tool niet in de toolset en geeft de dispatc
   het een rangorde op één cijfer is en geen kwaliteitsoordeel), `toolbeperkingen` (#979: wat deze weergave weglaat in
   vaste woorden, als keuze van de tool en niet als gat in de bron: de landelijke thema's bij `opleidingen`, de thema's
   bij meer dan drie rijen), `bestand` (de app zet de tabel als CSV onder het antwoord, met de knop "Download data als
-  CSV"; het model zegt dus niet dat het geen bestand kan geven), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
+  CSV", die er met de instelling "Geavanceerd" staat, #1269; het model zegt dus niet dat het geen bestand kan geven), `koppelen` (BRIN en CROHO naar DUO en RIO) en `bron`
   met de verplichte bronregel van LCSK en het versienummer van de export. Afronden, sorteren en het landelijke oordeel
   doet de code; zie de [verantwoording](databronnen.md#verantwoording-hoe-de-app-selecteert-sorteert-en-afrondt).
 - **Niet uit deze tool (afspraken #878):** aantallen studenten en eerstejaars (DUO: `get_maat`, `get_duo_data`), het

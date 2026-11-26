@@ -13,6 +13,7 @@ export const STORAGE_RECENT = 'openEDUdata_recent'
 export const STORAGE_SAVED_CHAT = 'openEDUdata_opgeslagen'
 export const STORAGE_VOORGEVULDE_VRAAG = 'openEDUdata_voorgevulde_vraag'
 export const STORAGE_TE_VERWIJDEREN = 'openEDUdata_te_verwijderen'
+export const STORAGE_GEAVANCEERD = 'openEDUdata_geavanceerd'
 
 // What the previous user of this browser left behind: wiped on logout, login, SRAM landing
 // and session end (#498). Every STORAGE_* key is in exactly one of these two lists; a test
@@ -36,6 +37,7 @@ export const NOT_SESSION_DATA_KEYS = [
   STORAGE_USERINFO,   // the cached user info of the login: clearToken removes it together with the token
   STORAGE_RECENT,     // only IDs, no titles; shown only for conversations and reports of the account logged in (#603); "Verwijder al mijn gegevens" empties it (#1115)
   STORAGE_VOORGEVULDE_VRAAG, // sessionStorage: a question from a link (#709) has to outlive the login; the chat takes it once
+  STORAGE_GEAVANCEERD, // "Geavanceerd" without a login only (#1269): with one the server keeps it per account; logout removes it with the profile
 ]
 
 // ─── Shared color palette ────────────────────────────────────────────────────

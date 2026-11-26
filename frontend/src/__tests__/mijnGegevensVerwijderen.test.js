@@ -166,6 +166,8 @@ describe('the dialog', () => {
       'niet ongedaan', 'kopie in deze browser', 'ander apparaat', 'tot je daar uitlogt', 'samen met anderen',
       // #1209: het tokengebruik en het SRAM-profiel gaan mee.
       'tokengebruik', 'naam, organisatie en instelling uit SRAM',
+      // #1269: de keuze voor "Geavanceerd" staat onder het account en gaat mee.
+      'keuze voor “Geavanceerd”',
     ]) expect(uitleg).toContain(tekst)
     // Feedback per antwoord bestaat niet meer (#983).
     expect(uitleg).not.toContain('per antwoord')

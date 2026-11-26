@@ -118,6 +118,11 @@ export default function PrivacyInhoud() {
           het zit in de export, en gaat weg als je al je gegevens verwijdert.
         </li>
         <li>
+          <strong>Geavanceerd</strong>: met een eigen login bewaart de server of je de instelling
+          &ldquo;Geavanceerd&rdquo; aan of uit zette, en wanneer, onder een pseudoniem van je accountnaam. Die keuze
+          heeft geen termijn: ze gaat pas weg als je al je gegevens verwijdert. Ze zit in de export.
+        </li>
+        <li>
           <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is. Je gesprekken
           verdwijnen {gesprek} dagen na je laatste bericht erin. Je feedback verdwijnt {gesprek} dagen nadat je hem
           gaf. Rapporten en dashboards verdwijnen {rapport} dagen nadat je ze voor het laatst opende of wijzigde.
@@ -130,8 +135,9 @@ export default function PrivacyInhoud() {
       <ul>
         <li>
           In je browser staan een kopie van je gesprekken en rapporten, het gesprek waar je mee bezig bent, je
-          profiel en je sessie. Je profiel is je instelling, functie en weergave. Uitloggen wist dit allemaal uit deze
-          browser, en al je gegevens verwijderen ook.
+          profiel en je sessie. Je profiel is je instelling, functie en weergave. Zonder login onthoudt je browser ook
+          of je &ldquo;Geavanceerd&rdquo; aanzette; met een login doet de server dat. Uitloggen wist dit allemaal uit
+          deze browser, en al je gegevens verwijderen ook.
         </li>
         <li>
           Ook onthoudt je browser welke gesprekken en rapporten je het laatst opende en welke rapporten je als
@@ -164,7 +170,10 @@ export default function PrivacyInhoud() {
       <p className="privacy-kern">Je kunt je gegevens zelf downloaden en verwijderen.</p>
       <ul>
         <li>Een gesprek verwijderen in de gesprekslijst. Een rapport of dashboard verwijderen onder Rapporten.</li>
-        <li>Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV.</li>
+        <li>
+          Een gesprek exporteren als Markdown en, met de instelling &ldquo;Geavanceerd&rdquo;, de tabel achter een
+          antwoord downloaden als CSV.
+        </li>
         <li>
           Het bewijs van een antwoord downloaden met &ldquo;Bewijs (JSON)&rdquo;. Je browser maakt dat bestand uit het
           antwoord op je scherm; er gaat niets naar de server. Erin staan het antwoord, de bronnen, de herkomst en per
@@ -180,15 +189,16 @@ export default function PrivacyInhoud() {
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
           dashboards, feedback, de gegevens over hoe tabellen zijn opgehaald en het bewijs per antwoord.
           Ook je tokengebruik zit erin: wat je vragen het model kostten, als één getal per dag. Log je in met SRAM, dan
-          zitten ook je naam, organisatie en instelling uit SRAM erin. Niet erin: wat alleen in je browser
-          staat. Zonder eigen login kan het niet.
+          zitten ook je naam, organisatie en instelling uit SRAM erin. Je keuze voor &ldquo;Geavanceerd&rdquo; zit er
+          ook in. Niet erin: wat alleen in je browser staat. Zonder eigen login kan het niet.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;.
           Typ daarna het woord &ldquo;verwijder&rdquo;. Dat kan niet ongedaan worden gemaakt, dus exporteer eerst.
           Dan verdwijnt alles wat de server onder je account bewaart. Dat zijn je gesprekken, rapporten en
           dashboards, al je feedback, de gegevens over hoe tabellen zijn opgehaald, het bewijs per antwoord en je
-          tokengebruik. Ook je naam, organisatie en instelling uit SRAM gaan weg. Ook de kopie in deze browser gaat
+          tokengebruik. Ook je naam, organisatie en instelling uit SRAM en je keuze voor &ldquo;Geavanceerd&rdquo; gaan
+          weg. Ook de kopie in deze browser gaat
           weg. Je wordt uitgelogd, ook op een ander apparaat. De tellers van het inloggen en de limieten gaan niet
           direct weg. Ze staan onder een pseudoniem en verdwijnen na
           hoogstens tien minuten. Wat blijft verder: de serverlogs (zonder gesprekstekst) en de back-ups van de

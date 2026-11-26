@@ -17,6 +17,7 @@ import { vervolgvragenTekst } from '../vervolgvragen'
 import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken, wachtVan } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
 import { WEGGEGAAN } from '../weggegaan'
+import { useGeavanceerd } from '../geavanceerd'
 
 // De bubbel van één bericht: vraag, antwoord, grafieken, verduidelijking en de knoppen eronder. Uit ChatPage.jsx
 // gehaald (#696); ChatPage exporteert Message opnieuw, zodat bestaande imports blijven werken.
@@ -77,6 +78,7 @@ function kopieVan(msg) {
 // onEigenGetal: (id, getal) => verstuurd?; onder een antwoord met één hoofdgetal de knop "Wijkt af van je eigen cijfer?" (#1258).
 export function Message({ msg, vraag = null, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, onVervolgvraag = null, onAndersFormuleren = null, onEigenGetal = null }) {
   const smal = useMediaQuery(NARROW_SCREEN)
+  const geavanceerd = useGeavanceerd()
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -112,7 +114,7 @@ export function Message({ msg, vraag = null, figures = null, verbinding = false,
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
-  const blocks = answerBlocks(msg, { settled })
+  const blocks = answerBlocks(msg, { settled, geavanceerd })
   // Wat met elke export van dit antwoord meegaat (#1257): Uitgangspunt, "Niet meegeteld", "Bron en definitie", "Let op"
   // en de regel "Wat is gecontroleerd".
   const voorbehoud = voorbehoudRegels(msg)

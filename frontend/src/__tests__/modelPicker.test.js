@@ -6,6 +6,7 @@ import { createElement, act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import ModelPicker, { modelOptionLabels } from '../components/ModelPicker'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -106,10 +107,10 @@ describe('ModelPicker provider caption (#496, F10)', () => {
   })
 
   it('keeps the picker one footer child after the send button, with the caption inside', () => {
-    const { container, root } = render(createElement(ChatInputFooter, {
+    const { container, root } = render(metGeavanceerd(createElement(ChatInputFooter, {
       connected: true, busy: false, models: [SONNET], selectedModel: SONNET.id,
       onModelChange: vi.fn(), onStop: vi.fn(), onSend: vi.fn(), canSend: true,
-    }))
+    })))
     const footer = container.querySelector('.chat-input-footer')
     expect([...footer.children].map(c => c.className)).toEqual(['ws-reconnecting', 'message-counter', 'send-btn', 'model-picker'])
     expect([...footer.querySelectorAll('button, select')].map(el => el.getAttribute('aria-label'))).toEqual(['Verstuur bericht', 'Model'])

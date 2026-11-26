@@ -24,10 +24,11 @@ Achter de schermen roept de app functies aan, bijvoorbeeld:
 
 ### 3. De code per stap
 
-Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat staat die bij de stap, onder "Redenering".
-"Exporteer gesprek" zet het hele gesprek in één bestand, naar keuze Markdown (de standaard) of een Jupyter-notebook
-(`frontend/src/conversationExport.js`, #366, #1247). In het Markdown-bestand staan per antwoord de stappen, elk met zijn
-snippet als `python`-codeblok. Het notebook (`.ipynb`, nbformat 4) open je in Jupyter, VS Code, Hex of Deepnote en draai
+Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). Met de instelling "Geavanceerd" (#1269, in
+Instellingen) staat die in de chat bij de stap, onder "Redenering". "Exporteer gesprek" zet het hele gesprek in één
+bestand (`frontend/src/conversationExport.js`, #366, #1247). Zonder Geavanceerd toont de kaart de stappen zonder code en
+is de export een Markdown-bestand zonder code. Met Geavanceerd kies je Markdown (de standaard) of een Jupyter-notebook.
+In het Markdown-bestand staan per antwoord de stappen, elk met zijn snippet als `python`-codeblok. Het notebook (`.ipynb`, nbformat 4) open je in Jupyter, VS Code, Hex of Deepnote en draai
 je van boven naar beneden:
 
 ```text
@@ -52,7 +53,8 @@ datastap van het gesprek onder het antwoord, onder de kop **Code**: dezelfde tek
 geen eigen script; dat las eerder een verzonnen CSV-bestand in (#959, `agent/codeverzoek.py`). Heeft de laatste
 datastap geen snippet (collegegeld, een Inspectie-oordeel, mbo-indicatoren, accreditatie, een instelling uit RIO), dan
 zegt een vaste zin dat er voor die stap geen code is, in plaats van de code van een eerdere stap te tonen; in een
-heropend gesprek zonder nieuwe datastap verwijst die zin naar "Bekijk code" bij het eerdere antwoord (#969). Alleen een
+heropend gesprek zonder nieuwe datastap verwijst die zin naar "Bekijk code" bij het eerdere antwoord (#969), met de
+instelling "Geavanceerd" erbij: zonder die instelling staat die knop er niet (#1269). Alleen een
 verzoek om programmacode telt: een vraag naar een CROHO-, BRIN-, ISCED- of opleidingscode, naar "de code van" een
 instelling of naar Python-cursussen niet.
 

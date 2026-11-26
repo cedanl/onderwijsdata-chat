@@ -7,6 +7,7 @@ vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null }
 
 import { Message } from '../pages/ChatPage'
 import { ALLEEN_CITATIES, CBS, DUO, VIJF_ANTWOORDEN } from './fixtures/vijfAntwoorden'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -25,7 +26,7 @@ function render(msg, props = {}) {
   document.body.appendChild(container)
   const root = createRoot(container)
   mounted.push({ root, container })
-  act(() => root.render(createElement(Message, { msg, ...props })))
+  act(() => root.render(metGeavanceerd(createElement(Message, { msg, ...props }))))
   return container
 }
 

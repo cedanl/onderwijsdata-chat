@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import ChatInputFooter from '../components/ChatInputFooter'
 import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
 import { MAX_MESSAGE_CHARS } from '../constants'
+import { metGeavanceerd } from './helpers/geavanceerd'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -16,7 +17,7 @@ function renderFooter(props) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
-  act(() => root.render(createElement(ChatInputFooter, props)))
+  act(() => root.render(metGeavanceerd(createElement(ChatInputFooter, props))))
   return { container, root }
 }
 
@@ -134,7 +135,7 @@ describe('ChatInputFooter verbindingsstatus (#532)', () => {
     const { container, root } = renderFooter(props(true))
     const el = status(container)
 
-    act(() => root.render(createElement(ChatInputFooter, props(false))))
+    act(() => root.render(metGeavanceerd(createElement(ChatInputFooter, props(false)))))
 
     expect(status(container)).toBe(el)
     expect(el.textContent).toBe('Verbinding herstellen...')

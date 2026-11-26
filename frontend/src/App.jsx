@@ -16,7 +16,9 @@ import { zetTermijnen } from './termijnen'
 import { zetBronnenLijst } from './bronnenLijst'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { effectiefProfiel, zonderProfiel } from './profiel'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_GEAVANCEERD, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
+import { GeavanceerdContext, laadLokaal, bewaarLokaal } from './geavanceerd'
+import { fetchGeavanceerd, putGeavanceerd } from './api'
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
 import { resolveMaxChatTurns, resolveMaxHistory } from './contextLimits'
@@ -75,6 +77,8 @@ function AppShell() {
   const [instellingen, setInstellingen] = useState([])
   const [authLoading, setAuthLoading] = useState(true)
   const [settings, setSettings] = useState(loadSettings)
+  // "Geavanceerd" (#1269), standaard uit; los van het profiel in localStorage: met login van de server, per account.
+  const [geavanceerd, setGeavanceerd] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   // De plek in de navbar waar een pagina op een telefoon zijn knoppen neerzet (#596).
   const [navSlot, setNavSlot] = useState(null)
@@ -105,7 +109,9 @@ function AppShell() {
     // The profile belongs to whoever logged out; on a shared device the next person starts fresh.
     localStorage.removeItem(STORAGE_SETTINGS)
     localStorage.removeItem(STORAGE_ONBOARDED)
+    localStorage.removeItem(STORAGE_GEAVANCEERD)
     setSettings({})
+    setGeavanceerd(false)
     setUser(null)
     setUserInfo(null)
     setShowSettings(false)
@@ -200,6 +206,23 @@ function AppShell() {
     })
   }, [])
 
+  // "Geavanceerd" na het inloggen van de server (#1269), dus op elk apparaat dezelfde; zonder login uit deze browser.
+  // Lukt het ophalen niet, dan blijft ze uit: de extra's zijn er pas als de server ze bevestigt.
+  useEffect(() => {
+    if (authLoading) return undefined
+    if (!authRequired) {
+      setGeavanceerd(laadLokaal())
+      return undefined
+    }
+    if (!user || !getToken()) {
+      setGeavanceerd(false)
+      return undefined
+    }
+    let actueel = true
+    fetchGeavanceerd().then(aan => { if (actueel) setGeavanceerd(aan) }).catch(() => { if (actueel) setGeavanceerd(false) })
+    return () => { actueel = false }
+  }, [authLoading, authRequired, user])
+
   // Only use the SRAM identity as instelling when it matches a known
   // instelling in the list we provide; otherwise ignore it so the user
   // picks (or keeps) their own value.
@@ -223,10 +246,20 @@ function AppShell() {
     setUser(u)
   }
 
-  const handleSaveSettings = (newSettings) => {
+  // De instellingen komen samen uit de dialoog; "Geavanceerd" gaat apart naar de server (met login) of deze browser,
+  // nooit in het profiel dat met de vragen meegaat (#1269).
+  const handleSaveSettings = ({ geavanceerd: nieuw, ...newSettings }) => {
     setSettings(newSettings)
     localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(newSettings))
     applyMode(newSettings.mode || 'system')
+    if (typeof nieuw !== 'boolean' || nieuw === geavanceerd) return
+    if (!authRequired) {
+      bewaarLokaal(nieuw)
+      setGeavanceerd(nieuw)
+      return
+    }
+    // Pas na het antwoord van de server: zo toont de app geen modelkeuze die de server nog niet laat gelden.
+    putGeavanceerd(nieuw).then(setGeavanceerd).catch(err => console.warn('Geavanceerd niet bewaard:', err))
   }
 
   const handleCloseSettings = () => {
@@ -303,7 +336,7 @@ function AppShell() {
   const openInstellingen = () => { setIsOnboarding(false); setShowSettings(true) }
 
   return (
-    <>
+    <GeavanceerdContext.Provider value={geavanceerd}>
       <SkipLink />
       <Nav
         user={user}
@@ -348,9 +381,10 @@ function AppShell() {
           sramInstelling={sramInstelling || null}
           sramIdentity={userInfo ? [userInfo.org, userInfo.institution, userInfo.email_domein].filter(Boolean) : []}
           instellingen={instellingen}
+          geavanceerd={geavanceerd}
         />
       )}
-    </>
+    </GeavanceerdContext.Provider>
   )
 }
 

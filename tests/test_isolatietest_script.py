@@ -68,7 +68,7 @@ def test_alle_controles_slagen_op_de_app(client):
 
     assert uitslag.fouten == []
     gedaan = {wat.split(" ")[0] for wat in uitslag.geslaagd}
-    assert {"1/2", "2", "3", "4", "5", "6"} <= gedaan
+    assert {"1/2", "2", "3", "4", "5", "6", "7"} <= gedaan
 
 
 def test_het_script_ruimt_zijn_testgegevens_op(client):
@@ -80,6 +80,8 @@ def test_het_script_ruimt_zijn_testgegevens_op(client):
         kop = {"Authorization": f"Bearer {token}"}
         assert client.get("/api/conversations", headers=kop).json() == []
         assert client.get("/api/workbooks", headers=kop).json() == []
+        # "Geavanceerd" van A staat weer zoals het was (#1269); die van B raakte de test niet.
+        assert client.get("/api/mijn-gegevens/geavanceerd", headers=kop).json() == {"geavanceerd": False}
 
 
 def test_een_lek_valt_op(client, monkeypatch):

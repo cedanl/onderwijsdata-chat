@@ -1941,6 +1941,30 @@ html.dark .suggested-btn:hover {
 }
 .report-cancel-btn:hover { border-color: var(--gray-400); color: inherit; }
 
+/* ─── Instelling "Geavanceerd" (#1269) ───────────────────────── */
+/* De hele rij is de schakelaar: tekst links, baan rechts. Uit een omlijnde baan met een kleine knop, aan een gevulde
+   baan met een grote witte knop; de stand leest dus ook zonder kleur. De rand van de baan haalt 3:1 (WCAG 1.4.11).
+   Bij minder beweging zet het A5-blok (#517, verderop) de overgangen uit; geen eigen reduced-motion-blok hier. */
+.settings-switch {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--gray-200);
+  background: var(--white); color: var(--gray-700); font-size: var(--font-label); font-weight: 600; text-align: left;
+  transition: border-color .15s;
+}
+.settings-switch:hover { border-color: var(--gray-400); }
+.settings-switch[aria-checked="true"] { border-color: var(--blue-500); }
+.settings-switch-baan {
+  flex: none; position: relative; width: 40px; height: 22px; border-radius: 999px;
+  border: 2px solid var(--gray-500); background: var(--white); transition: background .15s, border-color .15s;
+}
+.settings-switch-knop {
+  position: absolute; top: 50%; left: 4px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--gray-500); transform: translateY(-50%); transition: left .15s, width .15s, height .15s;
+}
+.settings-switch[aria-checked="true"] .settings-switch-baan { background: var(--blue-600); border-color: var(--blue-600); }
+.settings-switch[aria-checked="true"] .settings-switch-knop { left: 20px; width: 14px; height: 14px; background: var(--on-color); }
+.settings-geavanceerd-uitleg { margin: 8px 0 0; font-size: var(--font-klein); color: var(--muted-text); line-height: 1.5; }
+
 /* ─── Tap targets on touch screens (#388, #490) ──────────────── */
 /* Touch screens and narrow windows: 44x44 (WCAG 2.5.5), the icons themselves stay small.
    Last in the file, so no rule above lowers them again. */

@@ -37,6 +37,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `TOKENBUDGET_DAG` | `1500000` | Tokenbudget per gebruiker per dag (UTC), in invoertoken-equivalenten: nieuwe invoer x1, uit de cache gelezen x0,1, cache geschreven x1,25, uitvoer x5 (`core/tokenbudget.py`). Een typische vraag kost rond de 20.000, dus de standaard is zo'n 75 vragen per dag. Daarboven een melding en geen modelaanroep; `0` zet het uit. Zonder login geen budget (#678) |
 | `TOKENBUDGET_MAAND` | `15000000` | Hetzelfde per kalendermaand; `0` zet het uit (#678) |
 | `TOKENBUDGET_VRIJGESTELD` | leeg | Accounts zonder tokenbudget, gescheiden door komma's; de naam moet precies kloppen. Hun gebruik telt wel mee in de database. Op test `demo` (#1234) |
+| `GEAVANCEERD_PILOT` | leeg | Pilotaccounts voor de instelling "Geavanceerd" (#1269), gescheiden door komma's: accountnamen (met SRAM het e-mailadres, anders `sub`), de naam moet precies kloppen. Bij de eerste login van zo'n account, als er nog geen keuze bewaard is, staat Geavanceerd aan; daarna beslist de gebruiker, en uit blijft uit. Nooit een rol, instelling of functie. Zie [Kwaliteit en veiligheid](../kwaliteit-en-veiligheid.md#geavanceerd-alleen-erbij-nooit-minder-bescherming) |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
 | `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
 | `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, rapport). Een volgende wacht op een plaats (#688) |
@@ -107,7 +108,7 @@ wel in de manifesten, logs en het tokengebruik van wat je lokaal maakt.
 
 ## Model-picker
 
-De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld. Zonder deze instelling gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze. Het aanbod is ook een grens aan de serverkant: stuurt een client een model dat niet in het aanbod van die gebruiker staat (`USER_MODELS` of anders `AVAILABLE_MODELS`), dan gebruikt de server `MODEL` (#755).
+De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld en de gebruiker de instelling "Geavanceerd" aan heeft (#1269). Zonder `AVAILABLE_MODELS` gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze. Zonder Geavanceerd ook: met een login gebruikt de server dan `MODEL`, welk model de client ook meestuurt; zonder login bewaart de browser de instelling en begrenst de server alleen tot het aanbod. Het aanbod is ook een grens aan de serverkant: stuurt een client een model dat niet in het aanbod van die gebruiker staat (`USER_MODELS` of anders `AVAILABLE_MODELS`), dan gebruikt de server `MODEL` (#755).
 
 ```dotenv
 AVAILABLE_MODELS=azure_ai/claude-sonnet-4-6,azure_ai/claude-haiku-4-5,azure_ai/gpt-4o

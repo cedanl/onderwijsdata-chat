@@ -4,6 +4,7 @@ import { bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
 import { CITATIE_CSV_BESTAND, citatiesToCsv } from '../citatieCsv'
 import { exportKeys } from '../dataExport'
 import { saveFile } from '../saveFile'
+import { useGeavanceerd } from '../geavanceerd'
 import { metVoorbehoud } from '../voorbehoud'
 
 // A CSV download per table the answer was built on (#269); none for a free-text answer.
@@ -13,6 +14,9 @@ import { metVoorbehoud } from '../voorbehoud'
 //
 // Without a table from the server, the cited numbers are the export (#544): built here from the
 // citations the answer carries, so it works for every data answer and after a restart.
+//
+// Both CSV downloads, and with them "Vraag opnieuw stellen" after a failed one, belong to "Geavanceerd" (#1269);
+// without it only "Bewijs (JSON)" stays. The CSV of a chart is in the chart itself and stays for everyone.
 function saveCitaties(csv) {
   saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), CITATIE_CSV_BESTAND)
 }
@@ -35,8 +39,9 @@ export default function DataExport({
 }) {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
-  const keys = exportKeys(tools)
-  const citatieCsv = keys.length ? null : metVoorbehoud(citatiesToCsv(citaties), voorbehoud)
+  const geavanceerd = useGeavanceerd()
+  const keys = geavanceerd ? exportKeys(tools) : []
+  const citatieCsv = !geavanceerd || keys.length ? null : metVoorbehoud(citatiesToCsv(citaties), voorbehoud)
   const metBewijs = heeftBewijs(bewijsVan)
   if (!settled || (!keys.length && !citatieCsv && !metBewijs)) return null
 

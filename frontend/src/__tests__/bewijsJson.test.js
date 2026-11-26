@@ -10,6 +10,7 @@ import { Message } from '../pages/ChatPage'
 import { useChat } from '../hooks/useChat'
 import { conversationMessages } from '../conversationStore'
 import { BEWIJS_SCHEMA, BEWIJS_SLEUTELS, bewijs, bewijsBestandsnaam, bewijsJson, heeftBewijs } from '../bewijsJson'
+import { metGeavanceerd } from './helpers/geavanceerd'
 import { NIET_GECONTROLEERD, controleRegelTekst } from '../controleRegel'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -143,10 +144,10 @@ describe('de knop "Bewijs (JSON)" (#1244)', () => {
 
   it('staat naast de CSV-knop en bewaart het bewijs onder de naam uit de vraag', () => {
     const saveJson = vi.fn()
-    act(() => root.render(createElement(DataExport, {
+    act(() => root.render(metGeavanceerd(createElement(DataExport, {
       tools: ANTWOORD.tools, citaties: ANTWOORD.citaties, settled: true, bewijsVan: ANTWOORD,
       vraag: 'Hoeveel studenten heeft de HU?', saveJson,
-    })))
+    }))))
     const knoppen = [...container.querySelectorAll('.data-export button')].map(b => b.textContent)
     expect(knoppen).toEqual(['Download data als CSV', 'Bewijs (JSON)'])
     act(() => knop().click())

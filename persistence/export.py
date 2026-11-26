@@ -6,13 +6,13 @@ ook niet met tachtig rapporten van een paar MB HTML (#633). Gesprekken en werkbo
 lijst van ids en daarna één voor één; een verbinding blijft alleen open voor één query, niet over een
 `yield` heen, zodat een trage download geen plek in de Postgres-pool vasthoudt (#508).
 
-Elke query filtert op `username = ?`, behalve die van `tokengebruik` en `oidc_gebruiker`: die staan onder een
-pseudoniem van de naam (#1112, #984), dus filteren die op `sleutel = ?` met dat pseudoniem en geven de sleutel niet mee:
-`tokengebruik` alleen `dag` en `eenheden` (#1074), `oidc_gebruiker` het bewaarde SRAM-profiel (`gegevens`, ontleed) en
-`expires_at` (#1209). Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser.
+Elke query filtert op `username = ?`, behalve die van `tokengebruik`, `oidc_gebruiker` en `geavanceerd`: die staan onder
+een pseudoniem van de naam (#1112, #984, #1269), dus filteren die op `sleutel = ?` met dat pseudoniem en geven de sleutel
+niet mee: `tokengebruik` alleen `dag` en `eenheden` (#1074), `oidc_gebruiker` het bewaarde SRAM-profiel (`gegevens`,
+ontleed) en `expires_at` (#1209), `geavanceerd` de keuze (`aan`) en `gewijzigd`. Niet in de export: andermans rijen, ingetrokken tokens en de `localStorage` van de browser.
 Kolomnamen zijn die van de database (`html_content`, zoals `GET /api/workbooks/{id}`). Een nieuwe soort komt achteraan
 en verhoogt `SCHEMA_VERSION` niet: hij voegt alleen een sleutel toe. Zo ook `reden_leeg` in een lege `beurtbewijs`-rij
-(#1217) en `oidc_gebruiker` (#1209).
+(#1217), `oidc_gebruiker` (#1209) en `geavanceerd` (#1269).
 """
 
 import json
@@ -155,6 +155,16 @@ def oidc_gebruiker(username: str) -> Iterator[dict]:
         yield row
 
 
+def geavanceerd(username: str) -> Iterator[dict]:
+    """De instelling "Geavanceerd" van het account (#1269): hoogstens één rij, `aan` (ja/nee) en `gewijzigd` (ms sinds
+    epoch), zonder de sleutel. Geen rij: de gebruiker koos nog niets, dan staat ze uit."""
+    for row in _rijen(
+        "SELECT aan, gewijzigd FROM geavanceerd WHERE sleutel = ?",
+        (db.geavanceerd_sleutel(username),),
+    ):
+        yield {"aan": bool(row["aan"]), "gewijzigd": row["gewijzigd"]}
+
+
 SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "conversations": conversations,
     "workbooks": workbooks,
@@ -164,6 +174,7 @@ SOORTEN: dict[str, Callable[[str], Iterator[dict]]] = {
     "beurtbewijs": beurtbewijs,
     "tokengebruik": tokengebruik,
     "oidc_gebruiker": oidc_gebruiker,
+    "geavanceerd": geavanceerd,
 }
 
 

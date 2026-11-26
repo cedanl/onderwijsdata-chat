@@ -26,14 +26,15 @@ function isDataAnswer(msg, settled) {
 }
 
 // De blokken in vaste volgorde, elk aanwezig of n.v.t.; null voor elk ander bericht, dat blijft zoals het was.
-export function answerBlocks(msg, { settled = false } = {}) {
+// geavanceerd: of de CSV-downloads te zien zijn (#1269); Message geeft de stand mee, zonder opgave tellen ze mee.
+export function answerBlocks(msg, { settled = false, geavanceerd = true } = {}) {
   if (!isDataAnswer(msg, settled)) return null
   const gevuld = {
     citaties: msg.citaties?.length > 0,
     telling: Boolean(splitsTelling(msg.content).telling),
     // Een dataantwoord heeft altijd zijn bewijsbestand (#1244, bewijsJson.js), naast de CSV als die er is; een vast
     // antwoord uit code (#565) niet.
-    export: hasExport(msg) || msg.vast !== true,
+    export: (geavanceerd && hasExport(msg)) || msg.vast !== true,
     bronnen: bronnenTekst(msg.bronnen).length > 0,
   }
   return BLOKKEN.map(kind => ({ kind, status: gevuld[kind] ? AANWEZIG : NVT }))
