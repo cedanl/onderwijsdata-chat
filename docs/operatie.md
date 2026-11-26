@@ -1,3 +1,7 @@
+---
+icon: lucide/activity
+---
+
 # Operatie
 
 Hoe de app op SDP draait en wat je doet bij een storing. Dit is de bron voor de werkelijke deploy; de releasestappen

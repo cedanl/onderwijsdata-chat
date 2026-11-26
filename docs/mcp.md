@@ -1,3 +1,7 @@
+---
+icon: lucide/server
+---
+
 # MCP-server voor de catalogus en de kernvragen
 
 De catalogus van de chat (CBS, DUO en RIO; mbo, hbo en wo) is ook te doorzoeken vanuit een MCP-client

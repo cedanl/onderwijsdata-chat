@@ -1,3 +1,7 @@
+---
+icon: lucide/wrench
+---
+
 # Tools
 
 De assistent beschikt over de volgende tools. Ze worden automatisch ingezet op basis van je vraag — je hoeft ze niet expliciet aan te roepen.

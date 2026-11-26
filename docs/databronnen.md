@@ -1,3 +1,7 @@
+---
+icon: lucide/database
+---
+
 # Databronnen
 
 De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste bron wordt automatisch gekozen op basis van je vraag.

@@ -1,3 +1,7 @@
+---
+icon: lucide/layout-dashboard
+---
+
 # Dashboards
 
 De app heeft op de pagina `/dashboards` vaste dashboards per onderwijsinstelling: drie (Mijn instelling, Arbeidsmarkt

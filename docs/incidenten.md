@@ -1,3 +1,7 @@
+---
+icon: lucide/triangle-alert
+---
+
 # Incidenten en datalekken
 
 Wat je doet als de app stuk is, fout antwoordt, wordt aangevallen of gegevens laat zien aan wie ze niet mogen zien.

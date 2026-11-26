@@ -1,3 +1,7 @@
+---
+icon: lucide/shield-check
+---
+
 # Kwaliteit & veiligheid
 
 De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare antwoorden te garanderen.
