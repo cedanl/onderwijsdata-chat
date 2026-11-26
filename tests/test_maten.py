@@ -214,6 +214,18 @@ def test_mbo_telt_de_leerwegkolommen_van_de_vorm_op_als_aantal():
     assert known is not None and known.stap is not None and "AANTAL = BBL + BOLDT + BOLVT + EX" in known.stap
 
 
+def test_een_mbo_instelling_zonder_rij_in_de_selectie_krijgt_geen_rijen_van_het_hele_bestand(monkeypatch):
+    """Ander ROC staat alleen in 2024 in het bestand. Bij een lege selectie geeft query_data de key van het hele bestand
+    terug; het totaal over de leerwegen kwam daar ook overheen, met de rijen van ROC Mondriaan als reeks (#1248)."""
+    monkeypatch.setitem(_REGISTER, "ander roc", {"naam": "Ander ROC", "sector": "mbo", "instellingscode": "25PZ"})
+
+    uit = _uit(get_maat("mbo_studenten_instelling", "Ander ROC", schooljaren=["2023/24"]))
+
+    assert uit["rijen"] == []
+    assert uit["ontbrekende_schooljaren"] == ["2023/24"]
+    assert [r["AANTAL"] for r in _uit(get_maat("mbo_studenten_instelling", "Ander ROC"))["rijen"]] == [4]
+
+
 # --- een mbo-instelling met meer codes (#1069) ------------------------------------------------------------------------
 # Curio staat in DUO onder 21CY en 25LX. Het register houdt 21CY als instellingscode (adres en regio) en beide onder
 # instellingscodes; get_maat telt over beide, zoals het dashboard Mijn instelling (#923).
