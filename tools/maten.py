@@ -752,7 +752,9 @@ def _duo(p: Plan) -> dict | str:
     if not isinstance(gekozen, dict) or "data_key" not in gekozen:
         return _melding(gekozen)
     key, rijen = gekozen["data_key"], gekozen["rijen"]
-    if isinstance(r, DuoBreedRecept):
+    # Een lege selectie geeft de key van het hele bestand terug (query_data): daarover geen totaal, anders werden de
+    # rijen van elke andere instelling de reeks (#1248).
+    if isinstance(r, DuoBreedRecept) and rijen:
         key, rijen = _met_totaal(key, p)
     bestand = geladen.get("resource_titel")
     if keuze and len(set((keuze.get("per_schooljaar") or {}).values())) > 1:

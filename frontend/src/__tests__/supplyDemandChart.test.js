@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildSupplyDemandData } from '../components/dashboards/shared/chart-builders'
 
-// The backend counts a UWV cluster shared by several sectors pro rata (#455); the chart plots
+// The backend counts a CBS industry (SBI section) shared by several sectors pro rata (#455, #1225); the chart plots
 // that count and no longer re-sums the clusters per sector.
 const GEDIPLOMEERDEN = { TECHNIEK: 50, ECONOMIE: 50 }
 const VACATURES_PER_SECTOR = { TECHNIEK: 1500, ECONOMIE: 1300 }

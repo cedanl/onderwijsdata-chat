@@ -539,12 +539,12 @@ def test_dashboard_arbeidsmarktmatch():
     assert len(gps) > 0
     assert all(isinstance(v, int) for v in gps.values())
 
-    # vacatures_per_cluster: {cluster: int}
-    assert "vacatures_per_cluster" in result
-    vpc = result["vacatures_per_cluster"]
-    assert isinstance(vpc, dict)
+    # vacatures_per_bedrijfstak: {"C Industrie": int}, CBS 83599NED gemiddeld over vier kwartalen (#1225)
+    assert "vacatures_per_bedrijfstak" in result
+    vpb = result["vacatures_per_bedrijfstak"]
+    assert isinstance(vpb, dict) and all(isinstance(v, int) for v in vpb.values())
 
-    # vacatures_per_sector: {onderdeel: int}, gedeelde clusters naar rato (#455)
+    # vacatures_per_sector: {onderdeel: int}, gedeelde bedrijfstakken naar rato (#455, #1225)
     vps = result["vacatures_per_sector"]
     assert vps
     assert set(vps) <= set(gps)
@@ -553,10 +553,10 @@ def test_dashboard_arbeidsmarktmatch():
     # roa_per_niveau: {niveau: {werkloosheid, vast_dienstverband, buiten_vakrichting}}
     assert "roa_per_niveau" in result
 
-    # sector_cluster_mapping: {onderdeel: [cluster]}
-    assert "sector_cluster_mapping" in result
-    scm = result["sector_cluster_mapping"]
-    assert isinstance(scm, dict)
+    # sector_sbi_mapping: {onderdeel: [SBI-sectie]}, uit de koppeltabel (#1224)
+    assert "sector_sbi_mapping" in result
+    scm = result["sector_sbi_mapping"]
+    assert isinstance(scm, dict) and set(scm) == set(gps)
 
     # match_score: {onderdeel: "schaarste"|"evenwicht"|"overaanbod"|null}
     assert "match_score" in result

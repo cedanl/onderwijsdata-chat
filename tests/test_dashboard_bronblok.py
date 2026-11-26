@@ -12,7 +12,7 @@ from onderwijsbronnen import duo
 
 import data.dashboard as dashboard
 from core import actualiteit
-from data import arbeidsmarkt, bronblok
+from data import arbeidsmarkt, bronblok, vacatures_cbs
 from tests import bestandskeuze_hulp
 from tools import scopeprofiel
 
@@ -50,13 +50,14 @@ def _per_dataset(result: dict) -> dict[str, dict]:
     return {b["dataset"]: b for b in result["bronnen"]}
 
 
-def test_de_arbeidsmarkt_noemt_de_duo_bestanden_uwv_en_roa_die_ze_laadde(bronversie):
+def test_de_arbeidsmarkt_noemt_de_duo_bestanden_cbs_en_roa_die_ze_laadde(bronversie):
     result = dashboard.load_dashboard_arbeidsmarktmatch(_HU)
 
     bronnen = _per_dataset(result)
-    # p02ho1ejrs (eerstejaars) gebruikt de arbeidsmarkt niet: hij staat er niet in.
-    assert list(bronnen) == ["p01hoinges", "p04hogdipl", "uwv-open-match-data", "ais2030"]
-    assert [b["bron"] for b in result["bronnen"]] == ["DUO", "DUO", "UWV", "ROA"]
+    # p02ho1ejrs (eerstejaars) gebruikt de arbeidsmarkt niet: hij staat er niet in. De vacatures zijn sinds #1225 van
+    # CBS (83599NED), niet meer van UWV.
+    assert list(bronnen) == ["p01hoinges", "p04hogdipl", "83599NED", "ais2030"]
+    assert [b["bron"] for b in result["bronnen"]] == ["DUO", "DUO", "CBS", "ROA"]
 
     dipl = bronnen["p04hogdipl"]
     assert dipl["url"] == "https://onderwijsdata.duo.nl/dataset/p04hogdipl"
@@ -74,15 +75,23 @@ def test_de_arbeidsmarkt_noemt_de_duo_bestanden_uwv_en_roa_die_ze_laadde(bronver
     assert dipl["opgehaald_op"] == _NU.isoformat()
 
 
-def test_uwv_is_de_momentopname_met_de_peildatum_uit_de_data():
-    uwv = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))["uwv-open-match-data"]
+def test_cbs_noemt_tabel_link_licentie_kwartalen_en_voorlopig():
+    cbs = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))["83599NED"]
 
-    assert uwv["bron"] == "UWV"
-    assert uwv["peildatum"] == "2023-05-16"
-    assert uwv["peilmoment"] == "peildatum 16 mei 2023, ruim 3 jaar oud"  # met de ouderdom, op de klok van _NU (#1219)
-    assert (uwv["peildatum_ouderdom_maanden"], uwv["verouderd"]) == (41, True)
-    assert uwv["voorlopig"] is False
-    assert uwv["url"] == "https://data.overheid.nl/dataset/uwv-open-match-data"
+    assert cbs["bron"] == "CBS"
+    assert cbs["titel"] == "Openstaande vacatures; SBI 2008, regio"
+    assert cbs["url"] == "https://opendata.cbs.nl/#/CBS/nl/dataset/83599NED/table"
+    assert cbs["licentie"] == "CC BY 4.0"
+    assert cbs["peilmoment"] == "2026 3e kwartaal; gemiddelde 2025 4e kwartaal t/m 2026 3e kwartaal"
+    # CBS noemt elk kwartaal vanaf 2022 voorlopig: de vier van het gemiddelde dus ook.
+    assert cbs["voorlopig"] is True
+    assert cbs["voorlopig_jaren"] == ["2025 4e kwartaal", "2026 1e kwartaal", "2026 2e kwartaal", "2026 3e kwartaal"]
+    assert cbs["opgehaald_op"] == _NU.isoformat()
+
+
+def test_een_andere_bron_heeft_geen_licentie_in_het_bronblok(bronversie):
+    bronnen = _per_dataset(dashboard.load_dashboard_arbeidsmarktmatch(_HU))
+    assert "licentie" not in bronnen["p04hogdipl"]
 
 
 def test_roa_draagt_de_editie_uit_de_data(monkeypatch):
@@ -136,13 +145,12 @@ def test_een_cachetreffer_geeft_hetzelfde_bronblok(bronversie):
 
 
 def test_een_bron_die_niet_laadde_staat_niet_als_gebruikt(monkeypatch):
-    monkeypatch.setattr(arbeidsmarkt, "uwv_stand", lambda *a, **k: (_ for _ in ()).throw(ConnectionError("UWV")))
-    monkeypatch.setattr(arbeidsmarkt, "_uwv", lambda: (_ for _ in ()).throw(ConnectionError("UWV")))
+    monkeypatch.setattr(vacatures_cbs, "_tabel", lambda: (_ for _ in ()).throw(ConnectionError("CBS")))
 
     result = dashboard.load_dashboard_arbeidsmarktmatch(_HU)
 
-    assert "uwv-open-match-data" not in _per_dataset(result)
-    assert {g["bron"] for g in result["niet_beschikbaar"]} == {"UWV"}
+    assert "83599NED" not in _per_dataset(result)
+    assert {g["bron"] for g in result["niet_beschikbaar"]} == {"CBS"}
 
 
 @pytest.mark.parametrize(
@@ -151,8 +159,8 @@ def test_een_bron_die_niet_laadde_staat_niet_als_gebruikt(monkeypatch):
         (dashboard.load_dashboard_nationaal, ["p01hoinges"]),
         # Hbo en wo krijgen geen rendement, alleen de reden: geen getal, dus geen bron (#898).
         (dashboard.load_dashboard_rendement, []),
-        # In de volgorde van laden: de regio laadt ROA vóór de vacatures van UWV.
-        (dashboard.load_dashboard_regio, ["p01hoinges", "p02ho1ejrs", "p04hogdipl", "ais2030", "uwv-open-match-data"]),
+        # In de volgorde van laden: de regio laadt ROA vóór de vacatures van CBS.
+        (dashboard.load_dashboard_regio, ["p01hoinges", "p02ho1ejrs", "p04hogdipl", "ais2030", "83599NED"]),
     ],
 )
 def test_elk_dashboard_noemt_de_bestanden_die_het_gebruikt(lader, verwacht):

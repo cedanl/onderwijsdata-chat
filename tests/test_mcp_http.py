@@ -303,6 +303,46 @@ def test_de_client_van_de_sdk_met_een_foute_sleutel_komt_er_niet_in(maak_app):
         via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.list_tools(), koppen={"Authorization": "Bearer fout"})
 
 
+@pytest.mark.parametrize(
+    ("methode", "params"),
+    [
+        ("prompts/list", {}),
+        ("prompts/get", {"name": "bronregels"}),
+        ("resources/list", {}),
+        ("resources/read", {"uri": "onderwijsdata://bronregels"}),
+    ],
+)
+def test_bronregels_zonder_geldige_sleutel_401(maak_app, methode, params):
+    """#1249: prompt en resource achter dezelfde sleutelcontrole als de tools (#939)."""
+    verzoek = {"jsonrpc": "2.0", "id": 2, "method": methode, "params": params}
+    with TestClient(maak_app(SLEUTEL)) as client:
+        for koppen in ({}, {"Authorization": "Bearer verkeerd"}):
+            antwoord = client.post("/mcp", json=verzoek, headers=ACCEPT | koppen)
+            assert (antwoord.status_code, antwoord.json()) == (401, {"detail": mcp_http.GEEN_SLEUTEL}), koppen
+
+
+def test_bronregels_met_sleutel_als_prompt_en_resource(maak_app):
+    async def lees(sessie):
+        return (
+            await sessie.list_prompts(),
+            await sessie.get_prompt("bronregels"),
+            await sessie.list_resources(),
+            await sessie.read_resource("onderwijsdata://bronregels"),
+        )
+
+    _, (prompts, prompt, resources, resource) = via_mcp(maak_app(SLEUTEL), lees)
+    assert [p.name for p in prompts.prompts] == ["bronregels"]
+    assert [r.uri for r in resources.resources] == ["onderwijsdata://bronregels"]
+    assert prompt.messages[0].content.text == resource.contents[0].text == mcp_server.bronregels_tekst()
+
+
+def test_bronregels_met_een_foute_sleutel_via_de_sdk_komen_er_niet_in(maak_app):
+    from mcp.shared.exceptions import MCPError
+
+    with pytest.raises((MCPError, ExceptionGroup, httpx2.HTTPStatusError)):
+        via_mcp(maak_app(SLEUTEL), lambda sessie: sessie.get_prompt("bronregels"), koppen={"Authorization": "Bearer x"})
+
+
 def test_de_sleutel_staat_niet_in_het_log_wel_een_sleutel_id(maak_app, caplog):
     from core.logging_util import tekst_kenmerk
 

@@ -10,7 +10,7 @@ import { useKaartStatus } from '../hooks/useKaartStatus'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { figuurBeschrijving } from '../figuurBeschrijving'
 import { figuurTabel } from '../figuurTabel'
-import { scheidNoot } from '../figuurNoot'
+import { figuurNoten, scheidNoot } from '../figuurNoot'
 import { leesFiguur } from '../figuurJson'
 import { saveFile } from '../saveFile'
 
@@ -30,13 +30,23 @@ const WIDTH_STEP = 16
 
 // react-plotly redraws when data, layout or config change by reference, and a redraw is costly. So
 // everything handed to <Plot> is derived once per figure, theme and width step, not once per render.
-export const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
+// `voorbehoud`: de regels van het antwoord die met de CSV meegaan (voorbehoud.js, #1257); een grafiek buiten een
+// antwoord (rapport, dashboard) heeft er geen.
+const GEEN_VOORBEHOUD = []
+
+export const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label, voorbehoud = GEEN_VOORBEHOUD }) {
   const dark = useDarkMode()
   const [wrapRef, width] = useElementWidth(WIDTH_STEP)
   // De afrondingsnoot als tekstregel onder de grafiek, niet in de figuur (#651).
   const { figure, noot } = useMemo(() => scheidNoot(leesFiguur(figureJson)), [figureJson])
   const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
-  const csv = useMemo(() => figure && figureToCsv(figure), [figure])
+  // Op de regels zelf, niet op de array: die is bij elke render van het bericht nieuw. Elke regel is één tekstregel.
+  const voorbehoudSleutel = voorbehoud.join('\n')
+  const csv = useMemo(
+    () => figure && figureToCsv(figure, voorbehoudSleutel ? voorbehoudSleutel.split('\n') : []),
+    [figure, voorbehoudSleutel],
+  )
+  const noten = useMemo(() => figuurNoten(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
   const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
   const tabel = useMemo(() => figuurTabel(figure), [figure])
@@ -80,6 +90,8 @@ export const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
         />
       </div>
       {noot && <p className="figuur-noot">{noot}</p>}
+      {/* Trendbreuk, grafiekregel, ondergrens (#1261, #1262, #1264): elke noot een eigen regel, als tekst. */}
+      {noten.map(n => <p key={n} className="figuur-noot">{n}</p>)}
       {/* Een kaart die niet getekend is, toont haar tabel al in KaartTerugval. */}
       {tabel && !kaartMislukt && <WaardenTabel tabel={tabel} />}
     </div>

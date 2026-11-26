@@ -1,23 +1,27 @@
 """Het bronblok van een dashboard (#904): per gebruikte bron wat de lading echt laadde.
 
 De laders melden elk bestand dat ze met succes laadden (`core.brongebruik`): DUO in `_duo_load` van data/dashboard.py,
-UWV en ROA in `_uwv` en `_roa` van data/arbeidsmarkt.py, LCSK in `_export` van data/dashboard_opleidingen.py. Een bron die niet laadde, meldt niets en staat er dus niet in;
+ROA in `_roa` van data/arbeidsmarkt.py, de vacatures van CBS (83599NED) in `_tabel` van data/vacatures_cbs.py, LCSK in
+`_export` van data/dashboard_opleidingen.py. Een bron die niet laadde, meldt niets en staat er dus niet in;
 hij staat in `niet_beschikbaar` (#901). Per dataset één regel, in de volgorde waarin het dashboard ze laadde:
 
 - `bron`, `dataset`, `titel` en `url`: de titel en documentatielink uit de riodata-catalogus, zoals de chat de bron
   noemt (`catalogus_titel`).
 - `editie`, `last_modified` en `peilmoment`: de versie van wat er geladen is. DUO: `last_modified` per bestand (#717)
   en het peilmoment in de woorden van de bronregel in de chat ("versie van 08-04-2026"). ROA: de editie uit het schema
-  van riodata, het SIS-jaar uit de thema's van het bestand (`sis`, #1091) en de kolom `versie` van het bestand. UWV: geen editie; de momentopname heeft een peildatum.
-  Het peilmoment van UWV noemt haar ouderdom ("peildatum 16 mei 2023, ruim 3 jaar oud"), met
-  `peildatum_ouderdom_maanden` en `verouderd` erbij (#1219).
+  van riodata, het SIS-jaar uit de thema's van het bestand (`sis`, #1091) en de kolom `versie` van het bestand.
+  CBS 83599NED (de vacatures, #1225): geen editie; het peilmoment is het laatste kwartaal en het gemiddelde dat de
+  dashboards tonen ("2026 3e kwartaal; gemiddelde 2025 4e kwartaal t/m 2026 3e kwartaal"), met de licentie (CC BY 4.0),
+  titel en link uit de melding, en `voorlopig_jaren` de kwartalen daarvan die CBS voorlopig noemt.
   LCSK (de Studiekeuzedatabase, dashboard Opleidingen): het versienummer van de export als editie, en als peilmoment
   versie, exportdatum, NSE-jaar en 1cijferHO-jaar; `vermelding` is de bronregel met de zin die LCSK verplicht stelt.
-- `peildatum`: DUO de teldatum uit de DUO-beschrijving ("1 oktober"), UWV de PEILDATUM uit de data.
+- `peildatum`: DUO de teldatum uit de DUO-beschrijving ("1 oktober"); bij CBS niets, het kwartaal staat in het peilmoment.
 - Een bron met een editie in plaats van een versie per bestand (de financiën van DUO, #935; WOPI van UNL, #936): de
   lader meldt editie, peildatum en versie zelf (`tools/financien._bron`, `tools/wo_personeel._wopi`), en titel en link
   als de catalogus de bron niet kent.
-- `voorlopig` en `voorlopig_jaren`: de jaren die de DUO-beschrijving voorlopig noemt (gepind met de catalogus).
+- `voorlopig` en `voorlopig_jaren`: de jaren die de DUO-beschrijving voorlopig noemt (gepind met de catalogus); bij
+  CBS de voorlopige kwartalen uit de Perioden van de tabel.
+- `licentie`: alleen bij een bron die haar meldt (CBS: CC BY 4.0).
 - `opgehaald_op`: het vroegste ophaalmoment van de bestanden, ISO met tijdzone.
 """
 
@@ -58,13 +62,23 @@ def _duo(meldingen: list[Mapping]) -> dict:
     }
 
 
-def _uwv(meldingen: list[Mapping]) -> dict:
-    """De peildatum met haar ouderdom, in de woorden van de bronregel in de chat (#1219)."""
-    peildatum = meldingen[0].get("peildatum")
+def _cbs(meldingen: list[Mapping]) -> dict:
+    """De vacatures van CBS 83599NED (#1225): het laatste kwartaal en het gemiddelde, de voorlopige kwartalen daarvan,
+    de licentie, en titel en link uit de melding (de CBS-tabellen staan niet in de catalogus van `_catalogus`)."""
+    melding = meldingen[0]
+    gemiddeld = melding.get("gemiddeld_over") or []
+    delen = [
+        melding.get("laatste_periode"),
+        f"gemiddelde {gemiddeld[0]} t/m {gemiddeld[-1]}" if len(gemiddeld) > 1 else None,
+    ]
+    voorlopig = [str(p) for p in melding.get("voorlopig_perioden") or []]
     return {
-        "peildatum": peildatum,
-        "peilmoment": arbeidsmarkt.uwv_peiltekst(peildatum) if peildatum else None,
-        **arbeidsmarkt.ouderdom(peildatum),
+        "titel": melding["titel"],
+        "url": melding["url"],
+        "licentie": melding.get("licentie"),
+        "peilmoment": "; ".join(d for d in delen if d) or None,
+        "voorlopig": bool(voorlopig),
+        "voorlopig_jaren": voorlopig,
     }
 
 
@@ -103,7 +117,7 @@ def _editie(meldingen: list[Mapping]) -> dict:
     return uit | {k: melding[k] for k in ("titel", "url") if melding.get(k)}
 
 
-_VERSIE: dict[str, Callable[[list[Mapping]], dict]] = {"DUO": _duo, "UWV": _uwv, "ROA": _roa, "LCSK": _lcsk}
+_VERSIE: dict[str, Callable[[list[Mapping]], dict]] = {"DUO": _duo, "CBS": _cbs, "ROA": _roa, "LCSK": _lcsk}
 # Per dataset, vóór de regel van de bron: de financiën zijn DUO, maar zonder bestanden met een eigen versie.
 _VERSIE_PER_DATASET: dict[str, Callable[[list[Mapping]], dict]] = {"financien": _editie, "unl:wopi": _editie}
 
@@ -121,9 +135,9 @@ def _regel(bron: str, dataset: str, meldingen: list[Mapping]) -> dict:
         "last_modified": None,
         "peilmoment": None,
         "peildatum": tijd.get("peildatum"),
-        **(_VERSIE_PER_DATASET.get(dataset) or _VERSIE[bron])(meldingen),
         "voorlopig": bool(voorlopig),
         "voorlopig_jaren": voorlopig,
+        **(_VERSIE_PER_DATASET.get(dataset) or _VERSIE[bron])(meldingen),
         "opgehaald_op": min(m["opgehaald_op"] for m in meldingen),
     }
 

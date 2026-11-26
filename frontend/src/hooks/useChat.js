@@ -362,6 +362,8 @@ export function useChat({ maxHistory } = {}) {
             ...(ev.vast === true && { vast: true }),
             // What the server's check on this answer still found wrong (#185, #187).
             ...(ev.controle?.length && { controle: ev.controle }),
+            // What the check did, for the line "Wat is gecontroleerd" (#1260): counts from code, never from the model.
+            ...(ev.controles && typeof ev.controles === 'object' && !Array.isArray(ev.controles) && { controles: ev.controles }),
             // Sentences in which the model revised itself go to the reasoning card, not the answer (#412).
             ...(ev.tussentekst?.length && { tussentekst: [...(m.tussentekst || []), ...ev.tussentekst] }),
             // The numbers that passed the check, each with the step it came from (#365).

@@ -71,7 +71,8 @@ def test_productie_met_spa_geeft_voor_docs_geen_documentatie(productie_app, tmp_
 
 @pytest.mark.parametrize("productie", [False, True])
 def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
-    # #654: GET /openapi.json gaf de app-shell, HEAD een JSON-405; het echte schema staat onder /api.
+    # #654: GET /openapi.json gaf de app-shell, HEAD een JSON-405; het echte schema staat onder /api. Sinds #1239 is
+    # /openapi.json gereserveerd: GET en HEAD geven allebei de JSON-404.
     from server import create_app
 
     (tmp_path / "assets").mkdir()
@@ -79,8 +80,9 @@ def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
     client = TestClient(create_app(api_docs=not productie, frontend_dist=tmp_path))
 
     get, head = client.get("/openapi.json"), client.head("/openapi.json")
-    assert head.status_code == get.status_code == 200
-    assert head.headers["content-type"] == get.headers["content-type"]
+    assert head.status_code == get.status_code == 404
+    assert head.headers["content-type"] == get.headers["content-type"] == "application/json"
+    assert get.json() == {"detail": NIET_GEVONDEN}
     # Een echte route houdt zijn eigen antwoord: HEAD /health wordt geen app-shell.
     assert client.head("/health").headers["content-type"].startswith("application/json")
     schema = client.head("/api/openapi.json")
@@ -110,8 +112,8 @@ def test_buiten_productie_blijft_alleen_het_openapi_schema(ontwikkel_app):
 
 
 def test_buiten_productie_met_spa_geeft_voor_docs_geen_documentatie(ontwikkel_app, tmp_path):
-    # Met een gebouwde frontend: /api/docs is een JSON-404, /redoc en /docs/oauth2-redirect krijgen index.html van de
-    # SPA, zoals elk onbekend pad en zoals in productie.
+    # Met een gebouwde frontend: /api/docs en /docs/oauth2-redirect zijn een JSON-404 (/docs is gereserveerd, #1239),
+    # /redoc krijgt index.html van de SPA, zoals elk onbekend pad en zoals in productie.
     from frontend_static import mount_frontend
 
     (tmp_path / "assets").mkdir()
@@ -119,11 +121,11 @@ def test_buiten_productie_met_spa_geeft_voor_docs_geen_documentatie(ontwikkel_ap
     mount_frontend(ontwikkel_app, tmp_path)
     client = TestClient(ontwikkel_app)
 
-    docs = client.get("/api/docs")
-    assert docs.status_code == 404
-    assert docs.json() == {"detail": NIET_GEVONDEN}
-    for pad in ("/redoc", "/docs/oauth2-redirect"):
-        assert client.get(pad).text == "<!doctype html><title>EDUdata</title>", pad
+    for pad in ("/api/docs", "/docs/oauth2-redirect"):
+        docs = client.get(pad)
+        assert docs.status_code == 404, pad
+        assert docs.json() == {"detail": NIET_GEVONDEN}, pad
+    assert client.get("/redoc").text == "<!doctype html><title>EDUdata</title>"
     assert client.get("/api/openapi.json").status_code == 200
     for pad in (*DOCS_PADEN, "/", "/dashboards"):
         assert "cdn.jsdelivr.net" not in client.get(pad).text, pad

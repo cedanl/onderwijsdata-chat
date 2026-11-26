@@ -184,17 +184,17 @@ describe('miniatuur van een vast dashboard (#933): de echte bovenkant', () => {
     await inBeeld(MARKT)
     const tekst = miniatuur(MARKT).textContent
     expect(tekst).toContain(`Niet getoond (${reden}): Onderwijs.`)
-    expect(tekst).not.toContain('geen beroepenclusters in de sectorindeling')
+    expect(tekst).not.toContain('geen vacaturegegevens per bedrijfstak voor deze sector')
   })
 
-  it('Arbeidsmarkt: zonder redenen in de payload blijft de oude reden staan', async () => {
+  it('Arbeidsmarkt: zonder redenen in de payload staat de reden van de koppeltabel (#1225)', async () => {
     payloads['/api/dashboard/arbeidsmarktmatch'] = {
       ...dashboards.arbeidsmarktmatch,
       match_score: { ...dashboards.arbeidsmarktmatch.match_score, ONDERWIJS: null },
     }
     await toon(galerij())
     await inBeeld(MARKT)
-    expect(miniatuur(MARKT).textContent).toContain('geen beroepenclusters in de sectorindeling')
+    expect(miniatuur(MARKT).textContent).toContain('geen vacaturegegevens per bedrijfstak voor deze sector')
     expect(miniatuur(MARKT).textContent).toContain('Onderwijs')
   })
 

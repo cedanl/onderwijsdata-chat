@@ -146,6 +146,19 @@ def decimalen_met_positie(text: str) -> list[tuple[str, Decimal, int]]:
     ]
 
 
+def getoetste_getallen(text: str) -> int:
+    """Hoeveel verschillende getallen en percentages de getalcontrole in `text` tegen de data legt (#1260): de gehele
+    getallen van vier of meer cijfers (geen jaartal) en elk percentage, zoals `unverified` ze leest."""
+    percent_spans = [m.span() for m in _TEXT_PERCENT.finditer(text)]
+    getallen = {
+        _digits(m.group(1))
+        for m in _TEXT_NUMBER.finditer(text)
+        if not any(start <= m.start() < end for start, end in percent_spans) and checked(_digits(m.group(1)))
+    }
+    percentages = {m.group(1) for m in _TEXT_PERCENT.finditer(text)}
+    return len(getallen) + len(percentages)
+
+
 def checked_numbers(text: str) -> list[tuple[str, str]]:
     """Gehele getallen die de controle meeneemt: (zoals geschreven, cijfers)."""
     return [(geschreven, cijfers) for geschreven, cijfers, _ in getallen_met_positie(text)]

@@ -5,6 +5,8 @@ Tot CH-23 haalden de tools private functies uit dashboard.py, terwijl dashboards
 omgevingen uit staan.
 
 - UWV: Open Match, een momentopname. De peildatum komt uit de kolom PEILDATUM, niet uit tekst.
+  Alleen de chat (`get_uwv_vacatures`) gebruikt UWV nog; de dashboards lezen hun vacatures sinds #1225 uit
+  CBS 83599NED (data/vacatures_cbs.py). `ouderdom` geldt voor beide.
   Vacatures hebben geen opleidingsniveau: de kolommen AANT_OPLNIV_* zijn alleen bij werkzoekenden
   gevuld (nagekeken voor de snapshots van 2021 en 2023, #449).
 - ROA: AIS 2030, landelijk (regionaam 'Nederland') tenzij een regio gevraagd is; zonder dat filter
@@ -18,7 +20,6 @@ omgevingen uit staan.
 
 from __future__ import annotations
 
-import functools
 import json
 import logging
 import math
@@ -161,8 +162,9 @@ def uwv_peildatum() -> str:
     return _peildatum(_uwv())
 
 
-# Een UWV-stand van meer hele maanden oud dan dit heet verouderd (#1219): UWV en CBS publiceren de vacatures per
-# kwartaal, dus een stand van meer dan een jaar oud is geen beeld van nu. Eén grens voor dashboards en chat.
+# Een vacaturestand van meer hele maanden oud dan dit heet verouderd (#1219): UWV en CBS publiceren de vacatures per
+# kwartaal, dus een stand van meer dan een jaar oud is geen beeld van nu. Eén grens voor dashboards (het laatste
+# kwartaal van CBS 83599NED, #1225) en chat (de UWV-peildatum).
 VACATURES_VEROUDERD_MAANDEN = 12
 _MAANDNAMEN = (
     "januari",
@@ -254,15 +256,6 @@ def uwv_actualiteit(peildatum: str | None) -> str | None:
     )
 
 
-@functools.cache
-def uwv_periode() -> str | None:
-    """De periode van de UWV-catalogus (`uwv_resources.json`, "periode"), zonder netwerk: voor een lege UWV-sectie,
-    die zo geen vaste maand noemt (#1220). Pakketdata, dus één keer gelezen."""
-    from onderwijsbronnen import uwv
-
-    return next((r["periode"] for r in uwv.catalogusrecords() if r.get("periode")), None)
-
-
 def _in_provincie(df: pd.DataFrame, provincie: str) -> pd.DataFrame:
     return df[df["PROVINCIE"].str.lower() == _provincienaam(provincie)]
 
@@ -327,26 +320,6 @@ def sector_vacatures(alle_clusters: dict[str, int], sector: str) -> SectorVacatu
     gedeeld = {c: andere for c in clusters if (andere := [s for s in genoten if c in SECTOR_CLUSTER_MAP.get(s, ())])}
     totaal = sum(Fraction(n, 1 + len(gedeeld.get(c, ()))) for c, n in clusters.items())
     return SectorVacatures(totaal=math.floor(totaal), clusters=clusters, gedeeld=gedeeld)
-
-
-def clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    """Alle vacatureclusters voor de gegeven sectoren, ongewogen en zonder top-N cap.
-
-    Geen match is geen reden om alle clusters te nemen: dan kreeg elke sector
-    vacature-aandeel 0 en dus "overaanbod" (#229). Tel per sector met vacatures_per_sector.
-    """
-    stand = uwv_stand(provincie)
-    return relevante_clusters(stand.clusters, sectoren) if stand else {}
-
-
-def vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    """Vacatures per sector in een provincie, gewogen zoals sector_vacatures; leeg zonder UWV-rijen.
-
-    Het dashboard telde de clusters per sector ongewogen op, zodat de sectoren samen boven het
-    provincietotaal konden uitkomen (#455). Nu telt het zoals de chat.
-    """
-    stand = uwv_stand(provincie)
-    return {s: sector_vacatures(stand.clusters, s).totaal for s in sectoren} if stand else {}
 
 
 _ROA_ID = "ais2030"

@@ -98,7 +98,7 @@ export function NietGeladen({ onderdelen, onOpnieuw }) {
   )
 }
 
-// De regels van één veld uit meer payloads samen, elke sleutel één keer; `bronnen` beperkt ze tot de bronnen (DUO, UWV,
+// De regels van één veld uit meer payloads samen, elke sleutel één keer; `bronnen` beperkt ze tot de bronnen (DUO, CBS,
 // ROA) die dit dashboard toont. `/api/dashboard/regio` dient twee dashboards, dus elk neemt er zijn eigen deel uit.
 function uitPayloads(payloads, veld, sleutel, bronnen) {
   const gezien = new Map()
@@ -212,16 +212,18 @@ const VERSIECODE = /(?:,\s*)?\bversie (v\d+)\b/
 
 export const bronVersiecode = ({ peilmoment }) => peilmoment?.match(VERSIECODE)?.[1] ?? null
 
-// Het peilmoment van de bron in de tekst: "editie 2025", "versie van 8 april 2026", "peildatum 16 mei 2023".
+// Het peilmoment van de bron in de tekst: "editie 2025", "versie van 8 april 2026", "2026 3e kwartaal".
 export const peilmomentTekst = peilmoment => datumsInTekst((peilmoment || '').replace(VERSIECODE, '').trim()) || null
 
-// Wat er onder de link staat: versie of editie, peildatum, voorlopige jaren en wanneer de app de bron ophaalde.
-export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren: jaren, opgehaald_op: opgehaald }) {
+// Wat er onder de link staat: versie of editie, peildatum, voorlopige jaren (bij CBS kwartalen), de licentie als de bron
+// haar meldt (CBS: CC BY 4.0, #1225) en wanneer de app de bron ophaalde.
+export function bronDetails({ peilmoment, peildatum, voorlopig, voorlopig_jaren: jaren, licentie, opgehaald_op: opgehaald }) {
   return [
     peilmomentTekst(peilmoment),
-    // Vergeleken in de notatie van de tekst: het peilmoment van UWV schrijft de datum al voluit (#1219).
+    // Vergeleken in de notatie van de tekst: een peilmoment dat de datum al voluit schrijft, krijgt hem niet nog eens.
     peildatum && !peilmomentTekst(peilmoment)?.includes(datumsInTekst(peildatum)) ? `peildatum ${datumsInTekst(peildatum)}` : null,
     voorlopig && jaren?.length ? `cijfers ${jaren.join(', ')} voorlopig` : null,
+    licentie ? `licentie ${licentie}` : null,
     opgehaald ? `opgehaald ${langeDatum(opgehaald)}` : null,
   ].filter(Boolean)
 }
@@ -231,7 +233,7 @@ const roaRegel = bronnen => (bronnen || []).find(b => b.bron === 'ROA')
 export const roaEditie = bronnen => (roaRegel(bronnen)?.editie ? `editie ${roaRegel(bronnen).editie}` : null)
 export const roaSis = bronnen => roaRegel(bronnen)?.sis || null
 
-// "DUO, UWV & ROA": de bronnen in het bronblok, ieder één keer.
+// "DUO, CBS & ROA": de bronnen in het bronblok, ieder één keer.
 export function bronBadge(bronnen) {
   const namen = [...new Set(bronnen.map(b => b.bron))]
   return namen.length > 1 ? `${namen.slice(0, -1).join(', ')} & ${namen[namen.length - 1]}` : namen.join('')
@@ -278,16 +280,16 @@ export function DashboardSources({ sources }) {
 const VESTIGINGEN = 'Vestigingen in andere regio\'s tellen niet mee'
 
 // De noot onder de badges, of null als er geen regio- of provinciebadge staat. `vacatures`: het dashboard toont de
-// vacatures van UWV, en die gaan over deze provincie.
+// vacatures van CBS (83599NED, #1225), en die gaan over deze provincie.
 export function regioNoot({ arbeidsmarktregio, herkomst, vacatures = false }) {
   if (!arbeidsmarktregio && !herkomst) return null
-  const uwv = vacatures && herkomst ? '; vacatures (UWV) gaan over deze provincie' : ''
+  const vacatureNoot = vacatures && herkomst ? '; vacatures (CBS) gaan over deze provincie' : ''
   if (herkomst === 'inschrijvingen') {
     const regio = arbeidsmarktregio ? 'De regio volgt het adres van de hoofdvestiging bij DUO. ' : ''
-    return `* ${regio}DUO heeft voor deze instelling geen adres met een provincie; de provincie is die welke in de DUO-inschrijvingen het vaakst bij de instelling staat. ${VESTIGINGEN}${uwv}.`
+    return `* ${regio}DUO heeft voor deze instelling geen adres met een provincie; de provincie is die welke in de DUO-inschrijvingen het vaakst bij de instelling staat. ${VESTIGINGEN}${vacatureNoot}.`
   }
   const wat = arbeidsmarktregio && herkomst ? 'Regio en provincie volgen' : arbeidsmarktregio ? 'De regio volgt' : 'De provincie volgt'
-  return `* ${wat} het adres van de hoofdvestiging bij DUO. ${VESTIGINGEN}${uwv}.`
+  return `* ${wat} het adres van de hoofdvestiging bij DUO. ${VESTIGINGEN}${vacatureNoot}.`
 }
 
 export function RegioBadges({ instelling, provincie, arbeidsmarktregio, herkomst, vacatures, bron }) {

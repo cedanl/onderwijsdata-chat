@@ -116,7 +116,8 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
 - Het bewijs van een dataantwoord downloaden met "Bewijs (JSON)" (#1244). Je browser maakt dat bestand uit het
   antwoord dat al op je scherm staat: er gaat niets naar de server of de AI-dienst. **Wel erin:** de antwoordtekst, de
-  bronnen met hun links, de citaties, de controlemeldingen, het manifest (model, versies, dataversie, datum), het label
+  bronnen met hun links, de citaties, de controlemeldingen, wat de controle deed (de regel "Wat is gecontroleerd" en
+  haar tellingen, #1260), het manifest (model, versies, dataversie, datum), het label
   "Vaste maat" en per geslaagde toolstap de tool, haar argumenten en de code die haar herhaalt. Die argumenten en de
   code kunnen tekst uit je vraag bevatten, net als de code onder "Bekijk code": een instelling, of bij het doorzoeken
   van de catalogus de hele vraag als zoekterm. Staat er een persoonsgegeven in je vraag, dan kan het dus ook in het

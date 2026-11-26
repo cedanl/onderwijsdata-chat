@@ -35,3 +35,52 @@ export function scheidNootJson(figureJson) {
   const { figure, noot } = scheidNoot(figuur)
   return { figureJson: figure === figuur ? figureJson : JSON.stringify(figure), noot }
 }
+
+// De noten die tools/plot.py bij een figuur zet, elk als eigen tekstregel onder de grafiek: een trendbreuk met haar
+// bronpassage (#1262), een correctie van de grafiekregels (#1264) en "ondergrens niet per punt bekend" (#1261).
+export function figuurNoten(figure) {
+  const noten = figure?.layout?.meta?.figuurnoten
+  return Array.isArray(noten) ? noten.filter(n => typeof n === 'string' && n.trim()).map(n => n.trim()) : []
+}
+
+export function figuurNotenJson(figureJson) {
+  try {
+    return figuurNoten(JSON.parse(figureJson))
+  } catch {
+    return []
+  }
+}
+
+// De bronregel ín de figuur, alleen in afdruk, rapport en Word (#1257): één korte regel boven het plotvlak met de bron
+// en "ten minste" als een onderdrukte cel meetelt (layout.meta.bronregel van tools/plot.py). Op het scherm in de chat
+// staat hij er niet in (#651): daar staat de herkomst eronder. Een lange regel breekt op "; ".
+export const BRONREGEL_NAAM = 'bronregel'
+export const BRONREGEL_REGELHOOGTE = 14
+
+export function metBronregel(figure) {
+  const regel = figure?.layout?.meta?.bronregel
+  if (typeof regel !== 'string' || !regel.trim()) return { figure, extraBoven: 0 }
+  // Plotly leest < en > in annotatietekst als opmaak; de bronregel is gewone tekst.
+  const regels = regel.replace(/[<>]/g, '').split(/;\s+/)
+  const annotatie = {
+    name: BRONREGEL_NAAM,
+    text: regels.join('<br>'),
+    xref: 'paper', x: 0, xanchor: 'left',
+    yref: 'paper', y: 1, yanchor: 'bottom', yshift: 2,
+    showarrow: false, align: 'left', font: { size: 10 },
+  }
+  const layout = figure.layout
+  const annotations = [...(Array.isArray(layout.annotations) ? layout.annotations : []), annotatie]
+  return { figure: { ...figure, layout: { ...layout, annotations } }, extraBoven: regels.length * BRONREGEL_REGELHOOGTE }
+}
+
+export function metBronregelJson(figureJson) {
+  let figuur
+  try {
+    figuur = JSON.parse(figureJson)
+  } catch {
+    return { figureJson, extraBoven: 0 }
+  }
+  const { figure, extraBoven } = metBronregel(figuur)
+  return { figureJson: figure === figuur ? figureJson : JSON.stringify(figure), extraBoven }
+}

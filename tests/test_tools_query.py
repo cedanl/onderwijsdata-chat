@@ -445,7 +445,9 @@ def test_volledig_onderdrukte_groep_blijft_leeg_in_store_en_csv():
 
     assert store.get(key)["AANTAL"].isna().tolist() == [False, True]
     csv = naar_csv(key)
-    assert csv is not None and csv.splitlines()[-1] == "2023;"
+    assert csv is not None
+    # De groep blijft leeg, geen 0 (#394); er valt een onderdrukte cel in, dus de kolom ondergrens zegt ja (#1257).
+    assert csv.splitlines()[-3:] == ["JAAR;AANTAL;ondergrens", "2022;10;nee", "2023;;ja"]
 
 
 def test_gehele_aantallen_komen_als_gehele_getallen_terug():

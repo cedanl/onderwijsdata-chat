@@ -17,7 +17,7 @@ from core.logging_util import foutkenmerk, tekst_kenmerk
 from core.sentinels import mask_sentinels
 from tools import duo_bestandskeuze, periode
 
-from . import arbeidsmarkt, bronblok, kaart_regio
+from . import arbeidsmarkt, bronblok, kaart_regio, sbi_koppeling, vacatures_cbs
 from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
@@ -57,7 +57,7 @@ _ONDERDEEL_KAART = _Onderdeel("Kaart", "DUO")
 _ONDERDEEL_HOOFDGROEPEN = _Onderdeel("Ingeschrevenen per hoofdgroep", "DUO")
 _ONDERDEEL_EERSTEJAARS = _Onderdeel("Eerstejaars", "DUO")
 _ONDERDEEL_GEDIPLOMEERDEN = _Onderdeel("Gediplomeerden", "DUO")
-_ONDERDEEL_VACATURES = _Onderdeel("Vacatures (UWV)", "UWV")
+_ONDERDEEL_VACATURES = _Onderdeel("Vacatures (CBS)", "CBS")
 _ONDERDEEL_ROA_SCHOOLVERLATERS = _Onderdeel("Arbeidsmarktpositie schoolverlaters (ROA)", "ROA")
 _ONDERDEEL_ROA_PROGNOSE = _Onderdeel("Arbeidsmarktprognose (ROA)", "ROA")
 
@@ -164,7 +164,6 @@ def _poging(laad: Callable[..., dict | None], *args) -> dict | None:
     return uit
 
 
-_MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 5  # zoveel toont het dashboard
 # Een suggestie hoort bij een tikfout (#1102): "ROC Mondrian" lijkt voor 0,96 op "ROC Mondriaan", maar "Horizon College"
 # lijkt voor 0,73 op "Deltion College" alleen door het woord "college". Een instelling die niet in het DUO-bestand staat
@@ -190,7 +189,10 @@ _MATCH_DREMPEL = 1.2
 # Techniek: 52,15 bij 63; BUas 7,73 bij 13).
 _MATCH_MIN_GEDIPLOMEERDEN = 30
 # Waarom een sector geen label en geen verhouding heeft (`match_weggelaten`), zoals de redenen van het rendement.
-_MATCH_GEEN_CLUSTERS = "geen beroepenclusters in de sectorindeling"
+# Een sector die in de koppeltabel (data/sbi_onderwijssector.csv) bij geen bedrijfstak hoort (#1225).
+_MATCH_GEEN_KOPPELING = "geen vacaturegegevens per bedrijfstak voor deze sector"
+# Een sector met bedrijfstakken waarvoor CBS in deze kwartalen geen cijfer heeft: onbekend, geen 0.
+_MATCH_GEEN_GEGEVENS = "geen gegevens: CBS heeft voor de bedrijfstakken van deze sector geen cijfer in deze kwartalen"
 _MATCH_GEEN_VACATURES = "geen vacatures of geen gediplomeerden om af te zetten"
 _MATCH_TE_WEINIG = f"te weinig gediplomeerden: minder dan {_MATCH_MIN_GEDIPLOMEERDEN} per jaar"
 
@@ -318,7 +320,7 @@ class RegioContext:
 
     regio_naam: str  # "Midden-Utrecht", "Noord-Brabant"; "Nederland" bij landelijk
     regio_type: str  # "arbeidsmarktregio" | "provincie" | "nationaal"
-    provincie: str | None  # Altijd de provincie (voor UWV-data en display)
+    provincie: str | None  # Altijd de provincie (voor de CBS-vacatures en display)
     self_code: str  # BRIN-code van de target-instelling
     peer_codes: frozenset  # BRIN-codes van de peers: hetzelfde type, dezelfde regio, excl. zichzelf
     soort: str  # "hbo" | "wo" | "mbo": het type van de instelling en van elke peer
@@ -1020,63 +1022,43 @@ def _provincie(ctx: RegioContext | None, self_code: str, in_bestand: pd.Series) 
     return None, None
 
 
-def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:
-    """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
-
-    Bedoeld voor weergave-overzichten (UwvSection). Gebruik
-    arbeidsmarkt.vacatures_per_sector voor supply-demand berekeningen. Met de ouderdom van de peildatum
-    (`peildatum_ouderdom_maanden`, `verouderd`, #1219): de frontend rekent die niet zelf.
-    """
+def _vacatures_stand(provincie: str) -> vacatures_cbs.Provinciestand | None:
+    """De CBS-vacatures (83599NED) in de provincie; None als CBS niet laadde (het gat staat in `niet_beschikbaar`) of de
+    provincie niet kent."""
     try:
-        stand = arbeidsmarkt.uwv_stand(provincie)
+        return vacatures_cbs.stand(provincie)
     except Exception as e:
-        _niet_beschikbaar(
-            e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
-        )
-        return {}
+        _niet_beschikbaar(e, "cbs: vacatures voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES)
+        return None
+
+
+def _vacatureaanbod(provincie: str) -> dict:
+    """Het vacatureaanbod in de provincie (#1225): per SBI-sectie de openstaande vacatures in het laatste kwartaal van
+    CBS 83599NED, aflopend, met de periode en of CBS haar voorlopig noemt.
+
+    - `totaal`: alle economische activiteiten (A-U); None als CBS er geen cijfer heeft, nooit 0.
+    - `bedrijfstakken`: "C Industrie" → aantal; een sectie zonder cijfer staat in `geen_gegevens`, niet als 0.
+    - `peildatum_ouderdom_maanden` en `verouderd`: hoe oud het kwartaal is (de laatste dag ervan), met dezelfde grens als
+      tot #1225 de UWV-stand (`arbeidsmarkt.ouderdom`); een kwartaalcijfer is jong, maar een tabel die CBS niet meer
+      bijwerkt, krijgt zo dezelfde waarschuwing.
+    """
+    stand = _vacatures_stand(provincie)
     if not stand:
         return {}
-
-    if sectoren:
-        gefilterd = arbeidsmarkt.relevante_clusters(stand.clusters, sectoren)
-        if gefilterd:
-            top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:_MAX_VACATURE_CLUSTERS])
-            return {
-                "totaal": stand.totaal,
-                "peildatum": stand.peildatum,
-                **arbeidsmarkt.ouderdom(stand.peildatum),
-                "clusters": top,
-                "gefilterd_op": sorted(sectoren),
-            }
-
-    top = dict(list(stand.clusters.items())[:_MAX_VACATURE_CLUSTERS])
+    met_cijfer = sorted(
+        (s for s in stand.secties if s.laatste.vacatures is not None), key=lambda s: -(s.laatste.vacatures or 0)
+    )
     return {
-        "totaal": stand.totaal,
-        "peildatum": stand.peildatum,
-        **arbeidsmarkt.ouderdom(stand.peildatum),
-        "clusters": top,
-        "gefilterd_op": [],
+        "bron": "CBS",
+        "dataset": vacatures_cbs.DATASET,
+        "provincie": stand.provincie,
+        "periode": stand.laatste.titel,
+        "voorlopig": stand.laatste.voorlopig,
+        "totaal": stand.totaal.laatste.vacatures,
+        "bedrijfstakken": {s.label: s.laatste.vacatures for s in met_cijfer},
+        "geen_gegevens": [s.label for s in stand.secties if s.laatste.vacatures is None],
+        **arbeidsmarkt.ouderdom(vacatures_cbs.kwartaal_einde(stand.laatste.code)),
     }
-
-
-def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    try:
-        return arbeidsmarkt.clusters_voor_sectoren(provincie, sectoren)
-    except Exception as e:
-        _niet_beschikbaar(
-            e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
-        )
-        return {}
-
-
-def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    try:
-        return arbeidsmarkt.vacatures_per_sector(provincie, sectoren)
-    except Exception as e:
-        _niet_beschikbaar(
-            e, "uwv: vacatures per sector voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
-        )
-        return {}
 
 
 # Zonder eigen cache: de ROA-tabel zelf staat in arbeidsmarkt._roa (met TTL), dit filtert er alleen uit. Met
@@ -1222,9 +1204,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("ho")
     result["arbeidsmarkt_prognose"] = _roa_prognose("ho")
-    ho_sectoren = tuple(sorted(result.get("sectoren", {}).keys()))
-    result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
-    result["uwv_periode"] = arbeidsmarkt.uwv_periode()  # voor een lege UWV-sectie, zonder vaste maand (#1220)
+    result["vacatureaanbod"] = _vacatureaanbod(provincie) if provincie else {}
     return result
 
 
@@ -1339,14 +1319,13 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
-    result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
-    result["uwv_periode"] = arbeidsmarkt.uwv_periode()  # voor een lege UWV-sectie, zonder vaste maand (#1220)
+    result["vacatureaanbod"] = _vacatureaanbod(provincie) if provincie else {}
     return result
 
 
 # ─── De vergelijkingsgroep in de chat (#1267) ────────────────────────────────
 # De chat gebruikt dezelfde groep als Mijn instelling: dezelfde context (`_build_regio_context`) en dezelfde peerreeks
-# (`_ho_regio_benchmark`, `_mbo_regio_benchmark`), zonder kaart, UWV en ROA. Eén definitie van de groep, hier; de chat
+# (`_ho_regio_benchmark`, `_mbo_regio_benchmark`), zonder kaart, vacatures en ROA. Eén definitie van de groep, hier; de chat
 # kopieert haar niet (tools/vergelijkingsgroep.py vraagt alleen deze functie).
 
 EIGEN_GROEP = "eigen"  # regio_type van een groep die de gebruiker zelf koos: niet de dashboardgroep
@@ -1918,8 +1897,11 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     if not hu_dipl.empty and "ONDERDEEL" in hu_dipl.columns:
         gps, diplomajaren = _gemiddeld_per_sector(hu_dipl, "DIPLOMAJAAR", "ONDERDEEL", "AANTAL_GEDIPLOMEERDEN")
 
+    # Hbo of wo, uit het register zoals bij de landelijke ranking (#928): de kolom van de koppeltabel (#1225).
+    soort = next((i["type"] for i in get_all_instellingen() if i["naam"].lower() == instelling.lower()), None)
     return {
         "type": "ho",
+        "niveau": sbi_koppeling.niveau_van("ho", soort),
         "provincie": provincie or "Onbekend",
         "provincie_herkomst": herkomst,
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
@@ -1962,6 +1944,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
 
     return {
         "type": "mbo",
+        "niveau": "mbo",
         "provincie": provincie or "Onbekend",
         "provincie_herkomst": herkomst,
         "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
@@ -1987,10 +1970,21 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     provincie = detect["provincie"]
     sectoren_tuple = tuple(sorted(detect["gediplomeerden_per_sector"].keys()))
 
-    # vacatures_per_cluster: alle matching clusters zonder cap, ongewogen
-    result["vacatures_per_cluster"] = _uwv_clusters_voor_sectoren(provincie, sectoren_tuple) if provincie else {}
-    # vacatures_per_sector: gedeelde clusters naar rato, zoals de chat (#455)
-    result["vacatures_per_sector"] = _uwv_vacatures_per_sector(provincie, sectoren_tuple) if provincie else {}
+    # De vacatures van CBS 83599NED per bedrijfstak, gemiddeld over de laatste vier kwartalen, en via de koppeltabel per
+    # sector (#1225); een bedrijfstak bij meer sectoren telt naar rato, zodat de som het totaal blijft.
+    niveau = detect.get("niveau") or sbi_koppeling.niveau_van(onderwijs_type)
+    stand = _vacatures_stand(provincie) if provincie else None
+    gemiddeld = {s.code: s.gemiddelde.vacatures for s in stand.secties} if stand else {}
+    per_sector = sbi_koppeling.vacatures_per_sector(gemiddeld, niveau)
+    secties = sbi_koppeling.secties_per_sector(niveau)
+    result["sector_sbi_mapping"] = {s: secties.get(s, []) for s in sectoren_tuple}
+    gekoppeld = {c for lijst in result["sector_sbi_mapping"].values() for c in lijst}
+    result["vacatures_per_bedrijfstak"] = {
+        s.label: s.gemiddelde.vacatures
+        for s in sorted(stand.secties if stand else (), key=lambda s: -(s.gemiddelde.vacatures or 0))
+        if s.code in gekoppeld and s.gemiddelde.vacatures is not None
+    }
+    result["vacatures_per_sector"] = {s: per_sector[s] for s in sectoren_tuple if s in per_sector}
 
     # roa_per_niveau
     roa_raw = _roa_schoolverlaters(onderwijs_type)
@@ -2003,57 +1997,62 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
         for niveau, data in roa_raw.items()
     }
 
-    # sector_cluster_mapping
     gps_final = result.get("gediplomeerden_per_sector", {})
-    result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
-
-    match = (gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
+    match = (gps_final, result["vacatures_per_sector"], result["sector_sbi_mapping"])
     result["match_score"] = _match_scores(*match)
     result["match_verhouding"] = _match_verhoudingen(*match)
     result["match_weggelaten"] = _match_weggelaten(*match)
-    result["match_duiding"] = _match_duiding(
-        provincie, diplomajaren, vacatures_geladen=bool(result["vacatures_per_sector"]), roa_geladen=bool(roa_raw)
-    )
+    result["match_duiding"] = _match_duiding(stand, diplomajaren, roa_geladen=bool(roa_raw))
     return result
 
 
-def _match_duiding(provincie: str, diplomajaren: list[int], *, vacatures_geladen: bool, roa_geladen: bool) -> dict:
-    """Waar de match_score op rust, voor wie hem leest (#900): zoals de chat de peildatum noemt (#577) en de
-    sectorindeling een LLM-classificatie noemt en niet van UWV (#460).
+# Wat de score wel en niet zegt, in woorden voor de uitleg onder de aansluiting (#1225). Het woord "score" staat
+# niet op de dashboards (#1133): daar heet het het label per sector.
+_MATCH_UITLEG = (
+    "De vacatures tellen per bedrijfstak van de werkgever (SBI), niet per beroep: een verpleegkundige in een fabriek "
+    "telt bij de industrie. Welke bedrijfstakken bij een sector horen, staat in een koppeltabel van deze app. Het label "
+    "per sector is daarom indicatief."
+)
+
+
+def _match_duiding(stand: vacatures_cbs.Provinciestand | None, diplomajaren: list[int], *, roa_geladen: bool) -> dict:
+    """Waar de match_score op rust, voor wie hem leest (#900, #1225).
 
     - `drempel`: _MATCH_DREMPEL, de factor tussen vacature-aandeel en diploma-aandeel (_match_label).
     - `min_gediplomeerden`: _MATCH_MIN_GEDIPLOMEERDEN; een kleinere sector heeft geen label en geen verhouding (#952).
-    - `vacatures_peildatum`: de peildatum van de UWV-momentopname in de provincie; None als UWV niet laadde.
-    - `peildatum_ouderdom_maanden` en `verouderd`: hoe oud die peildatum is, in hele maanden, en of dat meer is dan
-      `arbeidsmarkt.VACATURES_VEROUDERD_MAANDEN` (#1219); None en False zonder peildatum.
+    - `vacatures`: de bron van de vacatures (CBS 83599NED, titel, link, licentie) en de kwartalen van het gemiddelde,
+      met of CBS één ervan voorlopig noemt; zonder CBS-lading alleen de bron.
+    - `peildatum_ouderdom_maanden` en `verouderd`: hoe oud het laatste kwartaal van het gemiddelde is, met de grens van
+      `arbeidsmarkt.ouderdom` (#1219); None en False zonder CBS.
     - `diplomajaren`: de jaren waarover de gediplomeerden gemiddeld zijn (DUO).
     - `roa_versie`: de versie van het ROA-bestand achter `roa_per_niveau`; None als ROA niet laadde.
-    - `sectormapping`: herkomst, versie en model van de indeling van beroepenclusters bij sectoren. Een veld dat de
-      mapping niet vastlegt ("onbekend", zoals het model nu), staat er niet in (#951): de payload belooft geen waarde
-      die er niet is.
+    - `koppeltabel`: herkomst en datum van de koppeling van bedrijfstakken aan sectoren (data/sbi_onderwijssector.csv).
+    - `uitleg`: dat het om bedrijfstakken gaat, niet om beroepen, en dat de score indicatief is.
 
-    Peildatum en versie komen uit de lading die de score al deed (een cachetreffer): wat niet laadde, staat al in
-    `niet_beschikbaar` en wordt hier niet opnieuw opgehaald.
+    De stand komt uit de lading die de score al deed: wat niet laadde, staat al in `niet_beschikbaar`.
     """
-    peildatum = _uwv_peildatum(provincie) if vacatures_geladen else None
+    perioden = stand.gemiddeld_over if stand else ()
     return {
         "drempel": _MATCH_DREMPEL,
         "min_gediplomeerden": _MATCH_MIN_GEDIPLOMEERDEN,
-        "vacatures_peildatum": peildatum,
-        **arbeidsmarkt.ouderdom(peildatum),
+        "vacatures": {
+            "bron": "CBS",
+            "dataset": vacatures_cbs.DATASET,
+            "titel": vacatures_cbs.TITEL,
+            "url": vacatures_cbs.STATLINE_URL,
+            "licentie": vacatures_cbs.LICENTIE,
+            "periode": vacatures_cbs.periodetekst(perioden) or None,
+            "perioden": [p.titel for p in perioden],
+            "kwartalen": vacatures_cbs.GEMIDDELD_OVER,
+            "voorlopig": any(p.voorlopig for p in perioden),
+        },
+        **arbeidsmarkt.ouderdom(vacatures_cbs.kwartaal_einde(perioden[-1].code) if perioden else None),
         "diplomajaren": diplomajaren,
         "roa_versie": _roa_versie() if roa_geladen else None,
-        "sectormapping": {k: v for k, v in arbeidsmarkt.SECTOR_MANIFEST.items() if v != arbeidsmarkt.ONBEKEND},
+        "koppeltabel": {"herkomst": sbi_koppeling.HERKOMST, "bijgewerkt": sbi_koppeling.BIJGEWERKT},
+        "indicatief": True,
+        "uitleg": _MATCH_UITLEG,
     }
-
-
-def _uwv_peildatum(provincie: str) -> str | None:
-    try:
-        stand = arbeidsmarkt.uwv_stand(provincie)
-    except Exception as e:
-        _niet_beschikbaar(e, "uwv: peildatum voor %s niet beschikbaar", provincie)
-        return None
-    return stand.peildatum if stand else None
 
 
 def _roa_versie() -> str | None:
@@ -2075,11 +2074,14 @@ def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:
 def _match_reden(
     sector: str, gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
 ) -> str | None:
-    """Waarom een sector geen label en geen verhouding krijgt; None als hij er een krijgt."""
+    """Waarom een sector geen label en geen verhouding krijgt; None als hij er een krijgt. `scm` is sector → de
+    SBI-secties uit de koppeltabel (`sector_sbi_mapping`, #1225)."""
     if not sum(gps.values()) or not sum(vacatures_per_sector.values()):
         return _MATCH_GEEN_VACATURES
     if not scm.get(sector):
-        return _MATCH_GEEN_CLUSTERS
+        return _MATCH_GEEN_KOPPELING
+    if sector not in vacatures_per_sector:
+        return _MATCH_GEEN_GEGEVENS
     if gps[sector] < _MATCH_MIN_GEDIPLOMEERDEN:
         return _MATCH_TE_WEINIG
     return None
@@ -2090,9 +2092,10 @@ def _match_aandelen(
 ) -> dict[str, tuple[float, float] | None]:
     """Per sector (diploma-aandeel, vacature-aandeel).
 
-    De vacatures per sector zijn gewogen (#455), dus hun som is het totaal en tellen beide aandelen
-    op tot 1. Een sector met een reden uit _match_reden krijgt None: zonder clusters in de mapping, zonder vacatures, of
-    met minder dan _MATCH_MIN_GEDIPLOMEERDEN gediplomeerden (#952). Zo'n kleine sector telt wel mee in de totalen: de
+    De vacatures per sector zijn gewogen (een bedrijfstak bij meer sectoren telt naar rato), dus hun som is het totaal
+    en tellen beide aandelen op tot 1. Een sector met een reden uit _match_reden krijgt None: zonder bedrijfstak in de
+    koppeltabel, zonder cijfer van CBS, zonder vacatures, of met minder dan _MATCH_MIN_GEDIPLOMEERDEN gediplomeerden
+    (#952). Zo'n kleine sector telt wel mee in de totalen: de
     aandelen van de andere veranderen niet.
     """
     totaal_dipl = sum(gps.values())

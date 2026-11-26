@@ -30,7 +30,7 @@ export const BUILTIN_MIJN_INSTELLING = {
 export const BUILTIN_ARBEIDSMARKT = {
   id: '__builtin_arbeidsmarkt__',
   title: 'Arbeidsmarkt',
-  description: `${AANSLUITING_ARBEIDSMARKT} per sector, vacatures (UWV), ROA-indicatoren en arbeidsmarktprognose.`,
+  description: `${AANSLUITING_ARBEIDSMARKT} per sector, vacatures (CBS), ROA-indicatoren en arbeidsmarktprognose.`,
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
   type: 'dashboard',
