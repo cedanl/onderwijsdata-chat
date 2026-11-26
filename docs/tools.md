@@ -79,6 +79,20 @@ vraagt een slot nooit twee keer (`clarify_slots` in de sessie) en laat het model
 manier dubbelzinnig, dan stelt het model zelf die vraag. Na de keuze volgt een van de routes hieronder; na de derde
 kaart is `clarify_scope` weg (#75) en gaat het model door met aannames die het noemt.
 
+**De plankaart (#1268), alleen met Geavanceerd.** Gaat de vraag over twee of meer bronnen die het model koppelt of naast
+elkaar zet (route 3), dan legt het na het zoeken en controleren, vóór het eerste laden, het plan voor met de halt-tool
+`plan_voorleggen`: per bron de laadaanroep (tool en argumenten) en de koppelsleutel. De beurt stopt dan, zoals na
+`clarify_scope`, en de app toont de kaart uit code (`agent/plankaart.py`): per bron titel, dataset en versie uit de
+catalogus, de selectie in woorden (jaren, sector, instelling, vorm en wat de aanroep verder vastlegt, met de titels van de
+CBS-codes uit `get_cbs_dimension`), de sleutel als bekende sleutelnaam en een grove duur ("ongeveer een minuut"). Tekst
+die het model schreef, komt er niet op. **Klopt, ga door** laat code precies die laadaanroepen uitvoeren, vóór de eerste
+modelronde; een andere laadaanroep in die beurt weigert code met een melding aan het model, en de kaart komt in die beurt
+niet nog eens. **Pas aan** laadt niets en zet de vraag met de plankeuzes in het invoerveld. Een plan met één bron of
+alleen vaste maten (`get_maat`) wordt geen kaart, net als een plan na een laadstap in dezelfde beurt: het model hoort
+waarom en gaat door. De plankaart telt niet als verduidelijkingskaart: de limiet van drie blijft gelden. Zonder
+Geavanceerd is de tool er niet en is de toolset dezelfde als zonder plankaart. Het model kan het plan overslaan; dan
+laadt het zoals zonder Geavanceerd, en het log telt dat (`PLANKAART overgeslagen`).
+
 ### Route 1: een vaste maat
 
 **Gebruik:** een telling van studenten, inschrijvingen of eerstejaars per hbo/wo-instelling, mbo-studenten per
@@ -116,7 +130,7 @@ Past geen maat, of weigert `get_maat` (bijvoorbeeld een onbekende instelling), d
 
 ### Route 3: twee bronnen naast elkaar
 
-1. Laad elke bron via route 1 of 2.
+1. Laad elke bron via route 1 of 2. Met Geavanceerd eerst de plankaart (zie "Vóór de route").
 2. `relatie(data_key, andere_key)` — welke kolommen dezelfde sleutel dragen, hoe de waarden vertalen
    (GM0344 ↔ 344, 2021SJ00 ↔ 2021) en hoe groot de overlap is.
 3. Alleen met een gedeelde sleutel: `koppel_data(data_key, andere_key, sleutels)` koppelt in code (#988). Zonder gedeelde
