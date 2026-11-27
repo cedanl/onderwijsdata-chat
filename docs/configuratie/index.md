@@ -4,14 +4,14 @@ icon: lucide/settings
 
 # Configuratie
 
-Alle instellingen worden beheerd via het `.env` bestand. Kopieer `.env.example` naar `.env` en pas de waarden aan.
+De app leest zijn instellingen uit omgevingsvariabelen. Lokaal kan een `.env` ze leveren (kopieer `.env.example` naar `.env` en pas de waarden aan); in containers en op Kubernetes komen ze uit het platform en de secrets.
 
 ## Verplichte instellingen
 
 | Variabele | Beschrijving |
 |-----------|--------------|
-| `MODEL` | Model in LiteLLM-formaat: `provider/model-naam` — zie [Providers & modellen](providers.md) |
-| API key | Afhankelijk van de provider: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. |
+| `MODEL` | Model in LiteLLM-formaat: `provider/model-naam` — zie [Providers & modellen](providers.md). Er is een standaardwaarde; stel hem expliciet in voor een reproduceerbare uitrol |
+| API key | Afhankelijk van de provider: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. Alleen vereist voor providers die authenticatie vragen |
 
 Minimale configuratie voor Anthropic:
 
@@ -32,7 +32,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `TEMPERATURE` | `0` | Sampling-temperatuur van het model; 0 voor herhaalbare analyses |
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
-| `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis die het model ziet. Daarboven vallen de oudste berichten af, maar de eerste vraag blijft staan: live, bij een heropend gesprek en in de browser op dezelfde manier (#789). Bepaalt ook het aantal vragen per gesprek: `MAX_HISTORY // 2` (een vraag en zijn antwoord), minimaal 1; daarna neemt de chat geen nieuwe vraag meer aan. De frontend krijgt beide via `/api/config` en volgt dus een gewijzigde instelling |
+| `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis die het model ziet. Daarboven vallen de oudste berichten af, maar de eerste vraag blijft staan: live, bij een heropend gesprek en in de browser op dezelfde manier (#789). Bepaalt ook het aantal vragen per gesprek: `MAX_HISTORY // 2` (een vraag en zijn antwoord), minimaal 1; daarna neemt de meegeleverde frontend geen nieuwe vraag meer aan. De server dwingt dat aantal beurten niet zelf af; voor kosten en belasting gelden de rate limits en tokenbudgetten. De frontend krijgt beide via `/api/config` en volgt dus een gewijzigde instelling |
 | `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
 | `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
 | `MAX_GESPREKKEN_PER_GEBRUIKER` | `1000` | Bewaarde gesprekken per gebruiker; een nieuw gesprek daarboven krijgt een 507 met de vraag oude gesprekken of rapporten te verwijderen, een bestaand gesprek bijwerken mag. `0` zet het uit (#682) |
@@ -74,7 +74,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `APP_ENV` | `local` | De omgeving: `local`, `development`, `test`, `playground` of `production`; `manifests/<omgeving>/values.yaml` zet hem. Buiten `local` schrijft de app JSON-logs; alleen `local`, `development` en `test` geven het OpenAPI-schema (`/api/openapi.json`), op `playground` en `production` is het er niet; Swagger UI en ReDoc zijn er nergens (#1161). Een andere waarde laat de app niet starten (#676) |
 | `ALLOW_ANONYMOUS` | *(niet ingesteld)* | Alleen `true` telt. Buiten `APP_ENV=local` start de app niet zonder login (`CHAT_USERS` of `OIDC_PROVIDER`); deze vlag staat een bewust openbare demo toe en geeft bij het opstarten een WARNING. Zonder login heet elke bezoeker `gast` en delen ze alle gesprekken en rapporten (#787) |
 | `LOG_LEVEL` | `INFO` | Loggingniveau: `DEBUG`, `INFO`, `WARNING`, `ERROR` of `CRITICAL` (hoofdletters maken niet uit, leeg is `INFO`); een andere waarde laat de app niet starten, met één regel in het log (#1163). **Let op:** op `DEBUG` komt de letterlijke vraag- en antwoordtekst — en dus eventuele persoonsgegevens — in het log en de logaggregatie terecht (op `INFO` alleen lengte en hash). Ook fouttekst en de traceback van een interne fout staan alleen op `DEBUG` in het log; op `INFO` alleen het fout-ID, het type en een kenmerk (#502). Niet gebruiken op test of productie met echte gebruikers, en houd rekening met de bewaartermijn van de logaggregatie |
-| `MCP_API_KEYS` | *(niet ingesteld)* | Kommagescheiden API-sleutels voor `/mcp`, de MCP-server over HTTP (#706, #939). Zonder sleutels bestaat `/mcp` niet (404); met sleutels vraagt elk verzoek `Authorization: Bearer <sleutel>`. Meer sleutels tegelijk om te roteren en per consument. Een geheim: via SOPS/Flux, nooit in de repo; test leest hem optioneel uit de secret. Zie [MCP-server](../mcp.md#sleutels) |
+| `MCP_API_KEYS` | *(niet ingesteld)* | Kommagescheiden API-sleutels voor `/mcp`, de MCP-server over HTTP (#706, #939). Zonder sleutels bestaat `/mcp` niet (404); met sleutels vraagt elk verzoek `Authorization: Bearer <sleutel>`. Meer sleutels tegelijk om te roteren en per consument. Een geheim: via SOPS/Flux, nooit in de repo; test leest hem optioneel uit de secret. |
 | `MCP_RATE_LIMIT` | `60` | Verzoeken op `/mcp` per sleutel per venster; daarboven HTTP 429 met `Retry-After` (#940). Een sessie van een MCP-client kost een paar verzoeken plus één per toolaanroep |
 | `MCP_RATE_LIMIT_IP` | `120` | Verzoeken op `/mcp` per IP-adres per venster, ook met een foute sleutel. Achter de ingress is dat het adres van de ingress zolang uvicorn `X-Forwarded-For` niet vertrouwt (`FORWARDED_ALLOW_IPS`, SECURITY.md S5): dan een totaalgrens voor `/mcp` |
 | `MCP_RATE_WINDOW_S` | `60` | Het venster van beide rate limits van `/mcp` in seconden |

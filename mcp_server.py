@@ -64,7 +64,7 @@ INSTRUCTIES = (
 
 # De volledige app waar `vervolg` heen wijst (#709): playground, tot productie uitrolbaar is (#674).
 STANDAARD_APP_URL = "https://onderwijsdata-chat.playground.sdp.surf.nl"
-VERVOLG_TEKST = "Cijfers met grafiek en bron, en de controles op elk getal, staan in de volledige app."
+VERVOLG_TEKST = "Cijfers met grafiek en bron, en de getalcontrole, staan in de volledige app."
 # Dezelfde grens als de app bij een vraag uit een link (frontend/src/voorgevuldeVraag.js).
 MAX_VRAAG = 500
 
@@ -295,7 +295,7 @@ def bronregels_tekst(regels: domeinregels.Domeinregels | None = None) -> str:
         [
             "# Bronregels voor de resultaten van onderwijscatalogus",
             "",
-            "Het model van de client schrijft het antwoord; de controles op elk getal van de volledige app draaien "
+            "Het model van de client schrijft het antwoord; de controles van de volledige app draaien "
             "hier niet. Volg daarom deze regels bij elk resultaat van deze server.",
             "",
             "## Gebruik",

@@ -6,7 +6,7 @@ icon: lucide/arrow-up-right
 
 De ladder heeft twee sporten: **test** en **playground**. `development` volgt net als test elke main-build (open
 range `>=0.0.1-0.0` in `manifests/development/helmrelease.yaml`), maar is geen sport: er is geen bereikbare URL en
-niemand promoveert ernaartoe. `production` doet niet mee (nog niet uitrolbaar, #674).
+niemand promoveert ernaartoe. `production` doet niet mee (nog niet uitrolbaar, #674), en `staging-otc` en `production-otc` staan ook niet op deze ladder (nog niet uitgerold); hun pins en de rest van de omgevingen staan in `manifests/README.md`.
 
 | Omgeving | Beweegt wanneer | Pin in `helmrelease.yaml` |
 |---|---|---|
@@ -50,8 +50,7 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
      ```
 
      en neem `docs/betrouwbaarheid.md` mee in die laatste MR. Het script leest `kritiek-<datum>.json` uit dezelfde map,
-     zet er een rij en een sectie per vraag bij en laat oudere releases staan. Ook een slechte score gaat erin
-     ([Betrouwbaarheid per release](betrouwbaarheid.md)).
+     zet er een rij en een sectie per vraag bij en laat oudere releases staan. Ook een slechte score gaat erin.
 1. Wacht tot de pipeline van `main` groen is. Zonder groene pipeline publiceert
    `version:promote` geen chart.
 2. Tag kaal, **zonder `v`**: SDP matcht `^[0-9]+\.` op de ref-naam, dus `v2.1.0`

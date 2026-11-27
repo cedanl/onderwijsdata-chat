@@ -4,7 +4,7 @@ icon: lucide/shield-check
 
 # Kwaliteit & veiligheid
 
-De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare antwoorden te garanderen.
+De app heeft meerdere lagen van kwaliteitscontrole. Ze verkleinen het risico op een fout antwoord; ze sluiten het niet uit, en niemand buiten het projectteam heeft ze getoetst.
 
 ---
 
@@ -14,7 +14,7 @@ De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare
 
 Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetbaar afgedwongen, in code, zijn:
 
-- **Elk getal uit een tool**: de controle na het antwoord (hieronder) houdt een antwoord in met een getal dat niet in de
+- **Getallen uit een tool**: de controle na het antwoord (hieronder) houdt een antwoord in met een getal dat niet in de
   opgehaalde data staat; wat die controle wel en niet dekt staat in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md).
 - **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, en met de instelling
   "Geavanceerd" ook in de redeneerkaart, #1269), elk antwoord en
@@ -148,72 +148,6 @@ Buiten de je-vorm vallen de dashboards en de redeneerkaart (wat het model onderw
 
 ---
 
-## Beveiligingsmaatregelen
-
-Wat de app met gegevens van gebruikers doet (AI-dienst, opslag, browser, log) staat op [Privacy](privacy.md).
-
-### Analyse-sandbox
-
-De `run_analysis`-tool voert door het model geschreven Python uit, in een apart proces (#410, #62). Het model kan daarmee willekeurige Python laten uitvoeren; de afscherming beperkt de schade, maar is **geen beveiligingsgrens** (#443):
-
-- **AST-controle vooraf** (`tools/scriptcontrole.py`): weigert imports, namen en attributen met `__` (ook in een string), frame-attributen, functies als `exec`, `eval`, `open` en `getattr`, en een stdlib-module als attribuut van een bibliotheekobject (`pd.io.common.os`, `pd.compat.sys`; #443), ook in een string: pandas lost `@naam` in `df.query`/`df.eval` en elke naam in `pd.eval` op in de variabelen van het script, dus `df.eval('@pd.io.common.os.getpid()')` wordt op dezelfde tokens geweigerd. `store_get` vraagt een letterlijke key. Dezelfde controle weigert een script dat geen data leest of zelf een reeks getallen intypt; dat bewaakt de herkomst van getallen.
-- **Apart proces** (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`): een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en alleen de tabellen die het script opvraagt.
-- **Limieten in dat proces:** CPU-tijd (15 s), geheugen (1 GiB), geen bestanden schrijven, geen nieuwe processen. Na 10 seconden stopt de server het proces.
-- **Audit hook:** weigert onder meer netwerk, subprocessen, schrijven en het lezen van bestanden buiten de Python-installatie.
-- **Beperkte namen:** alleen een handvol builtins (`len`, `range`, `sorted`, `sum`, `round` en vergelijkbare) en `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`.
-
-De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-root met `seccompProfile: RuntimeDefault`, zonder capabilities en zonder privilege-escalatie (`charts/onderwijsdata-chat/values.yaml`), maar die grens omsluit server en kindproces samen; tussen die twee staat geen kernelgrens zoals een eigen container, seccomp-profiel of aparte gebruiker. Wie de AST-controle omzeilt (de controle op strings is een heuristiek: een expressie die uit stukken is geplakt komt erlangs), kan in het kindproces `os.getpid()`, `os.getcwd()` of de (lege) `os.environ` lezen; `tests/test_sandbox_isolatie.py` legt precies dat vast. Dat restrisico is voor de demofase geaccepteerd en wordt gevolgd in #443; zie ook S11 in `SECURITY.md`. De limieten van het kindproces tellen bovenop het serverproces: de geheugenlimiet van de pod (`manifests/<omgeving>/values.yaml`: 2 GiB op test en playground, 4 GiB op productie) moet die 1 GiB plus de server en de datastore (`STORE_MAX_MB`) kunnen dragen; met de chartstandaard van 1 GiB zou een zwaar script de hele server laten stoppen in plaats van alleen het kindproces.
-
-### Hard tool limits
-
-| Limiet | Waarde | Reden |
-|--------|--------|-------|
-| `search_catalog` per vraag | 5 | Voorkomt oneindige zoeklussen |
-| `MAX_TOOL_ITERATIONS` | 25 | Breekt de agent-loop af bij te veel stappen |
-| `MAX_HISTORY` | 40 | Beheert context window grootte; de eerste vraag blijft altijd staan (#789). De helft is het aantal vragen per gesprek |
-| Tool-resultaat grootte | 12.000 karakters | Voorkomt oversized responses |
-
-### Rate limiting
-
-| Endpoint | Limiet | Werking |
-|----------|--------|---------|
-| `/api/auth/login` | 5 pogingen/minuut per gebruikersnaam + adres (S5) | HTTP 429 met `Retry-After` header |
-| WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
-| Tokenbudget | `TOKENBUDGET_DAG` (1.500.000) per dag en `TOKENBUDGET_MAAND` (15.000.000) per maand per gebruiker, in invoertoken-equivalenten (gewogen naar de tarieven) | Elke run telt mee in de database (`tokengebruik`, gedeeld door de pods); erboven een melding wanneer het weer kan en geen modelaanroep. Een databasefout laat de chat door (#678). Accounts in `TOKENBUDGET_VRIJGESTELD` hebben geen budget; op test is dat `demo` (#1234) |
-| Open WebSocket-verbindingen | `MAX_WS_PER_USER` (10) per gebruiker, `MAX_WS_TOTAL` (100) in totaal | Daarboven een melding en close-code 1013 (#688) |
-| Gelijktijdige runs | `MAX_CONCURRENT_RUNS` (8) modelruns, `MAX_SANDBOX_RUNS` (2) sandboxprocessen | Wachtrij; na `RUN_QUEUE_TIMEOUT_S` (60 s) of `SANDBOX_QUEUE_TIMEOUT_S` (20 s) een melding dat het druk is (#688) |
-| Dashboardladingen | `MAX_DASHBOARD_LOADS` (4) tegelijk, tijdsgrens `DASHBOARD_TIMEOUT_S` (90 s) | Wachtrij; na `DASHBOARD_QUEUE_TIMEOUT_S` (30 s) HTTP 503 dat het druk is, na de tijdsgrens HTTP 504; de frontend biedt een nieuwe poging (#901) |
-| Opslag per gebruiker | `MAX_GESPREKKEN_PER_GEBRUIKER` (1000) gesprekken, `MAX_WERKBOEKEN_PER_GEBRUIKER` (500) werkboeken, samen `MAX_OPSLAG_PER_GEBRUIKER_MB` (100 MB) | `PUT` van een gesprek of werkboek daarboven krijgt HTTP 507 met een melding; wat er staat blijft, bijwerken telt alleen het verschil, zonder login geen quotum (#682, S24) |
-| Verzoekgrootte | `MAX_REQUEST_BYTES` (4 MiB) per HTTP-verzoek en per WebSocket-bericht | Daarboven HTTP 413; uvicorn sluit een te groot WebSocket-bericht (#682) |
-| LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
-
-### Input validatie
-
-- `query_data` controleert of filterkolommen bestaan, operators geldig zijn (`eq`, `gte`, `lte`, `in`) en aggregatiefuncties correct zijn
-- `search_catalog` filtert op geografisch niveau en geeft altijd één envelope met een getypeerde `status` (`candidates`, `no_match`, `needs_clarification`, `out_of_scope`, `metadata_unknown`, `source_unavailable`, `tool_error`); een miss is nooit "de data bestaat niet"
-- `dataset_details` geeft "not found" voor onbekende dataset-ID's
-- Foutafhandeling: alle tool-exceptions worden gevangen en als vriendelijke foutmelding teruggegeven aan het LLM — nooit als raw stack trace naar de gebruiker
-- Persoonsgegevens in de invoer (#478): de app waarschuwt onder het invoerveld dat een vraag naar een externe AI-dienst gaat, herkent in code een BSN (elfproef), een e-mailadres en een Nederlands telefoonnummer (`frontend/src/persoonsgegevens.js`, `core/persoonsgegevens.py`), waarschuwt bij het typen en houdt zulke tekst uit de gesprekstitel, de exportbestandsnaam en de terugvaltitel van een rapport. De herkenning blokkeert niet: een naam is niet te herkennen en een 9-cijferige code kan de elfproef toevallig doorstaan. De systeemprompt heeft één regel over persoonsgegevens en kleine aantallen
-
-### HTTP beveiligingsheaders
-
-- `Content-Security-Policy` — alleen de eigen origin voor scripts en styles; Plotly voor rapporten en dashboards komt van de eigen server en niet van een CDN (#486); `base-uri` en `form-action` alleen de eigen origin (#682)
-- `Cache-Control: no-store` op `/api/` (#682)
-- WebSocket `/api/chat` alleen vanaf de eigen origin of een origin uit `CORS_ORIGINS`, anders close-code 4003 (#682, `core/herkomst.py`)
-- `X-Frame-Options: DENY` — geen iframe embed
-- `Strict-Transport-Security` — HTTPS forceren
-- `X-Content-Type-Options: nosniff` — MIME-type sniffing voorkomen
-- `Referrer-Policy: strict-origin-when-cross-origin`
-
-### Authenticatie
-
-- Optionele wachtwoordauthenticatie via `CHAT_USERS`
-- HMAC-ondertekende tokens (gebruikersnaam, inlogmoment en vervaltijd, ondertekend met `CHAT_SECRET`) met 8-uur TTL (`SESSION_TTL_HOURS`) en een maximale sessieduur van 24 uur (`SESSION_MAX_HOURS`)
-- Uitloggen trekt het token server-side in (denylist in de database)
-- Timing-safe wachtwoordvergelijking (`hmac.compare_digest`)
-
----
-
 ## Eval framework
 
 Het project heeft een uitgebreid eval-systeem om de kwaliteit van antwoorden te meten.
@@ -246,7 +180,7 @@ tolerantie. Zonder `--schrijf` toont het script elk verschil met de bron en faal
 bewuste stap in een MR. Definities: `tests/ijkwaarden/README.md`. Met `TEST_REPEATS=3` loopt elke vraag drie
 keer per model en schrijft de runner het slagingspercentage per model en vraag naar
 `eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt. De uitslag per release, met de
-kritieke set en per vraag geslaagd of niet, staat openbaar op [Betrouwbaarheid per release](betrouwbaarheid.md)
+kritieke set en per vraag geslaagd of niet, staat openbaar in `docs/betrouwbaarheid.md` in de repository
 (`scripts/betrouwbaarheid.py`, #1246).
 
 ### Metamorfe tests (#1263)
@@ -350,7 +284,7 @@ Transparantie over wat nog niet getest is:
   proces en datastore) en `REPRODUCEER` (toolnaam met alleen lengte en hash van de snippet, `tekst_kenmerk`). De
   argumenten (`TOOL CALL`), het resultaat (`TOOL RESULT`) en de snippet zelf staan alleen op DEBUG, want ze bevatten
   tekst uit de vraag (#475; `Agents.md`, "Logs: geen gebruikerstekst op INFO+")
-- **Reproduceerbaarheid:** de Python-snippet van elke tool-aanroep staat in de chat en in de export (met de instelling
+- **Reproduceerbaarheid:** de Python-snippet van een datastap staat in de chat en in de export (met de instelling
   "Geavanceerd", #1269), niet in het log op INFO
 - **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
 - **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
@@ -365,7 +299,7 @@ Het eindpunt is niet openbaar en staat niet in het OpenAPI-schema.
 - **Zonder `METRICS_TOKEN`** bestaat het niet: 404, net als een onbekende route. Zo staat het op elke omgeving tot het
   token in het secret staat.
 - **Met `METRICS_TOKEN`** (een geheim uit `onderwijsdata-chat-secrets`, `optional: true` in
-  `manifests/<omgeving>/values.yaml`, nu op test) vraagt elk verzoek `Authorization: Bearer <token>`; zonder of met een
+  `manifests/<omgeving>/values.yaml`; de koppeling staat op test, de waarde zet de beheerder via SOPS) vraagt elk verzoek `Authorization: Bearer <token>`; zonder of met een
   fout token 401. De vergelijking is constant-time. De scraper van het platform krijgt hetzelfde token
   (`authorization.credentials` in een ServiceMonitor of `bearer_token_file` in een scrape-config).
 - **Per pod, één proces:** de standaardregistry van `prometheus_client` zonder multiprocess-modus; de Dockerfile start

@@ -6,7 +6,7 @@ icon: lucide/activity
 
 Hoe de app op SDP draait en wat je doet bij een storing. Dit is de bron voor de werkelijke deploy; de releasestappen
 staan in [Promoten naar playground](promoten.md), de tenant-aanvraag en de secrets in [Uitrol naar SDP](deployment.md).
-Stand: release 2.5.0 (22-10-2026).
+De stand per release staat in `CHANGELOG.md`.
 
 ## Ladder
 
@@ -99,13 +99,13 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
 ## Beschikbaarheid
 
 Vastgesteld 09-11-2026 (ADR-011, #677). Deze tekst is publiek op de documentatiesite en is de input voor de afspraken
-met Npuls en SURF AI Chat (#711). Hij staat niet in de app.
+met Npuls (#711). Hij staat niet in de app.
 
-EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je kunt het als gebruiker merken.
+Onderwijsdata Chat draait als één serverproces. Dat houdt de dienst eenvoudig, maar je kunt het als gebruiker merken.
 
-- **Beschikbaarheid: best effort.** We streven ernaar dat EDUdata bereikbaar is, maar er is geen afgesproken
-  percentage en geen garantie. EDUdata is in de demofase.
-- **Updates komen wanneer ze nodig zijn.** Er zijn geen vaste onderhoudsvensters. Tijdens een update is EDUdata even
+- **Beschikbaarheid: best effort.** We streven ernaar dat Onderwijsdata Chat bereikbaar is, maar er is geen afgesproken
+  percentage en geen garantie. Onderwijsdata Chat is in de demofase.
+- **Updates komen wanneer ze nodig zijn.** Er zijn geen vaste onderhoudsvensters. Tijdens een update is Onderwijsdata Chat even
   niet bereikbaar. Wat je dan ziet:
     - Een antwoord dat op dat moment wordt geschreven, breekt af met "Verbinding verbroken — antwoord onvolledig".
       Je gesprek en je rapporten blijven bewaard.
@@ -113,7 +113,7 @@ EDUdata draait als één serverproces. Dat houdt de dienst eenvoudig, maar je ku
       opnieuw zodra de nieuwe versie draait; je hoeft de pagina niet te verversen.
     - Is de verbinding terug, dan stel je de afgebroken vraag opnieuw met "Probeer opnieuw".
     - Duurt het langer dan 12 minuten, dan staat er "Geen verbinding." met de knop "Opnieuw verbinden".
-- **Bij een storing van de server** start het platform de server vanzelf opnieuw. Tot die weer draait, is EDUdata
+- **Bij een storing van de server** start het platform de server vanzelf opnieuw. Tot die weer draait, is Onderwijsdata Chat
   niet bereikbaar. Sluit de server netjes af, dan zie je dezelfde meldingen als bij een update. Valt hij weg zonder
   netjes af te sluiten (een crash, een node die verdwijnt, een time-out van de ingress), dan staat er na een halve
   minuut "Geen verbinding." met de knop "Opnieuw verbinden". Je hoeft er niet op te klikken: de app vraagt daarna
@@ -168,7 +168,7 @@ hersteltest en RPO/RTO zijn nog niet vastgelegd: zie #683.
 ## Incidenten
 
 Voor een storing, onjuiste antwoorden op schaal, een beveiligingsincident of een datalek (rollen, meldplicht van 72
-uur, indammen en de route van feedback naar een beheerder): zie [Incidenten en datalekken](incidenten.md).
+uur, indammen en de route van feedback naar een beheerder): zie `docs/incidenten.md` in de repository.
 
 ## Runbook
 

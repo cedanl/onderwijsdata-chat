@@ -30,4 +30,3 @@ De chat werkt voor mbo, hbo en wo. Daarop is één uitzondering: negen CBS-tabel
 - De pagina **Actualiteit van de bronnen** (`/bronnen`, link onderaan de startpagina) toont per bron en dataset de laatste periode of editie, de laatste wijziging en of het cijfer voorlopig of definitief is. De app rekent zelf geen verwachte datum uit: noemt de bron er geen, dan staat er "onbekend".
 - Een opgehaalde tabel en de CBS-metadata gelden 24 uur.
 
-Zie [Een antwoord lezen](betrouwbaarheid.md) voor wat de regels onder een antwoord betekenen.

@@ -48,7 +48,7 @@ wissel in het team.
   het onwaarschijnlijk is dat het een risico voor de betrokkenen inhoudt.
 - **Zonder onredelijke vertraging** meldt de verwerker het datalek aan de verwerkingsverantwoordelijke (art. 33
   lid 2). Voor ons: zodra de incidentcoördinator vaststelt dat het om persoonsgegevens gaat, meldt hij dat aan de
-  contactpersoon van de instelling. Wacht niet tot de oorzaak bekend is, en reken de 72 uur vanaf onze ontdekking.
+  contactpersoon van de instelling. Wacht niet tot de oorzaak bekend is. De wettelijke termijn van 72 uur loopt voor de instelling vanaf haar kennisname; reken intern voorzichtigheidshalve vanaf onze ontdekking en leg die vast. De functionaris gegevensbescherming toetst deze procedure.
 - Is er waarschijnlijk een hoog risico voor betrokkenen, dan informeert de instelling ook hen (art. 34).
 - Elk datalek, ook een dat niet gemeld hoeft te worden, komt in het logboek met feiten, gevolgen en genomen
   maatregelen (art. 33 lid 5).
@@ -87,7 +87,7 @@ gesprekstekst of persoonsgegevens in het logboek of in een issue; verwijs naar f
    - **Secret uitgelekt:** roteer het in `manifests/<omgeving>/secret.yaml` (SOPS, zie `Agents.md` en de skill
      `sdp-secrets-management`), laat Flux uitrollen en herstart de pod (`kubectl rollout restart
      deploy/fn-onderwijsdata-chat -n services-onderwijsdata-chat`). Een LLM-sleutel trek je ook bij de aanbieder in;
-     een sleutel uit `MCP_API_KEYS` haal je uit de lijst ([mcp](mcp.md)).
+     een sleutel uit `MCP_API_KEYS` haal je uit de lijst.
    - **Misbruikt account:** trek alle tokens van dat account in via `revoked_users` (`sha256(gebruikersnaam)` met het
      huidige moment; een login daarna werkt weer, zie `SECURITY.md`, #786) en wijzig of verwijder het wachtwoord in
      `CHAT_USERS`. Voor een SRAM-account blokkeert de instelling het account.

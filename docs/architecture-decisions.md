@@ -13,7 +13,7 @@ This document captures major architectural decisions and their rationale. Each d
 **Issue:** #39, #8
 
 ### Problem
-Language models hallucinate numbers when unsupervised. Other statistical agencies (ONS, Statistics Canada) have stopped deploying RAG chatbots due to this risk.
+Language models hallucinate numbers when unsupervised.
 
 ### Decision
 The server loads and computes; the model selects and phrases. Four layers:
@@ -204,7 +204,7 @@ ophalen van 5.000 rijen, en een stilzwijgend opengelaten dimensie telde later du
 **Issue:** #349 (raakt #191, #197, #212)
 
 ### Problem
-Een blueprint (`audits/HARNESS-BLUEPRINT.md`, 03-10-2026) stelde na de normalisatielaag een
+Een blueprint (`audits/HARNESS-BLUEPRINT.md`, 03-10-2026; niet in de repo, zie hieronder) stelde na de normalisatielaag een
 volgende stap voor: een planner (model) → compiler (code) → uitvoerder (code) → renderer die
 het feitenblok uit een grootboek bouwt. Elk getal wordt daarin een post met binding (jaar, maat,
 bron, dataset, plan-digest); het model schrijft alleen getalvrije interpretatie, en bij afkeuring
@@ -567,9 +567,11 @@ een herstart ook echt nul
 **Issue:** #677 (vervolgepic #984; graceful shutdown #675; productie uitrolbaar #674)
 
 ### Problem
+Dit beschrijft de situatie vóór #984 stap 1; de stand na die stap staat in de status hierboven.
+
 De app kan maar met één pod draaien. De datastore (`tools/store.py`), de limieten (`core/rate_limit.py` voor login,
 berichten en feedback; `core/gelijktijdig.py` voor verbindingen, runs en sandboxplaatsen, #688), de SRAM-gebruikerscache
-(`routes/auth.py` `_oidc_user_cache`) en de nog niet opgeslagen recepten (`agent/recepten.py` `_wachtend`) leven in het
+(toen `routes/auth.py` `_oidc_user_cache`; nu `oidc_gebruikers` in Postgres) en de nog niet opgeslagen recepten (`agent/recepten.py` `_wachtend`) leven in het
 geheugen van het proces. Met twee pods komt een CSV-download, een dashboard-refresh of het opslaan van een gesprek
 (`PUT /api/conversations/{id}`) soms bij de pod die die staat niet kent, en tellen alle limieten per pod. Tegelijk
 betekent één pod: geen hoge beschikbaarheid, en elke uitrol een onderbreking (op test bij `Recreate` 8 minuten 503,

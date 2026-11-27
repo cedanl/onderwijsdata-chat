@@ -23,8 +23,10 @@ Het `MODEL` veld volgt altijd het formaat `provider/model-naam`.
 
 === "Google Gemini"
     ```dotenv
-    MODEL=gemini/gemini-1.5-pro
+    MODEL=gemini/<model-met-tool-calling>
     GEMINI_API_KEY=...
+    # Kies een model uit de officiële modellijst van Google en test of tool calling met deze app werkt.
+    # gemini-1.5-pro is door Google uitgeschakeld.
     ```
 
 === "Azure OpenAI"

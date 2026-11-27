@@ -6,7 +6,7 @@ icon: lucide/brain
 
 ## Het probleem
 
-Statistiekbureaus (ONS, Statistics Canada) hebben hun RAG-chatbots stilgezet omdat die getallen gaven die niet te controleren waren. Een taalmodel kan een getal verzinnen, afronden, uit een andere selectie halen of bij het verkeerde jaar zetten. Voor instellingen die op cijfers worden afgerekend is dat niet acceptabel.
+Een taalmodel kan een getal verzinnen, afronden, uit een andere selectie halen of bij het verkeerde jaar zetten. Voor instellingen die op cijfers worden afgerekend is dat niet acceptabel.
 
 Dit systeem **kan niet uitsluiten** dat een model zoiets probeert. Het zorgt ervoor dat de berekening in code gebeurt en dat een antwoord dat niet bij de data past wordt gevangen en zichtbaar ingetrokken. De tekst stroomt live naar de gebruiker (`stream_text=True` in `agent/run.py`) en de controles draaien daarna. Daarom houdt de frontend elk getal dat de getalcontrole toetst (vier of meer cijfers, geen jaartal, of een percentage) tijdens het streamen achter: het staat als "…" met de naam "getal wordt gecontroleerd" in de tekst en verschijnt pas na `message_end`, als de controle klaar is (#1254). Een getal dat de controle intrekt, komt zo niet in beeld; `tests/e2e/mock-llm.spec.js` leest de pagina bij elke delta met een nepmodel dat een getal verzint. De regel komt van de server, bij elke `message_start` (`getalregel` in `agent/grounding.py`): het scherm en de controle delen één regel. Het eind van de tekst wacht ook zolang het nog zo'n getal kan worden ("27." voor "27.135", "70,6 pro" voor "70,6 procent"), en de frontend leest de stroom in beide notaties, zoals de controle: 9.5% is 9,5% en het Engelse 12,345 is 12.345. Jaartallen en getallen onder 1.000 blijven zichtbaar, net als ze buiten de controle vallen. Het ingetrokken antwoord blijft als zodanig herkenbaar (`IngetrokkenVersies`). Op deze pagina staat welke lagen dat doen, en wat ze **niet** dekken.
 
@@ -113,25 +113,6 @@ Een getal onder 1.000 valt buiten de getalcontrole, maar kan wel een citatie kri
 - `tests/test_premisse.py`: de premissetoets in een tabel van vragen en reeksen, de vaste zin tegen de getalcontrole en de binding, en een antwoord dat gelijk blijft (#1255).
 - `tests/test_terugrekenen.py`: elke kleine reconstructie van een onderdrukte cel uit de fixtures, als getal, tabel, grafiek en in het antwoord, en de verschillen die wel mogen (#1265).
 - `tests/test_eval_*.py`: evaluaties met een echt model tegen een ground truth; die draaien niet in CI (ze hebben een API-key nodig).
-
-## Voor auditors
-
-U kunt dit zelf nagaan:
-
-1. **Vraag de Python-snippet** bij een analyse ("Geef de code"); met de instelling "Geavanceerd" toont de redeneerkaart hem ook.
-2. **Voer hem uit.** Hij begint met het laden van de bron, met bron-ID en filters.
-3. **Vergelijk de getallen** met wat de app rapporteerde.
-4. **Lees wat de controle deed.** Elk data-antwoord krijgt bij `message_end` het veld `controles`, uit code
-   (`agent/controleoverzicht.py`, #1260): `per_controle` met per controle uit `agent/controles.py` of ze draaide
-   (`gedraaid`) en wat ze gaf (`uitkomst`: ok, zacht, hard of niet gecontroleerd), `getallen` (hoeveel getallen en
-   percentages de getalcontrole tegen de opgehaalde data legde), `gebonden` (hoeveel getallen een vastgestelde
-   herkomst kregen: de cel in de data, `agent/citaties.py`), `jaar_en_instelling` (of de controles op schooljaar,
-   instelling en binding alle drie draaiden), `niet_gedraaid`, `ingetrokken` (hoe vaak het antwoord na de controle
-   opnieuw is geschreven) en `gecorrigeerd` (hoe vaak de app zelf zinnen met een ongedekt getal wegliet, #619). Alleen
-   tellingen, geen tekst. De regel "Wat is gecontroleerd" onder het antwoord, de kopie, de gespreksexport, de kop van
-   elke CSV en het bewijsbestand (sleutel `controles`, met de regel en deze tellingen, #1244) lezen dit veld; wat het
-   model over zijn eigen controle schrijft ("alle getallen gecontroleerd"), verandert het niet. De regel noemt altijd
-   de vaste zin uit "Wat dit niet dekt" en gebruikt geen vinkje.
 
 ---
 

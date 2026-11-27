@@ -20,10 +20,10 @@ Welke omgeving en welk account je krijgt, regelt de beheerder van jouw omgeving.
 
 1. Typ je vraag in het invoerveld, in gewone taal.
 2. Onder het invoerveld staat welke AI-dienst en welk model je gebruikt.
-3. Lees het antwoord en kijk onder het antwoord naar het blok **Bronnen**. Zie [Een antwoord lezen](betrouwbaarheid.md).
+3. Lees het antwoord en kijk onder het antwoord naar het blok **Bronnen**.
 4. Stel een vervolgvraag in hetzelfde gesprek, of begin een nieuw gesprek.
 
-Voer geen persoonsgegevens in. De app waarschuwt bij een BSN, e-mailadres of telefoonnummer, maar houdt je vraag niet tegen ([Privacy in gewone taal](privacy.md)).
+Voer geen persoonsgegevens in. De app waarschuwt bij een BSN, e-mailadres of telefoonnummer, maar houdt je vraag niet tegen.
 
 ## Instellingen
 

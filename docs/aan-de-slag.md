@@ -9,7 +9,7 @@ icon: lucide/rocket
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
 - Python 3.11 of hoger (uv beheert dit; `.python-version` pint 3.14)
 - Een API key voor een ondersteund taalmodel — zie [Providers & modellen](configuratie/providers.md)
-- Node.js **24 of hoger** (`.nvmrc` en de CI gebruiken Node 26) — alleen nodig voor frontend-ontwikkeling en de frontendtests; op Node 20 falen de tests met een cryptische `undici`-importfout
+- Node.js **24 of hoger** (`.nvmrc` en de CI gebruiken Node 26) — nodig om de frontend te installeren en te starten (`make dev`) en voor de frontendtests; op Node 20 faalt `npm ci` (`EBADENGINE`) en falen de tests met een cryptische `undici`-importfout
 
 ### uv installeren
 
@@ -37,8 +37,9 @@ cp .env.example .env
 
 # 3. Vul je model en API key in .env in (zie Configuratie)
 
-# 4. Installeer dependencies
+# 4. Installeer de Python- en de frontend-dependencies (`make install` doet beide met `npm install`)
 uv sync
+(cd frontend && npm ci)
 ```
 
 ---
@@ -49,7 +50,7 @@ uv sync
 make dev
 ```
 
-De app herstart automatisch bij bestandswijzigingen. Open vervolgens je browser op de juiste URL (zie hieronder).
+`make dev` installeert geen dependencies en stopt eerst lopende `uvicorn server:app`-processen (`pkill -f`), ook buiten deze map. De app herstart automatisch bij bestandswijzigingen. Open vervolgens je browser op de juiste URL (zie hieronder).
 
 ### Bereikbaarheid vanuit de browser
 
@@ -103,7 +104,7 @@ Na het opstarten verschijnt het chatvenster. Probeer bijvoorbeeld:
 > *"Welke DUO-datasets zijn beschikbaar over studentprognoses?"*
 
 De assistent zoekt automatisch de juiste datasets op, haalt de data op en presenteert resultaten direct in de chat. Met
-de instelling **Geavanceerd** (hieronder) staat bij elke tool-aanroep ook een reproduceerbaar Python-snippet.
+de instelling **Geavanceerd** (hieronder) staat bij de datastappen ook een reproduceerbaar Python-snippet (niet elke stap heeft er een).
 
 ---
 

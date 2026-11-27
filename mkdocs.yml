@@ -6,6 +6,12 @@ repo_name: cedanl/onderwijsdata-chat
 edit_uri: edit/main/docs/
 
 docs_dir: docs
+exclude_docs: |
+  privacy.md
+  incidenten.md
+  betrouwbaarheid.md
+  product/privacy.md
+  product/betrouwbaarheid.md
 site_dir: site
 
 theme:
@@ -49,18 +55,13 @@ nav:
     - Wat kun je ermee: product/mogelijkheden.md
     - Voorbeeldvragen: product/voorbeelden.md
     - Databronnen begrijpen: product/databronnen.md
-    - Een antwoord lezen en controleren: product/betrouwbaarheid.md
-    - Privacy in gewone taal: product/privacy.md
     - Veelgestelde vragen: product/faq.md
     - Problemen oplossen: product/problemen-oplossen.md
     - Naslag voor gebruikers:
       - Databronnen (volledig): databronnen.md
       - Tools: tools.md
       - Dashboards: dashboards.md
-      - Kwaliteit & veiligheid:
-        - kwaliteit-en-veiligheid.md
-        - Betrouwbaarheid per release: betrouwbaarheid.md
-      - Privacy (volledige tekst): privacy.md
+      - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
       - Catalogus CBS (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/cbs/
       - Catalogus RIO (nieuw tabblad): https://cedanl.github.io/onderwijsdata-chat/catalogus/rio/
   - Techniek & beheer:
@@ -71,16 +72,12 @@ nav:
     - Domeinregels: domeinregels.md
     - API: api.md
     - Routing: routing.md
-    - MCP-server: mcp.md
-    - EduGenAI-koppeling: edugenai.md
-    - AI-verordening: ai-act.md
     - Architectuur & ontwerp:
       - Anti-hallucinatie: anti-hallucination-architecture.md
       - Architecture Decisions: architecture-decisions.md
       - Reproduceerbare analyses: reproducibility.md
     - Operatie:
       - Operatie & runbook: operatie.md
-      - Incidenten en datalekken: incidenten.md
       - Uitrol naar SDP: deployment.md
       - Promoten naar playground: promoten.md
       - Testomgeving: test-environment.md
