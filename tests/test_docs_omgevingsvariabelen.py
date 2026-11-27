@@ -11,6 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MAPPEN = ("agent", "auth", "core", "data", "persistence", "routes", "tools")
 BESTANDEN = ("config.py", "server.py", "mcp_server.py", "health.py", "logging_config.py", "frontend_static.py")
+# Bewust niet in de docs: de MCP-documentatie is op 27-11-2026 van de site gehaald tot een mens de koppeling heeft
+# getest. APP_URL stond alleen daar; haal hem hier weg zodra de MCP-pagina terugkomt.
+ZONDER_DOCS = {"APP_URL"}
 LEZEN = re.compile(r"""os\.(?:getenv|environ(?:\.get)?)\(?\[?\s*["']([A-Z][A-Z0-9_]{3,})["']""")
 
 
@@ -26,6 +29,6 @@ def test_de_regex_vindt_variabelen():
 def test_elke_gelezen_omgevingsvariabele_staat_in_de_docs():
     docs = "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / "docs").rglob("*.md"))
 
-    ontbreekt = sorted(naam for naam in _gelezen() if naam not in docs)
+    ontbreekt = sorted(naam for naam in _gelezen() - ZONDER_DOCS if naam not in docs)
 
     assert not ontbreekt, f"gelezen door de code, nergens in docs/: {ontbreekt}"

@@ -42,4 +42,4 @@ Drie vragen, met wat de app erbij doet en waar je op let. De vragen komen uit de
 - Kleine aantallen publiceert de bron niet (DUO zet 1 tot en met 4 op -1). Een som is dan een ondergrens: de app zegt "ten minste" en een open marker of arcering in de grafiek.
 - Een positie landelijk waarin zo'n lege cel meetelt, heet "indicatief".
 
-Meer: [Dashboards](../dashboards.md#de-vergelijkingsgroep-van-mijn-instelling) en [Een antwoord lezen](betrouwbaarheid.md).
+Meer: [Dashboards](../dashboards.md#de-vergelijkingsgroep-van-mijn-instelling).

@@ -49,7 +49,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
-| Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987) en de stappen achter de figuren (tool, argumenten, het script van een analyse en de titel van de figuur, #993), onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf, en geen persoonsgegevens | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
+| Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen, de bronregels van de geladen tabellen (bronlabel, dataset-ID en de regel zoals onder het antwoord, met versie en "opgehaald op", #987) en de stappen achter de figuren (tool, argumenten, het script van een analyse en de titel van de figuur, #993), onder de hash van de antwoordtekst (ADR-009); geen apart veld met de vraag of het antwoord zelf. Toolargumenten, resultaten van berekeningen, het script van een analyse en figuurtitels kunnen, afhankelijk van wat er is ingevoerd, toch persoonsgegevens bevatten, dus voer er geen in | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
 | Gegevens uit je SRAM-account voor de kop van de app: naam, voor- en achternaam, e-mailadres, organisatie en instelling, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`). Alleen met SRAM-login; staat sinds #984 in de database | `oidc_gebruikers` | tot `SESSION_MAX_HOURS` (standaard 24 uur) na het inloggen, en hooguit 1000 accounts tegelijk; eerder bij uitloggen of als de gebruiker al zijn gegevens verwijdert, en in de export (#1209); verlopen rijen ruimt de nachtelijke taak op en elke start van de app |
 | Tokengebruik per dag: hoeveel de vragen van een account het model kostten, als één getal per dag, onder een pseudoniem van de accountnaam (een HMAC met een geheim van de server, `core/pseudoniem.py`, geen kale hash, #1112); geen vraag, antwoord of tijdstip (#678) | `tokengebruik` | 62 dagen (deze en de vorige maand, voor het dag- en maandbudget); de nachtelijke taak ruimt ze op (#1113); eerder als de gebruiker al zijn gegevens verwijdert, en in de export (#1074) |
@@ -80,10 +80,11 @@ omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te s
 `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7
 dagen verwijdert niets. Dezelfde taak ruimt ook de korte staat op: tokengebruik na 62 dagen, ingetrokken sessies en accounts als hun sessie is verlopen, en pogingen in `rate_limit_hits` als ze uit het venster van de limiet zijn gevallen (#1113); dat gebeurt dus ook op een pod die weken niet herstart. De instelling "Geavanceerd" (`geavanceerd`, #1269) heeft geen termijn en blijft dus staan tot "verwijder al mijn gegevens" (zie de tabel). De serverlogs en de back-ups van de beheerder vallen buiten deze opschoning.
 
-Verwijderen is ook op schijf definitief. Op de lokale SQLite-terugval maakt de app verwijderde en overschreven tekst leeg in het
-databasebestand (`PRAGMA secure_delete`) en leegt zij het `-wal`-bestand na elke wijziging (#1116); anders bleef een
-verwijderd gesprek leesbaar in de vrijgekomen pagina's. Op PostgreSQL ruimt de database dat zelf op, met de beperking van
-de back-ups hierboven.
+Verwijderen maakt gegevens niet langer beschikbaar via de app; onmiddellijke, onherstelbare vernietiging op schijf wordt niet
+gegarandeerd. Op de lokale SQLite-terugval maakt de app verwijderde en overschreven tekst leeg in het databasebestand
+(`PRAGMA secure_delete`) en probeert zij het `-wal`-bestand na elke wijziging te legen (#1116); dat is best effort en een
+actieve lezer kan het uitstellen. Op PostgreSQL verwijdert de database rijen logisch en ruimt zij oude rijversies later op.
+Voor replica's, snapshots, logs en back-ups gelden de bewaartermijnen van de beheerder, zoals hierboven.
 
 ## Wat in je browser staat
 
@@ -177,8 +178,7 @@ in het log. De bewaartermijn van het logplatform van SDP is een open punt.
 openEDUdata+ is een project van CEDA (Npuls). De verwerkingsverantwoordelijke is de deelnemende instelling
 (besluit 19-10-2026, #553). Met een privacyvraag kan een gebruiker terecht bij die instelling: bij de
 privacycontactpersoon of de functionaris gegevensbescherming (FG) van de instelling. Het projectteam van CEDA is er
-alleen voor vragen over de demo zelf. De indeling onder de EU-verordening voor kunstmatige intelligentie staat in
-[AI-verordening](ai-act.md).
+alleen voor vragen over de demo zelf.
 
 ## Open punten
 

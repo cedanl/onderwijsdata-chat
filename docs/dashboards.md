@@ -562,5 +562,5 @@ Een dashboard dat iemand met de verwijderde dashboardbouwer opsloeg, blijft op d
 gegevens weg omdat een functie verdwijnt. Het opent niet meer. Op `/dashboards` staat het onder de vaste dashboards in
 een lijst met titel en datum, om het los te verwijderen; een oude link (`/dashboards?id=…`) zegt dat het niet meer opent.
 Het zit in de export van "mijn gegevens", gaat mee met "al mijn gegevens verwijderen" en valt onder de gewone
-bewaartermijn van werkboeken (365 dagen, [Privacy](privacy.md)). Met `ENABLE_DASHBOARDS=false` (productie)
+bewaartermijn van werkboeken (365 dagen). Met `ENABLE_DASHBOARDS=false` (productie)
 is de pagina er niet en zie je ze dus ook niet.

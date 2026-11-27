@@ -18,11 +18,11 @@ De chat werkt voor mbo, hbo en wo. Een kleine groep vo-tabellen (negen van CBS e
 
 ## Hoe weet ik of een antwoord klopt?
 
-Code controleert de getallen in het antwoord tegen de opgehaalde data. Je ziet de bronnen, "Let op"-regels en een regel die zegt wat niet gecontroleerd is. Met **Geavanceerd** zie je ook de code achter elke stap. Zie [Een antwoord lezen](betrouwbaarheid.md).
+Code controleert de getallen in het antwoord tegen de opgehaalde data. Je ziet de bronnen, "Let op"-regels en een regel die zegt wat niet gecontroleerd is. Met **Geavanceerd** zie je ook de code achter elke stap.
 
 ## Wat gebeurt er met mijn vraag en mijn gegevens?
 
-Je vraag en het gesprek gaan naar een externe AI-dienst. De server bewaart gesprekken 90 dagen en rapporten 365 dagen, tenzij je ze eerder verwijdert. Voer geen persoonsgegevens in. Zie [Privacy in gewone taal](privacy.md).
+Je vraag en het gesprek gaan naar een externe AI-dienst. De server bewaart gesprekken 90 dagen en rapporten 365 dagen, tenzij je ze eerder verwijdert. Voer geen persoonsgegevens in.
 
 ## Kan ik een analyse herhalen of delen?
 

@@ -6,8 +6,9 @@ icon: lucide/wrench
 
 De assistent beschikt over de volgende tools. Ze worden automatisch ingezet op basis van je vraag — je hoeft ze niet expliciet aan te roepen.
 
-Bij elke tool-aanroep maakt de app een reproduceerbaar Python-snippet, zodat je de analyse lokaal kunt herhalen; met de
-instelling "Geavanceerd" (#1269) staat het in de chat bij de stap.
+Voor de laad- en bewerkingsstappen maakt de app een reproduceerbaar Python-snippet, zodat je de analyse lokaal kunt herhalen;
+met de instelling "Geavanceerd" (#1269) staat het in de chat bij de stap. Niet elke stap heeft een snippet, bijvoorbeeld
+het doorzoeken van de catalogus; de export zegt dat dan.
 
 ## Hoe tool calling werkt
 
@@ -22,7 +23,7 @@ De assistent volgt een **agentic loop**:
 **Beperkingen per turn:**
 - Maximaal 25 iteraties (stap 2-4, configureerbaar via `MAX_TOOL_ITERATIONS`)
 - `search_catalog` max 3x per vraag (`SEARCH_CATALOG_LIMIT` in `core/config.py`; de prompt noemt hetzelfde getal)
-- Tool-resultaten begrensd op 12.000 karakters
+- Tool-resultaten begrensd op 12.000 karakters (standaard; `TOOL_RESULT_MAX_CHARS`)
 
 **Caching:** Als dezelfde tool met identieke parameters tweemaal wordt aangeroepen, geeft het systeem het eerder gecachde resultaat terug (geen dubbele query).
 
@@ -1160,7 +1161,7 @@ zegt de noot "ondergrens niet per punt bekend" (#1261).
 Een AST-controle weigert vooraf onder meer imports, namen met `__` en `exec`, `eval` en `open`, en een `merge`, `join`
 of `concat` die tabellen van twee of meer keys samenvoegt (`df` plus `store_get`, of twee keer `store_get`, ook via
 tussenliggende namen; #1014). Die melding noemt de keys, `relatie` en `koppel_data`. Het is een patroonwacht: `map`,
-`isin` of een opzoeking in een dict over twee keys ziet ze niet. Het script draait daarna in een eigen proces zonder geheimen, netwerk of schrijfrechten, met limieten op CPU-tijd en geheugen en een time-out van 10 seconden. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`. De afscherming is geen beveiligingsgrens: het model kan willekeurige Python laten uitvoeren binnen de sandbox. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox), #62 en #443.
+`isin` of een opzoeking in een dict over twee keys ziet ze niet. Het script draait daarna in een eigen proces zonder geheimen, netwerk of schrijfrechten, met limieten op CPU-tijd en geheugen en een time-out van 10 seconden. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`. De afscherming is geen beveiligingsgrens: het model kan willekeurige Python laten uitvoeren binnen de sandbox. Zie #62 en #443.
 
 ---
 

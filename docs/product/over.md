@@ -18,10 +18,9 @@ Zie [Wat kun je ermee](mogelijkheden.md) en [Voorbeeldvragen](voorbeelden.md).
 
 ## Wat het niet is
 
-- Het gebruikt alleen open, geaggregeerde overheidsdata. Er zitten geen gegevens over individuele studenten in en geen biometrie ([AI-verordening](../ai-act.md)).
-- Het neemt of ondersteunt geen besluit over een persoon.
+- Het gebruikt in beginsel open, geaggregeerde overheidsdata. Waar de omgeving het aanzet, komen daar gelicentieerde bronnen bij, zoals de Studiekeuzedatabase. Er zitten geen gegevens over individuele studenten in.
 - De chat werkt voor mbo, hbo en wo. Po, so en vo vallen buiten het profiel. Een kleine groep vo-tabellen geeft alleen context bij een vraag over vervolgonderwijs ([Databronnen begrijpen](databronnen.md)).
-- Het is een demoversie. Lees [Privacy in gewone taal](privacy.md) voor wat de app met je gegevens doet.
+- Het is een demoversie.
 
 ## Voor wie
 
@@ -29,6 +28,6 @@ De assistent is bedoeld voor iedereen die vragen heeft over het Nederlandse onde
 
 ## Wie zit erachter
 
-Het project is van CEDA (Centrum Educatieve Data Analyse), onderdeel van [Npuls](https://npuls.nl/). De deelnemende instelling is de verwerkingsverantwoordelijke ([Privacy](../privacy.md)).
+Het project is van CEDA (Centrum Educatieve Data Analyse), onderdeel van [Npuls](https://npuls.nl/). De deelnemende instelling is de verwerkingsverantwoordelijke.
 
 --8<-- "docs/.versie.md"

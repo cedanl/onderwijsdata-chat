@@ -391,7 +391,7 @@ De Inspectie publiceert elke maand een peilbestand met het oordeel per bevoegd g
 CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#749).
 - **Per bestuur:** het oordeel geldt per bestuur, niet per instelling, vestiging of opleiding.
 - **Gemengd bestuur:** heeft het bestuur ook po, vo of ho, dan zegt het antwoord dat het oordeel over het hele bestuur
-  gaat. Op 1 oktober 2026 noemden 164 besturen mbo; 126 daarvan hebben alleen mbo.
+  gaat. Eind 2026 noemden ruim 160 besturen mbo; ongeveer 125 daarvan hebben alleen mbo (peil 1 november 2026; het bestand ververst maandelijks).
 - **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar accrediteert de NVAO de opleidingen.
   De accreditatiedatums per opleiding staan in `get_accreditatie` (zie hieronder); de NVAO-oordelen zitten (nog) niet
   in de app.
@@ -399,7 +399,7 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
   `BST2021` of `BST21_V25`) zijn dat BKA1-3, onder het kader 2017 (`BST2017`) KA1-3 en FB1-3 met daarnaast een oordeel
   per kwaliteitsgebied. De namen komen uit de [toelichting open data oordelen en standaarden
   2025/2026](https://www.onderwijsinspectie.nl/documenten/2025/09/02/toelichting-open-data-oordelen-en-standaarden-2025-2026).
-  Op 1 oktober 2026 hadden 25 van de 164 mbo-besturen geen kader: oudere onderzoeken, van voor 2021.
+  Eind 2026 hadden ongeveer 25 van de ruim 160 mbo-besturen geen kader: oudere onderzoeken, van voor 2021.
 - **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
 
 | Eigenschap | Details |
@@ -848,7 +848,7 @@ De pagina **Actualiteit van de bronnen** (`/bronnen`, link onderaan de startpagi
 dataset hoe actueel de data is: de laatste periode of editie, de laatste wijziging, de status (voorlopig of
 definitief), de frequentie en een verwachte volgende editie. Dezelfde inhoud geeft
 [`GET /api/bronactualiteit`](api.md#infrastructuur) en de MCP-resource
-[`onderwijscatalogus://bronactualiteit`](mcp.md#resource-actualiteit-van-de-bronnen). Code:
+`onderwijscatalogus://bronactualiteit`. Code:
 `core/bronactualiteit_overzicht.py`.
 
 Drie regels gelden voor elke bron:

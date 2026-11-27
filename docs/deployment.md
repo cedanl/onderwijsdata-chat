@@ -4,7 +4,7 @@ icon: lucide/cloud-upload
 
 # Uitrol naar SDP
 
-Complete deployment procedure voor onderwijsdata-chat op SDP tenant.
+Deployment-procedure voor onderwijsdata-chat op de SDP-tenant, voor bevoegde beheerders met toegang tot de tenant, de platformdocumentatie en het secretsbeheer; met alleen de publieke repository is ze niet af te ronden. Voor lokaal gebruik: [Installatie voor ontwikkelaars](aan-de-slag.md). Een andere productieomgeving vraagt eigen inrichting van database, OIDC, TLS, secrets en back-up en herstel.
 
 ## Prerequisites
 
@@ -55,8 +55,8 @@ op test en playground ook `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` en `STUDIEKEUZE
 de Studiekeuzedatabase, `optional`). Op test noemen de values ook `LOG_HASH_SECRET`, als `optional`: die sleutel staat
 nu niet in de secret van test (06-11-2026). Zonder dat geheim is de hash in logregels een kale, afgekapte SHA-256 in
 plaats van een HMAC, en staat er geen gebruikerspseudoniem in het log (`gebruiker=-`; `docs/configuratie/index.md`,
-`core/logging_util.py`). Op test ook `MCP_API_KEYS`, `optional`: zonder die sleutel bestaat `/mcp` niet
-([MCP-server](mcp.md#sleutels)). Zetten is beheer via SOPS, zoals hierboven. `POSTGRES_URI`
+`core/logging_util.py`). Op test ook `MCP_API_KEYS`, `optional`: zonder die sleutel bestaat `/mcp` niet.
+Zetten is beheer via SOPS, zoals hierboven. `POSTGRES_URI`
 komt uit de secret `onderwijsdata-chat-app` van het platform (zie hierboven).
 
 ### 4. GitLab CI/CD Variables
@@ -80,9 +80,9 @@ De volledige releaseprocedure staat in [Promoten naar playground](promoten.md); 
 
 ```bash
 # GitLab is canoniek. Tag kaal, zonder v, op een groene main-commit:
-git tag 2.5.0 <main-sha> && git push origin 2.5.0
+git tag X.Y.Z <main-sha> && git push origin X.Y.Z
 # De tag-pipeline publiceert alleen de chart en spiegelt de tag naar GitHub; hij deployt niets.
-uv run python scripts/promotie.py promote --version 2.5.0   # op chore/promote-playground, dan een MR
+uv run python scripts/promotie.py promote --version X.Y.Z   # op chore/promote-playground, dan een MR
 ```
 
 - **test** volgt elke merge naar `main` (open chartrange); `kubernetes:verify-up` controleert de uitrol.

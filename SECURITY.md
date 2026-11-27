@@ -406,7 +406,7 @@ Tests: `tests/test_login_verplicht.py` (de combinaties lokaal/niet-lokaal × log
 **Aangetroffen in:** de bouw van `/mcp` (#706, #939, #940), voor SURF AI Chat (#704)  
 **Probleem:** een eindpunt dat een externe dienst zonder gebruikerslogin aanroept, in dezelfde pod als de chat. Open zou
 elke instelling er onbegrensd bij kunnen en kon één consument de chat voor iedereen traag maken.  
-**Maatregelen** (`routes/mcp_http.py`, [MCP-server](docs/mcp.md#over-http-mcp-in-de-app)):
+**Maatregelen** (`routes/mcp_http.py`):
 - Fail-closed: zonder `MCP_API_KEYS` bestaat `/mcp` niet (404). Met sleutels vraagt elk verzoek `Authorization: Bearer`,
   constant-time vergeleken tegen alle sleutels; de sleutel staat nooit in een log of foutmelding, het log noemt een
   sleutel-ID.

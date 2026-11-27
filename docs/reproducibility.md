@@ -28,7 +28,7 @@ Achter de schermen roept de app functies aan, bijvoorbeeld:
 
 ### 3. De code per stap
 
-Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). Met de instelling "Geavanceerd" (#1269, in
+Een laad- of bewerkingsstap krijgt een Python-snippet (`tools/snippet.py`); niet elke stap heeft code, zoals het doorzoeken van de catalogus. Met de instelling "Geavanceerd" (#1269, in
 Instellingen) staat die in de chat bij de stap, onder "Redenering". "Exporteer gesprek" zet het hele gesprek in één
 bestand (`frontend/src/conversationExport.js`, #366, #1247). Zonder Geavanceerd toont de kaart de stappen zonder code en
 is de export een Markdown-bestand zonder code. Met Geavanceerd kies je Markdown (de standaard) of een Jupyter-notebook.
@@ -205,7 +205,7 @@ bewaarde gesprek. Een vast antwoord uit code zonder bronnen heeft geen bewijsbes
 | `bronnen`, `bronlinks` | De bronregels onder het antwoord en hun links naar de bronpagina |
 | `citaties` | Per gecontroleerd getal de maat, selectie, bron en stap |
 | `controle` | Wat de controle nog vond (de regels "Let op: …") |
-| `controles` | Wat de controle deed (#1260): `regel` is de regel "Wat is gecontroleerd" zoals onder het antwoord, altijd met de vaste zin over wat niet gecontroleerd is; daarnaast de tellingen uit code waar die regel op rust (`per_controle`, `getallen`, `gebonden`, `jaar_en_instelling`, `niet_gedraaid`, `ingetrokken`, `gecorrigeerd`; zie [Voor auditors](anti-hallucination-architecture.md#voor-auditors)) |
+| `controles` | Wat de controle deed (#1260): `regel` is de regel "Wat is gecontroleerd" zoals onder het antwoord, altijd met de vaste zin over wat niet gecontroleerd is; daarnaast de tellingen uit code waar die regel op rust (`per_controle`, `getallen`, `gebonden`, `jaar_en_instelling`, `niet_gedraaid`, `ingetrokken`, `gecorrigeerd`) |
 | `toolstappen` | Per geslaagde stap `name`, `arguments` en `snippet`; nooit de ruwe uitvoer van de tool |
 | `vaste_maat` | Het label "Vaste maat" (#1242): `maat`, `teldefinitie`, `vastgelegd_in`, `vastgelegd_op` |
 | `antwoord` | De antwoordtekst zoals hij er staat |
@@ -260,7 +260,7 @@ komen. Het schema blijft daarmee `onderwijsdata-chat/bewijs/1`. Een voorbeeld, i
 ```
 
 Met `toolstappen[].snippet` herhaal je de stappen (zie hierboven), met `manifest.data_as_of` zie je of het dezelfde
-data is. Wat er wel en niet in staat voor je privacy: [Privacy](privacy.md#wat-je-zelf-kunt-doen).
+data is.
 
 ## Voor onderzoekers
 
@@ -268,14 +268,6 @@ data is. Wat er wel en niet in staat voor je privacy: [Privacy](privacy.md#wat-j
 - Voeg snippets toe aan je rapport als "methodologie"
 - Laat collega's ze draaien ter verificatie
 - Archiveer ze met je onderzoeksgegevens
-
-## Voor auditors
-
-Vraag naar het snippet — de app levert het direct:
-
-> "Toon me de code voor het studentenaantal per opleiding"
-
-Het is de code die de stappen van dat antwoord herhaalt: dezelfde bron, dezelfde filters en dezelfde aggregaties.
 
 ## Anti-hallucinatie
 

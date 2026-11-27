@@ -19,7 +19,7 @@ Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokal
 
 ## 1. Database — PostgreSQL
 
-SQLite is single-user en niet geschikt voor gelijktijdige toegang door meerdere gebruikers.
+SQLite ondersteunt meerdere gelijktijdige lezers en één schrijver tegelijk. Voor de multi-user-uitrol van deze app kiezen we PostgreSQL vanwege schrijfconcurrentie, beheer en het deploymentprofiel; dat is een keuze voor de app, geen algemene beperking van SQLite.
 
 ### Kies een aanbieder
 
@@ -66,7 +66,7 @@ Beide vereisen `CHAT_SECRET` voor het ondertekenen van tokens.
 
 Gebruik de `Dockerfile` in de repo; die bouwt in drie stappen:
 
-1. de frontend (`node:24-alpine`, `npm ci && npm run build`);
+1. de frontend (de in de `Dockerfile` vastgepinde `node:26-alpine`, `npm ci && npm run build`; de digest in de `Dockerfile` is leidend);
 2. de Python-afhankelijkheden (`python:3.14-slim`, uv gepind, `uv sync --frozen --no-dev --no-editable --extra
    postgres`), met de compiler alleen in deze stap. De bronpakketten uit `packages/` worden eerst gekopieerd en komen als
    gewone (niet-editable) pakketten in de `.venv`, inclusief hun catalogusdata;
@@ -106,7 +106,7 @@ docker run -p 8000:8000 \
 - [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
 - [ ] `onderwijsdata.db` (SQLite, alleen zonder `POSTGRES_URI`) staat in `.gitignore`
 - [ ] PostgreSQL via `POSTGRES_URI`, met TLS (`sslmode=require` of strenger)
-- [ ] Inloggen via SRAM (OIDC) of gehashte wachtwoorden, geen `CHAT_USERS` in platte tekst (SECURITY.md S21)
+- [ ] Inloggen via SRAM (OIDC). De `CHAT_USERS`-fallback vergelijkt wachtwoorden als platte tekst en kent geen wachtwoordhashverificatie: gebruik hem alleen voor lokaal gebruik of een demo, met de waarden als secret (SECURITY.md S21)
 - [ ] `APP_ENV=production`: JSON-logs en geen API-documentatie
 - [ ] `LOG_LEVEL=INFO` (niet `DEBUG`) en `LOG_HASH_SECRET` als secret
 - [ ] Back-ups en een geteste herstelprocedure

@@ -16,7 +16,7 @@ route antwoorden ze met 404 en `{"detail": "Niet gevonden"}`, ook alles eronder:
 | Pad | Waarom gereserveerd |
 |---|---|
 | `/api` en `/api/…` | De REST-API ([API](api.md)): een typfout in een API-pad hoort een fout te geven, geen HTML (#482) |
-| `/mcp` en `/mcp/…` | De MCP-server ([MCP](mcp.md#over-http-mcp-in-de-app)); `/mcp` en `/mcp/` hebben een eigen route in `server.py`, ook als MCP uit staat (dan JSON-404, #1215) |
+| `/mcp` en `/mcp/…` | De MCP-server (nog niet beschreven op deze site); `/mcp` en `/mcp/` hebben een eigen route in `server.py`, ook als MCP uit staat (dan JSON-404, #1215) |
 | `/docs` | Hier zoeken clients Swagger UI; die is er niet (#1161) |
 | `/openapi.json` | Hier zoeken clients het schema; dat staat onder `/api/openapi.json` |
 | `/status`, `/session`, `/user` | Namen die op een API lijken; scanners en clients die ze proberen, horen geen 200 |
